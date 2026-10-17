@@ -48,6 +48,7 @@ void main(List<String> args) {
 
   for (final MapEntry(key: id, value: file) in sources.entries) {
     final rows = _load('$srcDir/$file');
+    currentRiwaya = id;
     final variants = <List<Object>>[];
     final counts = <String, int>{};
     for (var s = 1; s <= 114; s++) {
@@ -187,30 +188,32 @@ bool _isMark(int c) =>
     c == 0x0640 ||
     (c >= 0x200C && c <= 0x200F);
 
-class Norm {
-  Norm(this.loose, this.letters, this.noHamza, this.vowels, this.marks);
+/// One pronounced letter of a word after normalisation.
+class Unit {
+  Unit(this.letter);
 
-  /// Alignment key: letters without alef or hamza.
-  final String loose;
+  /// Base letter; hamza on any seat is 'ء' + its seat in [seat].
+  String letter;
+  String seat = '';
 
-  /// Letters (hamza seats kept), wasl alef as plain alef.
-  final String letters;
+  /// fatha / damma / kasra, or null for sukun / no vowel.
+  int? vowel;
+  bool shadda = false;
+  String? tanween;
 
-  /// [letters] with hamza removed / seats reduced to their carrier letter.
-  final String noHamza;
+  /// Madd, imala / taqlil, tasheel / ishmam, saktah.
+  final marks = <int>[];
 
-  /// Vowels, shadda and pronounced small letters, per letter + tanween.
-  final String vowels;
-
-  /// Madd / imala / tasheel marks (order-insensitive).
-  final String marks;
+  String get key => letter + seat;
 }
 
-final _normCache = <String, Norm>{};
+/// Splits [word] into normalised letter units, ignoring spelling
+/// conventions that do not change the reading.
+List<Unit> units(String word) => _unitCache.putIfAbsent(word, () => _units(word));
 
-Norm norm(String word) => _normCache.putIfAbsent(word, () => _norm(word));
+final _unitCache = <String, List<Unit>>{};
 
-Norm _norm(String word) {
+List<Unit> _units(String word) {
   // Group into base letter + its marks.
   final groups = <(String, List<int>)>[];
   for (final c in word.runes) {
@@ -231,10 +234,7 @@ Norm _norm(String word) {
   int? spellingLam;
   if (bare.startsWith('لل', prefix)) spellingLam = prefix + 1;
 
-  final letters = StringBuffer();
-  final vowels = StringBuffer();
-  final tanween = <String>[];
-  final marks = <int>[];
+  final out = <Unit>[];
   var wasl = false;
   for (var i = 0; i < groups.length; i++) {
     var (ch, ms) = groups[i];
@@ -245,11 +245,14 @@ Norm _norm(String word) {
     }
     // Hamzat al-wasl: ٱ in eastern texts; a plain alef (often with the
     // starting vowel and a marker) in the Maghribi-style texts.
+    // A word-initial alef with a vowel but no marker is a hamza dropped
+    // after naql (اِلَّا), not a wasl.
     final isWasl = ch == 'ٱ' ||
         (ch == 'ا' &&
-            (i == prefix ||
-                ms.contains(0x06EC) ||
-                ms.contains(0x06DF)));
+            ((i == prefix &&
+                    (i > 0 ||
+                        !ms.any((m) => m == _fatha || m == _damma || m == _kasra))) ||
+                groups[i].$2.any((m) => m == 0x06EC || m == 0x06DF || m == 0x06EA)));
     if (isWasl) {
       ch = 'ا';
       ms = [];
@@ -257,57 +260,253 @@ Norm _norm(String word) {
     if (ch == 'ل' && (wasl || i == spellingLam)) ms = [];
     wasl = isWasl;
 
+    final u = Unit(ch);
     // Small high seen: on sad it means "read as seen", elsewhere it is saktah.
     if (ms.contains(0x06DC)) {
       ms = ms.where((m) => m != 0x06DC).toList();
-      if (ch == 'ص') {
-        ch = 'س';
-      } else {
-        marks.add(0x06DC);
-      }
+      ch == 'ص' ? u.letter = 'س' : u.marks.add(0x06DC);
     }
     if (ms.contains(_dagger) && !ms.contains(_fatha)) ms.add(_fatha);
     if (ms.any((m) => m == 0x06EA || m == 0x06ED || m == 0x065C) &&
         !ms.any((m) => m == _fatha || m == _damma || m == _kasra)) {
       ms.add(_fatha); // imala / taqlil replaces the written fatha
     }
-
-    for (final m in ms) {
-      if (m == 0x0654 || m == 0x0655) ch = '$chء';
+    switch (u.letter) {
+      case 'أ' || 'إ' || 'آ':
+        u
+          ..letter = 'ء'
+          ..seat = 'ا';
+      case 'ؤ':
+        u
+          ..letter = 'ء'
+          ..seat = 'و';
+      case 'ئ':
+        u
+          ..letter = 'ء'
+          ..seat = 'ي';
     }
-    letters.write(ch);
-    final v = <int>[];
+    if (ms.contains(0x0654) || ms.contains(0x0655)) {
+      u
+        ..seat = u.letter
+        ..letter = 'ء';
+    }
     for (final m in ms) {
       if (_tanween.containsKey(m)) {
-        tanween.add(_tanween[m]!);
+        u.tanween = _tanween[m];
       } else if (_recitationMarks.contains(m)) {
-        marks.add(m);
-      } else if (m == _shadda && i == 0) {
-        marks.add(m); // idgham with the previous word
-      } else if (m == _fatha || m == _damma || m == _kasra || m == _shadda) {
-        v.add(m);
+        u.marks.add(m);
+      } else if (m == _shadda) {
+        u.shadda = true;
+      } else if (m == _fatha || m == _damma || m == _kasra) {
+        u.vowel = m;
       }
     }
-    v.sort();
+    out.add(u);
+    if (ms.contains(_dagger)) out.add(Unit('ا'));
+  }
+  return out;
+}
+
+class Norm {
+  Norm(this.loose, this.letters, this.noHamza, this.vowels, this.marks);
+
+  /// Alignment key: letters without alef or hamza.
+  final String loose;
+
+  /// Letters (hamza seats kept), wasl alef as plain alef.
+  final String letters;
+
+  /// [letters] with hamza removed / seats reduced to their carrier letter.
+  final String noHamza;
+
+  /// Vowels and shadda per letter + tanween.
+  final String vowels;
+
+  /// Madd / imala / tasheel marks (order-insensitive). A shadda on the first
+  /// letter (idgham with the previous word) is left out: the texts differ in
+  /// writing it, not in reading it.
+  final String marks;
+}
+
+final _normCache = <String, Norm>{};
+
+Norm norm(String word) => _normCache.putIfAbsent(word, () => _norm(word));
+
+Norm _norm(String word) {
+  final us = units(word);
+  final letters = StringBuffer(), noHamza = StringBuffer();
+  final vowels = StringBuffer();
+  final tanween = <String>[], marks = <int>[];
+  for (var i = 0; i < us.length; i++) {
+    final u = us[i];
+    letters.write(u.key);
+    if (u.letter != 'ء') noHamza.write(u.letter);
+    if (u.letter == 'ء' && u.seat != '') noHamza.write(u.seat);
     vowels
-      ..write(ch)
-      ..write(String.fromCharCodes(v));
-    if (ms.contains(_dagger)) {
-      letters.write('ا');
-      vowels.write('ا');
-    }
+      ..write(u.key)
+      ..write(u.vowel == null ? '' : String.fromCharCode(u.vowel!))
+      ..write(u.shadda && i > 0 ? 'ّ' : '');
+    if (u.tanween != null) tanween.add(u.tanween!);
+    marks.addAll(u.marks);
   }
   tanween.sort();
   marks.sort();
-  final l = letters.toString();
-  final noHamza = l
-      .replaceAll(RegExp('[أإآ]'), 'ا')
-      .replaceAll('ؤ', 'و')
-      .replaceAll('ئ', 'ي')
-      .replaceAll('ء', '');
-  final loose = noHamza.replaceAll('ا', '').replaceAll('ى', 'ي');
-  return Norm(loose, l, noHamza, '$vowels|${tanween.join()}',
+  final nh = noHamza.toString();
+  final loose = nh.replaceAll('ا', '');
+  return Norm(loose, letters.toString(), nh, '$vowels|${tanween.join()}',
       String.fromCharCodes(marks));
+}
+
+// ---------------------------------------------------------------------------
+// Arabic description of a difference ("بالتاء", "بضم الهاء", ...)
+
+const _letterNames = {
+  'ا': 'الألف', 'ب': 'الباء', 'ت': 'التاء', 'ث': 'الثاء', 'ج': 'الجيم',
+  'ح': 'الحاء', 'خ': 'الخاء', 'د': 'الدال', 'ذ': 'الذال', 'ر': 'الراء',
+  'ز': 'الزاي', 'س': 'السين', 'ش': 'الشين', 'ص': 'الصاد', 'ض': 'الضاد',
+  'ط': 'الطاء', 'ظ': 'الظاء', 'ع': 'العين', 'غ': 'الغين', 'ف': 'الفاء',
+  'ق': 'القاف', 'ك': 'الكاف', 'ل': 'اللام', 'م': 'الميم', 'ن': 'النون',
+  'ه': 'الهاء', 'و': 'الواو', 'ي': 'الياء', 'ة': 'التاء', 'ء': 'الهمزة',
+};
+
+String _name(Unit u) => _letterNames[u.letter] ?? u.letter;
+
+/// Riwaya being processed; the same imala sign means taqlil in Nafi's texts.
+var currentRiwaya = '';
+
+String _imalaName(int mark) => switch (mark) {
+      0x06ED => 'التقليل',
+      0x06EA when currentRiwaya == 'warsh' || currentRiwaya == 'qalun' =>
+        'التقليل',
+      _ => 'الإمالة',
+    };
+
+/// Describes how [other] differs from the Hafs word [hafs], e.g. "بالتاء",
+/// "بحذف الألف", "بضم الهاء وصلة الميم". Empty when it cannot be put
+/// briefly.
+String describe(String hafs, String other) {
+  if (other.isEmpty) return '';
+  if (_muqattaat.hasMatch(hafs)) {
+    final m = other.runes.where((c) => c == 0x06EA || c == 0x06ED || c == 0x065C);
+    return m.isEmpty ? '' : 'ب${_imalaName(m.first)}';
+  }
+  final phrases = <String>[];
+  var a = hafs, b = other;
+  if (_hasSilah(a) != _hasSilah(b)) {
+    final last = units(_dropSilah(_hasSilah(b) ? b : a)).last;
+    final which = last.letter == 'م' ? 'ميم الجمع' : 'الهاء';
+    phrases.add(_hasSilah(b) ? 'صلة $which' : 'ترك صلة $which');
+    a = _dropSilah(a);
+    b = _dropSilah(b);
+  }
+  final ua = units(a), ub = units(b);
+
+  // Align the letters (LCS on unit keys; hamza seats ignored so a hamza that
+  // becomes its seat shows as a substitution).
+  final n = ua.length, m = ub.length;
+  final dp = List.generate(n + 1, (_) => List<int>.filled(m + 1, 0));
+  for (var i = n - 1; i >= 0; i--) {
+    for (var j = m - 1; j >= 0; j--) {
+      dp[i][j] = ua[i].letter == ub[j].letter
+          ? dp[i + 1][j + 1] + 1
+          : (dp[i + 1][j] > dp[i][j + 1] ? dp[i + 1][j] : dp[i][j + 1]);
+    }
+  }
+  final removed = <Unit>[], added = <Unit>[];
+  var removedAt = 0;
+  void flushEdits() {
+    for (var k = 0; k < removed.length || k < added.length; k++) {
+      final x = k < removed.length ? removed[k] : null;
+      final y = k < added.length ? added[k] : null;
+      if (x != null && y != null) {
+        if (x.letter == 'ء' && 'اوي'.contains(y.letter)) {
+          final afterArticle = removedAt + k >= 2 &&
+              ua[removedAt + k - 1].letter == 'ل' &&
+              ua[removedAt + k - 2].letter == 'ا';
+          phrases.add(afterArticle
+              ? 'نقل حركة الهمزة إلى اللام'
+              : y.letter == 'ا' && removedAt + k <= 3
+              ? 'تخفيف الهمزة'
+              : 'إبدال الهمزة ${const {'ا': 'ألفًا', 'و': 'واوًا', 'ي': 'ياءً'}[y.letter]}');
+        } else if (y.letter == 'ء') {
+          phrases.add('الهمز');
+        } else {
+          phrases.add(_name(y));
+        }
+      } else if (x != null) {
+        phrases.add(x.letter == 'ء' ? 'حذف الهمزة' : 'حذف ${_name(x)}');
+      } else if (y != null) {
+        phrases.add(y.letter == 'ا' ? 'إثبات الألف' : 'زيادة ${_name(y)}');
+      }
+    }
+    removed.clear();
+    added.clear();
+  }
+
+  var mutedMadd = 0;
+  var i = 0, j = 0;
+  while (i < n || j < m) {
+    if (i < n && j < m && ua[i].letter == ub[j].letter) {
+      flushEdits();
+      // A madd on a letter whose vowel changes goes with it (إِنِّيٓ → إِنِّيَ).
+      if (_compareUnit(ua[i], ub[j], i, phrases)) mutedMadd += _madd(ua[i]);
+      i++;
+      j++;
+    } else if (j < m && (i == n || dp[i][j + 1] >= dp[i + 1][j])) {
+      added.add(ub[j++]);
+    } else {
+      if (removed.isEmpty) removedAt = i;
+      removed.add(ua[i++]);
+    }
+  }
+  flushEdits();
+
+  final maddA = ua.fold(0, (s, u) => s + _madd(u)) - mutedMadd;
+  final maddB = ub.fold(0, (s, u) => s + _madd(u));
+  if (maddB < maddA) phrases.add('القصر');
+  if (maddB > maddA) phrases.add('المد');
+
+  final unique = phrases.toSet().toList();
+  if (unique.isEmpty || unique.length > 4) return '';
+  return 'ب${unique.join(' و')}';
+}
+
+int _madd(Unit u) => u.marks.where((k) => k == 0x0653 || k == 0x06E4).length;
+
+/// Adds the differences between two aligned letters; returns true when the
+/// vowel changed.
+bool _compareUnit(Unit a, Unit b, int index, List<String> out) {
+  final name = _name(a);
+  if (index == 0 && b.shadda && !a.shadda) out.add('الإدغام');
+  if (index > 0 && a.shadda && !b.shadda && b.vowel == null) {
+    out.add('إسكان $name مخففة');
+    return true;
+  }
+  if (index > 0 && b.shadda != a.shadda) {
+    out.add(b.shadda ? 'تشديد $name' : 'تخفيف $name');
+  }
+  var changed = false;
+  if (a.letter == 'ء' && a.seat != b.seat && a.vowel == b.vowel) {
+    // Same hamza on another seat: spelling only.
+  } else if (a.vowel != b.vowel && !(a.letter == 'ا' && b.vowel == null)) {
+    changed = true;
+    out.add(switch (b.vowel) {
+      _fatha => 'فتح $name',
+      _damma => 'ضم $name',
+      _kasra => 'كسر $name',
+      _ => 'إسكان $name',
+    });
+  }
+  for (final mark in b.marks) {
+    if (a.marks.contains(mark)) continue;
+    switch (mark) {
+      case 0x06EA || 0x06ED || 0x065C:
+        out.add(_imalaName(mark));
+      case 0x06EC:
+        out.add(a.letter == 'ء' || a.letter == 'ا' ? 'التسهيل' : 'الإشمام');
+    }
+  }
+  return changed;
 }
 
 /// 'f' letters/vowels, 'h' hamza only, 'u' madd/imala/tasheel marks only,
@@ -335,12 +534,13 @@ String? classify(String hafs, String other) {
   return 'f';
 }
 
-/// [classify] plus two cross-word rules that only show at the word's end:
-/// naql (the vowel of a dropped hamza moves onto this word) and idgham
-/// kabir (this word's last vowel is dropped into the next word).
-String? _classifyInContext(List<HafsWord> h, List<String> r, int i, int j) {
-  final c = classify(h[i].text, r[j]);
-  if (c != 'f') return c;
+/// [classify] and [describe] plus two cross-word rules that only show at the
+/// word's end: naql (the vowel of a dropped hamza moves onto this word) and
+/// idgham kabir (this word's last vowel is dropped into the next word).
+(String, String)? _classifyInContext(
+    List<HafsWord> h, List<String> r, int i, int j) {
+  final c = _plain(h[i].text, r[j]);
+  if (c?.$1 != 'f') return c;
   final a = _stripWaqf(h[i].text), b = _stripWaqf(r[j]);
   final ea = _finalVowel.firstMatch(a)?[0] ?? '';
   final eb = _finalVowel.firstMatch(b)?[0] ?? '';
@@ -351,14 +551,19 @@ String? _classifyInContext(List<HafsWord> h, List<String> r, int i, int j) {
   }
   final vowelA = ea.contains(RegExp('[َُِ]'));
   final vowelB = eb.contains(RegExp('[َُِ]'));
-  if (vowelA && eb.isEmpty) return 'u';
+  if (vowelA && eb.isEmpty) return ('u', 'بالإدغام فيما بعدها');
   if (!vowelA && vowelB && i + 1 < h.length && j + 1 < r.length) {
     final hamzaInHafs = RegExp('^[وف]?[أإآء]').hasMatch(h[i + 1].text);
     if (hamzaInHafs && norm(r[j + 1]).letters == norm(r[j + 1]).noHamza) {
-      return 'h';
+      return ('h', 'بنقل حركة الهمزة إليها');
     }
   }
   return c;
+}
+
+(String, String)? _plain(String hafs, String other) {
+  final c = classify(hafs, other);
+  return c == null ? null : (c, describe(hafs, other));
 }
 
 /// A word of letter names: maddah but no vowel at all (الٓمٓ, حمٓ, كٓهيعٓصٓ).
@@ -379,7 +584,8 @@ String _stripWaqf(String w) =>
 // ---------------------------------------------------------------------------
 // Alignment
 
-/// Returns variants as [surah, ayah, wordIndex, wordCount, text, category].
+/// Returns variants as
+/// [surah, ayah, wordIndex, wordCount, text, category, description].
 List<List<Object>> _diffSurah(int surah, List<HafsWord> h, List<String> r) {
   final a = h.map((w) => norm(w.text).loose).toList();
   final b = r.map((w) => norm(w).loose).toList();
@@ -392,7 +598,7 @@ List<List<Object>> _diffSurah(int surah, List<HafsWord> h, List<String> r) {
         final c = _classifyInContext(h, r, hi + k, ri + k);
         if (c != null) {
           final w = h[hi + k];
-          out.add([w.surah, w.ayah, w.index, 1, r[ri + k], c]);
+          out.add([w.surah, w.ayah, w.index, 1, r[ri + k], c.$1, c.$2]);
         }
       }
       return;
@@ -413,13 +619,15 @@ List<List<Object>> _diffSurah(int surah, List<HafsWord> h, List<String> r) {
         final w = h[hi - 1];
         out.add([
           w.surah, w.ayah, w.index, 1, //
-          [r[ri - 1], ...r.sublist(ri, rj)].join(' '), 'f'
+          [r[ri - 1], ...r.sublist(ri, rj)].join(' '), 'f',
+          'بزيادة ${r.sublist(ri, rj).join(' ')}'
         ]);
       } else {
         final w = h[0];
         out.add([
           w.surah, w.ayah, 0, 1, //
-          [...r.sublist(ri, rj), r[rj]].join(' '), 'f'
+          [...r.sublist(ri, rj), r[rj]].join(' '), 'f',
+          'بزيادة ${r.sublist(ri, rj).join(' ')}'
         ]);
       }
       return;
@@ -434,7 +642,7 @@ List<List<Object>> _diffSurah(int surah, List<HafsWord> h, List<String> r) {
       }
       final text = start == hi ? r.sublist(ri, rj).join(' ') : '';
       final w = h[start];
-      out.add([w.surah, w.ayah, w.index, end - start, text, 'f']);
+      out.add([w.surah, w.ayah, w.index, end - start, text, 'f', '']);
       start = end;
     }
   }

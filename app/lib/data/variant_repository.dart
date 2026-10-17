@@ -10,10 +10,11 @@ import '../models/quran.dart';
 ///
 /// File format (written by `tool/build_data.dart`, or by hand):
 /// ```json
-/// {"riwaya": "warsh", "variants": [[surah, ayah, word, count, "text", "f|h|u"], ...]}
+/// {"riwaya": "warsh",
+///  "variants": [[surah, ayah, word, count, "text", "f|h|u", "description"], ...]}
 /// ```
 /// `word` is the 0-based index of the Hafs word in the ayah, `count` the
-/// number of Hafs words the reading replaces.
+/// number of Hafs words the reading replaces; the description is optional.
 class VariantRepository {
   VariantRepository(this.available, [AssetBundle? bundle])
       : _bundle = bundle ?? rootBundle;
@@ -81,6 +82,7 @@ Map<int, List<Variant>> _index((String, String) input) {
       count: v[3] as int,
       text: v[4] as String,
       kind: VariantKind.fromCode(v[5] as String),
+      description: v.length > 6 ? v[6] as String : '',
     );
     for (var w = variant.word; w < variant.word + variant.count; w++) {
       index

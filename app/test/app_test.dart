@@ -67,13 +67,27 @@ void main() {
     expect(read('warsh', 3, 133, 0), 'سَارِعُوٓاْ');
   });
 
+  test('variants carry an Arabic description of the change', () {
+    String? describe(String id, int s, int a, int w) =>
+        variants.at([id], s, a, w).firstOrNull?.description;
+
+    expect(describe('warsh', 1, 4, 0), 'بحذف الألف');
+    expect(describe('bazzi', 1, 7, 3), 'بصلة ميم الجمع');
+    // وَمَا يَخۡدَعُونَ (2:9) read يُخَٰدِعُونَ by Nafi'.
+    expect(describe('warsh', 2, 9, 5),
+        'بضم الياء وفتح الخاء وإثبات الألف وكسر الدال');
+  });
+
   Future<void> shot(WidgetTester tester, int page, ReaderSettings settings,
       String name) async {
     tester.view.physicalSize = const Size(1080, 2000);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
+    // Labels in an Arabic font: the test environment has no system Arabic font.
+    final theme = buildTheme();
     await tester.pumpWidget(MaterialApp(
-      theme: buildTheme(),
+      theme: theme.copyWith(
+          textTheme: theme.textTheme.apply(fontFamily: 'Hafs')),
       home: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
@@ -137,5 +151,10 @@ void main() {
         ReaderSettings.memory(
             selected: {'warsh', 'qalun', 'duri_abuamr', 'susi', 'shubah'}),
         'p601_hamesh');
+  });
+
+  testWidgets('page 269, Nafi'' in the hamesh', (t) async {
+    await shot(t, 269, ReaderSettings.memory(selected: {'warsh', 'qalun'}),
+        'p269_hamesh');
   });
 }

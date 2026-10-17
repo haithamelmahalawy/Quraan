@@ -92,24 +92,33 @@ class _FramePainter extends CustomPainter {
 
 /// Surah title banner: patterned side panels and a central cartouche.
 class SurahBanner extends StatelessWidget {
-  const SurahBanner({super.key, required this.title});
+  const SurahBanner({
+    super.key,
+    required this.title,
+    this.fontSize = 21,
+    this.height = 46,
+  });
 
   final String title;
+  final double fontSize;
+
+  /// Banner height; null to fill the parent (a mushaf line).
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      height: 46,
+      margin: EdgeInsets.symmetric(vertical: height == null ? 2 : 6),
+      height: height,
       child: CustomPaint(
         painter: _BannerPainter(),
         child: Center(
           child: Text(
             title,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Hafs',
-              fontSize: 21,
+              fontSize: fontSize,
               height: 1.1,
               color: MushafColors.ink,
             ),

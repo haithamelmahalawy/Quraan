@@ -42,6 +42,7 @@ class Variant {
     required this.count,
     required this.text,
     required this.kind,
+    this.description = '',
   });
 
   final String riwayaId;
@@ -57,6 +58,9 @@ class Variant {
   /// The words as read in this riwaya (empty when the words are dropped).
   final String text;
   final VariantKind kind;
+
+  /// How the reading differs, in Arabic: "بالتاء", "بضم الهاء", ...
+  final String description;
 }
 
 enum VariantKind {

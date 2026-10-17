@@ -7,6 +7,7 @@ import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../state/reader_settings.dart';
 import 'mushaf_decor.dart';
+import 'mushaf_lines.dart';
 import 'theme.dart';
 
 typedef WordTap = void Function(Ayah ayah, int word);
@@ -33,15 +34,15 @@ class MushafPage extends StatefulWidget {
   State<MushafPage> createState() => _MushafPageState();
 }
 
-/// One numbered hamesh entry: a Hafs word (or words) and how the selected
-/// riwayat read it.
+/// One hamesh entry: a Hafs word (or words), coloured as on the page, and
+/// how the selected riwayat read it.
 class HameshEntry {
-  HameshEntry(this.number, this.ayah, this.word, this.hafs, this.readings);
+  HameshEntry(this.ayah, this.word, this.hafs, this.color, this.readings);
 
-  final int number;
   final Ayah ayah;
   final int word;
   final String hafs;
+  final Color color;
   final List<Variant> readings;
 }
 
@@ -66,14 +67,16 @@ class _MushafPageState extends State<MushafPage> {
     _disposeRecognizers();
     final ayahs = widget.quran.page(widget.page);
     final s = widget.settings;
+    // On phones the page shares the width with the hamesh beside it.
+    final narrow = MediaQuery.sizeOf(context).width < 600;
+    final scale = s.mode == DisplayMode.hamesh && narrow ? 0.8 : 1.0;
     final textStyle = TextStyle(
       fontFamily: 'Hafs',
-      fontSize: s.fontSize,
+      fontSize: s.fontSize * scale,
       height: 2.0,
       color: MushafColors.ink,
     );
     final blocks = <Widget>[];
-    final hamesh = <HameshEntry>[];
     var spans = <InlineSpan>[];
 
     void flush() {
@@ -87,7 +90,12 @@ class _MushafPageState extends State<MushafPage> {
       spans = [];
     }
 
-    for (final ayah in ayahs) {
+    // Highlight and hamesh keep the printed lines; inline and replace change
+    // word widths, so they flow the text instead.
+    final lines = widget.quran.lines(widget.page);
+    final printed = lines != null &&
+        (s.mode == DisplayMode.hamesh || s.mode == DisplayMode.highlight);
+    for (final ayah in printed ? const <Ayah>[] : ayahs) {
       if (ayah.number == 1) {
         flush();
         blocks.add(SurahBanner(
@@ -101,14 +109,21 @@ class _MushafPageState extends State<MushafPage> {
           ));
         }
       }
-      _addAyah(ayah, spans, hamesh);
+      _addAyah(ayah, spans);
     }
     flush();
 
-    final page = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: blocks,
-    );
+    final page = printed
+        ? MushafLines(
+            lines: lines,
+            centered: widget.quran.isCentered(widget.page),
+            quran: widget.quran,
+            wordBuilder: _word,
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: blocks,
+          );
     final framed = _PageFrame(page: widget.page, child: page);
     if (s.mode != DisplayMode.hamesh) {
       return SingleChildScrollView(
@@ -117,40 +132,28 @@ class _MushafPageState extends State<MushafPage> {
       );
     }
 
-    final margin = _Hamesh(entries: hamesh, onTap: widget.onWordTap);
-    return LayoutBuilder(builder: (context, constraints) {
-      // Tablets / landscape: hamesh beside the page; phones: below it.
-      if (constraints.maxWidth >= 840) {
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                child: framed,
-              ),
+    // The hamesh sits outside the page, on its left (the end side in RTL).
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(flex: narrow ? 76 : 78, child: framed),
+          const SizedBox(width: 4),
+          Expanded(
+            flex: narrow ? 24 : 22,
+            child: _Hamesh(
+              entries: _hameshEntries(ayahs),
+              onTap: widget.onWordTap,
+              compact: narrow,
             ),
-            SizedBox(
-              width: constraints.maxWidth * 0.36,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
-                child: margin,
-              ),
-            ),
-          ],
-        );
-      }
-      return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(10, 6, 10, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [framed, const SizedBox(height: 12), margin],
-        ),
-      );
-    });
+          ),
+        ],
+      ),
+    );
   }
 
-  void _addAyah(Ayah ayah, List<InlineSpan> out, List<HameshEntry> hamesh) {
+  void _addAyah(Ayah ayah, List<InlineSpan> out) {
     final s = widget.settings;
     final selected = s.selected.where(widget.variants.isLoaded).toList();
     final replace = s.mode == DisplayMode.replace && selected.length == 1;
@@ -188,41 +191,12 @@ class _MushafPageState extends State<MushafPage> {
       final groups = {for (final v in shown) qiraaOf(v.riwayaId)}.toList();
       final color = groups.length == 1 ? groups.single.color : MushafColors.multi;
 
-      if (s.mode == DisplayMode.hamesh) {
-        // Clean Hafs word; a numbered marker after the first word of each
-        // difference refers to the hamesh.
-        out.add(TextSpan(text: ayah.words[w], recognizer: tap));
-        final starting = shown.where((v) => v.word == w).toList();
-        if (starting.isNotEmpty) {
-          final end = starting
-              .map((v) => v.word + v.count)
-              .reduce((a, b) => a > b ? a : b);
-          final entry = HameshEntry(
-            hamesh.length + 1,
-            ayah,
-            w,
-            ayah.words.sublist(w, end).join(' '),
-            starting,
-          );
-          hamesh.add(entry);
-          out.add(WidgetSpan(
-            alignment: PlaceholderAlignment.top,
-            child: GestureDetector(
-              onTap: () => widget.onWordTap(ayah, w),
-              child: _Marker(number: entry.number, color: color),
-            ),
-          ));
-        }
-        out.add(const TextSpan(text: ' '));
-        continue;
-      }
-
       out.add(TextSpan(
         text: ayah.words[w],
         recognizer: tap,
         style: TextStyle(color: color, backgroundColor: color.withAlpha(28)),
       ));
-      if (groups.length > 1 && s.mode == DisplayMode.highlight) {
+      if (groups.length > 1 && s.mode != DisplayMode.inline) {
         out.add(WidgetSpan(
           alignment: PlaceholderAlignment.top,
           child: _Dots(colors: [for (final q in groups) q.color]),
@@ -247,6 +221,81 @@ class _MushafPageState extends State<MushafPage> {
       out.add(const TextSpan(text: ' '));
     }
     out.add(TextSpan(text: '${arabicDigits(ayah.number)} '));
+  }
+
+  /// The selected riwayat's readings of a Hafs word, and its colour: the
+  /// qiraa's colour, or [MushafColors.multi] when several qiraat differ.
+  ({List<Variant> all, List<Variant> shown, List<Color> colors}) _mark(
+      Ayah ayah, int w) {
+    final s = widget.settings;
+    final all = widget.variants
+        .at(s.selected.where(widget.variants.isLoaded), ayah.surah, ayah.number, w)
+        .toList(growable: false);
+    final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
+    return (
+      all: all,
+      shown: shown,
+      colors: [for (final q in {for (final v in shown) qiraaOf(v.riwayaId)}) q.color],
+    );
+  }
+
+  /// One word of a printed line.
+  Widget _word(Ayah ayah, int w, double fontSize) {
+    final m = _mark(ayah, w);
+    final color = m.colors.isEmpty
+        ? null
+        : m.colors.length == 1
+            ? m.colors.single
+            : MushafColors.multi;
+    Widget word = Text(
+      ayah.words[w],
+      textDirection: TextDirection.rtl,
+      style: TextStyle(
+        fontFamily: 'Hafs',
+        fontSize: fontSize,
+        height: 1.0,
+        color: color ?? MushafColors.ink,
+        backgroundColor: color?.withAlpha(28),
+      ),
+    );
+    if (m.colors.length > 1 && widget.settings.mode == DisplayMode.highlight) {
+      word = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          word,
+          Positioned(top: -6, left: 0, child: _Dots(colors: m.colors)),
+        ],
+      );
+    }
+    if (m.all.isEmpty) return word;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => widget.onWordTap(ayah, w),
+      child: word,
+    );
+  }
+
+  /// Hamesh entries in page order: one per word where a selected reading
+  /// starts.
+  List<HameshEntry> _hameshEntries(List<Ayah> ayahs) {
+    final out = <HameshEntry>[];
+    for (final ayah in ayahs) {
+      for (var w = 0; w < ayah.words.length; w++) {
+        final m = _mark(ayah, w);
+        final starting = m.shown.where((v) => v.word == w).toList();
+        if (starting.isEmpty) continue;
+        final end =
+            starting.map((v) => v.word + v.count).reduce((a, b) => a > b ? a : b);
+        out.add(HameshEntry(
+          ayah,
+          w,
+          ayah.words.sublist(w, end).join(' '),
+          m.colors.length == 1 ? m.colors.single : MushafColors.multi,
+          starting,
+        ));
+      }
+    }
+    return out;
   }
 
   TapGestureRecognizer _recognizer(Ayah ayah, int word) {
@@ -288,50 +337,101 @@ class _PageFrame extends StatelessWidget {
   }
 }
 
-/// The margin: one line per marked word, each reading prefixed by the
-/// qiraa (or riwaya) that reads it, written in that riwaya's own font.
+/// The margin beside the page: for each marked word, who reads it how,
+/// written in that riwaya's own font, with a short description
+/// ("بالتاء", "بضم الهاء", ...).
 class _Hamesh extends StatelessWidget {
-  const _Hamesh({required this.entries, required this.onTap});
+  const _Hamesh({
+    required this.entries,
+    required this.onTap,
+    required this.compact,
+  });
 
   final List<HameshEntry> entries;
   final WordTap onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final label = TextStyle(
+      fontSize: compact ? 8.5 : 10,
+      height: 1.4,
+      color: MushafColors.ink,
+    );
+    final quran = compact ? 11.0 : 13.0;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
       decoration: BoxDecoration(
-        color: MushafColors.frame.withAlpha(14),
+        color: MushafColors.goldLight.withAlpha(70),
         borderRadius: BorderRadius.circular(6),
-        border: Border(
-          top: BorderSide(color: MushafColors.frame.withAlpha(140), width: 1.5),
-        ),
+        border: Border.all(color: MushafColors.gold, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'الهامش - أوجه القراءات',
-            style: theme.textTheme.titleSmall
-                ?.copyWith(color: MushafColors.frame),
+            'الهامش',
+            textAlign: TextAlign.center,
+            style: label.copyWith(
+              fontSize: label.fontSize! + 2,
+              fontWeight: FontWeight.bold,
+              color: MushafColors.green,
+            ),
           ),
+          const Divider(height: 10, color: MushafColors.gold),
           if (entries.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                'لا خلاف في هذه الصفحة بين حفص والقراءات المختارة.',
-                style: theme.textTheme.bodySmall,
-              ),
+            Text(
+              'لا خلاف في هذه الصفحة بين حفص والقراءات المختارة.',
+              style: label.copyWith(color: MushafColors.frame),
             ),
           for (final e in entries)
             InkWell(
               onTap: () => onTap(e.ayah, e.word),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Text.rich(
-                  TextSpan(children: _line(e)),
-                  textDirection: TextDirection.rtl,
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      e.hafs,
+                      style: TextStyle(
+                        fontFamily: 'Hafs',
+                        fontSize: quran,
+                        color: e.color,
+                        backgroundColor: e.color.withAlpha(28),
+                      ),
+                    ),
+                    for (final g in _readings(e.readings))
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(start: 4),
+                        child: Text.rich(TextSpan(children: [
+                          for (var i = 0; i < g.names.length; i++)
+                            TextSpan(
+                              text: i == 0 ? g.names[i].$1 : ' و${g.names[i].$1}',
+                              style: label.copyWith(
+                                color: g.names[i].$2,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          TextSpan(text: ': ', style: label),
+                          TextSpan(
+                            text: g.text.isEmpty ? '(بحذفها)' : g.text,
+                            style: TextStyle(
+                              fontFamily: g.font,
+                              fontSize: quran,
+                              color: g.names.length == 1
+                                  ? g.names.single.$2
+                                  : MushafColors.multi,
+                            ),
+                          ),
+                          if (g.description.isNotEmpty)
+                            TextSpan(
+                              text: '  ${g.description}',
+                              style: label.copyWith(color: MushafColors.frame),
+                            ),
+                        ])),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -340,55 +440,18 @@ class _Hamesh extends StatelessWidget {
     );
   }
 
-  List<InlineSpan> _line(HameshEntry e) {
-    const label = TextStyle(fontSize: 13, color: MushafColors.ink);
-    final spans = <InlineSpan>[
-      TextSpan(
-        text: '(${arabicDigits(e.number)}) ',
-        style: label.copyWith(fontWeight: FontWeight.bold),
-      ),
-      TextSpan(
-        text: e.hafs,
-        style: const TextStyle(
-            fontFamily: 'Hafs', fontSize: 19, color: MushafColors.ink),
-      ),
-      TextSpan(text: ' :  ', style: label),
-    ];
-    var first = true;
-    for (final g in _readings(e.readings)) {
-      if (!first) spans.add(TextSpan(text: '  ،  ', style: label));
-      first = false;
-      for (var i = 0; i < g.names.length; i++) {
-        final (name, color) = g.names[i];
-        spans.add(TextSpan(
-          text: i == 0 ? name : ' و$name',
-          style: label.copyWith(color: color, fontWeight: FontWeight.w600),
-        ));
-      }
-      spans
-        ..add(TextSpan(text: ': ', style: label))
-        ..add(TextSpan(
-          text: g.text.isEmpty ? '(بحذفها)' : g.text,
-          style: TextStyle(
-            fontFamily: g.font,
-            fontSize: 19,
-            color: g.names.length == 1 ? g.names.single.$2 : MushafColors.multi,
-          ),
-        ));
-    }
-    return spans;
-  }
-
   /// Who reads what: a qiraa by its name ("نافع") when both its riwayat
   /// read alike, otherwise each riwaya ("ورش عن نافع"); qiraat with the same
   /// reading share one entry ("نافع وابن كثير: مَلِكِ").
   static List<_Reading> _readings(List<Variant> vs) {
     final out = <_Reading>[];
-    void add(String name, Color color, String font, String text) {
-      final same = out.where((g) => g.text == text).firstOrNull;
+    void add(String name, Color color, String font, Variant v) {
+      final same = out
+          .where((g) => g.text == v.text && g.description == v.description)
+          .firstOrNull;
       same != null
           ? same.names.add((name, color))
-          : out.add(_Reading([(name, color)], font, text));
+          : out.add(_Reading([(name, color)], font, v.text, v.description));
     }
 
     for (final q in qiraat) {
@@ -402,11 +465,11 @@ class _Hamesh extends StatelessWidget {
           mine.every((m) => m.$2.text == mine.first.$2.text);
       if (sameText) {
         final (r, v) = mine.first;
-        add(q.shortAr, q.color, r.fontFamily ?? 'Hafs', v.text);
+        add(q.shortAr, q.color, r.fontFamily ?? 'Hafs', v);
       } else {
         for (final (r, v) in mine) {
           add('${r.nameAr} عن ${_genitive(q.shortAr)}', q.color,
-              r.fontFamily ?? 'Hafs', v.text);
+              r.fontFamily ?? 'Hafs', v);
         }
       }
     }
@@ -419,34 +482,14 @@ class _Hamesh extends StatelessWidget {
 }
 
 class _Reading {
-  _Reading(this.names, this.font, this.text);
+  _Reading(this.names, this.font, this.text, this.description);
 
   final List<(String, Color)> names;
   final String font;
   final String text;
-}
 
-class _Marker extends StatelessWidget {
-  const _Marker({required this.number, required this.color});
-
-  final int number;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 1),
-      child: Text(
-        arabicDigits(number),
-        style: TextStyle(
-          fontSize: 11,
-          height: 1,
-          fontWeight: FontWeight.bold,
-          color: color,
-        ),
-      ),
-    );
-  }
+  /// e.g. "بالتاء", "بضم الهاء"; empty when not generated.
+  final String description;
 }
 
 class _Dots extends StatelessWidget {

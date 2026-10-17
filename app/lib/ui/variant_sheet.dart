@@ -136,6 +136,7 @@ class VariantSheet extends StatelessWidget {
           .join(' '),
       font: riwaya.fontFamily ?? 'Hafs',
       kind: v.kind,
+      description: v.description,
     );
   }
 }
@@ -147,6 +148,7 @@ class _ReadingTile extends StatelessWidget {
     required this.text,
     this.font,
     this.kind,
+    this.description = '',
     this.dimmed = false,
   });
 
@@ -155,6 +157,7 @@ class _ReadingTile extends StatelessWidget {
   final String text;
   final String? font;
   final VariantKind? kind;
+  final String description;
   final bool dimmed;
 
   @override
@@ -186,6 +189,8 @@ class _ReadingTile extends StatelessWidget {
                 ? theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor)
                 : TextStyle(fontFamily: font, fontSize: 26, color: color),
           ),
+          if (description.isNotEmpty)
+            Text(description, style: theme.textTheme.bodyMedium),
         ],
       ),
     );
