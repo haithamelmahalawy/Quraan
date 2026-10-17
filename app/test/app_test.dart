@@ -99,7 +99,9 @@ void main() {
     await shot(
         t,
         1,
-        ReaderSettings.memory(selected: {'warsh', 'qalun', 'bazzi', 'susi'}),
+        ReaderSettings.memory(
+            selected: {'warsh', 'qalun', 'bazzi', 'susi'},
+            mode: DisplayMode.highlight),
         'p1_highlight');
   });
 
@@ -117,5 +119,23 @@ void main() {
         2,
         ReaderSettings.memory(selected: {'warsh'}, mode: DisplayMode.replace),
         'p2_replace');
+  });
+
+  testWidgets('page 1, hamesh with three qiraat', (t) async {
+    await shot(
+        t,
+        1,
+        ReaderSettings.memory(
+            selected: {'warsh', 'qalun', 'bazzi', 'qunbul', 'susi'}),
+        'p1_hamesh');
+  });
+
+  testWidgets('page 601 (three surahs), hamesh', (t) async {
+    await shot(
+        t,
+        601,
+        ReaderSettings.memory(
+            selected: {'warsh', 'qalun', 'duri_abuamr', 'susi', 'shubah'}),
+        'p601_hamesh');
   });
 }

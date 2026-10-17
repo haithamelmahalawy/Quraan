@@ -6,6 +6,7 @@ import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../state/reader_settings.dart';
+import 'mushaf_decor.dart';
 import 'theme.dart';
 
 typedef WordTap = void Function(Ayah ayah, int word);
@@ -89,7 +90,8 @@ class _MushafPageState extends State<MushafPage> {
     for (final ayah in ayahs) {
       if (ayah.number == 1) {
         flush();
-        blocks.add(_SurahHeader(surah: widget.quran.surah(ayah.surah)));
+        blocks.add(SurahBanner(
+            title: 'سورة ${widget.quran.surah(ayah.surah).nameAr}'));
         if (ayah.surah != 1 && ayah.surah != 9) {
           blocks.add(Text(
             widget.quran.basmala,
@@ -107,14 +109,14 @@ class _MushafPageState extends State<MushafPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: blocks,
     );
+    final framed = _PageFrame(page: widget.page, child: page);
     if (s.mode != DisplayMode.hamesh) {
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: page,
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 24),
+        child: framed,
       );
     }
 
-    final framed = _PageFrame(page: widget.page, child: page);
     final margin = _Hamesh(entries: hamesh, onTap: widget.onWordTap);
     return LayoutBuilder(builder: (context, constraints) {
       // Tablets / landscape: hamesh beside the page; phones: below it.
@@ -260,7 +262,7 @@ String arabicDigits(int n) => n
     .map((d) => String.fromCharCode(0x0660 + int.parse(d)))
     .join();
 
-/// Mushaf-style border around the Hafs text, with the page number.
+/// Ornamented mushaf border around the Hafs text, with the page number.
 class _PageFrame extends StatelessWidget {
   const _PageFrame({required this.page, required this.child});
 
@@ -269,30 +271,18 @@ class _PageFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        border: Border.all(color: MushafColors.frame, width: 2),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-        decoration: BoxDecoration(
-          color: Colors.white.withAlpha(110),
-          border: Border.all(color: MushafColors.frame.withAlpha(120)),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            child,
-            Text(
-              arabicDigits(page),
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: MushafColors.frame),
-            ),
-          ],
-        ),
+    return OrnamentFrame(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          child,
+          const SizedBox(height: 4),
+          Text(
+            arabicDigits(page),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: MushafColors.green),
+          ),
+        ],
       ),
     );
   }
@@ -365,26 +355,42 @@ class _Hamesh extends StatelessWidget {
       TextSpan(text: ' :  ', style: label),
     ];
     var first = true;
-    for (final (who, color, font, text) in _readings(e.readings)) {
+    for (final g in _readings(e.readings)) {
       if (!first) spans.add(TextSpan(text: '  ،  ', style: label));
       first = false;
-      spans
-        ..add(TextSpan(
-          text: '$who: ',
+      for (var i = 0; i < g.names.length; i++) {
+        final (name, color) = g.names[i];
+        spans.add(TextSpan(
+          text: i == 0 ? name : ' و$name',
           style: label.copyWith(color: color, fontWeight: FontWeight.w600),
-        ))
+        ));
+      }
+      spans
+        ..add(TextSpan(text: ': ', style: label))
         ..add(TextSpan(
-          text: text.isEmpty ? '(بحذفها)' : text,
-          style: TextStyle(fontFamily: font, fontSize: 19, color: color),
+          text: g.text.isEmpty ? '(بحذفها)' : g.text,
+          style: TextStyle(
+            fontFamily: g.font,
+            fontSize: 19,
+            color: g.names.length == 1 ? g.names.single.$2 : MushafColors.multi,
+          ),
         ));
     }
     return spans;
   }
 
-  /// Groups the readings by qiraa: "نافع: X" when both of its riwayat are
-  /// listed with the same text, otherwise "ورش عن نافع: X" per riwaya.
-  static List<(String, Color, String, String)> _readings(List<Variant> vs) {
-    final out = <(String, Color, String, String)>[];
+  /// Who reads what: a qiraa by its name ("نافع") when both its riwayat
+  /// read alike, otherwise each riwaya ("ورش عن نافع"); qiraat with the same
+  /// reading share one entry ("نافع وابن كثير: مَلِكِ").
+  static List<_Reading> _readings(List<Variant> vs) {
+    final out = <_Reading>[];
+    void add(String name, Color color, String font, String text) {
+      final same = out.where((g) => g.text == text).firstOrNull;
+      same != null
+          ? same.names.add((name, color))
+          : out.add(_Reading([(name, color)], font, text));
+    }
+
     for (final q in qiraat) {
       final mine = [
         for (final r in q.riwayat)
@@ -396,20 +402,28 @@ class _Hamesh extends StatelessWidget {
           mine.every((m) => m.$2.text == mine.first.$2.text);
       if (sameText) {
         final (r, v) = mine.first;
-        out.add((q.shortAr, q.color, r.fontFamily ?? 'Hafs', v.text));
+        add(q.shortAr, q.color, r.fontFamily ?? 'Hafs', v.text);
       } else {
         for (final (r, v) in mine) {
-          out.add((
-            '${r.nameAr} عن ${q.shortAr}',
-            q.color,
-            r.fontFamily ?? 'Hafs',
-            v.text,
-          ));
+          add('${r.nameAr} عن ${_genitive(q.shortAr)}', q.color,
+              r.fontFamily ?? 'Hafs', v.text);
         }
       }
     }
     return out;
   }
+
+  /// "عن أبو عمرو" → "عن أبي عمرو".
+  static String _genitive(String name) =>
+      name.startsWith('أبو ') ? 'أبي ${name.substring(4)}' : name;
+}
+
+class _Reading {
+  _Reading(this.names, this.font, this.text);
+
+  final List<(String, Color)> names;
+  final String font;
+  final String text;
 }
 
 class _Marker extends StatelessWidget {
@@ -455,35 +469,6 @@ class _Dots extends StatelessWidget {
               decoration: BoxDecoration(color: c, shape: BoxShape.circle),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _SurahHeader extends StatelessWidget {
-  const _SurahHeader({required this.surah});
-
-  final Surah surah;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        border: Border.all(color: MushafColors.frame, width: 1.5),
-        borderRadius: BorderRadius.circular(8),
-        color: MushafColors.frame.withAlpha(20),
-      ),
-      child: Text(
-        'سورة ${surah.nameAr}',
-        textAlign: TextAlign.center,
-        textDirection: TextDirection.rtl,
-        style: const TextStyle(
-          fontFamily: 'Hafs',
-          fontSize: 22,
-          color: MushafColors.ink,
-        ),
       ),
     );
   }
