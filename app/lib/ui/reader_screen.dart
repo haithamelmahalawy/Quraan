@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
@@ -6,6 +7,7 @@ import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../state/reader_settings.dart';
+import 'book_pager.dart';
 import 'mushaf_page.dart';
 import 'mutashabihat_sheet.dart';
 import 'qiraat_sheet.dart';
@@ -32,9 +34,15 @@ class ReaderScreen extends StatefulWidget {
 }
 
 class _ReaderScreenState extends State<ReaderScreen> {
-  late final _controller = PageController(initialPage: widget.settings.page - 1);
+  final _pager = GlobalKey<BookPagerState>();
   late int _page = widget.settings.page;
   bool _loading = false;
+
+  /// Full-screen reading: no bars, no hamesh.
+  bool _fullScreen = false;
+
+  /// While a page is zoomed in, drags pan it instead of turning pages.
+  bool _zoomed = false;
 
   @override
   void initState() {
@@ -46,7 +54,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void dispose() {
     widget.settings.removeListener(_onSettings);
-    _controller.dispose();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
@@ -55,13 +63,38 @@ class _ReaderScreenState extends State<ReaderScreen> {
     final missing = widget.settings.selected
         .where((id) => !widget.variants.isLoaded(id))
         .toList();
-    if (missing.isEmpty) {
-      setState(() {});
-      return;
+    if (missing.isNotEmpty) {
+      setState(() => _loading = true);
+      await widget.variants.ensureLoaded(missing);
+      if (mounted) setState(() => _loading = false);
     }
+    await _fetchOnline(_page);
+    if (mounted) setState(() {});
+  }
+
+  bool _offlineNoticeShown = false;
+
+  /// Riwayat read online are fetched for the page shown and the next one.
+  Future<void> _fetchOnline(int page) async {
+    if (!widget.settings.selected.any(widget.variants.isOnline)) return;
     setState(() => _loading = true);
-    await widget.variants.ensureLoaded(missing);
-    if (mounted) setState(() => _loading = false);
+    try {
+      await widget.variants.ensureAyahs(widget.quran.page(page));
+      if (mounted) setState(() {});
+      if (page < QuranRepository.pageCount) {
+        await widget.variants.ensureAyahs(widget.quran.page(page + 1));
+      }
+    } catch (_) {
+      if (mounted && !_offlineNoticeShown) {
+        _offlineNoticeShown = true;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('تعذر تحميل بعض الروايات من الإنترنت. '
+              'تحقق من الاتصال ثم أعد فتح الصفحة.'),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   /// Qiraat differences open the readings sheet (with a way on to the
@@ -103,11 +136,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
         onGo: _goToPage,
       );
 
-  void _goToPage(int page) => _controller.animateToPage(
-        page - 1,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOutCubic,
-      );
+  void _goToPage(int page) => _pager.currentState?.jumpTo(page - 1);
+
+  void _setFullScreen(bool on) {
+    SystemChrome.setEnabledSystemUIMode(
+        on ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge);
+    setState(() => _fullScreen = on);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,13 +152,67 @@ class _ReaderScreenState extends State<ReaderScreen> {
         for (final r in q.riwayat)
           if (widget.settings.selected.contains(r.id)) r,
     ];
+    final pages = BookPager(
+      key: _pager,
+      itemCount: QuranRepository.pageCount,
+      initialIndex: _page - 1,
+      enabled: !_zoomed,
+      onPageChanged: (i) {
+        setState(() {
+          _page = i + 1;
+          _zoomed = false;
+        });
+        widget.settings.page = i + 1;
+        _fetchOnline(i + 1);
+      },
+      // An opaque sheet, so a turning page never shows the one beneath.
+      itemBuilder: (context, i) => ColoredBox(
+        color: MushafColors.paper,
+        child: MushafPage(
+          page: i + 1,
+          quran: widget.quran,
+          variants: widget.variants,
+          mutashabihat: widget.mutashabihat,
+          settings: widget.settings,
+          onWordTap: _openWord,
+          showHamesh: !_fullScreen,
+          onZoomChanged: (z) => setState(() => _zoomed = z),
+        ),
+      ),
+    );
+
+    if (_fullScreen) {
+      return Scaffold(
+        body: Stack(
+          children: [
+            Positioned.fill(child: SafeArea(child: pages)),
+            // Below the page, where it never covers the text.
+            PositionedDirectional(
+              bottom: MediaQuery.paddingOf(context).bottom + 16,
+              start: 16,
+              child: Material(
+                color: MushafColors.green.withAlpha(150),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  tooltip: 'إنهاء ملء الشاشة',
+                  color: Colors.white,
+                  icon: const Icon(Icons.fullscreen_exit),
+                  onPressed: () => _setFullScreen(false),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
           children: [
             Text(
               'سورة ${widget.quran.surah(first.surah).nameAr}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Hafs',
                 fontSize: 24,
                 color: MushafColors.green,
@@ -135,6 +224,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
           ],
         ),
+        leading: IconButton(
+          tooltip: 'ملء الشاشة',
+          icon: const Icon(Icons.fullscreen),
+          onPressed: () => _setFullScreen(true),
+        ),
         actions: [
           IconButton(
             tooltip: 'فهرس السور',
@@ -145,7 +239,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   builder: (_) => SurahIndex(quran: widget.quran),
                 ),
               );
-              if (page != null) _controller.jumpToPage(page - 1);
+              if (page != null) _goToPage(page);
             },
           ),
           IconButton(
@@ -169,26 +263,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
           ),
         ),
       ),
-      body: PageView.builder(
-        controller: _controller,
-        itemCount: QuranRepository.pageCount,
-        onPageChanged: (i) {
-          setState(() => _page = i + 1);
-          widget.settings.page = i + 1;
-        },
-        itemBuilder: (context, i) => MushafPage(
-          page: i + 1,
-          quran: widget.quran,
-          variants: widget.variants,
-          mutashabihat: widget.mutashabihat,
-          settings: widget.settings,
-          onWordTap: _openWord,
-        ),
-      ),
+      body: pages,
       bottomNavigationBar: _PageBar(
         page: _page,
         surahName: widget.quran.surah(first.surah).nameAr,
-        onChanged: (p) => _controller.jumpToPage(p - 1),
+        onChanged: _goToPage,
       ),
     );
   }
@@ -314,7 +393,7 @@ class _PageBarState extends State<_PageBar> {
             ),
             Text(
               widget.surahName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Hafs',
                 fontSize: 18,
                 color: MushafColors.green,

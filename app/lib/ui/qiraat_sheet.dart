@@ -109,6 +109,32 @@ class QiraatSheet extends StatelessWidget {
               onChanged: (v) => settings.showMutashabihat = v,
             ),
             const Divider(height: 32),
+            _section(context, 'المظهر'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SegmentedButton<ThemeMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    icon: Icon(Icons.dark_mode_outlined),
+                    label: Text('داكن'),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    icon: Icon(Icons.light_mode_outlined),
+                    label: Text('فاتح'),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    icon: Icon(Icons.brightness_auto_outlined),
+                    label: Text('حسب الجهاز'),
+                  ),
+                ],
+                selected: {settings.themeMode},
+                onSelectionChanged: (s) => settings.themeMode = s.single,
+              ),
+            ),
+            const Divider(height: 32),
             _section(context, 'حجم الخط (العرض المتدفق)'),
             Slider(
               value: settings.fontSize,
@@ -122,7 +148,8 @@ class QiraatSheet extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'المصادر: نصوص وخطوط مجمع الملك فهد لطباعة المصحف الشريف للروايات، '
+                'المصادر: نصوص وخطوط مجمع الملك فهد لطباعة المصحف الشريف للروايات الثماني، '
+                'والروايات الاثنتا عشرة الأخرى من الموسوعة القرآنية (quranpedia.net) عبر الإنترنت، '
                 'وبيانات المتشابهات من مشروع Quran Mutashabihat Data (Waqar144) '
                 'عن عمل القارئ إدريس العاصم رحمه الله. أوصاف الخلاف مولّدة آليًا '
                 'وتحتاج إلى مراجعة متخصص.',
@@ -152,7 +179,7 @@ class _QiraaTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final usable = [
       for (final r in qiraa.riwayat)
-        if (r.id != hafsId && variants.available.contains(r.id)) r.id,
+        if (r.id != hafsId && variants.isAvailable(r.id)) r.id,
     ];
     final chosen = usable.where(settings.selected.contains).length;
     final bool? state = chosen == 0
@@ -192,13 +219,15 @@ class _QiraaTile extends StatelessWidget {
               dense: true,
               activeColor: qiraa.color,
               value: r.id == hafsId || settings.selected.contains(r.id),
-              enabled: r.id != hafsId && variants.available.contains(r.id),
+              enabled: r.id != hafsId && variants.isAvailable(r.id),
               title: Text('رواية ${r.nameAr}'),
               subtitle: r.id == hafsId
                   ? const Text('النص الأساسي')
                   : variants.available.contains(r.id)
                       ? null
-                      : const Text('غير متوفرة'),
+                      : variants.isOnline(r.id)
+                          ? const Text('عبر الإنترنت — الموسوعة القرآنية')
+                          : const Text('غير متوفرة'),
               onChanged: (v) => set([r.id], v!),
             ),
           ),

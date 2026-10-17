@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/quran.dart';
@@ -33,6 +33,7 @@ class ReaderSettings extends ChangeNotifier {
   double _fontSize = 24;
   int _page = 1;
   bool _showMutashabihat = true;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   /// Selected riwayat (Hafs is always the base text and never listed here).
   Set<String> get selected => _selected;
@@ -42,6 +43,9 @@ class ReaderSettings extends ChangeNotifier {
 
   /// Underline words shared with similar ayahs (mutashabihat).
   bool get showMutashabihat => _showMutashabihat;
+
+  /// Dark by default; light or following the system on request.
+  ThemeMode get themeMode => _themeMode;
 
   /// The replace mode only makes sense for a single riwaya.
   DisplayMode get mode =>
@@ -62,6 +66,8 @@ class ReaderSettings extends ChangeNotifier {
     s._fontSize = prefs.getDouble('fontSize') ?? 24;
     s._page = prefs.getInt('page') ?? 1;
     s._showMutashabihat = prefs.getBool('mutashabihat') ?? true;
+    s._themeMode = ThemeMode.values.asNameMap()[prefs.getString('theme')] ??
+        ThemeMode.dark;
     return s;
   }
 
@@ -103,6 +109,12 @@ class ReaderSettings extends ChangeNotifier {
   set showMutashabihat(bool value) {
     _showMutashabihat = value;
     _prefs?.setBool('mutashabihat', value);
+    notifyListeners();
+  }
+
+  set themeMode(ThemeMode value) {
+    _themeMode = value;
+    _prefs?.setString('theme', value.name);
     notifyListeners();
   }
 

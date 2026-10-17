@@ -24,6 +24,8 @@ class MushafPage extends StatefulWidget {
     required this.mutashabihat,
     required this.settings,
     required this.onWordTap,
+    this.showHamesh = true,
+    this.onZoomChanged,
   });
 
   final int page;
@@ -32,6 +34,12 @@ class MushafPage extends StatefulWidget {
   final MutashabihatRepository mutashabihat;
   final ReaderSettings settings;
   final WordTap onWordTap;
+
+  /// False in full-screen reading: the page alone, words still coloured.
+  final bool showHamesh;
+
+  /// Told when the page is zoomed in (so turning pages pauses) or back.
+  final ValueChanged<bool>? onZoomChanged;
 
   @override
   State<MushafPage> createState() => _MushafPageState();
@@ -59,9 +67,25 @@ class _MushafPageState extends State<MushafPage> {
   int? _split;
   String? _splitFor;
 
+  /// Pinch zoom of the page.
+  final _zoom = TransformationController();
+  bool _zoomed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _zoom.addListener(() {
+      final zoomed = _zoom.value.getMaxScaleOnAxis() > 1.01;
+      if (zoomed == _zoomed) return;
+      setState(() => _zoomed = zoomed);
+      widget.onZoomChanged?.call(zoomed);
+    });
+  }
+
   @override
   void dispose() {
     _disposeRecognizers();
+    _zoom.dispose();
     super.dispose();
   }
 
@@ -79,25 +103,27 @@ class _MushafPageState extends State<MushafPage> {
     final s = widget.settings;
     final narrow = MediaQuery.sizeOf(context).width < 600;
 
-    // Highlight and hamesh keep the printed lines; inline and replace change
-    // word widths, so they flow the text instead.
+    // Every mode but inline keeps the printed lines of the Madinah mushaf;
+    // a riwaya shown in full (replace) uses the same pages and lines as Hafs.
+    // Inline adds text to the lines, so it flows instead.
     final lines = widget.quran.lines(widget.page);
-    final printed = lines != null &&
-        (s.mode == DisplayMode.hamesh || s.mode == DisplayMode.highlight);
+    final printed = lines != null && s.mode != DisplayMode.inline;
     final page = printed
         ? MushafLines(
             lines: lines,
             centered: widget.quran.isCentered(widget.page),
             quran: widget.quran,
             wordBuilder: _word,
+            display: _display,
           )
         : _flowingText(ayahs, narrow);
     final framed = KeyedSubtree(
       key: _frameKey,
-      child: _PageFrame(page: widget.page, child: page),
+      child: _zoomable(_PageFrame(page: widget.page, child: page)),
     );
-    if (s.mode != DisplayMode.hamesh) {
+    if (s.mode != DisplayMode.hamesh || !widget.showHamesh) {
       return SingleChildScrollView(
+        physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
         padding: const EdgeInsets.fromLTRB(8, 6, 8, 24),
         child: framed,
       );
@@ -109,15 +135,19 @@ class _MushafPageState extends State<MushafPage> {
     final signature = [
       widget.page,
       MediaQuery.sizeOf(context).width,
-      for (final e in entries) '${e.ayah.number}:${e.word}:${e.readings.length}',
+      for (final e in entries)
+        '${e.ayah.number}:${e.word}:${e.readings.length}',
     ].join('|');
     if (signature != _splitFor) {
       _split = null;
       _splitFor = signature;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _measureSplit(signature));
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _measureSplit(signature),
+      );
     }
     final split = _split ?? entries.length;
     return SingleChildScrollView(
+      physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
       padding: const EdgeInsets.fromLTRB(6, 6, 6, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -154,6 +184,32 @@ class _MushafPageState extends State<MushafPage> {
     );
   }
 
+  /// The page can be pinched to zoom (up to 4×); while zoomed one finger
+  /// pans it, and the button resets it.
+  Widget _zoomable(Widget page) {
+    return Stack(
+      children: [
+        InteractiveViewer(
+          transformationController: _zoom,
+          minScale: 1,
+          maxScale: 4,
+          panEnabled: _zoomed,
+          child: page,
+        ),
+        if (_zoomed)
+          PositionedDirectional(
+            top: 8,
+            end: 8,
+            child: FilledButton.tonalIcon(
+              onPressed: () => _zoom.value = Matrix4.identity(),
+              icon: const Icon(Icons.zoom_out_map, size: 18),
+              label: const Text('حجم الصفحة'),
+            ),
+          ),
+      ],
+    );
+  }
+
   /// After layout: keep beside the page only the entries that end above the
   /// bottom of the page frame.
   void _measureSplit(String signature) {
@@ -178,27 +234,32 @@ class _MushafPageState extends State<MushafPage> {
     var spans = <InlineSpan>[];
     void flush() {
       if (spans.isEmpty) return;
-      blocks.add(Text.rich(
-        TextSpan(children: spans),
-        textAlign: TextAlign.justify,
-        textDirection: TextDirection.rtl,
-        style: textStyle,
-      ));
+      blocks.add(
+        Text.rich(
+          TextSpan(children: spans),
+          textAlign: TextAlign.justify,
+          textDirection: TextDirection.rtl,
+          style: textStyle,
+        ),
+      );
       spans = [];
     }
 
     for (final ayah in ayahs) {
       if (ayah.number == 1) {
         flush();
-        blocks.add(SurahBanner(
-            title: 'سورة ${widget.quran.surah(ayah.surah).nameAr}'));
+        blocks.add(
+          SurahBanner(title: 'سورة ${widget.quran.surah(ayah.surah).nameAr}'),
+        );
         if (ayah.surah != 1 && ayah.surah != 9) {
-          blocks.add(Text(
-            widget.quran.basmala,
-            textAlign: TextAlign.center,
-            textDirection: TextDirection.rtl,
-            style: textStyle,
-          ));
+          blocks.add(
+            Text(
+              widget.quran.basmala,
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.rtl,
+              style: textStyle,
+            ),
+          );
         }
       }
       _addAyah(ayah, spans);
@@ -220,58 +281,75 @@ class _MushafPageState extends State<MushafPage> {
       final tap = m.all.isEmpty && !m.mutashabih ? null : _recognizer(ayah, w);
       final underline = m.mutashabih ? _mutashabihStyle : null;
 
-      if (replace && m.all.isNotEmpty) {
-        final v = m.all.first;
+      // A reading given only as a description cannot replace the word.
+      final replaceable = m.all.where(
+        (v) => v.text.isNotEmpty || v.description.isEmpty,
+      );
+      if (replace && replaceable.isNotEmpty) {
+        final v = replaceable.first;
         if (v.word == w && v.text.isNotEmpty) {
           final shownHere = s.kinds.contains(v.kind);
-          out.add(TextSpan(
-            text: '${v.text} ',
-            recognizer: tap,
-            style: TextStyle(
-              fontFamily: riwayaById(v.riwayaId).fontFamily ?? 'Hafs',
-              color: shownHere ? qiraaOf(v.riwayaId).color : null,
-              backgroundColor:
-                  shownHere ? qiraaOf(v.riwayaId).color.withAlpha(24) : null,
+          out.add(
+            TextSpan(
+              text: '${v.text} ',
+              recognizer: tap,
+              style: TextStyle(
+                fontFamily: riwayaById(v.riwayaId).fontFamily ?? 'Hafs',
+                color: shownHere ? qiraaOf(v.riwayaId).color : null,
+                backgroundColor: shownHere
+                    ? qiraaOf(v.riwayaId).color.withAlpha(24)
+                    : null,
+              ),
             ),
-          ));
+          );
         }
         continue;
       }
 
       if (m.shown.isEmpty) {
         out
-          ..add(TextSpan(text: ayah.words[w], recognizer: tap, style: underline))
+          ..add(
+            TextSpan(text: ayah.words[w], recognizer: tap, style: underline),
+          )
           ..add(const TextSpan(text: ' '));
         continue;
       }
 
       final color = m.color!;
-      out.add(TextSpan(
-        text: ayah.words[w],
-        recognizer: tap,
-        style: (underline ?? const TextStyle())
-            .copyWith(color: color, backgroundColor: color.withAlpha(28)),
-      ));
+      out.add(
+        TextSpan(
+          text: ayah.words[w],
+          recognizer: tap,
+          style: (underline ?? const TextStyle()).copyWith(
+            color: color,
+            backgroundColor: color.withAlpha(28),
+          ),
+        ),
+      );
       if (m.colors.length > 1 && s.mode != DisplayMode.inline) {
-        out.add(WidgetSpan(
-          alignment: PlaceholderAlignment.top,
-          child: _Dots(colors: m.colors),
-        ));
+        out.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.top,
+            child: _Dots(colors: m.colors),
+          ),
+        );
       }
       if (s.mode == DisplayMode.inline) {
         // Each distinct reading once, at the first word it covers.
         final seen = <String>{};
         for (final v in m.shown.where((v) => v.word == w)) {
           if (!seen.add(v.text)) continue;
-          out.add(TextSpan(
-            text: ' ${v.text.isEmpty ? '—' : v.text}',
-            recognizer: tap,
-            style: TextStyle(
-              fontFamily: riwayaById(v.riwayaId).fontFamily ?? 'Hafs',
-              fontSize: s.fontSize * 0.62,
-              color: qiraaOf(v.riwayaId).color,
+          out.add(
+            TextSpan(
+              text: ' ${v.text.isEmpty ? '—' : v.text}',
+              recognizer: tap,
+              style: TextStyle(
+                fontFamily: riwayaById(v.riwayaId).fontFamily ?? 'Hafs',
+                fontSize: s.fontSize * 0.62,
+                color: qiraaOf(v.riwayaId).color,
+              ),
             ),
-          ));
+          );
         }
       }
       out.add(const TextSpan(text: ' '));
@@ -279,7 +357,7 @@ class _MushafPageState extends State<MushafPage> {
     out.add(TextSpan(text: '${arabicDigits(ayah.number)} '));
   }
 
-  static const _mutashabihStyle = TextStyle(
+  static TextStyle get _mutashabihStyle => TextStyle(
     decoration: TextDecoration.underline,
     decorationStyle: TextDecorationStyle.dotted,
     decorationColor: MushafColors.green,
@@ -295,10 +373,16 @@ class _MushafPageState extends State<MushafPage> {
     List<Color> colors,
     Color? color,
     bool mutashabih,
-  }) _mark(Ayah ayah, int w) {
+  })
+  _mark(Ayah ayah, int w) {
     final s = widget.settings;
     final all = widget.variants
-        .at(s.selected.where(widget.variants.isLoaded), ayah.surah, ayah.number, w)
+        .at(
+          s.selected.where(widget.variants.isLoaded),
+          ayah.surah,
+          ayah.number,
+          w,
+        )
         .toList(growable: false);
     final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
     final colors = [
@@ -311,21 +395,45 @@ class _MushafPageState extends State<MushafPage> {
       color: colors.isEmpty
           ? null
           : colors.length == 1
-              ? colors.single
-              : MushafColors.multi,
-      mutashabih: s.showMutashabihat &&
+          ? colors.single
+          : MushafColors.multi,
+      mutashabih:
+          s.showMutashabihat &&
           widget.mutashabihat.isShared(ayah.surah, ayah.number, w),
     );
+  }
+
+  /// What a word shows on a printed line. When one riwaya is shown in full
+  /// (replace), its reading takes the place of the Hafs word(s), in its own
+  /// font; readings given only as a description keep the Hafs word.
+  ({String text, String font})? _display(Ayah ayah, int w) {
+    final s = widget.settings;
+    final selected = s.selected.where(widget.variants.isLoaded).toList();
+    if (s.mode == DisplayMode.replace && selected.length == 1) {
+      final v = widget.variants
+          .at(selected, ayah.surah, ayah.number, w)
+          .where((v) => v.text.isNotEmpty || v.description.isEmpty)
+          .firstOrNull;
+      if (v != null) {
+        if (v.word != w || v.text.isEmpty) return null;
+        return (
+          text: v.text,
+          font: riwayaById(v.riwayaId).fontFamily ?? 'Hafs',
+        );
+      }
+    }
+    return (text: ayah.words[w], font: 'Hafs');
   }
 
   /// One word of a printed line.
   Widget _word(Ayah ayah, int w, double fontSize) {
     final m = _mark(ayah, w);
+    final shown = _display(ayah, w)!;
     Widget word = Text(
-      ayah.words[w],
+      shown.text,
       textDirection: TextDirection.rtl,
       style: (m.mutashabih ? _mutashabihStyle : const TextStyle()).copyWith(
-        fontFamily: 'Hafs',
+        fontFamily: shown.font,
         fontSize: fontSize,
         height: 1.0,
         color: m.color ?? MushafColors.ink,
@@ -360,8 +468,9 @@ class _MushafPageState extends State<MushafPage> {
         final m = _mark(ayah, w);
         final starting = m.shown.where((v) => v.word == w).toList();
         if (starting.isEmpty) continue;
-        final end =
-            starting.map((v) => v.word + v.count).reduce((a, b) => a > b ? a : b);
+        final end = starting
+            .map((v) => v.word + v.count)
+            .reduce((a, b) => a > b ? a : b);
         final hafs = ayah.words.sublist(w, end).join(' ');
         final key = [
           _bare(hafs),
@@ -375,7 +484,8 @@ class _MushafPageState extends State<MushafPage> {
   }
 
   TapGestureRecognizer _recognizer(Ayah ayah, int word) {
-    final r = TapGestureRecognizer()..onTap = () => widget.onWordTap(ayah, word);
+    final r = TapGestureRecognizer()
+      ..onTap = () => widget.onWordTap(ayah, word);
     _recognizers.add(r);
     return r;
   }
@@ -387,8 +497,11 @@ String _readingKey(Variant v) =>
     v.description.isNotEmpty ? v.description : _bare(v.text);
 
 /// Letters only (no vowels, waqf signs or tatweel).
-String _bare(String text) => String.fromCharCodes(text.runes.where((c) =>
-    (c >= 0x0621 && c <= 0x064A) || c == 0x0671 || c == 0x0020));
+String _bare(String text) => String.fromCharCodes(
+  text.runes.where(
+    (c) => (c >= 0x0621 && c <= 0x064A) || c == 0x0671 || c == 0x0020,
+  ),
+);
 
 String arabicDigits(int n) => n
     .toString()
@@ -420,7 +533,7 @@ class _PageFrame extends StatelessWidget {
               ),
               child: Text(
                 arabicDigits(page),
-                style: const TextStyle(fontSize: 12, color: MushafColors.green),
+                style: TextStyle(fontSize: 12, color: MushafColors.green),
               ),
             ),
           ),
@@ -464,7 +577,9 @@ class _HameshState extends State<_Hamesh> {
     for (final key in _keys) {
       final box = key.currentContext?.findRenderObject() as RenderBox?;
       if (box == null) break;
-      final bottom = box.localToGlobal(Offset(0, box.size.height), ancestor: me).dy;
+      final bottom = box
+          .localToGlobal(Offset(0, box.size.height), ancestor: me)
+          .dy;
       // Leave room for the box's bottom padding.
       if (bottom + 8 > height) break;
       fit++;
@@ -507,7 +622,7 @@ class _HameshState extends State<_Hamesh> {
               color: MushafColors.green,
             ),
           ),
-          const Divider(height: 10, color: MushafColors.gold),
+          Divider(height: 10, color: MushafColors.gold),
           if (widget.entries.isEmpty)
             Text(
               'لا خلاف في هذه الصفحة بين حفص والقراءات المختارة.',
@@ -522,7 +637,8 @@ class _HameshState extends State<_Hamesh> {
                 children: [
                   for (final item in items)
                     SizedBox(
-                      width: (c.maxWidth - 8 * (widget.columns - 1)) /
+                      width:
+                          (c.maxWidth - 8 * (widget.columns - 1)) /
                           widget.columns,
                       child: item,
                     ),
@@ -554,32 +670,37 @@ class _HameshState extends State<_Hamesh> {
             for (final g in _readings(e.readings))
               Padding(
                 padding: const EdgeInsetsDirectional.only(start: 4),
-                child: Text.rich(TextSpan(children: [
-                  for (var i = 0; i < g.names.length; i++)
-                    TextSpan(
-                      text: i == 0 ? g.names[i].$1 : ' و${g.names[i].$1}',
-                      style: label.copyWith(
-                        color: g.names[i].$2,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  TextSpan(text: ': ', style: label),
+                child: Text.rich(
                   TextSpan(
-                    text: g.text.isEmpty ? '(بحذفها)' : g.text,
-                    style: TextStyle(
-                      fontFamily: g.font,
-                      fontSize: quran,
-                      color: g.names.length == 1
-                          ? g.names.single.$2
-                          : MushafColors.multi,
-                    ),
+                    children: [
+                      for (var i = 0; i < g.names.length; i++)
+                        TextSpan(
+                          text: i == 0 ? g.names[i].$1 : ' و${g.names[i].$1}',
+                          style: label.copyWith(
+                            color: g.names[i].$2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      TextSpan(text: ': ', style: label),
+                      if (g.text.isNotEmpty || g.description.isEmpty)
+                        TextSpan(
+                          text: g.text.isEmpty ? '(بحذفها)' : g.text,
+                          style: TextStyle(
+                            fontFamily: g.font,
+                            fontSize: quran,
+                            color: g.names.length == 1
+                                ? g.names.single.$2
+                                : MushafColors.multi,
+                          ),
+                        ),
+                      if (g.description.isNotEmpty)
+                        TextSpan(
+                          text: '  ${g.description}',
+                          style: label.copyWith(color: MushafColors.frame),
+                        ),
+                    ],
                   ),
-                  if (g.description.isNotEmpty)
-                    TextSpan(
-                      text: '  ${g.description}',
-                      style: label.copyWith(color: MushafColors.frame),
-                    ),
-                ])),
+                ),
               ),
           ],
         ),
@@ -597,7 +718,9 @@ class _HameshState extends State<_Hamesh> {
       final same = out.where((g) => g.key == key).firstOrNull;
       same != null
           ? same.names.add((name, color))
-          : out.add(_Reading([(name, color)], font, v.text, v.description, key));
+          : out.add(
+              _Reading([(name, color)], font, v.text, v.description, key),
+            );
     }
 
     for (final q in qiraat) {
@@ -607,15 +730,20 @@ class _HameshState extends State<_Hamesh> {
             if (v.riwayaId == r.id) (r, v),
       ];
       if (mine.isEmpty) continue;
-      final sameReading = mine.length == q.riwayat.length &&
+      final sameReading =
+          mine.length == q.riwayat.length &&
           mine.every((m) => _readingKey(m.$2) == _readingKey(mine.first.$2));
       if (sameReading) {
         final (r, v) = mine.first;
         add(q.shortAr, q.color, r.fontFamily ?? 'Hafs', v);
       } else {
         for (final (r, v) in mine) {
-          add('${r.nameAr} عن ${_genitive(q.shortAr)}', q.color,
-              r.fontFamily ?? 'Hafs', v);
+          add(
+            '${r.nameAr} عن ${_genitive(q.shortAr)}',
+            q.color,
+            r.fontFamily ?? 'Hafs',
+            v,
+          );
         }
       }
     }

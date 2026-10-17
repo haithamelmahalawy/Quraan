@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../ui/theme.dart';
+
 /// One of the ten canonical qiraat.
 class Qiraa {
   const Qiraa({
@@ -7,7 +9,7 @@ class Qiraa {
     required this.nameAr,
     required this.shortAr,
     required this.nameEn,
-    required this.color,
+    required this.baseColor,
     required this.riwayat,
   });
 
@@ -17,7 +19,11 @@ class Qiraa {
   /// Name used in the hamesh, e.g. "نافع".
   final String shortAr;
   final String nameEn;
-  final Color color;
+  /// The qiraa's colour on a light page.
+  final Color baseColor;
+
+  /// The qiraa's colour, toned for the current (light / dark) page.
+  Color get color => MushafColors.tone(baseColor);
   final List<Riwaya> riwayat;
 }
 
@@ -47,7 +53,7 @@ const qiraat = <Qiraa>[
     nameAr: 'نافع المدني',
     shortAr: 'نافع',
     nameEn: "Nafi' al-Madani",
-    color: Color(0xFFC62828),
+    baseColor: Color(0xFFC62828),
     riwayat: [
       Riwaya(id: 'qalun', nameAr: 'قالون', nameEn: 'Qalun', fontFamily: 'Qaloon'),
       Riwaya(id: 'warsh', nameAr: 'ورش', nameEn: 'Warsh', fontFamily: 'Warsh'),
@@ -58,7 +64,7 @@ const qiraat = <Qiraa>[
     nameAr: 'ابن كثير المكي',
     shortAr: 'ابن كثير',
     nameEn: 'Ibn Kathir al-Makki',
-    color: Color(0xFF1565C0),
+    baseColor: Color(0xFF1565C0),
     riwayat: [
       Riwaya(id: 'bazzi', nameAr: 'البزي', nameEn: 'al-Bazzi', fontFamily: 'Bazzi'),
       Riwaya(id: 'qunbul', nameAr: 'قنبل', nameEn: 'Qunbul', fontFamily: 'Qumbul'),
@@ -69,7 +75,7 @@ const qiraat = <Qiraa>[
     nameAr: 'أبو عمرو البصري',
     shortAr: 'أبو عمرو',
     nameEn: "Abu 'Amr al-Basri",
-    color: Color(0xFF2E7D32),
+    baseColor: Color(0xFF2E7D32),
     riwayat: [
       Riwaya(id: 'duri_abuamr', nameAr: 'الدوري', nameEn: 'al-Duri', fontFamily: 'Doori'),
       Riwaya(id: 'susi', nameAr: 'السوسي', nameEn: 'al-Susi', fontFamily: 'Soosi'),
@@ -80,7 +86,7 @@ const qiraat = <Qiraa>[
     nameAr: 'ابن عامر الشامي',
     shortAr: 'ابن عامر',
     nameEn: "Ibn 'Amir al-Shami",
-    color: Color(0xFF6A1B9A),
+    baseColor: Color(0xFF6A1B9A),
     riwayat: [
       Riwaya(id: 'hisham', nameAr: 'هشام', nameEn: 'Hisham'),
       Riwaya(id: 'ibn_dhakwan', nameAr: 'ابن ذكوان', nameEn: 'Ibn Dhakwan'),
@@ -91,7 +97,7 @@ const qiraat = <Qiraa>[
     nameAr: 'عاصم الكوفي',
     shortAr: 'عاصم',
     nameEn: "'Asim al-Kufi",
-    color: Color(0xFF00838F),
+    baseColor: Color(0xFF00838F),
     riwayat: [
       Riwaya(id: 'shubah', nameAr: 'شعبة', nameEn: "Shu'bah", fontFamily: 'Shouba'),
       Riwaya(id: hafsId, nameAr: 'حفص', nameEn: 'Hafs', fontFamily: 'Hafs'),
@@ -102,7 +108,7 @@ const qiraat = <Qiraa>[
     nameAr: 'حمزة الكوفي',
     shortAr: 'حمزة',
     nameEn: 'Hamzah al-Kufi',
-    color: Color(0xFFEF6C00),
+    baseColor: Color(0xFFEF6C00),
     riwayat: [
       Riwaya(id: 'khalaf_hamzah', nameAr: 'خلف', nameEn: 'Khalaf'),
       Riwaya(id: 'khallad', nameAr: 'خلاد', nameEn: 'Khallad'),
@@ -113,7 +119,7 @@ const qiraat = <Qiraa>[
     nameAr: 'الكسائي الكوفي',
     shortAr: 'الكسائي',
     nameEn: "al-Kisa'i al-Kufi",
-    color: Color(0xFFAD1457),
+    baseColor: Color(0xFFAD1457),
     riwayat: [
       Riwaya(id: 'abul_harith', nameAr: 'أبو الحارث', nameEn: 'Abu al-Harith'),
       Riwaya(id: 'duri_kisai', nameAr: 'الدوري', nameEn: 'al-Duri'),
@@ -124,7 +130,7 @@ const qiraat = <Qiraa>[
     nameAr: 'أبو جعفر المدني',
     shortAr: 'أبو جعفر',
     nameEn: "Abu Ja'far al-Madani",
-    color: Color(0xFF6D4C41),
+    baseColor: Color(0xFF6D4C41),
     riwayat: [
       Riwaya(id: 'ibn_wardan', nameAr: 'ابن وردان', nameEn: 'Ibn Wardan'),
       Riwaya(id: 'ibn_jammaz', nameAr: 'ابن جماز', nameEn: 'Ibn Jammaz'),
@@ -135,7 +141,7 @@ const qiraat = <Qiraa>[
     nameAr: 'يعقوب الحضرمي',
     shortAr: 'يعقوب',
     nameEn: "Ya'qub al-Hadrami",
-    color: Color(0xFF283593),
+    baseColor: Color(0xFF283593),
     riwayat: [
       Riwaya(id: 'ruways', nameAr: 'رويس', nameEn: 'Ruways'),
       Riwaya(id: 'rawh', nameAr: 'روح', nameEn: 'Rawh'),
@@ -146,7 +152,7 @@ const qiraat = <Qiraa>[
     nameAr: 'خلف العاشر',
     shortAr: 'خلف',
     nameEn: 'Khalaf al-Ashir',
-    color: Color(0xFF827717),
+    baseColor: Color(0xFF827717),
     riwayat: [
       Riwaya(id: 'ishaq', nameAr: 'إسحاق', nameEn: 'Ishaq'),
       Riwaya(id: 'idris', nameAr: 'إدريس', nameEn: 'Idris'),

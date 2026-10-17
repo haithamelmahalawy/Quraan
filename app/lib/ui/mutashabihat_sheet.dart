@@ -80,7 +80,7 @@ class _MutashabihatSheetState extends State<MutashabihatSheet>
               ScaleTransition(
                 scale: Tween(begin: 0.85, end: 1.1).animate(
                     CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
-                child: const CircleAvatar(
+                child: CircleAvatar(
                   radius: 20,
                   backgroundColor: MushafColors.green,
                   child: Text('🔁', style: TextStyle(fontSize: 18)),
@@ -243,7 +243,7 @@ class _PlaceCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: MushafColors.page,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: accent, width: 2),
           boxShadow: [
@@ -262,8 +262,8 @@ class _PlaceCard extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isHere
-                      ? const [MushafColors.green, Color(0xFF3F8A66)]
-                      : const [Color(0xFFB8913A), MushafColors.gold],
+                      ? [MushafColors.green, MushafColors.green.withAlpha(200)]
+                      : [MushafColors.gold, MushafColors.gold.withAlpha(200)],
                 ),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(20)),
@@ -292,7 +292,7 @@ class _PlaceCard extends StatelessWidget {
               Container(
                 color: MushafColors.green.withAlpha(20),
                 padding: const EdgeInsets.symmetric(vertical: 4),
-                child: const Text(
+                child: Text(
                   'أنت هنا',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -322,7 +322,7 @@ class _PlaceCard extends StatelessWidget {
                   ]),
                   textAlign: TextAlign.justify,
                   textDirection: TextDirection.rtl,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Hafs',
                     fontSize: 24,
                     height: 2.0,

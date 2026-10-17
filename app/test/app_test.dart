@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
+import 'package:qiraat_mushaf/data/online_qiraat.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/quran.dart';
@@ -88,7 +89,7 @@ void main() {
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
     // Labels in an Arabic font: the test environment has no system Arabic font.
-    final theme = buildTheme();
+    final theme = buildTheme(MushafPalette.light);
     await tester.pumpWidget(MaterialApp(
       theme: theme.copyWith(
           textTheme: theme.textTheme.apply(fontFamily: 'Hafs')),
@@ -178,7 +179,7 @@ void main() {
     t.view.physicalSize = const Size(1080, 2000);
     t.view.devicePixelRatio = 2.5;
     addTearDown(t.view.reset);
-    final theme = buildTheme();
+    final theme = buildTheme(MushafPalette.light);
     await t.pumpWidget(MaterialApp(
       theme: theme.copyWith(
           textTheme: theme.textTheme.apply(fontFamily: 'Hafs')),
@@ -196,5 +197,55 @@ void main() {
     await t.pump(const Duration(milliseconds: 300));
     await expectLater(find.byType(MutashabihatSheet),
         matchesGoldenFile('goldens/mutashabihat.png'));
+  });
+
+  test('online qiraat are converted onto the Hafs words', () {
+    Map<String, Object> rawi(int id) => {
+          'rawi': {'id': id, 'name': ''}
+        };
+    // Hand-made response in the shape of GET /v1/ayah/{s}/{a}/qiraat.
+    final response = [
+      {
+        'ayah_word': 'وَمَا يَخْدَعُونَ',
+        'qiraat': [
+          {'qiraa_text': 'وما يَخْدَعُونَ', 'rewayat': [rawi(10), rawi(12)]},
+          {'qiraa_text': '(وما يُخَادِعُونَ) بضم الياء وألف بعد الخاء', 'rewayat': [rawi(7)]},
+        ],
+      },
+      {
+        'ayah_word': 'إِلَّا أَنفُسَهُمْ',
+        'qiraat': [
+          {'qiraa_text': 'بالفتح', 'rewayat': [rawi(10)]},
+          {'qiraa_text': 'بالإمالة', 'rewayat': [rawi(17)]},
+        ],
+      },
+    ];
+    final ayah = quran.ayah(2, 9);
+    final vs = OnlineQiraat.convert(ayah, response);
+    final hisham = vs.singleWhere((v) => v.riwayaId == 'hisham');
+    expect(ayah.words[hisham.word], 'وَمَا');
+    expect(hisham.count, 2);
+    expect(hisham.text, 'وما يُخَادِعُونَ');
+    expect(hisham.description, 'بضم الياء وألف بعد الخاء');
+    expect(hisham.kind, VariantKind.farsh);
+    // Khallad reads like Hafs here; Hafs itself is never a variant.
+    expect(vs.where((v) => v.riwayaId == 'khallad' || v.riwayaId == 'hafs'),
+        isEmpty);
+    final ruways = vs.singleWhere((v) => v.riwayaId == 'ruways');
+    expect(ruways.text, isEmpty);
+    expect(ruways.description, 'بالإمالة');
+    expect(ruways.kind, VariantKind.usul);
+    // Word breaks differ between the texts: يَا عِبَادِ / يَٰعِبَادِ.
+    final yaIbadi = quran.ayah(43, 68);
+    final split = OnlineQiraat.convert(yaIbadi, [
+      {
+        'ayah_word': 'يَا عِبَادِ',
+        'qiraat': [
+          {'qiraa_text': '(يَا عِبَادِيَ) بإثبات الياء مفتوحة', 'rewayat': [rawi(15)]},
+        ],
+      },
+    ]).single;
+    expect(yaIbadi.words[split.word], 'يَٰعِبَادِ');
+    expect(split.count, 1);
   });
 }

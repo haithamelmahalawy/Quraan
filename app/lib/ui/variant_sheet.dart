@@ -49,12 +49,15 @@ class VariantSheet extends StatelessWidget {
       for (final q in qiraat)
         for (final r in q.riwayat)
           if (r.id != hafsId &&
-              variants.available.contains(r.id) &&
+              variants.isAvailable(r.id) &&
               !settings.selected.contains(r.id))
             r.id,
     ];
     return FutureBuilder(
-      future: variants.ensureLoaded([...settings.selected, ...others]),
+      future: Future.wait([
+        variants.ensureLoaded([...settings.selected, ...others]),
+        variants.ensureAyahs([ayah]).catchError((_) {}),
+      ]),
       builder: (context, snapshot) {
         final theme = Theme.of(context);
         final ready = snapshot.connectionState == ConnectionState.done;
@@ -147,9 +150,11 @@ class VariantSheet extends StatelessWidget {
     return _ReadingTile(
       color: qiraa.color,
       title: title,
-      text: [before, v.text.isEmpty ? '(بحذف الكلمة)' : v.text, after]
-          .where((t) => t.isNotEmpty)
-          .join(' '),
+      text: v.text.isEmpty && v.description.isNotEmpty
+          ? ayah.words.sublist(from, to).join(' ')
+          : [before, v.text.isEmpty ? '(بحذف الكلمة)' : v.text, after]
+              .where((t) => t.isNotEmpty)
+              .join(' '),
       font: riwaya.fontFamily ?? 'Hafs',
       kind: v.kind,
       description: v.description,

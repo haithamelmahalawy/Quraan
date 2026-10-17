@@ -40,7 +40,7 @@ class _FramePainter extends CustomPainter {
 
     // Band background and paper inside.
     canvas.drawRect(outer, gold);
-    canvas.drawRect(inner, Paint()..color = MushafColors.paper);
+    canvas.drawRect(inner, Paint()..color = MushafColors.page);
 
     // Diamonds along each side.
     void diamonds(Offset from, Offset to) {
@@ -166,7 +166,7 @@ class _BannerPainter extends CustomPainter {
     );
     final rr = RRect.fromRectAndRadius(cartouche, Radius.circular(cartouche.height / 2));
     canvas.drawRRect(rr.inflate(3), gold);
-    canvas.drawRRect(rr, Paint()..color = MushafColors.paper);
+    canvas.drawRRect(rr, Paint()..color = MushafColors.page);
     canvas.drawRRect(rr, stroke);
     canvas.drawRRect(rr.inflate(3), stroke..strokeWidth = 1);
 

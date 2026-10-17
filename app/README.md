@@ -18,6 +18,13 @@ Differences are split into three layers that can be switched on and off:
 letters & vowels (farsh), hamza (ibdal / tasheel / naql), and madd, imala,
 silah & idgham marks.
 
+Reading: pages turn like a printed mushaf (drag to lift the sheet; it turns
+on its spine with shadows), pinch to zoom a page (one finger pans while
+zoomed, "حجم الصفحة" resets), full-screen reading without the hamesh, and a
+dark (default), light or system appearance. Replace mode keeps the Madinah
+pages and lines: every riwaya is shown with the same page and line breaks as
+Hafs, the ayahs keeping the Hafs (Kufi) numbering.
+
 Words shared with similar ayahs have a dotted underline; tapping one opens a
 carousel of all the places (surah, ayah, page) with the shared words
 highlighted, and jumps to any of them.
@@ -53,18 +60,31 @@ dart run tool/build_mutashabihat.dart
 - **Line layout:** quran.com API (`line_v2`, `v2_page`, the KFGQPC 1421H
   print). It matches the KFGQPC 1441H text on 525 of 604 pages; the QUL
   "KFGQPC V4 layout (1441H print)" covers the remaining 79 exactly.
+- **Online qiraat (12 riwayat):** [Quranpedia](https://quranpedia.net), see below.
 - **Mutashabihat:** [Quran Mutashabihat Data](https://github.com/Waqar144/Quran_Mutashabihat_Data)
   by Waqar144 (CC0), based on the work of the late Qari Idrees Al-Asim.
 
-### Adding a riwaya
+### The other twelve riwayat (online)
 
-The other twelve riwayat (Hisham, Ibn Dhakwan, Khalaf, Khallad, Abu al-Harith,
-al-Duri 'an al-Kisa'i, Ibn Wardan, Ibn Jammaz, Ruways, Rawh, Ishaq, Idris) are
-already in the catalogue and appear as "غير متوفرة". No open digital text of
-them was found (only scanned PDF mushafs). To enable one, put
-`assets/data/qiraat/<id>.json` in the format above. The app discovers it from
-the asset manifest; no code change is needed. If the text needs its own font,
-add it to `pubspec.yaml` and set `fontFamily` in the catalogue.
+Hisham, Ibn Dhakwan, Khalaf, Khallad, Abu al-Harith, al-Duri 'an al-Kisa'i,
+Ibn Wardan, Ibn Jammaz, Ruways, Rawh, Ishaq and Idris have no published
+digital mushaf text (KFGQPC released only the eight above; the rest exist as
+scanned PDFs). They are read from **Quranpedia — الموسوعة القرآنية**
+([api.quranpedia.net](https://api.quranpedia.net), `GET /v1/ayah/{s}/{a}/qiraat`),
+which lists for each word the reading of all twenty riwayat.
+`lib/data/online_qiraat.dart` fetches the ayahs of the page being read (and the
+next page), maps each Quranpedia word onto the KFGQPC Hafs words, splits
+"(تَدْعُونَ) بالتاء" into the reading and its description, and caches the result on
+the device. Quranpedia permits in-app use of its API but not bulk-downloading
+and republishing its data, so these readings are not stored in the app's
+assets and need an internet connection the first time a page is opened.
+
+### Adding a riwaya offline
+
+To give any riwaya an offline text, put `assets/data/qiraat/<id>.json` in the
+format above. The app discovers it from the asset manifest and uses it
+instead of the online source; no code change is needed. If the text needs its
+own font, add it to `pubspec.yaml` and set `fontFamily` in the catalogue.
 
 ## Tests
 
