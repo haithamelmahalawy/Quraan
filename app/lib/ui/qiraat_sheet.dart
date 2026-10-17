@@ -101,7 +101,15 @@ class QiraatSheet extends StatelessWidget {
                 onChanged: (v) => settings.toggleKind(k, v!),
               ),
             const Divider(height: 32),
-            _section(context, 'حجم الخط'),
+            SwitchListTile(
+              value: settings.showMutashabihat,
+              title: const Text('إظهار المتشابهات اللفظية'),
+              subtitle: const Text(
+                  'خط منقط تحت الكلمات المتكررة في آيات متشابهة، اضغط عليها للتنقل بين مواضعها'),
+              onChanged: (v) => settings.showMutashabihat = v,
+            ),
+            const Divider(height: 32),
+            _section(context, 'حجم الخط (العرض المتدفق)'),
             Slider(
               value: settings.fontSize,
               min: 16,
@@ -109,6 +117,17 @@ class QiraatSheet extends StatelessWidget {
               divisions: 12,
               label: settings.fontSize.round().toString(),
               onChanged: (v) => settings.fontSize = v,
+            ),
+            const Divider(height: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'المصادر: نصوص وخطوط مجمع الملك فهد لطباعة المصحف الشريف للروايات، '
+                'وبيانات المتشابهات من مشروع Quran Mutashabihat Data (Waqar144) '
+                'عن عمل القارئ إدريس العاصم رحمه الله. أوصاف الخلاف مولّدة آليًا '
+                'وتحتاج إلى مراجعة متخصص.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ),
           ],
         );

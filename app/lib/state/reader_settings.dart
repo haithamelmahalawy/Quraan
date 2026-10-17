@@ -32,12 +32,16 @@ class ReaderSettings extends ChangeNotifier {
   DisplayMode _mode = DisplayMode.hamesh;
   double _fontSize = 24;
   int _page = 1;
+  bool _showMutashabihat = true;
 
   /// Selected riwayat (Hafs is always the base text and never listed here).
   Set<String> get selected => _selected;
   Set<VariantKind> get kinds => _kinds;
   double get fontSize => _fontSize;
   int get page => _page;
+
+  /// Underline words shared with similar ayahs (mutashabihat).
+  bool get showMutashabihat => _showMutashabihat;
 
   /// The replace mode only makes sense for a single riwaya.
   DisplayMode get mode =>
@@ -57,6 +61,7 @@ class ReaderSettings extends ChangeNotifier {
         DisplayMode.hamesh;
     s._fontSize = prefs.getDouble('fontSize') ?? 24;
     s._page = prefs.getInt('page') ?? 1;
+    s._showMutashabihat = prefs.getBool('mutashabihat') ?? true;
     return s;
   }
 
@@ -92,6 +97,12 @@ class ReaderSettings extends ChangeNotifier {
   set fontSize(double value) {
     _fontSize = value;
     _prefs?.setDouble('fontSize', value);
+    notifyListeners();
+  }
+
+  set showMutashabihat(bool value) {
+    _showMutashabihat = value;
+    _prefs?.setBool('mutashabihat', value);
     notifyListeners();
   }
 

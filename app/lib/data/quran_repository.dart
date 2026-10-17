@@ -28,6 +28,17 @@ class QuranRepository {
 
   Surah surah(int number) => surahs[number - 1];
 
+  /// Ayah [number] of [surah].
+  Ayah ayah(int surah, int number) {
+    final start = this.surah(surah).startPage;
+    for (var p = start; p <= pageCount; p++) {
+      for (final a in page(p)) {
+        if (a.surah == surah && a.number == number) return a;
+      }
+    }
+    throw ArgumentError('$surah:$number');
+  }
+
   /// The basmala as written at the start of Al-Fatiha.
   String get basmala => _pages[0].first.words.join(' ');
 

@@ -1,0 +1,3 @@
+tags:
+  # Screenshot tests; pixels differ between platforms, so CI skips them.
+  golden:

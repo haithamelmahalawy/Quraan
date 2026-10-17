@@ -15,6 +15,7 @@ class VariantSheet extends StatelessWidget {
     required this.surahName,
     required this.settings,
     required this.variants,
+    this.onMutashabihat,
   });
 
   final Ayah ayah;
@@ -22,6 +23,9 @@ class VariantSheet extends StatelessWidget {
   final String surahName;
   final ReaderSettings settings;
   final VariantRepository variants;
+
+  /// Opens the similar ayahs of this word, when it belongs to a mutashabih.
+  final VoidCallback? onMutashabihat;
 
   static Future<void> show(BuildContext context, VariantSheet sheet) =>
       showModalBottomSheet(
@@ -67,9 +71,21 @@ class VariantSheet extends StatelessWidget {
           primary: true,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           children: [
-            Text(
-              'سورة $surahName - الآية ${ayah.number}',
-              style: theme.textTheme.labelLarge,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'سورة $surahName - الآية ${ayah.number}',
+                    style: theme.textTheme.labelLarge,
+                  ),
+                ),
+                if (onMutashabihat != null)
+                  FilledButton.tonalIcon(
+                    onPressed: onMutashabihat,
+                    icon: const Text('🔁'),
+                    label: const Text('المتشابهات'),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             _ReadingTile(

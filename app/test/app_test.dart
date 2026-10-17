@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/quran.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
 import 'package:qiraat_mushaf/ui/mushaf_page.dart';
+import 'package:qiraat_mushaf/ui/mutashabihat_sheet.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
 const fonts = {
@@ -23,6 +25,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late QuranRepository quran;
   late VariantRepository variants;
+  late MutashabihatRepository mutashabihat;
 
   setUpAll(() async {
     for (final MapEntry(key: family, value: file) in fonts.entries) {
@@ -32,6 +35,7 @@ void main() {
     }
     quran = await QuranRepository.load();
     variants = await VariantRepository.discover();
+    mutashabihat = await MutashabihatRepository.load();
     await variants.ensureLoaded(variants.available);
   });
 
@@ -95,21 +99,24 @@ void main() {
             page: page,
             quran: quran,
             variants: variants,
+            mutashabihat: mutashabihat,
             settings: settings,
             onWordTap: (_, _) {},
           ),
         ),
       ),
     ));
+    // The hamesh is split after the first layout.
+    await tester.pump();
     await expectLater(
         find.byType(MushafPage), matchesGoldenFile('goldens/$name.png'));
   }
 
-  testWidgets('page 1, Hafs only', (t) async {
+  testWidgets('page 1, Hafs only', tags: 'golden', (t) async {
     await shot(t, 1, ReaderSettings.memory(), 'p1_hafs');
   });
 
-  testWidgets('page 1, Nafi + Ibn Kathir + Abu Amr highlighted', (t) async {
+  testWidgets('page 1, Nafi + Ibn Kathir + Abu Amr highlighted', tags: 'golden', (t) async {
     await shot(
         t,
         1,
@@ -119,7 +126,7 @@ void main() {
         'p1_highlight');
   });
 
-  testWidgets('page 2, Warsh inline', (t) async {
+  testWidgets('page 2, Warsh inline', tags: 'golden', (t) async {
     await shot(
         t,
         2,
@@ -127,7 +134,7 @@ void main() {
         'p2_inline');
   });
 
-  testWidgets('page 2, rewritten as Warsh', (t) async {
+  testWidgets('page 2, rewritten as Warsh', tags: 'golden', (t) async {
     await shot(
         t,
         2,
@@ -135,7 +142,7 @@ void main() {
         'p2_replace');
   });
 
-  testWidgets('page 1, hamesh with three qiraat', (t) async {
+  testWidgets('page 1, hamesh with three qiraat', tags: 'golden', (t) async {
     await shot(
         t,
         1,
@@ -144,7 +151,7 @@ void main() {
         'p1_hamesh');
   });
 
-  testWidgets('page 601 (three surahs), hamesh', (t) async {
+  testWidgets('page 601 (three surahs), hamesh', tags: 'golden', (t) async {
     await shot(
         t,
         601,
@@ -153,8 +160,41 @@ void main() {
         'p601_hamesh');
   });
 
-  testWidgets('page 269, Nafi'' in the hamesh', (t) async {
+  testWidgets('page 269, Nafi'' in the hamesh', tags: 'golden', (t) async {
     await shot(t, 269, ReaderSettings.memory(selected: {'warsh', 'qalun'}),
         'p269_hamesh');
+  });
+
+  test('mutashabihat link similar ayahs and mark the shared words', () {
+    // ٱلصَّلَوٰةَ وَمِمَّا رَزَقۡنَٰهُمۡ يُنفِقُونَ (2:3) ~ 8:3, 27:3, 31:4.
+    expect(mutashabihat.isShared(2, 3, 4), isTrue);
+    final places = mutashabihat.placesFor(2, 3, 4);
+    expect(places.first.key, '2:3');
+    expect(places.map((p) => p.key), containsAll(['8:3', '27:3', '31:4']));
+    expect(mutashabihat.isShared(1, 1, 0), isFalse);
+  });
+
+  testWidgets('mutashabihat carousel', tags: 'golden', (t) async {
+    t.view.physicalSize = const Size(1080, 2000);
+    t.view.devicePixelRatio = 2.5;
+    addTearDown(t.view.reset);
+    final theme = buildTheme();
+    await t.pumpWidget(MaterialApp(
+      theme: theme.copyWith(
+          textTheme: theme.textTheme.apply(fontFamily: 'Hafs')),
+      home: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          body: MutashabihatSheet(
+            places: mutashabihat.placesFor(2, 3, 4),
+            quran: quran,
+            onGo: (_) {},
+          ),
+        ),
+      ),
+    ));
+    await t.pump(const Duration(milliseconds: 300));
+    await expectLater(find.byType(MutashabihatSheet),
+        matchesGoldenFile('goldens/mutashabihat.png'));
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'data/mutashabihat_repository.dart';
 import 'data/quran_repository.dart';
 import 'data/variant_repository.dart';
 import 'state/reader_settings.dart';
@@ -9,12 +10,18 @@ import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final (quran, variants, settings) = await (
+  final (quran, variants, mutashabihat, settings) = await (
     QuranRepository.load(),
     VariantRepository.discover(),
+    MutashabihatRepository.load(),
     ReaderSettings.load(),
   ).wait;
-  runApp(QiraatApp(quran: quran, variants: variants, settings: settings));
+  runApp(QiraatApp(
+    quran: quran,
+    variants: variants,
+    mutashabihat: mutashabihat,
+    settings: settings,
+  ));
 }
 
 class QiraatApp extends StatelessWidget {
@@ -22,11 +29,13 @@ class QiraatApp extends StatelessWidget {
     super.key,
     required this.quran,
     required this.variants,
+    required this.mutashabihat,
     required this.settings,
   });
 
   final QuranRepository quran;
   final VariantRepository variants;
+  final MutashabihatRepository mutashabihat;
   final ReaderSettings settings;
 
   @override
@@ -38,7 +47,12 @@ class QiraatApp extends StatelessWidget {
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar'), Locale('en')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      home: ReaderScreen(quran: quran, variants: variants, settings: settings),
+      home: ReaderScreen(
+        quran: quran,
+        variants: variants,
+        mutashabihat: mutashabihat,
+        settings: settings,
+      ),
     );
   }
 }

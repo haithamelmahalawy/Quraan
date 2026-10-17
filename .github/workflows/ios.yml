@@ -1,0 +1,122 @@
+# Builds the iPhone app on GitHub's macOS runners.
+#
+# Always: runs the tests and builds an unsigned .ipa (artifact "ios-unsigned"),
+# which can be side-loaded with a free Apple ID (Sideloadly / AltStore).
+#
+# When the App Store Connect secrets below are set: signs with automatic
+# (cloud) signing and uploads the build to TestFlight, so it installs on the
+# iPhone from the TestFlight app.
+#   APPLE_TEAM_ID       Apple Developer team id (10 characters)
+#   ASC_KEY_ID          App Store Connect API key id
+#   ASC_ISSUER_ID       App Store Connect API issuer id
+#   ASC_KEY_P8_BASE64   the .p8 key file, base64-encoded (key role: Admin)
+name: iOS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app
+    env:
+      HAS_SIGNING: ${{ secrets.ASC_KEY_P8_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.6
+          cache: true
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Tests
+        # Golden (screenshot) tests are platform-specific; they run locally.
+        run: flutter test --exclude-tags golden
+
+      - name: Build number
+        run: echo "BUILD_NUMBER=${{ github.run_number }}" >> "$GITHUB_ENV"
+
+      # ---- Unsigned build (always) -------------------------------------
+      - name: Build (unsigned)
+        if: env.HAS_SIGNING != 'true'
+        run: |
+          flutter build ios --release --no-codesign --build-number "$BUILD_NUMBER"
+          mkdir -p build/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ipa/Payload/
+          (cd build/ipa && zip -qr qiraat-mushaf-unsigned.ipa Payload)
+
+      - name: Upload unsigned .ipa
+        if: env.HAS_SIGNING != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned
+          path: app/build/ipa/qiraat-mushaf-unsigned.ipa
+
+      # ---- Signed build + TestFlight (when secrets are set) --------------
+      - name: App Store Connect key
+        if: env.HAS_SIGNING == 'true'
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.ASC_KEY_P8_BASE64 }}" | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+      - name: Build and sign
+        if: env.HAS_SIGNING == 'true'
+        run: |
+          flutter build ios --release --no-codesign --build-number "$BUILD_NUMBER"
+          KEY=~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner \
+            -configuration Release -sdk iphoneos \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY" \
+            -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            CODE_SIGN_STYLE=Automatic \
+            archive
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>destination</key><string>export</string>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY" \
+            -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}"
+
+      - name: Upload to TestFlight
+        if: env.HAS_SIGNING == 'true'
+        run: |
+          xcrun altool --upload-app --type ios \
+            --file "$(ls "$RUNNER_TEMP"/export/*.ipa)" \
+            --apiKey "${{ secrets.ASC_KEY_ID }}" \
+            --apiIssuer "${{ secrets.ASC_ISSUER_ID }}"
+
+      - name: Keep the signed .ipa
+        if: env.HAS_SIGNING == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-signed
+          path: ${{ runner.temp }}/export/*.ipa
