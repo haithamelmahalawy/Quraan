@@ -1,0 +1,103 @@
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../models/quran.dart';
+
+enum DisplayMode {
+  /// Clean Hafs text with numbered markers; the readings are listed in the
+  /// hamesh (margin) outside the page, per qiraa.
+  hamesh('الأصل حفص والخلاف في الهامش'),
+
+  /// Hafs text; words read differently are coloured, tap for details.
+  highlight('تلوين المواضع'),
+
+  /// Hafs text with each selected reading written after the word.
+  inline('إظهار القراءة بجانب الكلمة'),
+
+  /// The page is rewritten in the (single) selected riwaya.
+  replace('عرض النص بالرواية المختارة');
+
+  const DisplayMode(this.labelAr);
+  final String labelAr;
+}
+
+/// What the reader shows. Persisted between launches.
+class ReaderSettings extends ChangeNotifier {
+  ReaderSettings._(this._prefs);
+
+  final SharedPreferences? _prefs;
+
+  Set<String> _selected = {};
+  Set<VariantKind> _kinds = VariantKind.values.toSet();
+  DisplayMode _mode = DisplayMode.hamesh;
+  double _fontSize = 24;
+  int _page = 1;
+
+  /// Selected riwayat (Hafs is always the base text and never listed here).
+  Set<String> get selected => _selected;
+  Set<VariantKind> get kinds => _kinds;
+  double get fontSize => _fontSize;
+  int get page => _page;
+
+  /// The replace mode only makes sense for a single riwaya.
+  DisplayMode get mode =>
+      _mode == DisplayMode.replace && _selected.length != 1
+          ? DisplayMode.hamesh
+          : _mode;
+
+  static Future<ReaderSettings> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final s = ReaderSettings._(prefs);
+    s._selected = (prefs.getStringList('selected') ?? const []).toSet();
+    final kinds = prefs.getStringList('kinds');
+    if (kinds != null) {
+      s._kinds = kinds.map(VariantKind.fromCode).toSet();
+    }
+    s._mode = DisplayMode.values.asNameMap()[prefs.getString('mode')] ??
+        DisplayMode.hamesh;
+    s._fontSize = prefs.getDouble('fontSize') ?? 24;
+    s._page = prefs.getInt('page') ?? 1;
+    return s;
+  }
+
+  /// In-memory settings (tests).
+  @visibleForTesting
+  factory ReaderSettings.memory({
+    Set<String> selected = const {},
+    DisplayMode mode = DisplayMode.hamesh,
+  }) =>
+      ReaderSettings._(null)
+        .._selected = {...selected}
+        .._mode = mode;
+
+  void setSelected(Set<String> ids) {
+    _selected = {...ids};
+    _prefs?.setStringList('selected', _selected.toList());
+    notifyListeners();
+  }
+
+  void toggleKind(VariantKind kind, bool on) {
+    _kinds = {..._kinds};
+    on ? _kinds.add(kind) : _kinds.remove(kind);
+    _prefs?.setStringList('kinds', _kinds.map((k) => k.code).toList());
+    notifyListeners();
+  }
+
+  set mode(DisplayMode value) {
+    _mode = value;
+    _prefs?.setString('mode', value.name);
+    notifyListeners();
+  }
+
+  set fontSize(double value) {
+    _fontSize = value;
+    _prefs?.setDouble('fontSize', value);
+    notifyListeners();
+  }
+
+  /// Remembers the page without rebuilding listeners.
+  set page(int value) {
+    _page = value;
+    _prefs?.setInt('page', value);
+  }
+}

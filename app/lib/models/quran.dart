@@ -1,0 +1,80 @@
+class Surah {
+  const Surah({
+    required this.number,
+    required this.nameAr,
+    required this.nameEn,
+    required this.ayahCount,
+    required this.startPage,
+  });
+
+  final int number;
+  final String nameAr;
+  final String nameEn;
+  final int ayahCount;
+  final int startPage;
+}
+
+class Ayah {
+  const Ayah({
+    required this.surah,
+    required this.number,
+    required this.page,
+    required this.juz,
+    required this.words,
+  });
+
+  final int surah;
+  final int number;
+  final int page;
+  final int juz;
+
+  /// Hafs words (KFGQPC Uthmanic encoding), without the ayah number.
+  final List<String> words;
+}
+
+/// Word-level difference between a riwaya and Hafs.
+class Variant {
+  const Variant({
+    required this.riwayaId,
+    required this.surah,
+    required this.ayah,
+    required this.word,
+    required this.count,
+    required this.text,
+    required this.kind,
+  });
+
+  final String riwayaId;
+  final int surah;
+  final int ayah;
+
+  /// Index of the first Hafs word in the ayah.
+  final int word;
+
+  /// Number of Hafs words the reading replaces (usually 1).
+  final int count;
+
+  /// The words as read in this riwaya (empty when the words are dropped).
+  final String text;
+  final VariantKind kind;
+}
+
+enum VariantKind {
+  /// Letters or vowels differ (farsh, ya'at al-idafa, ...).
+  farsh('f', 'الفرش والحركات', 'Letters & vowels'),
+
+  /// Hamza handled differently (ibdal, tasheel, naql, isqat).
+  hamza('h', 'الهمزات', 'Hamza'),
+
+  /// Only recitation marks differ: madd, silah, imala, idgham.
+  usul('u', 'المدود والإمالة والصلة والإدغام', 'Madd, imala, silah, idgham');
+
+  const VariantKind(this.code, this.labelAr, this.labelEn);
+
+  final String code;
+  final String labelAr;
+  final String labelEn;
+
+  static VariantKind fromCode(String code) =>
+      values.firstWhere((k) => k.code == code);
+}
