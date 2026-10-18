@@ -97,31 +97,44 @@ dart run tool/build_mutashabihat.dart
 - **Line layout:** quran.com API (`line_v2`, `v2_page`, the KFGQPC 1421H
   print). It matches the KFGQPC 1441H text on 525 of 604 pages; the QUL
   "KFGQPC V4 layout (1441H print)" covers the remaining 79 exactly.
-- **Online qiraat (12 riwayat):** [Quranpedia](https://quranpedia.net), see below.
+- **Qiraat of the other 12 riwayat:** [Quranpedia](https://quranpedia.net) qiraat
+  dump, version 2026-10-17, see below.
 - **Mutashabihat:** [Quran Mutashabihat Data](https://github.com/Waqar144/Quran_Mutashabihat_Data)
   by Waqar144 (CC0), based on the work of the late Qari Idrees Al-Asim.
 
-### The other twelve riwayat (online)
+### The other twelve riwayat
 
 Hisham, Ibn Dhakwan, Khalaf, Khallad, Abu al-Harith, al-Duri 'an al-Kisa'i,
 Ibn Wardan, Ibn Jammaz, Ruways, Rawh, Ishaq and Idris have no published
 digital mushaf text (KFGQPC released only the eight above; the rest exist as
-scanned PDFs). They are read from **Quranpedia — الموسوعة القرآنية**
-([api.quranpedia.net](https://api.quranpedia.net), `GET /v1/ayah/{s}/{a}/qiraat`),
-which lists for each word the reading of all twenty riwayat.
-`lib/data/online_qiraat.dart` fetches the ayahs of the page being read (and the
-next page), maps each Quranpedia word onto the KFGQPC Hafs words, splits
-"(تَدْعُونَ) بالتاء" into the reading and its description, and caches the result on
-the device. Quranpedia permits in-app use of its API but not bulk-downloading
-and republishing its data, so these readings are not stored in the app's
-assets and need an internet connection the first time a page is opened.
+scanned PDFs). Their readings come from **Quranpedia — الموسوعة القرآنية**,
+whose official qiraat dump ([quranpedia.net/dumps](https://quranpedia.net/dumps),
+`qiraat.json.gz`) lists for each word the reading of all twenty riwayat. Its
+[licence](https://quranpedia.net/dumps/LICENSE.md) allows use inside apps; a
+republished copy credits Quranpedia.net and states the dump version, which is
+written into each generated file and shown in the app's sources note.
 
-### Adding a riwaya offline
+```
+curl -LO https://quranpedia.net/dumps/qiraat.json.gz
+dart run tool/build_quranpedia.dart qiraat.json.gz
+```
 
-To give any riwaya an offline text, put `assets/data/qiraat/<id>.json` in the
-format above. The app discovers it from the asset manifest and uses it
-instead of the online source; no code change is needed. If the text needs its
-own font, add it to `pubspec.yaml` and set `fontFamily` in the catalogue.
+`tool/build_quranpedia.dart` (with `lib/data/quranpedia_qiraat.dart`) maps
+each Quranpedia word onto the KFGQPC Hafs words — tolerating the silah marks
+and alef spellings of the two texts, and splitting a reading across two ayahs
+(الرَّحِيمِ مَلِكِ → مَلِكِ on مَٰلِكِ of 1:4) — splits "(تَدْعُونَ) بالتاء" into the
+reading and its description, and writes `assets/data/qiraat/<id>.json`. It
+lists the few words it places in a neighbouring ayah and those it cannot place
+(mostly entries the dump files under the wrong ayah, e.g. 37:134, 101:6,
+102:3). Quranpedia keeps correcting its data: rebuild from a newer dump to take
+the corrections in.
+
+### Adding a riwaya
+
+To add or replace a riwaya's text, put `assets/data/qiraat/<id>.json` in the
+format above. The app discovers it from the asset manifest; no code change is
+needed. If the text needs its own font, add it to `pubspec.yaml` and set
+`fontFamily` in the catalogue.
 
 ## Tests
 

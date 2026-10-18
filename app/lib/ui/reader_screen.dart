@@ -197,33 +197,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       await widget.variants.ensureLoaded(missing);
       if (mounted) setState(() => _loading = false);
     }
-    await _fetchOnline(_page);
     if (mounted) setState(() {});
-  }
-
-  bool _offlineNoticeShown = false;
-
-  /// Riwayat read online are fetched for the page shown and the next one.
-  Future<void> _fetchOnline(int page) async {
-    if (!widget.settings.selected.any(widget.variants.isOnline)) return;
-    setState(() => _loading = true);
-    try {
-      await widget.variants.ensureAyahs(widget.quran.page(page));
-      if (mounted) setState(() {});
-      if (page < QuranRepository.pageCount) {
-        await widget.variants.ensureAyahs(widget.quran.page(page + 1));
-      }
-    } catch (_) {
-      if (mounted && !_offlineNoticeShown) {
-        _offlineNoticeShown = true;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('تعذر تحميل بعض الروايات من الإنترنت. '
-              'تحقق من الاتصال ثم أعد فتح الصفحة.'),
-        ));
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
   }
 
   /// Qiraat differences open the readings sheet (with a way on to the
@@ -305,9 +279,7 @@ class _ReaderScreenState extends State<ReaderScreen>
           _zoomed = false;
         });
         widget.settings.page = number;
-        _fetchOnline(number);
         _loadFonts(number);
-        if (two && number < QuranRepository.pageCount) _fetchOnline(number + 1);
         _showSide();
       },
       // An opaque sheet, so a turning page never shows the one beneath.

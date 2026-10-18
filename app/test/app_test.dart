@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
-import 'package:qiraat_mushaf/data/online_qiraat.dart';
+import 'package:qiraat_mushaf/data/quranpedia_qiraat.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/quran.dart';
@@ -199,7 +199,7 @@ void main() {
         matchesGoldenFile('goldens/mutashabihat.png'));
   });
 
-  test('online qiraat are converted onto the Hafs words', () {
+  test('Quranpedia qiraat are converted onto the Hafs words', () {
     Map<String, Object> rawi(int id) => {
           'rawi': {'id': id, 'name': ''}
         };
@@ -221,7 +221,7 @@ void main() {
       },
     ];
     final ayah = quran.ayah(2, 9);
-    final vs = OnlineQiraat.convert(ayah, response);
+    final vs = QuranpediaQiraat.convert(ayah, response);
     final hisham = vs.singleWhere((v) => v.riwayaId == 'hisham');
     expect(ayah.words[hisham.word], 'وَمَا');
     expect(hisham.count, 2);
@@ -237,7 +237,7 @@ void main() {
     expect(ruways.kind, VariantKind.usul);
     // Word breaks differ between the texts: يَا عِبَادِ / يَٰعِبَادِ.
     final yaIbadi = quran.ayah(43, 68);
-    final split = OnlineQiraat.convert(yaIbadi, [
+    final split = QuranpediaQiraat.convert(yaIbadi, [
       {
         'ayah_word': 'يَا عِبَادِ',
         'qiraat': [

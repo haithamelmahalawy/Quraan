@@ -168,7 +168,8 @@ class QiraatSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 'المصادر: نصوص وخطوط مجمع الملك فهد لطباعة المصحف الشريف للروايات الثماني، '
-                'والروايات الاثنتا عشرة الأخرى من الموسوعة القرآنية (quranpedia.net) عبر الإنترنت، '
+                'والروايات الاثنتا عشرة الأخرى من بيانات الموسوعة القرآنية quranpedia.net '
+                '(نسخة 2026-10-17)، محفوظة في التطبيق، '
                 'وبيانات المتشابهات من مشروع Quran Mutashabihat Data (Waqar144) '
                 'عن عمل القارئ إدريس العاصم رحمه الله. أوصاف الخلاف مولّدة آليًا '
                 'وتحتاج إلى مراجعة متخصص.',
@@ -242,11 +243,9 @@ class _QiraaTile extends StatelessWidget {
               title: Text('رواية ${r.nameAr}'),
               subtitle: r.id == hafsId
                   ? const Text('النص الأساسي')
-                  : variants.available.contains(r.id)
+                  : variants.isAvailable(r.id)
                       ? null
-                      : variants.isOnline(r.id)
-                          ? const Text('عبر الإنترنت — الموسوعة القرآنية')
-                          : const Text('غير متوفرة'),
+                      : const Text('غير متوفرة'),
               onChanged: (v) => set([r.id], v!),
             ),
           ),

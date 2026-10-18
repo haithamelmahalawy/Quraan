@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/mutashabihat_repository.dart';
-import 'data/online_qiraat.dart';
 import 'data/quran_repository.dart';
 import 'data/variant_repository.dart';
 import 'state/reader_settings.dart';
@@ -12,10 +10,9 @@ import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final online = OnlineQiraat(prefs: await SharedPreferences.getInstance());
   final (quran, variants, mutashabihat, settings) = await (
     QuranRepository.load(),
-    VariantRepository.discover(null, online),
+    VariantRepository.discover(),
     MutashabihatRepository.load(),
     ReaderSettings.load(),
   ).wait;

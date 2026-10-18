@@ -61,20 +61,24 @@ class ReaderSettings extends ChangeNotifier {
   bool get qcfFont => _qcfFont;
 
   /// The replace mode only makes sense for a single riwaya.
-  DisplayMode get mode =>
-      _mode == DisplayMode.replace && _selected.length != 1
-          ? DisplayMode.hamesh
-          : _mode;
+  DisplayMode get mode => _mode == DisplayMode.replace && _selected.length != 1
+      ? DisplayMode.hamesh
+      : _mode;
 
   static Future<ReaderSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
+    // Ayahs cached by the former online qiraat; the riwayat are now offline.
+    for (final key in [...prefs.getKeys().where((k) => k.startsWith('qp1:'))]) {
+      await prefs.remove(key);
+    }
     final s = ReaderSettings._(prefs);
     s._selected = (prefs.getStringList('selected') ?? const []).toSet();
     final kinds = prefs.getStringList('kinds');
     if (kinds != null) {
       s._kinds = kinds.map(VariantKind.fromCode).toSet();
     }
-    s._mode = DisplayMode.values.asNameMap()[prefs.getString('mode')] ??
+    s._mode =
+        DisplayMode.values.asNameMap()[prefs.getString('mode')] ??
         DisplayMode.hamesh;
     s._fontSize = prefs.getDouble('fontSize') ?? 24;
     s._page = prefs.getInt('page') ?? 1;
@@ -82,7 +86,8 @@ class ReaderSettings extends ChangeNotifier {
     s._blinkToOpen = prefs.getBool('blink') ?? false;
     s._twoPages = prefs.getBool('twoPages') ?? false;
     s._qcfFont = prefs.getBool('qcf') ?? true;
-    s._themeMode = ThemeMode.values.asNameMap()[prefs.getString('theme')] ??
+    s._themeMode =
+        ThemeMode.values.asNameMap()[prefs.getString('theme')] ??
         ThemeMode.dark;
     return s;
   }
@@ -92,10 +97,9 @@ class ReaderSettings extends ChangeNotifier {
   factory ReaderSettings.memory({
     Set<String> selected = const {},
     DisplayMode mode = DisplayMode.hamesh,
-  }) =>
-      ReaderSettings._(null)
-        .._selected = {...selected}
-        .._mode = mode;
+  }) => ReaderSettings._(null)
+    .._selected = {...selected}
+    .._mode = mode;
 
   void setSelected(Set<String> ids) {
     _selected = {...ids};

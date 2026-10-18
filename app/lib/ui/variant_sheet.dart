@@ -54,10 +54,7 @@ class VariantSheet extends StatelessWidget {
             r.id,
     ];
     return FutureBuilder(
-      future: Future.wait([
-        variants.ensureLoaded([...settings.selected, ...others]),
-        variants.ensureAyahs([ayah]).catchError((_) {}),
-      ]),
+      future: variants.ensureLoaded([...settings.selected, ...others]),
       builder: (context, snapshot) {
         final theme = Theme.of(context);
         final ready = snapshot.connectionState == ConnectionState.done;

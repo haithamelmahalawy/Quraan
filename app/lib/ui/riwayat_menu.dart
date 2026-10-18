@@ -59,11 +59,7 @@ class RiwayatMenu extends StatelessWidget {
                   value: settings.selected.contains(r.id),
                   closeOnActivate: false,
                   onChanged: (v) => _toggle(r.id, v ?? false),
-                  child: Text(
-                    variants.isOnline(r.id)
-                        ? 'رواية ${r.nameAr}  (إنترنت)'
-                        : 'رواية ${r.nameAr}',
-                  ),
+                  child: Text('رواية ${r.nameAr}'),
                 ),
           ],
         ],
