@@ -18,7 +18,9 @@ import 'page_side_hint.dart';
 import 'mutashabihat_sheet.dart';
 import 'qiraat_sheet.dart';
 import 'riwayat_menu.dart';
+import 'search_screen.dart';
 import 'surah_index.dart';
+import 'surah_slider.dart';
 import 'theme.dart';
 import 'variant_sheet.dart';
 
@@ -74,6 +76,11 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// the small icon.
   ui.Image? _currentPicture, _facingPicture;
 
+  /// Pages are being turned: the right / left of the mushaf is shown only
+  /// once the reader stays on a page.
+  bool _turning = false;
+  Timer? _settle;
+
   bool get _twoPages => widget.settings.twoPages;
 
   /// Once the page is drawn: picture it and its facing page, then show
@@ -95,6 +102,18 @@ class _ReaderScreenState extends State<ReaderScreen>
     });
   }
 
+  /// A page was turned: hide the side of the mushaf until the reader stays.
+  void _onTurn() {
+    _settle?.cancel();
+    _hint.reset();
+    if (!_turning) setState(() => _turning = true);
+    _settle = Timer(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+      setState(() => _turning = false);
+      _showSide();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -113,6 +132,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     QcfFonts.instance.removeListener(_onFonts);
     _blinks?.cancel();
     _blink.dispose();
+    _settle?.cancel();
     _gestureLabelTimer?.cancel();
     _hint.dispose();
     _currentPicture?.dispose();
@@ -280,7 +300,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         });
         widget.settings.page = number;
         _loadFonts(number);
-        _showSide();
+        _onTurn();
       },
       // An opaque sheet, so a turning page never shows the one beneath.
       itemBuilder: (context, i) => ColoredBox(
@@ -350,6 +370,18 @@ class _ReaderScreenState extends State<ReaderScreen>
                     variants: widget.variants,
                   ),
                   _BarButton(
+                    tooltip: 'بحث',
+                    icon: const Icon(Icons.search, size: 22),
+                    onPressed: () async {
+                      final page = await Navigator.of(context).push<int>(
+                        MaterialPageRoute(
+                          builder: (_) => SearchScreen(quran: widget.quran),
+                        ),
+                      );
+                      if (page != null) _goToPage(page);
+                    },
+                  ),
+                  _BarButton(
                     tooltip: 'فهرس السور',
                     icon: const Icon(Icons.list, size: 22),
                     onPressed: () async {
@@ -404,7 +436,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                       ),
                     ),
                   const Spacer(),
-                  if (!two)
+                  if (!two && !_turning)
                     Tooltip(
                       message: isRightPage(_page)
                           ? 'الصفحة في يمين المصحف'
@@ -430,6 +462,11 @@ class _ReaderScreenState extends State<ReaderScreen>
               ),
             ),
             Expanded(child: pages),
+            SurahSlider(
+              quran: widget.quran,
+              page: _page,
+              onGo: _goToPage,
+            ),
           ],
         ),
       ),

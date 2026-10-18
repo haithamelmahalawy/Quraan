@@ -26,6 +26,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -64,3 +65,13 @@ flutter:
     - family: Shouba
       fonts:
         - asset: assets/fonts/shouba.8.ttf
+
+# The app icon, «خُذِ ٱلۡكِتَٰبَ بِقُوَّةٖ»: drawn by tool/icon/render_icon_test.dart,
+# installed with `dart run flutter_launcher_icons`.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: tool/icon/icon.png
+  adaptive_icon_background: "#1F5A40"
+  adaptive_icon_foreground: tool/icon/foreground.png
+  remove_alpha_ios: true

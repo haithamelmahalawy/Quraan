@@ -195,6 +195,7 @@ class _MushafPageState extends State<MushafPage> {
       display: _display,
       marker: _marker,
       height: textHeight,
+      printed: widget.settings.printedLines,
     );
     final first = ayahs.first;
     final page = Padding(
@@ -221,15 +222,9 @@ class _MushafPageState extends State<MushafPage> {
     if (!withHamesh) return page;
 
     // Vertical position of each note: level with its word's line.
-    final lineHeight = mushafLines.metrics(textWidth).lineHeight;
-    final lineOf = <int, int>{};
-    for (final (i, line) in lines.indexed) {
-      if (line is TextLine) {
-        for (final (a, w) in line.words) {
-          lineOf[VariantRepository.key(a.surah, a.number, w)] = i;
-        }
-      }
-    }
+    final layout = mushafLines.layout(textWidth);
+    final lineHeight = layout.lineHeight;
+    final lineOf = layout.lineOf;
     final top = outer + header + OrnamentFrame.inset;
     final shown = entries.sublist(0, split);
     final tops = [
@@ -514,6 +509,7 @@ class _MushafPageState extends State<MushafPage> {
       style: (m.mutashabih ? _mutashabihStyle : const TextStyle()).copyWith(
         fontFamily: shown.font,
         fontSize: fontSize,
+        fontWeight: FontWeight.bold,
         height: 1.0,
         color: m.color ?? MushafColors.ink,
         backgroundColor: m.color?.withAlpha(28),

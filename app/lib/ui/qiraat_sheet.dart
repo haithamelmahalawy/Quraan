@@ -127,6 +127,15 @@ class QiraatSheet extends StatelessWidget {
                   'ويُنزَّل خط كل صفحة مرة واحدة عند فتحها لأول مرة.'),
               onChanged: (v) => settings.qcfFont = v,
             ),
+            SwitchListTile(
+              value: settings.printedLines,
+              secondary: const Icon(Icons.format_line_spacing),
+              title: const Text('أسطر المصحف المطبوع'),
+              subtitle: const Text(
+                  'الصفحة بأسطرها الخمسة عشر كما في مصحف المدينة. عند الإيقاف '
+                  'تُرتَّب كلمات الصفحة نفسها في أسطر أكبر تملأ الشاشة.'),
+              onChanged: (v) => settings.printedLines = v,
+            ),
             const Divider(height: 32),
             _section(context, 'المظهر'),
             Padding(

@@ -36,6 +36,7 @@ class ReaderSettings extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   bool _blinkToOpen = false;
   bool _twoPages = false;
+  bool _printedLines = false;
   bool _qcfFont = true;
 
   /// Selected riwayat (Hafs is always the base text and never listed here).
@@ -55,6 +56,16 @@ class ReaderSettings extends ChangeNotifier {
 
   /// Two facing pages at once, as the mushaf lies open (right page odd).
   bool get twoPages => _twoPages;
+
+  /// Keep the 15 lines of the printed Madinah mushaf; otherwise each page's
+  /// words are wrapped into larger lines that fill the screen.
+  bool get printedLines => _printedLines;
+
+  set printedLines(bool value) {
+    _printedLines = value;
+    _prefs?.setBool('printedLines', value);
+    notifyListeners();
+  }
 
   /// Draw pages with the calligraphy of the printed Madinah mushaf (QCF V2
   /// page fonts, downloaded once per page).
@@ -85,6 +96,7 @@ class ReaderSettings extends ChangeNotifier {
     s._showMutashabihat = prefs.getBool('mutashabihat') ?? true;
     s._blinkToOpen = prefs.getBool('blink') ?? false;
     s._twoPages = prefs.getBool('twoPages') ?? false;
+    s._printedLines = prefs.getBool('printedLines') ?? false;
     s._qcfFont = prefs.getBool('qcf') ?? true;
     s._themeMode =
         ThemeMode.values.asNameMap()[prefs.getString('theme')] ??
