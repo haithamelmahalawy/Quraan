@@ -16,7 +16,8 @@ String skeleton(String word) {
       b.write('ه');
     } else if (c == 0x06A9) {
       b.write('ك'); // keheh, sometimes produced by OCR
-    } else if (c >= 0x0621 && c <= 0x064A && !'ءئأإآا'.contains(ch)) {
+    } else if (c >= 0x0621 && c <= 0x064A && c != 0x0640 && // not tatweel
+        !'ءئأإآا'.contains(ch)) {
       b.write(ch);
     }
   }

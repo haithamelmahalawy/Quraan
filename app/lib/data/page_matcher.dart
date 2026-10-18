@@ -7,6 +7,10 @@ import 'quran_repository.dart';
 /// text: every recognised word is reduced to its bare letters and pages are
 /// scored by the words (and adjacent word pairs) they share with it, rare
 /// words weighing more. A page number read in the text adds to its page.
+///
+/// OCR of Uthmani script often runs words together or splits them, so each
+/// line is also compared as a run of letters, spaces ignored: pages score
+/// for every run of [_gram] letters they share with it.
 class PageMatcher {
   PageMatcher(QuranRepository quran) {
     for (var p = 1; p <= QuranRepository.pageCount; p++) {
@@ -20,24 +24,54 @@ class PageMatcher {
       for (var i = 0; i + 1 < words.length; i++) {
         _pairPages.putIfAbsent('${words[i]} ${words[i + 1]}', () => <int>{}).add(p);
       }
+      for (final g in _grams(words.join()).toSet()) {
+        (_gramPages[g] ??= <int>[]).add(p);
+      }
     }
   }
 
   final _pagesOf = <String, Set<int>>{};
   final _pairPages = <String, Set<int>>{};
+  final _gramPages = <int, List<int>>{};
+
+  static const _gram = 5;
+
+  /// Runs of [_gram] letters of [letters], each packed into an int (six bits
+  /// a letter).
+  static Iterable<int> _grams(String letters) sync* {
+    final codes = letters.codeUnits;
+    for (var i = 0; i + _gram <= codes.length; i++) {
+      var g = 0;
+      for (var k = i; k < i + _gram; k++) {
+        g = g << 6 | (codes[k] - 0x0620);
+      }
+      yield g;
+    }
+  }
 
   double _weight(int pages) => math.log(QuranRepository.pageCount / pages);
 
   /// The best page for [text], or null when no page clearly stands out.
   ({int page, double score})? match(String text) {
-    final tokens = text
-        .split(RegExp(r'[\s،؛.,:;!?()«»\[\]{}"' "'" r'\-ـ]+'))
-        .map(skeleton)
-        .where((w) => w.length >= 2)
-        .toList();
+    final raw = text.split('\n');
+    final lines = [
+      for (final line in raw)
+        line
+            .split(RegExp(r'[\s،؛.,:;!?()«»\[\]{}"' "'" r'\-ـ]+'))
+            .map(skeleton)
+            .where((w) => w.length >= 2)
+            .toList(),
+    ];
     final scores = <int, double>{};
-    final pairs = <int, int>{};
-    for (final w in tokens.toSet()) {
+    // The lines with runs of the page's text: consecutive words or letters,
+    // which unrelated text has at most by chance, and on few lines.
+    final runLines = <int, Set<int>>{};
+    void run(int page, int line, double weight) {
+      scores[page] = (scores[page] ?? 0) + weight;
+      (runLines[page] ??= <int>{}).add(line);
+    }
+
+    for (final w in lines.expand((l) => l).toSet()) {
       final pages = _pagesOf[w];
       if (pages == null || pages.length > 300) continue;
       final weight = _weight(pages.length);
@@ -45,21 +79,47 @@ class PageMatcher {
         scores[p] = (scores[p] ?? 0) + weight;
       }
     }
-    for (var i = 0; i + 1 < tokens.length; i++) {
-      final pages = _pairPages['${tokens[i]} ${tokens[i + 1]}'];
-      if (pages == null || pages.length > 60) continue;
-      final weight = _weight(pages.length) * 1.5;
-      for (final p in pages) {
-        scores[p] = (scores[p] ?? 0) + weight;
-        pairs[p] = (pairs[p] ?? 0) + 1;
+    for (final (l, tokens) in lines.indexed) {
+      for (var i = 0; i + 1 < tokens.length; i++) {
+        final pages = _pairPages['${tokens[i]} ${tokens[i + 1]}'];
+        if (pages == null || pages.length > 60) continue;
+        final weight = _weight(pages.length) * 1.5;
+        for (final p in pages) {
+          run(p, l, weight);
+        }
       }
     }
-    // The printed page number (Arabic-Indic or Western digits).
-    for (final m in RegExp(r'[0-9٠-٩]{1,3}').allMatches(text)) {
-      final n = int.parse(m[0]!.runes
-          .map((c) => c >= 0x0660 && c <= 0x0669 ? c - 0x0660 + 0x30 : c)
-          .map(String.fromCharCode)
-          .join());
+    // Runs of letters along each line, whatever the spaces. A run counts
+    // for a page only when the next or previous one does too (a longer
+    // stretch of the page's text), since short runs also occur by chance.
+    final counted = <(int, int)>{};
+    for (final (l, line) in raw.indexed) {
+      final grams = _grams(skeleton(line)).toList();
+      List<int>? pagesAt(int i) =>
+          i < 0 || i >= grams.length ? null : _gramPages[grams[i]];
+      for (var i = 0; i < grams.length; i++) {
+        final pages = pagesAt(i);
+        if (pages == null || pages.length > 30) continue;
+        final weight = _weight(pages.length) * 0.4;
+        for (final p in pages) {
+          if (!(pagesAt(i - 1)?.contains(p) ?? false) &&
+              !(pagesAt(i + 1)?.contains(p) ?? false)) {
+            continue;
+          }
+          if (counted.add((grams[i], p))) run(p, l, weight);
+        }
+      }
+    }
+    // The printed page number (Arabic-Indic or Western digits), counted once
+    // however often OCR noise repeats it.
+    final numbers = {
+      for (final m in RegExp(r'[0-9٠-٩]{1,3}').allMatches(text))
+        int.parse(m[0]!.runes
+            .map((c) => c >= 0x0660 && c <= 0x0669 ? c - 0x0660 + 0x30 : c)
+            .map(String.fromCharCode)
+            .join()),
+    };
+    for (final n in numbers) {
       if (n >= 1 && n <= QuranRepository.pageCount && scores.containsKey(n)) {
         scores[n] = scores[n]! + 6;
       }
@@ -69,9 +129,10 @@ class PageMatcher {
       ..sort((a, b) => b.value.compareTo(a.value));
     final best = ranked.first;
     final second = ranked.length > 1 ? ranked[1].value : 0.0;
-    // Enough evidence, including runs of consecutive words (which unrelated
-    // text does not have), and clearly ahead of the next page.
-    if (best.value < 12 || (pairs[best.key] ?? 0) < 2) return null;
+    // Enough evidence (photographed pages read as noise score up to ~20),
+    // runs of the page's text on at least two lines (a phrase quoted in
+    // other text has one), and clearly ahead of the next page.
+    if (best.value < 22 || (runLines[best.key]?.length ?? 0) < 2) return null;
     if (best.value < second * 1.3) return null;
     return (page: best.key, score: best.value);
   }
