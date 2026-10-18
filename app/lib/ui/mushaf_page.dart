@@ -423,11 +423,12 @@ class _MushafPageState extends State<MushafPage> {
     out.add(TextSpan(text: '${arabicDigits(ayah.number)} '));
   }
 
+  /// A clear, solid line under the words a mutashabih shares.
   static TextStyle get _mutashabihStyle => TextStyle(
     decoration: TextDecoration.underline,
-    decorationStyle: TextDecorationStyle.dotted,
+    decorationStyle: TextDecorationStyle.solid,
     decorationColor: MushafColors.green,
-    decorationThickness: 2,
+    decorationThickness: 3,
   );
 
   /// The selected riwayat's readings of a Hafs word, its colour (the qiraa's

@@ -1,11 +1,14 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
-/// Pages that turn like a printed mushaf: dragging lifts the page, which
-/// turns over on its spine (the right edge, as in an Arabic book) and reveals
-/// the next page underneath, with the shadows of a real sheet.
+/// Pages that turn like the paper of a printed mushaf: dragging lifts the
+/// sheet, which bends (its free edge leading) and turns over on the spine
+/// (the right edge, as in an Arabic book), revealing the next page with the
+/// shading and shadow of a real sheet.
 ///
 /// Dragging to the right turns to the next page, to the left goes back.
 class BookPager extends StatefulWidget {
@@ -39,18 +42,41 @@ class BookPagerState extends State<BookPager>
   late final AnimationController _settle = AnimationController(vsync: this)
     ..addListener(() => setState(() => _progress = _settle.value));
 
+  /// The current page and its neighbours, painted so they can be pictured.
+  final _keys = <int, GlobalKey>{};
+
+  /// Picture of the sheet being turned, and which page it shows.
+  ui.Image? _sheet;
+  int? _sheetOf;
+
   int get index => _index;
 
   @override
   void dispose() {
     _settle.dispose();
+    _dropSheet();
     super.dispose();
+  }
+
+  GlobalKey _keyOf(int i) => _keys.putIfAbsent(i, GlobalKey.new);
+
+  /// A picture of page [i] as displayed (it must be the current page or a
+  /// neighbour). The caller owns the image.
+  ui.Image? capture(int i) {
+    final box = _keys[i]?.currentContext?.findRenderObject();
+    if (box is! RenderRepaintBoundary || !box.hasSize) return null;
+    try {
+      return box.toImageSync(pixelRatio: View.of(context).devicePixelRatio);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Shows [index] at once (index, surah, mutashabih).
   void jumpTo(int index) {
     if (index == _index) return;
     _settle.stop();
+    _dropSheet();
     setState(() {
       _index = index.clamp(0, widget.itemCount - 1);
       _progress = 0;
@@ -60,41 +86,64 @@ class BookPagerState extends State<BookPager>
 
   /// Turns one page with the animation (+1 next, -1 previous).
   Future<void> turn(int direction) async {
-    if (!_canTurn(direction)) return;
+    if (!_canTurn(direction) || _settle.isAnimating) return;
+    _takeSheet(direction);
     _settle.value = _progress;
-    await _animateTo(direction.toDouble(), const Duration(milliseconds: 520));
-    _commit(direction);
+    await _animateTo(direction.toDouble(), const Duration(milliseconds: 650),
+        Curves.easeInOutCubic);
+    if (mounted) _commit(direction);
   }
 
   bool _canTurn(int direction) =>
       direction > 0 ? _index < widget.itemCount - 1 : _index > 0;
+
+  /// Pictures the sheet that turns: the current page going forward, the
+  /// previous page coming back.
+  void _takeSheet(int direction) {
+    final page = direction > 0 ? _index : _index - 1;
+    if (_sheetOf == page && _sheet != null) return;
+    _dropSheet();
+    _sheet = capture(page);
+    _sheetOf = page;
+  }
+
+  void _dropSheet() {
+    _sheet?.dispose();
+    _sheet = null;
+    _sheetOf = null;
+  }
 
   void _onDragUpdate(DragUpdateDetails d, double width) {
     _settle.stop();
     var p = _progress + d.primaryDelta! / width;
     if (!_canTurn(1)) p = math.min(p, 0);
     if (!_canTurn(-1)) p = math.max(p, 0);
-    setState(() => _progress = p.clamp(-1.0, 1.0));
+    p = p.clamp(-1.0, 1.0);
+    if (p != 0) _takeSheet(p.sign.toInt());
+    setState(() => _progress = p);
   }
 
   Future<void> _onDragEnd(DragEndDetails d) async {
     final v = d.primaryVelocity ?? 0;
     final direction = _progress == 0 ? 0 : _progress.sign.toInt();
     final complete = direction != 0 &&
-        (_progress.abs() > 0.33 || v * direction > 700);
+        (_progress.abs() > 0.3 || v * direction > 600);
     _settle.value = _progress;
     if (complete) {
-      await _animateTo(direction.toDouble(), const Duration(milliseconds: 380));
-      _commit(direction);
+      await _animateTo(direction.toDouble(),
+          const Duration(milliseconds: 420), Curves.easeOutCubic);
+      if (mounted) _commit(direction);
     } else {
-      await _animateTo(0, const Duration(milliseconds: 260));
+      await _animateTo(0, const Duration(milliseconds: 320), Curves.easeOutBack);
+      if (mounted) setState(_dropSheet);
     }
   }
 
-  Future<void> _animateTo(double target, Duration duration) => _settle
-      .animateTo(target, duration: duration, curve: Curves.easeOutCubic)
-      .orCancel
-      .catchError((_) {});
+  Future<void> _animateTo(double target, Duration duration, Curve curve) =>
+      _settle
+          .animateTo(target, duration: duration, curve: curve)
+          .orCancel
+          .catchError((_) {});
 
   void _commit(int direction) {
     HapticFeedback.lightImpact();
@@ -103,6 +152,7 @@ class BookPagerState extends State<BookPager>
       _progress = 0;
       _settle.value = 0;
     });
+    _dropSheet();
     widget.onPageChanged(_index);
   }
 
@@ -110,28 +160,48 @@ class BookPagerState extends State<BookPager>
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
       final width = constraints.maxWidth;
-      Widget page(int i) => KeyedSubtree(
-            key: ValueKey(i),
-            child: widget.itemBuilder(context, i),
+      // Each page keeps its state (and its picture key) while it is near.
+      Widget page(int i, {bool show = true}) => Offstage(
+            offstage: !show,
+            child: RepaintBoundary(
+              key: _keyOf(i),
+              child: KeyedSubtree(
+                key: ValueKey(i),
+                child: widget.itemBuilder(context, i),
+              ),
+            ),
           );
 
+      final prev = _index > 0 ? _index - 1 : null;
+      final next = _index < widget.itemCount - 1 ? _index + 1 : null;
+      final sheet = _sheet;
       final List<Widget> layers;
       if (_progress > 0) {
         // The current page turns away, the next one lies beneath.
         layers = [
-          page(_index + 1),
-          _SpineShadow(strength: 1 - _progress),
-          _Turning(progress: _progress, child: page(_index)),
+          if (next != null) page(next),
+          if (prev != null) page(prev, show: false),
+          page(_index, show: sheet == null),
+          if (sheet != null)
+            _Curl(image: sheet, progress: _progress)
+          else
+            _SpineShadow(strength: 1 - _progress),
         ];
       } else if (_progress < 0) {
         // The previous page comes back down over the current one.
         layers = [
           page(_index),
-          _SpineShadow(strength: -_progress),
-          _Turning(progress: 1 + _progress, child: page(_index - 1)),
+          if (next != null) page(next, show: false),
+          if (prev != null) page(prev, show: sheet == null),
+          if (sheet != null) _Curl(image: sheet, progress: 1 + _progress),
         ];
       } else {
-        layers = [page(_index)];
+        // At rest the neighbours lie beneath, painted, ready to be pictured.
+        layers = [
+          if (prev != null) page(prev),
+          if (next != null) page(next),
+          page(_index),
+        ];
       }
 
       return GestureDetector(
@@ -145,50 +215,136 @@ class BookPagerState extends State<BookPager>
   }
 }
 
-/// A page rotated on its right edge by [progress] (0 flat .. 1 turned).
-class _Turning extends StatelessWidget {
-  const _Turning({required this.progress, required this.child});
+/// The turning sheet: the page picture laid on a strip mesh that bends over
+/// the spine like paper, shaded by its angle, its back showing once a strip
+/// passes upright, with its shadow on the page beneath.
+class _Curl extends StatelessWidget {
+  const _Curl({required this.image, required this.progress});
 
+  final ui.Image image;
+
+  /// 0 lying flat (not turned) .. 1 turned over.
   final double progress;
-  final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final angle = progress * math.pi / 2;
-    return IgnorePointer(
-      ignoring: progress > 0,
-      child: Transform(
-        alignment: Alignment.centerRight,
-        transform: Matrix4.identity()
-          ..setEntry(3, 2, 0.0011)
-          ..rotateY(angle),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            child,
-            // The sheet darkens as it lifts away from the light.
-            IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      Colors.black.withAlpha((progress * 150).round()),
-                      Colors.black.withAlpha((progress * 40).round()),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+  Widget build(BuildContext context) => IgnorePointer(
+        child: CustomPaint(
+          painter: _CurlPainter(image, progress, Theme.of(context).brightness),
+          size: Size.infinite,
         ),
-      ),
-    );
-  }
+      );
 }
 
-/// The shadow the turning sheet casts on the page below, near the spine.
+class _CurlPainter extends CustomPainter {
+  _CurlPainter(this.image, this.t, this.brightness);
+
+  final ui.Image image;
+  final double t;
+  final Brightness brightness;
+
+  static const _strips = 32;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final scale = image.width / w; // image pixels per logical pixel
+    final turn = t.clamp(0.0, 1.0);
+
+    // Angle of the sheet at distance s from the spine. The paper rolls from
+    // its free edge: a part starts to lift only when the fold reaches it,
+    // so the sheet stays flat near the spine while its edge curls over.
+    double angle(double s) {
+      final x = (turn * 1.8 - 0.8 * (1 - s / w)).clamp(0.0, 1.0);
+      return math.pi * x * x * (3 - 2 * x); // smoothstep
+    }
+
+    // Walk the sheet from the spine (x = w) to its free edge.
+    final xs = <double>[w], zs = <double>[0], angles = <double>[];
+    final ds = w / _strips;
+    for (var i = 0; i < _strips; i++) {
+      final a = angle((i + 0.5) * ds);
+      angles.add(a);
+      xs.add(xs.last - ds * math.cos(a));
+      zs.add(zs.last + ds * math.sin(a));
+    }
+
+    // Perspective, seen from in front of the page centre.
+    final f = 5 * w;
+    Offset project(double x, double y, double z) {
+      final k = f / (f - z);
+      return Offset(w / 2 + (x - w / 2) * k, h / 2 + (y - h / 2) * k);
+    }
+
+    // The sheet's shadow on the page beneath, by its free edge.
+    final edgeX = xs.last;
+    if (edgeX < w) {
+      final reach = 50 + 90 * math.sin(math.pi * turn);
+      final shadow = Paint()
+        ..shader = LinearGradient(
+          colors: [
+            Colors.black.withAlpha((90 * (1 - turn)).round()),
+            Colors.transparent,
+          ],
+        ).createShader(Rect.fromLTRB(edgeX - reach, 0, edgeX, h));
+      canvas.drawRect(Rect.fromLTRB(edgeX - reach, 0, edgeX, h), shadow);
+    }
+
+    final frontPos = <Offset>[], frontTex = <Offset>[], frontColors = <Color>[];
+    final backPos = <Offset>[], backColors = <Color>[];
+    final paper = brightness == Brightness.dark
+        ? const Color(0xFF2A2F2C)
+        : const Color(0xFFF1E9D6);
+    for (var i = 0; i < _strips; i++) {
+      final a = angles[i];
+      final p0t = project(xs[i], 0, zs[i]), p1t = project(xs[i + 1], 0, zs[i + 1]);
+      final p0b = project(xs[i], h, zs[i]), p1b = project(xs[i + 1], h, zs[i + 1]);
+      final quad = [p0t, p1t, p1b, p0t, p1b, p0b];
+      // Light falls from the front: darker as the strip turns away.
+      final light = (0.55 + 0.45 * math.cos(a).abs()).clamp(0.0, 1.0);
+      if (math.cos(a) >= 0) {
+        final u0 = (w - i * ds) * scale, u1 = (w - (i + 1) * ds) * scale;
+        final vh = h * scale;
+        frontPos.addAll(quad);
+        frontTex.addAll([
+          Offset(u0, 0), Offset(u1, 0), Offset(u1, vh),
+          Offset(u0, 0), Offset(u1, vh), Offset(u0, vh),
+        ]);
+        final c = Color.fromARGB(255, (255 * light).round(),
+            (255 * light).round(), (255 * light).round());
+        frontColors.addAll(List.filled(6, c));
+      } else {
+        // The back of the sheet (its paper), past upright.
+        backPos.addAll(quad);
+        backColors.addAll(List.filled(6, Color.lerp(Colors.black, paper, light)!));
+      }
+    }
+
+    if (frontPos.isNotEmpty) {
+      canvas.drawVertices(
+        ui.Vertices(VertexMode.triangles, frontPos,
+            textureCoordinates: frontTex, colors: frontColors),
+        BlendMode.modulate,
+        Paint()
+          ..shader = ImageShader(
+              image, TileMode.clamp, TileMode.clamp, Matrix4.identity().storage)
+          ..filterQuality = FilterQuality.medium,
+      );
+    }
+    if (backPos.isNotEmpty) {
+      canvas.drawVertices(
+        ui.Vertices(VertexMode.triangles, backPos, colors: backColors),
+        BlendMode.dst,
+        Paint(),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CurlPainter old) => old.t != t || old.image != image;
+}
+
+/// The shadow on the page below near the spine (when no picture of the
+/// turning sheet could be taken).
 class _SpineShadow extends StatelessWidget {
   const _SpineShadow({required this.strength});
 

@@ -39,15 +39,19 @@ narrow hamesh whose notes sit level with their lines; notes that do not fit
 continue below, and the page then leaves a little room for them. Tap the
 page number to go to any page.
 
-Double blink (optional, off by default): with the front camera, ML Kit face
-detection reads the eye-open probabilities on the device (nothing is
-recorded or sent). Tap a mutashabih to choose it, blink twice to open its
-places, and twice again to move to the next place. A phone camera cannot
-tell which word the eyes are on, so the target is the tapped mutashabih (or
-the first one on the page). Requires the camera permission; iOS 15.5+.
+Eye control (optional, off by default; front camera, ML Kit face detection
+on the device, nothing recorded or sent): wink the left eye for the next
+page and the right eye for the previous one; blink three times while looking
+at a line to open its mutashabihat, three times again to close them; one
+deliberate blink (held a little longer than a natural blink) moves to the
+next place. The line looked at is estimated from head pitch and eyelids after
+a two-point calibration (first / last line, three blinks each). A setting
+swaps the eyes for cameras that report them mirrored. Gesture recognition is
+tested in test/eye_gestures_test.dart.
 
-Reading: pages turn like a printed mushaf (drag to lift the sheet; it turns
-on its spine with shadows), pinch to zoom the whole page image with its frame (one finger pans
+Reading: pages turn like paper (the sheet is pictured and drawn on a bending
+strip mesh: it rolls from its free edge over the spine, shaded, its back
+showing, with its shadow on the page beneath), pinch to zoom the whole page image with its frame (one finger pans
 while zoomed, "حجم الصفحة" resets), full-screen reading without the hamesh, and a
 dark (default), light or system appearance. Replace mode keeps the Madinah
 pages and lines: every riwaya is shown with the same page and line breaks as

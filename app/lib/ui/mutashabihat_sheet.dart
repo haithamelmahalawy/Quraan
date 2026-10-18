@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
@@ -16,7 +17,7 @@ class MutashabihatSheet extends StatefulWidget {
     required this.places,
     required this.quran,
     required this.onGo,
-    this.advance,
+    this.steps,
   });
 
   final List<MutashabihPlace> places;
@@ -25,15 +26,15 @@ class MutashabihatSheet extends StatefulWidget {
   /// Opens the mushaf at a page.
   final ValueChanged<int> onGo;
 
-  /// Each notification moves to the next place (double blink).
-  final Listenable? advance;
+  /// Moves between places: +1 next, -1 previous (eye gestures).
+  final Stream<int>? steps;
 
   static Future<void> show(
     BuildContext context, {
     required List<MutashabihPlace> places,
     required QuranRepository quran,
     required ValueChanged<int> onGo,
-    Listenable? advance,
+    Stream<int>? steps,
   }) =>
       showModalBottomSheet(
         context: context,
@@ -46,7 +47,7 @@ class MutashabihatSheet extends StatefulWidget {
             places: places,
             quran: quran,
             onGo: onGo,
-            advance: advance,
+            steps: steps,
           ),
         ),
       );
@@ -66,21 +67,26 @@ class _MutashabihatSheetState extends State<MutashabihatSheet>
   )..repeat();
   int _index = 0;
 
+  StreamSubscription<int>? _steps;
+
   @override
   void initState() {
     super.initState();
-    widget.advance?.addListener(_next);
+    _steps = widget.steps?.listen(_step);
   }
 
   @override
   void dispose() {
-    widget.advance?.removeListener(_next);
+    _steps?.cancel();
     _pages.dispose();
     _float.dispose();
     super.dispose();
   }
 
-  void _next() => _goTo((_index + 1) % widget.places.length);
+  void _step(int by) {
+    final n = widget.places.length;
+    _goTo(((_index + by) % n + n) % n);
+  }
 
   void _goTo(int i) {
     HapticFeedback.selectionClick();

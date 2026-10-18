@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -55,13 +57,17 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// Double blink: opens the mutashabih on the line being looked at; while
   /// the mutashabihat are open, moves to the next place.
   final _blink = BlinkDetector();
-  StreamSubscription<double?>? _blinks;
+  StreamSubscription<EyeGesture>? _blinks;
 
   /// Calibration: 0 waits for a double blink on the first line, 1 on the
   /// last line; -1 when calibrated (or blinking is off).
   int _calibration = -1;
   double? _calibrationTop;
-  final _advance = ValueNotifier(0);
+  final _steps = StreamController<int>.broadcast();
+
+  /// The action just done by an eye gesture, shown briefly.
+  String? _gestureLabel;
+  Timer? _gestureLabelTimer;
   bool _sheetOpen = false;
   bool _blinkFlash = false;
   bool _resumed = true;
@@ -69,13 +75,32 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// Right / left of the open mushaf, shown briefly when a page opens.
   late final _hint = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2400),
+    duration: const Duration(milliseconds: 1500),
   )..addListener(() => setState(() {}));
+
+  /// Pictures of the current page and the page facing it, for the hint and
+  /// the small icon.
+  ui.Image? _currentPicture, _facingPicture;
 
   bool get _twoPages => widget.settings.twoPages;
 
+  /// Once the page is drawn: picture it and its facing page, then show
+  /// where it lies in the open mushaf.
   void _showSide() {
-    if (!_twoPages) _hint.forward(from: 0);
+    if (_twoPages) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final pager = _pager.currentState;
+      if (pager != null) {
+        final index = _page - 1;
+        final facing = isRightPage(_page) ? index + 1 : index - 1;
+        _currentPicture?.dispose();
+        _facingPicture?.dispose();
+        _currentPicture = pager.capture(index);
+        _facingPicture = pager.capture(facing);
+      }
+      _hint.forward(from: 0);
+    });
   }
 
   @override
@@ -84,9 +109,9 @@ class _ReaderScreenState extends State<ReaderScreen>
     WidgetsBinding.instance.addObserver(this);
     widget.settings.addListener(_onSettings);
     QcfFonts.instance.addListener(_onFonts);
-    _blinks = _blink.doubleBlinks.listen(_onDoubleBlink);
+    _blinks = _blink.gestures.listen(_onGesture);
     _onSettings();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showSide());
+    _showSide();
   }
 
   @override
@@ -96,8 +121,11 @@ class _ReaderScreenState extends State<ReaderScreen>
     QcfFonts.instance.removeListener(_onFonts);
     _blinks?.cancel();
     _blink.dispose();
-    _advance.dispose();
+    _steps.close();
+    _gestureLabelTimer?.cancel();
     _hint.dispose();
+    _currentPicture?.dispose();
+    _facingPicture?.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
@@ -136,13 +164,51 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
   }
 
-  void _onDoubleBlink(double? gaze) {
+  /// Eye gestures: winks turn pages (or move between mutashabihat places),
+  /// three blinks open / close the mutashabihat of the line looked at, one
+  /// deliberate blink moves to the next place.
+  void _onGesture(EyeGesture gesture) {
+    switch (gesture) {
+      case Wink(:final left):
+        final next = left != widget.settings.swapEyes;
+        if (_calibration >= 0) return;
+        if (_sheetOpen) {
+          _steps.add(next ? 1 : -1);
+          _announce(next ? 'الموضع التالي' : 'الموضع السابق');
+        } else if (!_zoomed) {
+          _pager.currentState?.turn(next ? 1 : -1);
+          _announce(next ? 'الصفحة التالية' : 'الصفحة السابقة');
+        }
+      case DeliberateBlink():
+        if (_sheetOpen && _calibration < 0) {
+          _steps.add(1);
+          _announce('الموضع التالي');
+        }
+      case TripleBlink(:final gaze):
+        _onTripleBlink(gaze);
+    }
+  }
+
+  void _announce(String label) {
     HapticFeedback.mediumImpact();
-    setState(() => _blinkFlash = true);
-    Future.delayed(const Duration(milliseconds: 450), () {
-      if (mounted) setState(() => _blinkFlash = false);
+    _gestureLabelTimer?.cancel();
+    setState(() {
+      _gestureLabel = label;
+      _blinkFlash = true;
     });
+    _gestureLabelTimer = Timer(const Duration(milliseconds: 1100), () {
+      if (mounted) {
+        setState(() {
+          _gestureLabel = null;
+          _blinkFlash = false;
+        });
+      }
+    });
+  }
+
+  void _onTripleBlink(double? gaze) {
     if (_calibration >= 0) {
+      _announce(_calibration == 0 ? 'السطر الأول ✓' : 'السطر الأخير ✓');
       if (gaze == null) return;
       if (_calibration == 0) {
         setState(() {
@@ -153,13 +219,14 @@ class _ReaderScreenState extends State<ReaderScreen>
         widget.settings.setGaze(_calibrationTop, gaze);
         setState(() => _calibration = -1);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('تمت المعايرة. انظر إلى متشابه وارمش مرتين لفتحه.'),
+          content: Text('تمت المعايرة. انظر إلى سطر فيه متشابه وارمش ثلاث مرات.'),
         ));
       }
       return;
     }
     if (_sheetOpen) {
-      _advance.value++;
+      Navigator.of(context).pop(); // the mutashabihat sheet
+      _announce('إغلاق المتشابهات');
       return;
     }
     final target = _mutashabihAt(_gazeFraction(gaze));
@@ -170,6 +237,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       return;
     }
     final (ayah, word) = target;
+    _announce('فتح المتشابهات');
     _openMutashabihat(
         widget.mutashabihat.placesFor(ayah.surah, ayah.number, word));
   }
@@ -305,7 +373,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       places: places,
       quran: widget.quran,
       onGo: _goToPage,
-      advance: _advance,
+      steps: _steps.stream,
     );
     _sheetOpen = false;
   }
@@ -484,7 +552,12 @@ class _ReaderScreenState extends State<ReaderScreen>
                           : 'الصفحة في يسار المصحف',
                       child: GestureDetector(
                         onTap: _showSide,
-                        child: PageSideIcon(right: isRightPage(_page), width: 30),
+                        child: OpenMushafView(
+                          right: isRightPage(_page),
+                          width: 44,
+                          current: _currentPicture,
+                          facing: _facingPicture,
+                        ),
                       ),
                     ),
                   TextButton(
@@ -532,11 +605,47 @@ class _ReaderScreenState extends State<ReaderScreen>
             Positioned.fill(
               child: _CalibrationPrompt(firstLine: _calibration == 0),
             ),
+          // What the last eye gesture did.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 24,
+            child: IgnorePointer(
+              child: Center(
+                child: AnimatedOpacity(
+                  opacity: _gestureLabel == null ? 0 : 1,
+                  duration: const Duration(milliseconds: 200),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: MushafColors.green.withAlpha(220),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.visibility, color: Colors.white, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          _gestureLabel ?? '',
+                          style: const TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           if (_hint.isAnimating)
             Positioned.fill(
               child: PageSideHint(
                 page: _page,
                 progress: _hint.value,
+                current: _currentPicture,
+                facing: _facingPicture,
                 // Just under the small icon by the page number.
                 target: const Alignment(-0.78, -1.04),
               ),
@@ -677,8 +786,8 @@ class _CalibrationPrompt extends StatelessWidget {
               Flexible(
                 child: Text(
                   firstLine
-                      ? 'معايرة النظر (١/٢): انظر إلى السطر الأول من الصفحة ثم ارمش مرتين.'
-                      : 'معايرة النظر (٢/٢): انظر الآن إلى السطر الأخير ثم ارمش مرتين.',
+                      ? 'معايرة النظر (١/٢): انظر إلى السطر الأول من الصفحة ثم ارمش ثلاث مرات.'
+                      : 'معايرة النظر (٢/٢): انظر الآن إلى السطر الأخير ثم ارمش ثلاث مرات.',
                   style: TextStyle(color: MushafColors.ink, fontSize: 15),
                 ),
               ),

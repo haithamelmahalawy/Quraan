@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
@@ -6,81 +8,92 @@ import 'theme.dart';
 /// are on the right (Al-Fatiha, page 1), even pages on the left.
 bool isRightPage(int page) => page.isOdd;
 
-/// A small open mushaf with the side of the current page filled in.
-class PageSideIcon extends StatelessWidget {
-  const PageSideIcon({super.key, required this.right, this.width = 40});
+/// The open mushaf: the current page (pictured, outlined) on its side and
+/// the facing page dimmed beside it.
+class OpenMushafView extends StatelessWidget {
+  const OpenMushafView({
+    super.key,
+    required this.right,
+    required this.width,
+    this.current,
+    this.facing,
+  });
 
   final bool right;
   final double width;
+  final ui.Image? current;
+  final ui.Image? facing;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: width * 0.7,
-      child: CustomPaint(painter: _OpenBook(right)),
+    final pageWidth = (width - width * 0.03) / 2;
+    final pageHeight = current == null
+        ? pageWidth * 1.6
+        : pageWidth * current!.height / current!.width;
+    final border = width < 80 ? 1.5 : 3.0;
+
+    Widget sheet({required bool isCurrent}) {
+      final image = isCurrent ? current : facing;
+      return Container(
+        width: pageWidth,
+        height: pageHeight,
+        decoration: BoxDecoration(
+          color: MushafColors.page,
+          border: Border.all(
+            color: isCurrent ? MushafColors.green : MushafColors.gold,
+            width: isCurrent ? border : border / 2,
+          ),
+          boxShadow: isCurrent
+              ? [
+                  BoxShadow(
+                    color: MushafColors.green.withAlpha(150),
+                    blurRadius: width < 80 ? 4 : 18,
+                  ),
+                ]
+              : null,
+        ),
+        child: image == null
+            ? null
+            : Opacity(
+                opacity: isCurrent ? 1 : 0.35,
+                child: RawImage(image: image, fit: BoxFit.fill),
+              ),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      // The right page first, as the mushaf lies open.
+      textDirection: TextDirection.rtl,
+      children: [
+        sheet(isCurrent: right),
+        Container(
+          width: width * 0.03,
+          height: pageHeight,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              Colors.black.withAlpha(20),
+              Colors.black.withAlpha(90),
+              Colors.black.withAlpha(20),
+            ]),
+          ),
+        ),
+        sheet(isCurrent: !right),
+      ],
     );
   }
 }
 
-class _OpenBook extends CustomPainter {
-  _OpenBook(this.right);
-
-  final bool right;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width, h = size.height;
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w / 26
-      ..color = MushafColors.gold;
-    final lines = Paint()
-      ..strokeWidth = w / 60
-      ..color = Colors.white.withAlpha(200);
-
-    // The two pages, slightly curved like an open book.
-    Path sheet(bool rightSide) {
-      final x0 = rightSide ? w / 2 : w * 0.04;
-      final x1 = rightSide ? w * 0.96 : w / 2;
-      return Path()
-        ..moveTo(x0, h * 0.14)
-        ..quadraticBezierTo((x0 + x1) / 2, rightSide ? 0 : 0, x1, h * 0.14)
-        ..lineTo(x1, h * 0.94)
-        ..quadraticBezierTo((x0 + x1) / 2, h * 0.8, x0, h * 0.94)
-        ..close();
-    }
-
-    for (final side in [true, false]) {
-      final path = sheet(side);
-      if (side == right) {
-        canvas.drawPath(path, Paint()..color = MushafColors.green);
-        // Text lines on the current page.
-        final x0 = side ? w * 0.56 : w * 0.1;
-        final x1 = side ? w * 0.9 : w * 0.44;
-        for (var i = 0; i < 4; i++) {
-          final y = h * (0.32 + i * 0.13);
-          canvas.drawLine(Offset(x0, y), Offset(x1, y), lines);
-        }
-      } else {
-        canvas.drawPath(path, Paint()..color = MushafColors.page);
-      }
-      canvas.drawPath(path, stroke);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_OpenBook old) => old.right != right;
-}
-
-/// Shown when a page opens: a large open mushaf with the page's side lit,
-/// then it shrinks and flies up to the small icon at [target].
+/// Shown when a page opens: the open mushaf, large, with the page lit on its
+/// side; then it shrinks and flies up to the small icon at [target].
 class PageSideHint extends StatelessWidget {
   const PageSideHint({
     super.key,
     required this.page,
     required this.progress,
     required this.target,
+    this.current,
+    this.facing,
   });
 
   final int page;
@@ -91,48 +104,58 @@ class PageSideHint extends StatelessWidget {
   /// Where the small icon sits (alignment within the reader).
   final Alignment target;
 
+  final ui.Image? current;
+  final ui.Image? facing;
+
   @override
   Widget build(BuildContext context) {
     final right = isRightPage(page);
     final t = progress;
-    // Appear (0–0.15), hold (–0.6), fly to the icon (–1).
-    final appear = Curves.easeOutBack.transform((t / 0.15).clamp(0.0, 1.0));
-    final fly = Curves.easeInOutCubic.transform(((t - 0.6) / 0.4).clamp(0.0, 1.0));
-    final scale = (0.6 + 0.4 * appear) * (1 - 0.8 * fly);
-    final labelOpacity = (1 - fly * 2.5).clamp(0.0, 1.0);
+    // Appear (0–0.12), hold (–0.5), fly to the icon (–1).
+    final appear = Curves.easeOutBack.transform((t / 0.12).clamp(0.0, 1.0));
+    final fly =
+        Curves.easeInCubic.transform(((t - 0.5) / 0.5).clamp(0.0, 1.0));
+    final scale = (0.7 + 0.3 * appear) * (1 - 0.88 * fly);
+    final labelOpacity = (1 - fly * 3).clamp(0.0, 1.0);
+    final width = MediaQuery.sizeOf(context).width * 0.85;
     return IgnorePointer(
       child: Align(
         alignment: Alignment.lerp(Alignment.center, target, fly)!,
         child: Opacity(
-          opacity: (t / 0.1).clamp(0.0, 1.0),
+          opacity: (t / 0.08).clamp(0.0, 1.0),
           child: Transform.scale(
             scale: scale,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(22, 18, 22, 14),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               decoration: BoxDecoration(
-                color: MushafColors.paper.withAlpha((230 * (1 - fly)).round()),
+                color: MushafColors.paper.withAlpha((240 * (1 - fly)).round()),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withAlpha((90 * (1 - fly)).round()),
-                    blurRadius: 24,
+                    color: Colors.black.withAlpha((110 * (1 - fly)).round()),
+                    blurRadius: 28,
                   ),
                 ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  PageSideIcon(right: right, width: 150),
+                  OpenMushafView(
+                    right: right,
+                    width: width - 32,
+                    current: current,
+                    facing: facing,
+                  ),
                   Opacity(
                     opacity: labelOpacity,
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.only(top: 12),
                       child: Text(
                         right
                             ? 'صفحة $page في يمين المصحف'
                             : 'صفحة $page في يسار المصحف',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: MushafColors.green,
                         ),

@@ -35,6 +35,7 @@ class ReaderSettings extends ChangeNotifier {
   bool _showMutashabihat = true;
   ThemeMode _themeMode = ThemeMode.dark;
   bool _blinkToOpen = false;
+  bool _swapEyes = false;
   bool _twoPages = false;
   bool _qcfFont = true;
   double? _gazeTop, _gazeBottom;
@@ -53,6 +54,15 @@ class ReaderSettings extends ChangeNotifier {
 
   /// Open the mutashabihat with a double blink (front camera, on device).
   bool get blinkToOpen => _blinkToOpen;
+
+  /// Swap the winks (some front cameras report the eyes mirrored).
+  bool get swapEyes => _swapEyes;
+
+  set swapEyes(bool value) {
+    _swapEyes = value;
+    _prefs?.setBool('swapEyes', value);
+    notifyListeners();
+  }
 
   /// Two facing pages at once, as the mushaf lies open (right page odd).
   bool get twoPages => _twoPages;
@@ -101,6 +111,7 @@ class ReaderSettings extends ChangeNotifier {
     s._page = prefs.getInt('page') ?? 1;
     s._showMutashabihat = prefs.getBool('mutashabihat') ?? true;
     s._blinkToOpen = prefs.getBool('blink') ?? false;
+    s._swapEyes = prefs.getBool('swapEyes') ?? false;
     s._twoPages = prefs.getBool('twoPages') ?? false;
     s._qcfFont = prefs.getBool('qcf') ?? true;
     s._gazeTop = prefs.getDouble('gazeTop');
