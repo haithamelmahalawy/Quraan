@@ -5,17 +5,22 @@ import 'theme.dart';
 /// Madinah-mushaf style page border: a patterned band of green diamonds on
 /// gold between two rules, with corner squares.
 class OrnamentFrame extends StatelessWidget {
-  const OrnamentFrame({super.key, required this.child, this.band = 14});
+  const OrnamentFrame({super.key, required this.child});
 
   final Widget child;
-  final double band;
+
+  /// Width of the patterned band.
+  static const band = 14.0;
+
+  /// Distance from the outside of the frame to its content, on every side.
+  static const inset = band + 6;
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _FramePainter(band),
       child: Padding(
-        padding: EdgeInsets.all(band + 6),
+        padding: const EdgeInsets.all(inset),
         child: child,
       ),
     );

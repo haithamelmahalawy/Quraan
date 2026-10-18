@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -26,6 +28,8 @@ class MushafPage extends StatefulWidget {
     required this.onWordTap,
     this.showHamesh = true,
     this.onZoomChanged,
+    this.onPageNumberTap,
+    this.focus,
   });
 
   final int page;
@@ -40,6 +44,12 @@ class MushafPage extends StatefulWidget {
 
   /// Told when the page is zoomed in (so turning pages pauses) or back.
   final ValueChanged<bool>? onZoomChanged;
+
+  /// Tapping the page number (opens the page picker).
+  final VoidCallback? onPageNumberTap;
+
+  /// The mutashabih word chosen for the double blink (VariantRepository.key).
+  final int? focus;
 
   @override
   State<MushafPage> createState() => _MushafPageState();
@@ -59,10 +69,8 @@ class HameshEntry {
 
 class _MushafPageState extends State<MushafPage> {
   final _recognizers = <TapGestureRecognizer>[];
-  final _frameKey = GlobalKey();
-  final _sideKey = GlobalKey();
 
-  /// How many hamesh entries fit beside the page (the rest go below it),
+  /// How many hamesh notes fit beside the page (the rest go below it),
   /// measured after layout for [_splitFor].
   int? _split;
   String? _splitFor;
@@ -108,117 +116,173 @@ class _MushafPageState extends State<MushafPage> {
     // Inline adds text to the lines, so it flows instead.
     final lines = widget.quran.lines(widget.page);
     final printed = lines != null && s.mode != DisplayMode.inline;
-    final page = printed
-        ? MushafLines(
-            lines: lines,
-            centered: widget.quran.isCentered(widget.page),
-            quran: widget.quran,
-            wordBuilder: _word,
-            display: _display,
-          )
-        : _flowingText(ayahs, narrow);
-    final framed = KeyedSubtree(
-      key: _frameKey,
-      child: _zoomable(_PageFrame(page: widget.page, child: page)),
-    );
-    if (s.mode != DisplayMode.hamesh || !widget.showHamesh) {
-      return SingleChildScrollView(
-        physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
-        padding: const EdgeInsets.fromLTRB(8, 6, 8, 24),
-        child: framed,
-      );
-    }
 
-    // The hamesh sits outside the page, on its left (the end side in RTL);
-    // what does not fit beside the page continues below it.
-    final entries = _hameshEntries(ayahs);
+    return LayoutBuilder(builder: (context, viewport) {
+      final content = printed
+          ? _printedPage(ayahs, lines, viewport.biggest, narrow)
+          : SingleChildScrollView(
+              physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
+              child: _PageFrame(
+                page: widget.page,
+                onNumberTap: widget.onPageNumberTap,
+                child: _flowingText(ayahs, narrow),
+              ),
+            );
+      // Pinch zooms the whole page image: frame, text and hamesh together.
+      return Stack(
+        children: [
+          InteractiveViewer(
+            transformationController: _zoom,
+            minScale: 1,
+            maxScale: 4,
+            panEnabled: _zoomed,
+            child: SizedBox.fromSize(size: viewport.biggest, child: content),
+          ),
+          if (_zoomed)
+            PositionedDirectional(
+              bottom: 12,
+              end: 12,
+              child: FilledButton.tonalIcon(
+                onPressed: () => _zoom.value = Matrix4.identity(),
+                icon: const Icon(Icons.zoom_out_map, size: 18),
+                label: const Text('حجم الصفحة'),
+              ),
+            ),
+        ],
+      );
+    });
+  }
+
+  /// The printed page filling the screen: the header line (surah, juz), the
+  /// framed 15 lines spread over the height, and the hamesh beside it with
+  /// each note level with its line. Notes that do not fit continue below,
+  /// and the page then leaves a little room for them at the bottom.
+  Widget _printedPage(
+      List<Ayah> ayahs, List<MushafLine> lines, Size size, bool narrow) {
+    final withHamesh =
+        widget.settings.mode == DisplayMode.hamesh && widget.showHamesh;
+    final entries = withHamesh ? _hameshEntries(ayahs) : const <HameshEntry>[];
     final signature = [
       widget.page,
-      MediaQuery.sizeOf(context).width,
-      for (final e in entries)
-        '${e.ayah.number}:${e.word}:${e.readings.length}',
+      size.width,
+      size.height,
+      for (final e in entries) '${e.ayah.number}:${e.word}:${e.readings.length}',
     ].join('|');
     if (signature != _splitFor) {
       _split = null;
       _splitFor = signature;
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _measureSplit(signature),
-      );
     }
     final split = _split ?? entries.length;
+    final overflow = split < entries.length;
+
+    const outer = 4.0, header = 22.0;
+    final pageHeight = size.height * (overflow ? 0.9 : 1.0);
+    final pageWidth =
+        withHamesh ? size.width * (narrow ? 0.81 : 0.84) : size.width;
+    final textWidth = pageWidth - 2 * outer - 2 * OrnamentFrame.inset;
+    final textHeight = pageHeight -
+        2 * outer -
+        header -
+        2 * OrnamentFrame.inset -
+        _PageFrame.numberHeight;
+    final mushafLines = MushafLines(
+      lines: lines,
+      centered: widget.quran.isCentered(widget.page),
+      quran: widget.quran,
+      wordBuilder: _word,
+      display: _display,
+      height: textHeight,
+    );
+    final first = ayahs.first;
+    final page = Padding(
+      padding: const EdgeInsets.all(outer),
+      child: Column(
+        children: [
+          SizedBox(
+            height: header,
+            child: _PageHeader(
+              surah: widget.quran.surah(first.surah).nameAr,
+              juz: first.juz,
+            ),
+          ),
+          Expanded(
+            child: _PageFrame(
+              page: widget.page,
+              onNumberTap: widget.onPageNumberTap,
+              child: mushafLines,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!withHamesh) return page;
+
+    // Vertical position of each note: level with its word's line.
+    final lineHeight = mushafLines.metrics(textWidth).lineHeight;
+    final lineOf = <int, int>{};
+    for (final (i, line) in lines.indexed) {
+      if (line is TextLine) {
+        for (final (a, w) in line.words) {
+          lineOf[VariantRepository.key(a.surah, a.number, w)] = i;
+        }
+      }
+    }
+    final top = outer + header + OrnamentFrame.inset;
+    final shown = entries.sublist(0, split);
+    final tops = [
+      for (final e in shown)
+        top +
+            (lineOf[VariantRepository.key(e.ayah.surah, e.ayah.number, e.word)] ??
+                    0) *
+                lineHeight,
+    ];
+
     return SingleChildScrollView(
       physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: narrow ? 76 : 78, child: framed),
-              const SizedBox(width: 4),
-              Expanded(
-                flex: narrow ? 24 : 22,
-                child: _Hamesh(
-                  key: _sideKey,
-                  title: 'الهامش',
-                  entries: entries.sublist(0, split),
-                  onTap: widget.onWordTap,
-                  compact: narrow,
+          SizedBox(
+            height: pageHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: pageWidth, child: page),
+                Expanded(
+                  child: _SideHamesh(
+                    entries: shown,
+                    tops: tops,
+                    onTap: widget.onWordTap,
+                    onFit: (fit) => _setSplit(signature, fit),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          if (split < entries.length) ...[
-            const SizedBox(height: 8),
-            _Hamesh(
-              title: 'تتمة الهامش',
-              entries: entries.sublist(split),
-              onTap: widget.onWordTap,
-              compact: false,
-              columns: narrow ? 2 : 3,
+              ],
             ),
-          ],
+          ),
+          if (overflow)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 2, 6, 24),
+              child: _HameshBox(
+                title: 'تتمة الهامش',
+                entries: entries.sublist(split),
+                onTap: widget.onWordTap,
+                columns: narrow ? 3 : 4,
+              ),
+            ),
         ],
       ),
     );
   }
 
-  /// The page can be pinched to zoom (up to 4×); while zoomed one finger
-  /// pans it, and the button resets it.
-  Widget _zoomable(Widget page) {
-    return Stack(
-      children: [
-        InteractiveViewer(
-          transformationController: _zoom,
-          minScale: 1,
-          maxScale: 4,
-          panEnabled: _zoomed,
-          child: page,
-        ),
-        if (_zoomed)
-          PositionedDirectional(
-            top: 8,
-            end: 8,
-            child: FilledButton.tonalIcon(
-              onPressed: () => _zoom.value = Matrix4.identity(),
-              icon: const Icon(Icons.zoom_out_map, size: 18),
-              label: const Text('حجم الصفحة'),
-            ),
-          ),
-      ],
-    );
-  }
-
-  /// After layout: keep beside the page only the entries that end above the
-  /// bottom of the page frame.
-  void _measureSplit(String signature) {
-    if (!mounted || signature != _splitFor) return;
-    final frame = _frameKey.currentContext?.findRenderObject() as RenderBox?;
-    final side = _sideKey.currentState as _HameshState?;
-    if (frame == null || side == null) return;
-    final fit = side.entriesFitting(frame.size.height);
-    if (fit != _split) setState(() => _split = fit);
+  /// Called by the side hamesh after layout with how many notes fit.
+  void _setSplit(String signature, int fit) {
+    if (signature != _splitFor || _split != null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && signature == _splitFor && _split != fit) {
+        setState(() => _split = fit);
+      }
+    });
   }
 
   Widget _flowingText(List<Ayah> ayahs, bool narrow) {
@@ -449,6 +513,17 @@ class _MushafPageState extends State<MushafPage> {
         ],
       );
     }
+    if (widget.focus == VariantRepository.key(ayah.surah, ayah.number, w)) {
+      // Drawn over the word, so the line keeps its width.
+      word = DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          border: Border.all(color: MushafColors.green, width: 1.5),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: word,
+      );
+    }
     if (m.all.isEmpty && !m.mutashabih) return word;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -511,29 +586,40 @@ String arabicDigits(int n) => n
 
 /// Ornamented mushaf border around the Hafs text, with the page number.
 class _PageFrame extends StatelessWidget {
-  const _PageFrame({required this.page, required this.child});
+  const _PageFrame({required this.page, required this.child, this.onNumberTap});
 
   final int page;
   final Widget child;
+  final VoidCallback? onNumberTap;
+
+  /// Height taken by the page number under the lines.
+  static const numberHeight = 22.0;
 
   @override
   Widget build(BuildContext context) {
     return OrnamentFrame(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          child,
-          const SizedBox(height: 4),
-          Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
-              decoration: BoxDecoration(
-                border: Border.all(color: MushafColors.gold),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                arabicDigits(page),
-                style: TextStyle(fontSize: 12, color: MushafColors.green),
+          Flexible(child: child),
+          SizedBox(
+            height: numberHeight,
+            child: Center(
+              child: GestureDetector(
+                onTap: onNumberTap,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: MushafColors.gold),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    arabicDigits(page),
+                    style: TextStyle(fontSize: 12, color: MushafColors.green),
+                  ),
+                ),
               ),
             ),
           ),
@@ -543,167 +629,237 @@ class _PageFrame extends StatelessWidget {
   }
 }
 
-/// The margin: for each marked word, who reads it how, written in that
-/// riwaya's own font, with a short description ("بالتاء", "بضم الهاء", ...).
-/// Readings that are the same for several riwayat / qiraat share one line.
-class _Hamesh extends StatefulWidget {
-  const _Hamesh({
-    super.key,
+/// The line above the frame, as printed: surah name on the right, juz on
+/// the left.
+class _PageHeader extends StatelessWidget {
+  const _PageHeader({required this.surah, required this.juz});
+
+  final String surah;
+  final int juz;
+
+  static const _juzNames = [
+    'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', //
+    'الثامن', 'التاسع', 'العاشر', 'الحادي عشر', 'الثاني عشر', 'الثالث عشر',
+    'الرابع عشر', 'الخامس عشر', 'السادس عشر', 'السابع عشر', 'الثامن عشر',
+    'التاسع عشر', 'العشرون', 'الحادي والعشرون', 'الثاني والعشرون',
+    'الثالث والعشرون', 'الرابع والعشرون', 'الخامس والعشرون',
+    'السادس والعشرون', 'السابع والعشرون', 'الثامن والعشرون',
+    'التاسع والعشرون', 'الثلاثون',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      fontFamily: 'Hafs',
+      fontSize: 15,
+      height: 1.1,
+      color: MushafColors.green,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        children: [
+          Text('سورة $surah', style: style),
+          const Spacer(),
+          Text('الجزء ${_juzNames[juz - 1]}', style: style),
+        ],
+      ),
+    );
+  }
+}
+
+/// The hamesh beside the page: each note at the height of its word's line,
+/// pushed down only when the note above needs the room. Reports how many
+/// notes fit beside the page.
+class _SideHamesh extends StatelessWidget {
+  const _SideHamesh({
+    required this.entries,
+    required this.tops,
+    required this.onTap,
+    required this.onFit,
+  });
+
+  final List<HameshEntry> entries;
+  final List<double> tops;
+  final WordTap onTap;
+  final ValueChanged<int> onFit;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: BorderDirectional(
+          start: BorderSide(color: MushafColors.gold.withAlpha(120)),
+        ),
+      ),
+      child: ClipRect(
+        child: CustomMultiChildLayout(
+          delegate: _NotesLayout(tops, onFit),
+          children: [
+            for (final (i, e) in entries.indexed)
+              LayoutId(
+                id: i,
+                child: _EntryView(entry: e, onTap: onTap, compact: true),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotesLayout extends MultiChildLayoutDelegate {
+  _NotesLayout(this.tops, this.onFit);
+
+  final List<double> tops;
+  final ValueChanged<int> onFit;
+
+  @override
+  void performLayout(Size size) {
+    var bottom = 0.0;
+    var fit = tops.length;
+    for (var i = 0; i < tops.length; i++) {
+      final child = layoutChild(i, BoxConstraints(maxWidth: size.width - 4));
+      final top = math.max(tops[i], bottom);
+      if (fit == tops.length && top + child.height > size.height) fit = i;
+      positionChild(
+          i, Offset(2, i >= fit ? size.height + child.height : top));
+      bottom = top + child.height + 3;
+    }
+    onFit(fit);
+  }
+
+  @override
+  bool shouldRelayout(_NotesLayout old) => true;
+}
+
+/// Notes in a box (the continuation below the page), in columns.
+class _HameshBox extends StatelessWidget {
+  const _HameshBox({
     required this.title,
     required this.entries,
     required this.onTap,
-    required this.compact,
     this.columns = 1,
   });
 
   final String title;
   final List<HameshEntry> entries;
   final WordTap onTap;
-  final bool compact;
   final int columns;
 
   @override
-  State<_Hamesh> createState() => _HameshState();
-}
-
-class _HameshState extends State<_Hamesh> {
-  final _keys = <GlobalKey>[];
-
-  /// Number of leading entries whose bottom is within [height] of the top.
-  int entriesFitting(double height) {
-    final me = context.findRenderObject() as RenderBox?;
-    if (me == null) return widget.entries.length;
-    var fit = 0;
-    for (final key in _keys) {
-      final box = key.currentContext?.findRenderObject() as RenderBox?;
-      if (box == null) break;
-      final bottom = box
-          .localToGlobal(Offset(0, box.size.height), ancestor: me)
-          .dy;
-      // Leave room for the box's bottom padding.
-      if (bottom + 8 > height) break;
-      fit++;
-    }
-    return fit;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final compact = widget.compact;
-    final label = TextStyle(
-      fontSize: compact ? 8.5 : 10,
-      height: 1.4,
-      color: MushafColors.ink,
-    );
-    final quran = compact ? 11.0 : 13.0;
-    while (_keys.length < widget.entries.length) {
-      _keys.add(GlobalKey());
-    }
-    final items = [
-      for (final (i, e) in widget.entries.indexed)
-        KeyedSubtree(key: _keys[i], child: _entry(e, label, quran)),
-    ];
     return Container(
-      padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
+      padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
       decoration: BoxDecoration(
-        color: MushafColors.goldLight.withAlpha(70),
+        color: MushafColors.goldLight.withAlpha(60),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: MushafColors.gold, width: 1.2),
+        border: Border.all(color: MushafColors.gold.withAlpha(160)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            widget.title,
+            title,
             textAlign: TextAlign.center,
-            style: label.copyWith(
-              fontSize: label.fontSize! + 2,
+            style: TextStyle(
+              fontSize: 11,
               fontWeight: FontWeight.bold,
               color: MushafColors.green,
             ),
           ),
-          Divider(height: 10, color: MushafColors.gold),
-          if (widget.entries.isEmpty)
-            Text(
-              'لا خلاف في هذه الصفحة بين حفص والقراءات المختارة.',
-              style: label.copyWith(color: MushafColors.frame),
+          Divider(height: 8, color: MushafColors.gold.withAlpha(160)),
+          LayoutBuilder(
+            builder: (context, c) => Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final e in entries)
+                  SizedBox(
+                    width: (c.maxWidth - 8 * (columns - 1)) / columns,
+                    child: _EntryView(entry: e, onTap: onTap, compact: true),
+                  ),
+              ],
             ),
-          if (widget.columns == 1)
-            ...items
-          else
-            LayoutBuilder(
-              builder: (context, c) => Wrap(
-                spacing: 8,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One note: the Hafs word in its colour, then who reads it how, in the
+/// riwaya's own font, with a short description ("بالتاء", "بضم الهاء", ...).
+/// Readings that are the same for several riwayat / qiraat share one line.
+class _EntryView extends StatelessWidget {
+  const _EntryView({
+    required this.entry,
+    required this.onTap,
+    required this.compact,
+  });
+
+  final HameshEntry entry;
+  final WordTap onTap;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = entry;
+    final label = TextStyle(
+      fontSize: compact ? 7.5 : 10,
+      height: 1.3,
+      color: MushafColors.ink,
+    );
+    final quran = compact ? 10.5 : 13.0;
+    return InkWell(
+      onTap: () => onTap(e.ayah, e.word),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            e.hafs,
+            style: TextStyle(
+              fontFamily: 'Hafs',
+              fontSize: quran,
+              height: 1.4,
+              color: e.color,
+              backgroundColor: e.color.withAlpha(28),
+            ),
+          ),
+          for (final g in _readings(e.readings))
+            Text.rich(
+              TextSpan(
                 children: [
-                  for (final item in items)
-                    SizedBox(
-                      width:
-                          (c.maxWidth - 8 * (widget.columns - 1)) /
-                          widget.columns,
-                      child: item,
+                  for (var i = 0; i < g.names.length; i++)
+                    TextSpan(
+                      text: i == 0 ? g.names[i].$1 : ' و${g.names[i].$1}',
+                      style: label.copyWith(
+                        color: g.names[i].$2,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  TextSpan(text: ': ', style: label),
+                  if (g.text.isNotEmpty || g.description.isEmpty)
+                    TextSpan(
+                      text: g.text.isEmpty ? '(بحذفها)' : g.text,
+                      style: TextStyle(
+                        fontFamily: g.font,
+                        fontSize: quran,
+                        color: g.names.length == 1
+                            ? g.names.single.$2
+                            : MushafColors.multi,
+                      ),
+                    ),
+                  if (g.description.isNotEmpty)
+                    TextSpan(
+                      text: ' ${g.description}',
+                      style: label.copyWith(color: MushafColors.frame),
                     ),
                 ],
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _entry(HameshEntry e, TextStyle label, double quran) {
-    return InkWell(
-      onTap: () => widget.onTap(e.ayah, e.word),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              e.hafs,
-              style: TextStyle(
-                fontFamily: 'Hafs',
-                fontSize: quran,
-                color: e.color,
-                backgroundColor: e.color.withAlpha(28),
-              ),
-            ),
-            for (final g in _readings(e.readings))
-              Padding(
-                padding: const EdgeInsetsDirectional.only(start: 4),
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      for (var i = 0; i < g.names.length; i++)
-                        TextSpan(
-                          text: i == 0 ? g.names[i].$1 : ' و${g.names[i].$1}',
-                          style: label.copyWith(
-                            color: g.names[i].$2,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      TextSpan(text: ': ', style: label),
-                      if (g.text.isNotEmpty || g.description.isEmpty)
-                        TextSpan(
-                          text: g.text.isEmpty ? '(بحذفها)' : g.text,
-                          style: TextStyle(
-                            fontFamily: g.font,
-                            fontSize: quran,
-                            color: g.names.length == 1
-                                ? g.names.single.$2
-                                : MushafColors.multi,
-                          ),
-                        ),
-                      if (g.description.isNotEmpty)
-                        TextSpan(
-                          text: '  ${g.description}',
-                          style: label.copyWith(color: MushafColors.frame),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }

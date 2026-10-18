@@ -108,6 +108,16 @@ class QiraatSheet extends StatelessWidget {
                   'خط منقط تحت الكلمات المتكررة في آيات متشابهة، اضغط عليها للتنقل بين مواضعها'),
               onChanged: (v) => settings.showMutashabihat = v,
             ),
+            SwitchListTile(
+              value: settings.blinkToOpen,
+              secondary: const Icon(Icons.visibility_outlined),
+              title: const Text('فتح المتشابهات بالرمش مرتين'),
+              subtitle: const Text(
+                  'تستخدم الكاميرا الأمامية لاكتشاف الرمش فقط، وتتم المعالجة على الجهاز '
+                  'دون تسجيل أو إرسال أي صورة. اضغط على متشابه لتحديده، ثم ارمش '
+                  'مرتين لفتح مواضعه، ومرتين أخريين للانتقال إلى الموضع التالي.'),
+              onChanged: (v) => settings.blinkToOpen = v,
+            ),
             const Divider(height: 32),
             _section(context, 'المظهر'),
             Padding(

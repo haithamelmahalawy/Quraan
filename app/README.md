@@ -18,9 +18,22 @@ Differences are split into three layers that can be switched on and off:
 letters & vowels (farsh), hamza (ibdal / tasheel / naql), and madd, imala,
 silah & idgham marks.
 
+Layout: the page fills the screen like a printed mushaf: a header line
+(surah, juz) above the frame, the 15 lines spread over the height, and a
+narrow hamesh whose notes sit level with their lines; notes that do not fit
+continue below, and the page then leaves a little room for them. Tap the
+page number to go to any page.
+
+Double blink (optional, off by default): with the front camera, ML Kit face
+detection reads the eye-open probabilities on the device (nothing is
+recorded or sent). Tap a mutashabih to choose it, blink twice to open its
+places, and twice again to move to the next place. A phone camera cannot
+tell which word the eyes are on, so the target is the tapped mutashabih (or
+the first one on the page). Requires the camera permission; iOS 15.5+.
+
 Reading: pages turn like a printed mushaf (drag to lift the sheet; it turns
-on its spine with shadows), pinch to zoom a page (one finger pans while
-zoomed, "حجم الصفحة" resets), full-screen reading without the hamesh, and a
+on its spine with shadows), pinch to zoom the whole page image with its frame (one finger pans
+while zoomed, "حجم الصفحة" resets), full-screen reading without the hamesh, and a
 dark (default), light or system appearance. Replace mode keeps the Madinah
 pages and lines: every riwaya is shown with the same page and line breaks as
 Hafs, the ayahs keeping the Hafs (Kufi) numbering.

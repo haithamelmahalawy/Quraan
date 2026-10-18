@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 
 import '../data/mutashabihat_repository.dart';
@@ -6,6 +8,7 @@ import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
+import '../services/blink_detector.dart';
 import '../state/reader_settings.dart';
 import 'book_pager.dart';
 import 'mushaf_page.dart';
@@ -33,7 +36,8 @@ class ReaderScreen extends StatefulWidget {
   State<ReaderScreen> createState() => _ReaderScreenState();
 }
 
-class _ReaderScreenState extends State<ReaderScreen> {
+class _ReaderScreenState extends State<ReaderScreen>
+    with WidgetsBindingObserver {
   final _pager = GlobalKey<BookPagerState>();
   late int _page = widget.settings.page;
   bool _loading = false;
@@ -44,22 +48,91 @@ class _ReaderScreenState extends State<ReaderScreen> {
   /// While a page is zoomed in, drags pan it instead of turning pages.
   bool _zoomed = false;
 
+  /// Double blink: opens the mutashabihat of the focused word (or the first
+  /// on the page); while they are open, moves to the next place.
+  final _blink = BlinkDetector();
+  StreamSubscription<void>? _blinks;
+  final _advance = ValueNotifier(0);
+  bool _sheetOpen = false;
+  bool _blinkFlash = false;
+  bool _resumed = true;
+  (Ayah, int)? _focus;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.settings.addListener(_onSettings);
+    _blinks = _blink.doubleBlinks.listen((_) => _onDoubleBlink());
     _onSettings();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.settings.removeListener(_onSettings);
+    _blinks?.cancel();
+    _blink.dispose();
+    _advance.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _resumed = state == AppLifecycleState.resumed;
+    _syncCamera();
+  }
+
+  /// The camera runs only while blinking is enabled and the app is in front.
+  Future<void> _syncCamera() async {
+    if (widget.settings.blinkToOpen && _resumed) {
+      if (_blink.isRunning) return;
+      try {
+        await _blink.start();
+        if (mounted) setState(() {});
+      } catch (_) {
+        if (!mounted) return;
+        widget.settings.blinkToOpen = false;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('تعذر تشغيل الكاميرا الأمامية. تحقق من إذن الكاميرا.'),
+        ));
+      }
+    } else {
+      await _blink.stop();
+    }
+  }
+
+  void _onDoubleBlink() {
+    HapticFeedback.mediumImpact();
+    setState(() => _blinkFlash = true);
+    Future.delayed(const Duration(milliseconds: 450), () {
+      if (mounted) setState(() => _blinkFlash = false);
+    });
+    if (_sheetOpen) {
+      _advance.value++;
+      return;
+    }
+    final target = _focus ?? _firstMutashabih();
+    if (target == null) return;
+    final (ayah, word) = target;
+    final places =
+        widget.mutashabihat.placesFor(ayah.surah, ayah.number, word);
+    if (places.length > 1) _openMutashabihat(places);
+  }
+
+  (Ayah, int)? _firstMutashabih() {
+    for (final a in widget.quran.page(_page)) {
+      for (var w = 0; w < a.words.length; w++) {
+        if (widget.mutashabihat.isShared(a.surah, a.number, w)) return (a, w);
+      }
+    }
+    return null;
+  }
+
   /// Loads newly selected riwayat before the pages are redrawn with them.
   Future<void> _onSettings() async {
+    _syncCamera();
     final missing = widget.settings.selected
         .where((id) => !widget.variants.isLoaded(id))
         .toList();
@@ -103,6 +176,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
     final places = widget.settings.showMutashabihat
         ? widget.mutashabihat.placesFor(ayah.surah, ayah.number, word)
         : const <MutashabihPlace>[];
+    // A tapped mutashabih becomes the target of the double blink.
+    if (places.length > 1) setState(() => _focus = (ayah, word));
     final hasReadings = widget.variants
         .at(widget.settings.selected, ayah.surah, ayah.number, word)
         .isNotEmpty;
@@ -128,13 +203,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
     );
   }
 
-  void _openMutashabihat(List<MutashabihPlace> places) =>
-      MutashabihatSheet.show(
-        context,
-        places: places,
-        quran: widget.quran,
-        onGo: _goToPage,
-      );
+  Future<void> _openMutashabihat(List<MutashabihPlace> places) async {
+    _sheetOpen = true;
+    await MutashabihatSheet.show(
+      context,
+      places: places,
+      quran: widget.quran,
+      onGo: _goToPage,
+      advance: _advance,
+    );
+    _sheetOpen = false;
+  }
 
   void _goToPage(int page) => _pager.currentState?.jumpTo(page - 1);
 
@@ -146,7 +225,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final first = widget.quran.page(_page).first;
     final selected = [
       for (final q in qiraat)
         for (final r in q.riwayat)
@@ -161,6 +239,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
         setState(() {
           _page = i + 1;
           _zoomed = false;
+          _focus = null;
         });
         widget.settings.page = i + 1;
         _fetchOnline(i + 1);
@@ -177,6 +256,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
           onWordTap: _openWord,
           showHamesh: !_fullScreen,
           onZoomChanged: (z) => setState(() => _zoomed = z),
+          onPageNumberTap: _pickPage,
+          focus: _focus == null
+              ? null
+              : VariantRepository.key(
+                  _focus!.$1.surah, _focus!.$1.number, _focus!.$2),
         ),
       ),
     );
@@ -206,202 +290,140 @@ class _ReaderScreenState extends State<ReaderScreen> {
       );
     }
 
+    // The page takes the whole screen; a slim row of small controls stays
+    // above it.
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
+      body: SafeArea(
+        child: Column(
           children: [
-            Text(
-              'سورة ${widget.quran.surah(first.surah).nameAr}',
-              style: TextStyle(
-                fontFamily: 'Hafs',
-                fontSize: 24,
-                color: MushafColors.green,
+            SizedBox(
+              height: 40,
+              child: Row(
+                children: [
+                  _BarButton(
+                    tooltip: 'القراءات',
+                    icon: Badge(
+                      isLabelVisible: selected.isNotEmpty,
+                      label: Text('${selected.length}'),
+                      child: const Icon(Icons.layers_outlined, size: 22),
+                    ),
+                    onPressed: () => QiraatSheet.show(
+                        context, widget.settings, widget.variants),
+                  ),
+                  _BarButton(
+                    tooltip: 'فهرس السور',
+                    icon: const Icon(Icons.list, size: 22),
+                    onPressed: () async {
+                      final page = await Navigator.of(context).push<int>(
+                        MaterialPageRoute(
+                          builder: (_) => SurahIndex(quran: widget.quran),
+                        ),
+                      );
+                      if (page != null) _goToPage(page);
+                    },
+                  ),
+                  _BarButton(
+                    tooltip: 'ملء الشاشة',
+                    icon: const Icon(Icons.fullscreen, size: 24),
+                    onPressed: () => _setFullScreen(true),
+                  ),
+                  if (widget.settings.blinkToOpen && _blink.isRunning)
+                    Tooltip(
+                      message: 'الرمش مرتين يفتح المتشابهات',
+                      child: AnimatedScale(
+                        scale: _blinkFlash ? 1.5 : 1,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          _blinkFlash
+                              ? Icons.visibility
+                              : Icons.visibility_outlined,
+                          size: 20,
+                          color: MushafColors.green,
+                        ),
+                      ),
+                    ),
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: SizedBox.square(
+                        dimension: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: _pickPage,
+                    child: Text(
+                      'صفحة $_page',
+                      style: TextStyle(color: MushafColors.green),
+                    ),
+                  ),
+                ],
               ),
             ),
-            Text(
-              'الجزء ${first.juz} • صفحة $_page',
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
-          ],
-        ),
-        leading: IconButton(
-          tooltip: 'ملء الشاشة',
-          icon: const Icon(Icons.fullscreen),
-          onPressed: () => _setFullScreen(true),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'فهرس السور',
-            icon: const Icon(Icons.list),
-            onPressed: () async {
-              final page = await Navigator.of(context).push<int>(
-                MaterialPageRoute(
-                  builder: (_) => SurahIndex(quran: widget.quran),
-                ),
-              );
-              if (page != null) _goToPage(page);
-            },
-          ),
-          IconButton(
-            tooltip: 'القراءات',
-            icon: Badge(
-              isLabelVisible: selected.isNotEmpty,
-              label: Text('${selected.length}'),
-              child: const Icon(Icons.layers_outlined),
-            ),
-            onPressed: () => QiraatSheet.show(
-                context, widget.settings, widget.variants),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(44),
-          child: _SelectionStrip(
-            selected: selected,
-            loading: _loading,
-            onTap: () => QiraatSheet.show(
-                context, widget.settings, widget.variants),
-          ),
-        ),
-      ),
-      body: pages,
-      bottomNavigationBar: _PageBar(
-        page: _page,
-        surahName: widget.quran.surah(first.surah).nameAr,
-        onChanged: _goToPage,
-      ),
-    );
-  }
-}
-
-class _SelectionStrip extends StatelessWidget {
-  const _SelectionStrip({
-    required this.selected,
-    required this.loading,
-    required this.onTap,
-  });
-
-  final List<Riwaya> selected;
-  final bool loading;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        children: [
-          if (selected.isEmpty)
-            ActionChip(
-              avatar: const Icon(Icons.add, size: 18),
-              label: const Text('رواية حفص - اختر قراءات للمقارنة'),
-              onPressed: onTap,
-            ),
-          for (final r in selected)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: 6),
-              child: ActionChip(
-                avatar: CircleAvatar(backgroundColor: qiraaOf(r.id).color),
-                label: Text(r.nameAr),
-                onPressed: onTap,
-              ),
-            ),
-          if (loading)
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: SizedBox.square(
-                dimension: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Bottom bar: the current surah and page, and a slider to any page.
-class _PageBar extends StatefulWidget {
-  const _PageBar({
-    required this.page,
-    required this.surahName,
-    required this.onChanged,
-  });
-
-  final int page;
-  final String surahName;
-  final ValueChanged<int> onChanged;
-
-  @override
-  State<_PageBar> createState() => _PageBarState();
-}
-
-class _PageBarState extends State<_PageBar> {
-  double? _dragging;
-
-  @override
-  Widget build(BuildContext context) {
-    final value = _dragging ?? widget.page.toDouble();
-    return SafeArea(
-      top: false,
-      child: Container(
-        height: 52,
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-        decoration: BoxDecoration(
-          color: MushafColors.paper,
-          border: Border(
-            top: BorderSide(color: MushafColors.gold.withAlpha(160)),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: MushafColors.green,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text(
-                '${value.round()}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            Expanded(
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: MushafColors.green,
-                  inactiveTrackColor: MushafColors.gold.withAlpha(90),
-                  thumbColor: MushafColors.green,
-                  trackHeight: 3,
-                ),
-                child: Slider(
-                  min: 1,
-                  max: QuranRepository.pageCount.toDouble(),
-                  value: value,
-                  label: '${value.round()}',
-                  onChanged: (v) => setState(() => _dragging = v),
-                  onChangeEnd: (v) {
-                    setState(() => _dragging = null);
-                    widget.onChanged(v.round());
-                  },
-                ),
-              ),
-            ),
-            Text(
-              widget.surahName,
-              style: TextStyle(
-                fontFamily: 'Hafs',
-                fontSize: 18,
-                color: MushafColors.green,
-              ),
-            ),
+            Expanded(child: pages),
           ],
         ),
       ),
     );
   }
+
+  /// Small dialog to go to any page.
+  Future<void> _pickPage() async {
+    var value = _page.toDouble();
+    final page = await showDialog<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialog) {
+          final first = widget.quran.page(value.round()).first;
+          return AlertDialog(
+            title: Text(
+              'صفحة ${value.round()} • سورة ${widget.quran.surah(first.surah).nameAr}',
+              style: TextStyle(color: MushafColors.green, fontSize: 18),
+            ),
+            content: Slider(
+              min: 1,
+              max: QuranRepository.pageCount.toDouble(),
+              divisions: QuranRepository.pageCount - 1,
+              value: value,
+              label: '${value.round()}',
+              onChanged: (v) => setDialog(() => value = v),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(value.round()),
+                child: const Text('اذهب'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (page != null) _goToPage(page);
+  }
+}
+
+class _BarButton extends StatelessWidget {
+  const _BarButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final Widget icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        tooltip: tooltip,
+        visualDensity: VisualDensity.compact,
+        color: MushafColors.green,
+        icon: icon,
+        onPressed: onPressed,
+      );
 }

@@ -25,6 +25,7 @@ class MushafLines extends StatelessWidget {
     required this.quran,
     required this.wordBuilder,
     this.display,
+    this.height,
   });
 
   final List<MushafLine> lines;
@@ -35,6 +36,21 @@ class MushafLines extends StatelessWidget {
   /// Defaults to the Hafs word in the Hafs font.
   final WordDisplay? display;
 
+  /// When given, the lines are spread evenly over this height (the page
+  /// fills the screen, like a printed mushaf); otherwise each line is as
+  /// tall as its text needs.
+  final double? height;
+
+  /// Font size and line height for [width] (and [height] when given).
+  ({double fontSize, double lineHeight}) metrics(double width) {
+    final fit = _fitFontSize(width);
+    if (height == null || lines.isEmpty) {
+      return (fontSize: fit, lineHeight: fit * 2.05);
+    }
+    final lineHeight = height! / lines.length;
+    return (fontSize: math.min(fit, lineHeight / 1.75), lineHeight: lineHeight);
+  }
+
   static const _probe = 20.0;
 
   ({String text, String font})? _show(Ayah ayah, int w) =>
@@ -43,9 +59,7 @@ class MushafLines extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
-      final width = constraints.maxWidth;
-      final fontSize = _fitFontSize(width);
-      final lineHeight = fontSize * 2.05;
+      final (:fontSize, :lineHeight) = metrics(constraints.maxWidth);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

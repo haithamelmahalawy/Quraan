@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Riwayat without offline text are read from quranpedia.net. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Optional: double blink opens the mutashabihat (front camera, on device). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <application
         android:label="مصحف القراءات"
         android:name="${applicationName}"

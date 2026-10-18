@@ -6,6 +6,8 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>تُستخدم الكاميرا الأمامية لاكتشاف الرمش مرتين لفتح المتشابهات، وتتم المعالجة على الجهاز دون تسجيل أو إرسال أي صورة.</string>
 	<key>CFBundleDisplayName</key>
 	<string>مصحف القراءات</string>
 	<key>CFBundleExecutable</key>
