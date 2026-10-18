@@ -91,6 +91,17 @@ abstract final class MushafColors {
       isDark ? Color.lerp(c, const Color(0xFFFFFFFF), 0.38)! : c;
 }
 
+/// A hair of ink around the strokes, so the text reads as firmly as the
+/// printed page (the ink of the print spreads slightly).
+List<Shadow> inkSpread(Color color, double fontSize) {
+  final d = fontSize * 0.015;
+  return [
+    Shadow(color: color, offset: Offset(d, 0)),
+    Shadow(color: color, offset: Offset(-d, 0)),
+    Shadow(color: color, offset: Offset(0, d)),
+  ];
+}
+
 ThemeData buildTheme(MushafPalette p) {
   final scheme = ColorScheme.fromSeed(
     seedColor: p.green,

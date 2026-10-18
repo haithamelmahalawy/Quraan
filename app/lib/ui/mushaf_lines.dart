@@ -131,18 +131,22 @@ class MushafLines extends StatelessWidget {
     );
   }
 
-  /// Largest font size at which every text line fits in [width] with at
-  /// least a small gap between words.
+  /// Largest font size at which every text line fits in [width] with the
+  /// font's own word spacing. The printed-mushaf fonts are made so that
+  /// every full line then fills the width, as in the print: the words keep
+  /// their natural spacing instead of being spread apart.
   double _fitFontSize(double width) {
     var widest = 0.0;
     for (final line in lines) {
       if (line is! TextLine) continue;
       var w = 0.0;
       var items = 0;
+      String? font;
       for (final (ayah, i) in line.words) {
         final shown = _show(ayah, i);
         if (shown != null) {
           w += _measure(shown.text, shown.font);
+          font ??= shown.font;
           items++;
         }
         if (i == ayah.words.length - 1) {
@@ -150,14 +154,17 @@ class MushafLines extends StatelessWidget {
           w += _measure(end.text, end.font);
         }
       }
-      // Minimum word gap (and the padding of centred lines).
-      w += items * _probe * 0.25;
+      // Word spacing: the font's space; centred lines pad every word.
+      w += centered
+          ? items * _probe * 0.25
+          : math.max(0, items - 1) *
+              math.max(_measure(' ', font ?? 'Hafs'), _probe * 0.08);
       widest = math.max(widest, w);
     }
     if (widest == 0) return width / 16;
-    // 2% margin for rounding between measured and laid-out glyphs; Al-Fatiha
-    // and the start of Al-Baqarah have short, centred lines.
-    return math.min(_probe * width * 0.98 / widest, width / 13);
+    // A small margin for rounding between measured and laid-out glyphs;
+    // Al-Fatiha and the start of Al-Baqarah have short, centred lines.
+    return math.min(_probe * width * 0.995 / widest, width / 13);
   }
 
   static final _cache = <String, double>{};
@@ -178,6 +185,7 @@ class MushafLines extends StatelessWidget {
         fontSize: size,
         height: 1.0,
         color: MushafColors.ink,
+        shadows: inkSpread(MushafColors.ink, size),
       );
 }
 

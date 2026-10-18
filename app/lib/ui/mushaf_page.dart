@@ -516,6 +516,7 @@ class _MushafPageState extends State<MushafPage> {
         height: 1.0,
         color: m.color ?? MushafColors.ink,
         backgroundColor: m.color?.withAlpha(28),
+        shadows: inkSpread(m.color ?? MushafColors.ink, fontSize),
       ),
     );
     if (m.colors.length > 1 && widget.settings.mode == DisplayMode.highlight) {
