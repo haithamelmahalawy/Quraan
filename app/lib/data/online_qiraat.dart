@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/quran.dart';
+import 'arabic.dart' as arabic;
 
 /// Qiraat of the twenty riwayat from Quranpedia (الموسوعة القرآنية),
 /// fetched per ayah while reading and cached on the device.
@@ -135,27 +136,8 @@ class OnlineQiraat {
     return VariantKind.farsh;
   }
 
-  /// Letters only, with alef / hamza seats / ya forms unified, to match a
-  /// Quranpedia word against the KFGQPC Hafs word.
-  static String skeleton(String word) {
-    final b = StringBuffer();
-    for (final c in word.runes) {
-      final ch = String.fromCharCode(c);
-      if (ch == 'ى' || c == 0x06E6) {
-        b.write('ي');
-      } else if (ch == 'ؤ' || c == 0x06E5) {
-        b.write('و');
-      } else if (ch == 'ة') {
-        b.write('ه');
-      } else if (c >= 0x0621 && c <= 0x064A &&
-          !'ءئأإآا'.contains(ch)) {
-        // Alef (full or dagger) and hamza seats are spelled differently in
-        // the two texts, so they are left out of the comparison.
-        b.write(ch);
-      }
-    }
-    return b.toString();
-  }
+  /// Bare letters, to match a Quranpedia word against the KFGQPC Hafs word.
+  static String skeleton(String word) => arabic.skeleton(word);
 
   static String encodeCache(List<Variant> vs) => jsonEncode([
         for (final v in vs)

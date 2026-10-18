@@ -1,4 +1,4 @@
-name: qiraat_mushaf
+﻿name: qiraat_mushaf
 description: "Mushaf (Hafs base) that overlays the differences of the ten qiraat."
 publish_to: 'none'
 version: 1.0.0+1
@@ -16,6 +16,9 @@ dependencies:
   http: ^1.6.0
   camera: ^0.12.1
   google_mlkit_face_detection: ^0.15.1
+  # Local copy with an Android build script for current tooling (see its build.gradle.kts).
+  flutter_tesseract_ocr:
+    path: third_party/flutter_tesseract_ocr
 
 dev_dependencies:
   flutter_test:
@@ -29,6 +32,9 @@ flutter:
     - assets/data/
     # One file per riwaya; dropping a new <riwaya-id>.json here enables it.
     - assets/data/qiraat/
+    # Tesseract Arabic model (tessdata_fast), to recognise a printed page.
+    - assets/tessdata/
+    - assets/tessdata_config.json
 
   fonts:
     # KFGQPC Uthmanic fonts, one per riwaya (each text uses its own glyphs).

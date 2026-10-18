@@ -12,6 +12,7 @@ import '../services/blink_detector.dart';
 import '../state/reader_settings.dart';
 import 'book_pager.dart';
 import 'mushaf_page.dart';
+import 'page_side_hint.dart';
 import 'mutashabihat_sheet.dart';
 import 'qiraat_sheet.dart';
 import 'surah_index.dart';
@@ -37,8 +38,10 @@ class ReaderScreen extends StatefulWidget {
 }
 
 class _ReaderScreenState extends State<ReaderScreen>
-    with WidgetsBindingObserver {
-  final _pager = GlobalKey<BookPagerState>();
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  /// Replaced when switching one / two pages: the pager counts pages or
+  /// spreads, so its position must not carry over.
+  var _pager = GlobalKey<BookPagerState>();
   late int _page = widget.settings.page;
   bool _loading = false;
 
@@ -58,6 +61,18 @@ class _ReaderScreenState extends State<ReaderScreen>
   bool _resumed = true;
   (Ayah, int)? _focus;
 
+  /// Right / left of the open mushaf, shown briefly when a page opens.
+  late final _hint = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  )..addListener(() => setState(() {}));
+
+  bool get _twoPages => widget.settings.twoPages;
+
+  void _showSide() {
+    if (!_twoPages) _hint.forward(from: 0);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +80,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     widget.settings.addListener(_onSettings);
     _blinks = _blink.doubleBlinks.listen((_) => _onDoubleBlink());
     _onSettings();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showSide());
   }
 
   @override
@@ -74,6 +90,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _blinks?.cancel();
     _blink.dispose();
     _advance.dispose();
+    _hint.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
@@ -215,7 +232,8 @@ class _ReaderScreenState extends State<ReaderScreen>
     _sheetOpen = false;
   }
 
-  void _goToPage(int page) => _pager.currentState?.jumpTo(page - 1);
+  void _goToPage(int page) =>
+      _pager.currentState?.jumpTo(_twoPages ? (page - 1) ~/ 2 : page - 1);
 
   void _setFullScreen(bool on) {
     SystemChrome.setEnabledSystemUIMode(
@@ -230,40 +248,64 @@ class _ReaderScreenState extends State<ReaderScreen>
         for (final r in q.riwayat)
           if (widget.settings.selected.contains(r.id)) r,
     ];
-    final pages = BookPager(
-      key: _pager,
-      itemCount: QuranRepository.pageCount,
-      initialIndex: _page - 1,
-      enabled: !_zoomed,
-      onPageChanged: (i) {
-        setState(() {
-          _page = i + 1;
-          _zoomed = false;
-          _focus = null;
-        });
-        widget.settings.page = i + 1;
-        _fetchOnline(i + 1);
-      },
-      // An opaque sheet, so a turning page never shows the one beneath.
-      itemBuilder: (context, i) => ColoredBox(
-        color: MushafColors.paper,
-        child: MushafPage(
-          page: i + 1,
+    Widget page(int number, {required bool hamesh}) => MushafPage(
+          page: number,
           quran: widget.quran,
           variants: widget.variants,
           mutashabihat: widget.mutashabihat,
           settings: widget.settings,
           onWordTap: _openWord,
-          showHamesh: !_fullScreen,
+          showHamesh: hamesh,
           onZoomChanged: (z) => setState(() => _zoomed = z),
           onPageNumberTap: _pickPage,
           focus: _focus == null
               ? null
               : VariantRepository.key(
                   _focus!.$1.surah, _focus!.$1.number, _focus!.$2),
-        ),
+        );
+
+    final two = _twoPages;
+    final book = BookPager(
+      key: _pager,
+      // Two-page view turns a spread at a time: pages (1, 2), (3, 4), ...
+      itemCount: two
+          ? (QuranRepository.pageCount + 1) ~/ 2
+          : QuranRepository.pageCount,
+      initialIndex: two ? (_page - 1) ~/ 2 : _page - 1,
+      enabled: !_zoomed,
+      onPageChanged: (i) {
+        final number = two ? 2 * i + 1 : i + 1;
+        setState(() {
+          _page = number;
+          _zoomed = false;
+          _focus = null;
+        });
+        widget.settings.page = number;
+        _fetchOnline(number);
+        if (two && number < QuranRepository.pageCount) _fetchOnline(number + 1);
+        _showSide();
+      },
+      // An opaque sheet, so a turning page never shows the one beneath.
+      itemBuilder: (context, i) => ColoredBox(
+        color: MushafColors.paper,
+        child: two
+            ? Row(
+                // The right page (odd) first, as the mushaf lies open.
+                textDirection: TextDirection.rtl,
+                children: [
+                  Expanded(child: page(2 * i + 1, hamesh: false)),
+                  const _Spine(),
+                  Expanded(
+                    child: 2 * i + 2 <= QuranRepository.pageCount
+                        ? page(2 * i + 2, hamesh: false)
+                        : const SizedBox(),
+                  ),
+                ],
+              )
+            : page(i + 1, hamesh: !_fullScreen),
       ),
     );
+    final pages = _withHint(book);
 
     if (_fullScreen) {
       return Scaffold(
@@ -323,6 +365,20 @@ class _ReaderScreenState extends State<ReaderScreen>
                     },
                   ),
                   _BarButton(
+                    tooltip: two ? 'صفحة واحدة' : 'صفحتان متقابلتان',
+                    icon: Icon(
+                      two ? Icons.crop_portrait : Icons.auto_stories_outlined,
+                      size: 22,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _pager = GlobalKey<BookPagerState>();
+                        _zoomed = false;
+                      });
+                      widget.settings.twoPages = !two;
+                    },
+                  ),
+                  _BarButton(
                     tooltip: 'ملء الشاشة',
                     icon: const Icon(Icons.fullscreen, size: 24),
                     onPressed: () => _setFullScreen(true),
@@ -351,6 +407,16 @@ class _ReaderScreenState extends State<ReaderScreen>
                       ),
                     ),
                   const Spacer(),
+                  if (!two)
+                    Tooltip(
+                      message: isRightPage(_page)
+                          ? 'الصفحة في يمين المصحف'
+                          : 'الصفحة في يسار المصحف',
+                      child: GestureDetector(
+                        onTap: _showSide,
+                        child: PageSideIcon(right: isRightPage(_page), width: 30),
+                      ),
+                    ),
                   TextButton(
                     onPressed: _pickPage,
                     child: Text(
@@ -367,6 +433,22 @@ class _ReaderScreenState extends State<ReaderScreen>
       ),
     );
   }
+
+  /// The page area with the right / left hint flying to the top bar.
+  Widget _withHint(Widget pages) => Stack(
+        children: [
+          Positioned.fill(child: pages),
+          if (_hint.isAnimating)
+            Positioned.fill(
+              child: PageSideHint(
+                page: _page,
+                progress: _hint.value,
+                // Just under the small icon by the page number.
+                target: const Alignment(-0.78, -1.04),
+              ),
+            ),
+        ],
+      );
 
   /// Small dialog to go to any page.
   Future<void> _pickPage() async {
@@ -425,5 +507,24 @@ class _BarButton extends StatelessWidget {
         color: MushafColors.green,
         icon: icon,
         onPressed: onPressed,
+      );
+}
+
+/// The fold between two facing pages.
+class _Spine extends StatelessWidget {
+  const _Spine();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 6,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.black.withAlpha(10),
+              Colors.black.withAlpha(90),
+              Colors.black.withAlpha(10),
+            ],
+          ),
+        ),
       );
 }

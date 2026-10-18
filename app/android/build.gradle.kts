@@ -2,6 +2,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // Tesseract4Android (OCR engine of flutter_tesseract_ocr).
+        maven("https://jitpack.io")
     }
 }
 

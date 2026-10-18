@@ -18,6 +18,21 @@ Differences are split into three layers that can be switched on and off:
 letters & vowels (farsh), hamza (ibdal / tasheel / naql), and madd, imala,
 silah & idgham marks.
 
+Home screen: open the mushaf, or "قراءة الروايات من المصحف": point the
+camera at a page of a printed Madinah mushaf, choose the riwayat, and the page
+is recognised and opened with them. Recognition runs on the device: Tesseract
+(Arabic, tessdata_fast; a local copy of flutter_tesseract_ocr in
+third_party/ with a build script for current Android tooling) reads the text,
+and lib/data/page_matcher.dart finds the page from the words it reads (bare
+letters, rare words and adjacent word pairs weighing more, plus the page
+number). Tested: noisy simulated OCR of 80 random pages, and rendered pages
+269 and 601 through the full OCR pipeline on Android.
+
+Right or left: when a page opens, an open mushaf briefly shows whether it is
+the right (odd) or left (even) page, then shrinks into the small icon by the
+page number. Two-page view shows facing pages (odd on the right) and turns a
+spread at a time; the hamesh is hidden there.
+
 Layout: the page fills the screen like a printed mushaf: a header line
 (surah, juz) above the frame, the 15 lines spread over the height, and a
 narrow hamesh whose notes sit level with their lines; notes that do not fit

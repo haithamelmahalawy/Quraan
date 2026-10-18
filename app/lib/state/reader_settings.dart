@@ -35,6 +35,7 @@ class ReaderSettings extends ChangeNotifier {
   bool _showMutashabihat = true;
   ThemeMode _themeMode = ThemeMode.dark;
   bool _blinkToOpen = false;
+  bool _twoPages = false;
 
   /// Selected riwayat (Hafs is always the base text and never listed here).
   Set<String> get selected => _selected;
@@ -50,6 +51,9 @@ class ReaderSettings extends ChangeNotifier {
 
   /// Open the mutashabihat with a double blink (front camera, on device).
   bool get blinkToOpen => _blinkToOpen;
+
+  /// Two facing pages at once, as the mushaf lies open (right page odd).
+  bool get twoPages => _twoPages;
 
   /// The replace mode only makes sense for a single riwaya.
   DisplayMode get mode =>
@@ -71,6 +75,7 @@ class ReaderSettings extends ChangeNotifier {
     s._page = prefs.getInt('page') ?? 1;
     s._showMutashabihat = prefs.getBool('mutashabihat') ?? true;
     s._blinkToOpen = prefs.getBool('blink') ?? false;
+    s._twoPages = prefs.getBool('twoPages') ?? false;
     s._themeMode = ThemeMode.values.asNameMap()[prefs.getString('theme')] ??
         ThemeMode.dark;
     return s;
@@ -114,6 +119,12 @@ class ReaderSettings extends ChangeNotifier {
   set showMutashabihat(bool value) {
     _showMutashabihat = value;
     _prefs?.setBool('mutashabihat', value);
+    notifyListeners();
+  }
+
+  set twoPages(bool value) {
+    _twoPages = value;
+    _prefs?.setBool('twoPages', value);
     notifyListeners();
   }
 

@@ -7,7 +7,7 @@ import 'data/online_qiraat.dart';
 import 'data/quran_repository.dart';
 import 'data/variant_repository.dart';
 import 'state/reader_settings.dart';
-import 'ui/reader_screen.dart';
+import 'ui/home_screen.dart';
 import 'ui/theme.dart';
 
 Future<void> main() async {
@@ -63,7 +63,7 @@ class QiraatApp extends StatelessWidget {
         locale: const Locale('ar'),
         supportedLocales: const [Locale('ar'), Locale('en')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: ReaderScreen(
+        home: HomeScreen(
           quran: quran,
           variants: variants,
           mutashabihat: mutashabihat,
