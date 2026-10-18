@@ -35,10 +35,8 @@ class ReaderSettings extends ChangeNotifier {
   bool _showMutashabihat = true;
   ThemeMode _themeMode = ThemeMode.dark;
   bool _blinkToOpen = false;
-  bool _swapEyes = false;
   bool _twoPages = false;
   bool _qcfFont = true;
-  double? _gazeTop, _gazeBottom;
 
   /// Selected riwayat (Hafs is always the base text and never listed here).
   Set<String> get selected => _selected;
@@ -52,17 +50,8 @@ class ReaderSettings extends ChangeNotifier {
   /// Dark by default; light or following the system on request.
   ThemeMode get themeMode => _themeMode;
 
-  /// Open the mutashabihat with a double blink (front camera, on device).
+  /// Turn to the next page with a double blink (front camera, on device).
   bool get blinkToOpen => _blinkToOpen;
-
-  /// Swap the winks (some front cameras report the eyes mirrored).
-  bool get swapEyes => _swapEyes;
-
-  set swapEyes(bool value) {
-    _swapEyes = value;
-    _prefs?.setBool('swapEyes', value);
-    notifyListeners();
-  }
 
   /// Two facing pages at once, as the mushaf lies open (right page odd).
   bool get twoPages => _twoPages;
@@ -70,26 +59,6 @@ class ReaderSettings extends ChangeNotifier {
   /// Draw pages with the calligraphy of the printed Madinah mushaf (QCF V2
   /// page fonts, downloaded once per page).
   bool get qcfFont => _qcfFont;
-
-  /// Gaze values (see BlinkDetector.gaze) when looking at the first and the
-  /// last line of the page; null until calibrated.
-  double? get gazeTop => _gazeTop;
-  double? get gazeBottom => _gazeBottom;
-  bool get gazeCalibrated =>
-      _gazeTop != null && _gazeBottom != null && _gazeTop != _gazeBottom;
-
-  void setGaze(double? top, double? bottom) {
-    _gazeTop = top;
-    _gazeBottom = bottom;
-    if (top == null || bottom == null) {
-      _prefs?.remove('gazeTop');
-      _prefs?.remove('gazeBottom');
-    } else {
-      _prefs?.setDouble('gazeTop', top);
-      _prefs?.setDouble('gazeBottom', bottom);
-    }
-    notifyListeners();
-  }
 
   /// The replace mode only makes sense for a single riwaya.
   DisplayMode get mode =>
@@ -111,11 +80,8 @@ class ReaderSettings extends ChangeNotifier {
     s._page = prefs.getInt('page') ?? 1;
     s._showMutashabihat = prefs.getBool('mutashabihat') ?? true;
     s._blinkToOpen = prefs.getBool('blink') ?? false;
-    s._swapEyes = prefs.getBool('swapEyes') ?? false;
     s._twoPages = prefs.getBool('twoPages') ?? false;
     s._qcfFont = prefs.getBool('qcf') ?? true;
-    s._gazeTop = prefs.getDouble('gazeTop');
-    s._gazeBottom = prefs.getDouble('gazeBottom');
     s._themeMode = ThemeMode.values.asNameMap()[prefs.getString('theme')] ??
         ThemeMode.dark;
     return s;

@@ -113,28 +113,10 @@ class QiraatSheet extends StatelessWidget {
               secondary: const Icon(Icons.visibility_outlined),
               title: const Text('التحكم بالعينين'),
               subtitle: const Text(
-                  'غمزة العين اليسرى: الصفحة التالية، واليمنى: السابقة. '
-                  'ثلاث رمشات وأنت تنظر إلى سطر فيه متشابه: تفتح مواضعه، وثلاث '
-                  'رمشات أخرى تغلقها. رمشة واحدة متعمدة (أطول قليلًا من الرمشة '
-                  'العادية): الموضع التالي. تتم المعالجة على الجهاز دون تسجيل أو '
-                  'إرسال أي صورة.'),
+                  'رمشتان متتاليتان: الصفحة التالية. تتم المعالجة على الجهاز '
+                  'دون تسجيل أو إرسال أي صورة.'),
               onChanged: (v) => settings.blinkToOpen = v,
             ),
-            if (settings.blinkToOpen)
-              SwitchListTile(
-                value: settings.swapEyes,
-                secondary: const Icon(Icons.swap_horiz),
-                title: const Text('تبديل العينين'),
-                subtitle: const Text(
-                    'إن كانت غمزة اليسرى تعيدك إلى الصفحة السابقة على جهازك'),
-                onChanged: (v) => settings.swapEyes = v,
-              ),
-            if (settings.blinkToOpen && settings.gazeCalibrated)
-              ListTile(
-                leading: const Icon(Icons.center_focus_strong_outlined),
-                title: const Text('إعادة معايرة النظر'),
-                onTap: () => settings.setGaze(null, null),
-              ),
             const Divider(height: 32),
             SwitchListTile(
               value: settings.qcfFont,

@@ -54,21 +54,13 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// While a page is zoomed in, drags pan it instead of turning pages.
   bool _zoomed = false;
 
-  /// Double blink: opens the mutashabih on the line being looked at; while
-  /// the mutashabihat are open, moves to the next place.
+  /// Double blink: turns to the next page.
   final _blink = BlinkDetector();
   StreamSubscription<EyeGesture>? _blinks;
-
-  /// Calibration: 0 waits for a double blink on the first line, 1 on the
-  /// last line; -1 when calibrated (or blinking is off).
-  int _calibration = -1;
-  double? _calibrationTop;
-  final _steps = StreamController<int>.broadcast();
 
   /// The action just done by an eye gesture, shown briefly.
   String? _gestureLabel;
   Timer? _gestureLabelTimer;
-  bool _sheetOpen = false;
   bool _blinkFlash = false;
   bool _resumed = true;
 
@@ -121,7 +113,6 @@ class _ReaderScreenState extends State<ReaderScreen>
     QcfFonts.instance.removeListener(_onFonts);
     _blinks?.cancel();
     _blink.dispose();
-    _steps.close();
     _gestureLabelTimer?.cancel();
     _hint.dispose();
     _currentPicture?.dispose();
@@ -144,7 +135,6 @@ class _ReaderScreenState extends State<ReaderScreen>
         await _blink.start();
         if (mounted) setState(() {});
       } catch (_) {
-        _calibration = -1;
         if (!mounted) return;
         widget.settings.blinkToOpen = false;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -153,39 +143,17 @@ class _ReaderScreenState extends State<ReaderScreen>
       }
     } else {
       await _blink.stop();
-    }
-    final calibrate = widget.settings.blinkToOpen &&
-        !widget.settings.gazeCalibrated &&
-        _blink.isRunning;
-    if (calibrate && _calibration < 0) {
-      setState(() => _calibration = 0);
-    } else if (!calibrate && _calibration >= 0) {
-      setState(() => _calibration = -1);
+      if (mounted) setState(() {});
     }
   }
 
-  /// Eye gestures: winks turn pages (or move between mutashabihat places),
-  /// three blinks open / close the mutashabihat of the line looked at, one
-  /// deliberate blink moves to the next place.
+  /// Eye gestures: a double blink turns to the next page.
   void _onGesture(EyeGesture gesture) {
     switch (gesture) {
-      case Wink(:final left):
-        final next = left != widget.settings.swapEyes;
-        if (_calibration >= 0) return;
-        if (_sheetOpen) {
-          _steps.add(next ? 1 : -1);
-          _announce(next ? 'الموضع التالي' : 'الموضع السابق');
-        } else if (!_zoomed) {
-          _pager.currentState?.turn(next ? 1 : -1);
-          _announce(next ? 'الصفحة التالية' : 'الصفحة السابقة');
-        }
-      case DeliberateBlink():
-        if (_sheetOpen && _calibration < 0) {
-          _steps.add(1);
-          _announce('الموضع التالي');
-        }
-      case TripleBlink(:final gaze):
-        _onTripleBlink(gaze);
+      case DoubleBlink():
+        if (_zoomed) return;
+        _pager.currentState?.turn(1);
+        _announce('الصفحة التالية');
     }
   }
 
@@ -204,83 +172,6 @@ class _ReaderScreenState extends State<ReaderScreen>
         });
       }
     });
-  }
-
-  void _onTripleBlink(double? gaze) {
-    if (_calibration >= 0) {
-      _announce(_calibration == 0 ? 'السطر الأول ✓' : 'السطر الأخير ✓');
-      if (gaze == null) return;
-      if (_calibration == 0) {
-        setState(() {
-          _calibrationTop = gaze;
-          _calibration = 1;
-        });
-      } else {
-        widget.settings.setGaze(_calibrationTop, gaze);
-        setState(() => _calibration = -1);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('تمت المعايرة. انظر إلى سطر فيه متشابه وارمش ثلاث مرات.'),
-        ));
-      }
-      return;
-    }
-    if (_sheetOpen) {
-      Navigator.of(context).pop(); // the mutashabihat sheet
-      _announce('إغلاق المتشابهات');
-      return;
-    }
-    final target = _mutashabihAt(_gazeFraction(gaze));
-    if (target == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('لا توجد متشابهات في هذه الصفحة.'),
-      ));
-      return;
-    }
-    final (ayah, word) = target;
-    _announce('فتح المتشابهات');
-    _openMutashabihat(
-        widget.mutashabihat.placesFor(ayah.surah, ayah.number, word));
-  }
-
-  /// How far down the page the reader looks: 0 first line .. 1 last line.
-  double? _gazeFraction(double? gaze) {
-    final s = widget.settings;
-    if (gaze == null || !s.gazeCalibrated) return null;
-    return ((gaze - s.gazeTop!) / (s.gazeBottom! - s.gazeTop!)).clamp(0.0, 1.0);
-  }
-
-  /// The mutashabih on the page's line nearest to [fraction] of the page
-  /// (the first on the page without a gaze).
-  (Ayah, int)? _mutashabihAt(double? fraction) {
-    final lines = widget.quran.lines(_page);
-    (Ayah, int)? best;
-    var bestDistance = double.infinity;
-    void consider(Ayah a, int w, double position) {
-      if (!widget.mutashabihat.isShared(a.surah, a.number, w)) return;
-      if (widget.mutashabihat.placesFor(a.surah, a.number, w).length < 2) return;
-      final d = fraction == null ? position : (position - fraction).abs();
-      if (d < bestDistance) {
-        bestDistance = d;
-        best = (a, w);
-      }
-    }
-
-    if (lines == null) {
-      for (final a in widget.quran.page(_page)) {
-        for (var w = 0; w < a.words.length; w++) {
-          consider(a, w, 0);
-        }
-      }
-      return best;
-    }
-    for (final (i, line) in lines.indexed) {
-      if (line is! TextLine) continue;
-      final position = lines.length < 2 ? 0.0 : i / (lines.length - 1);
-      for (final (a, w) in line.words) {
-        consider(a, w, position);
-      }
-    }
-    return best;
   }
 
   void _onFonts() {
@@ -366,17 +257,13 @@ class _ReaderScreenState extends State<ReaderScreen>
     );
   }
 
-  Future<void> _openMutashabihat(List<MutashabihPlace> places) async {
-    _sheetOpen = true;
-    await MutashabihatSheet.show(
-      context,
-      places: places,
-      quran: widget.quran,
-      onGo: _goToPage,
-      steps: _steps.stream,
-    );
-    _sheetOpen = false;
-  }
+  Future<void> _openMutashabihat(List<MutashabihPlace> places) =>
+      MutashabihatSheet.show(
+        context,
+        places: places,
+        quran: widget.quran,
+        onGo: _goToPage,
+      );
 
   void _goToPage(int page) =>
       _pager.currentState?.jumpTo(_twoPages ? (page - 1) ~/ 2 : page - 1);
@@ -523,7 +410,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                   ),
                   if (widget.settings.blinkToOpen && _blink.isRunning)
                     Tooltip(
-                      message: 'الرمش مرتين يفتح المتشابهات',
+                      message: 'الرمش مرتين ينقلك إلى الصفحة التالية',
                       child: AnimatedScale(
                         scale: _blinkFlash ? 1.5 : 1,
                         duration: const Duration(milliseconds: 200),
@@ -577,34 +464,10 @@ class _ReaderScreenState extends State<ReaderScreen>
     );
   }
 
-  /// The page area with the right / left hint flying to the top bar, the
-  /// gaze marker and the calibration prompt.
+  /// The page area with the right / left hint flying to the top bar.
   Widget _withHint(Widget pages) => Stack(
         children: [
           Positioned.fill(child: pages),
-          if (_blink.isRunning && widget.settings.gazeCalibrated)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: ValueListenableBuilder<double?>(
-                  valueListenable: _blink.gaze,
-                  builder: (context, gaze, _) {
-                    final f = _gazeFraction(gaze);
-                    if (f == null) return const SizedBox();
-                    return AnimatedAlign(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOut,
-                      // Lines span roughly 8%–92% of the page area.
-                      alignment: Alignment(-1, -0.84 + f * 1.68),
-                      child: const _GazeMarker(),
-                    );
-                  },
-                ),
-              ),
-            ),
-          if (_calibration >= 0)
-            Positioned.fill(
-              child: _CalibrationPrompt(firstLine: _calibration == 0),
-            ),
           // What the last eye gesture did.
           Positioned(
             left: 0,
@@ -730,71 +593,4 @@ class _Spine extends StatelessWidget {
           ),
         ),
       );
-}
-
-/// Where the camera estimates the reader is looking: a soft glowing eye at
-/// the page edge.
-class _GazeMarker extends StatelessWidget {
-  const _GazeMarker();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: 26,
-        height: 26,
-        margin: const EdgeInsets.only(left: 2),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: MushafColors.green.withAlpha(60),
-          boxShadow: [
-            BoxShadow(color: MushafColors.green.withAlpha(120), blurRadius: 12),
-          ],
-        ),
-        child: Icon(Icons.remove_red_eye, size: 16, color: MushafColors.green),
-      );
-}
-
-/// Calibration: look at the first (then the last) line and blink twice.
-class _CalibrationPrompt extends StatelessWidget {
-  const _CalibrationPrompt({required this.firstLine});
-
-  final bool firstLine;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Align(
-        alignment: firstLine ? const Alignment(0, -0.82) : const Alignment(0, 0.82),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            color: MushafColors.paper.withAlpha(235),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: MushafColors.green, width: 1.5),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withAlpha(80), blurRadius: 18),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                firstLine ? Icons.arrow_upward : Icons.arrow_downward,
-                color: MushafColors.green,
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  firstLine
-                      ? 'معايرة النظر (١/٢): انظر إلى السطر الأول من الصفحة ثم ارمش ثلاث مرات.'
-                      : 'معايرة النظر (٢/٢): انظر الآن إلى السطر الأخير ثم ارمش ثلاث مرات.',
-                  style: TextStyle(color: MushafColors.ink, fontSize: 15),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
