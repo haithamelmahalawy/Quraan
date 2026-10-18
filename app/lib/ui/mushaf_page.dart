@@ -161,9 +161,13 @@ class _MushafPageState extends State<MushafPage> {
   /// and the page then leaves a little room for them at the bottom.
   Widget _printedPage(
       List<Ayah> ayahs, List<MushafLine> lines, Size size, bool narrow) {
-    final withHamesh =
-        widget.settings.mode == DisplayMode.hamesh && widget.showHamesh;
-    final entries = withHamesh ? _hameshEntries(ayahs) : const <HameshEntry>[];
+    final entries =
+        widget.settings.mode == DisplayMode.hamesh && widget.showHamesh
+            ? _hameshEntries(ayahs)
+            : const <HameshEntry>[];
+    // The hamesh takes room beside the page only when it has notes; the
+    // page otherwise has the whole width, and its text the largest size.
+    final withHamesh = entries.isNotEmpty;
     final signature = [
       widget.page,
       size.width,
@@ -195,7 +199,6 @@ class _MushafPageState extends State<MushafPage> {
       display: _display,
       marker: _marker,
       height: textHeight,
-      printed: widget.settings.printedLines,
     );
     final first = ayahs.first;
     final page = Padding(
@@ -222,9 +225,15 @@ class _MushafPageState extends State<MushafPage> {
     if (!withHamesh) return page;
 
     // Vertical position of each note: level with its word's line.
-    final layout = mushafLines.layout(textWidth);
-    final lineHeight = layout.lineHeight;
-    final lineOf = layout.lineOf;
+    final lineHeight = mushafLines.metrics(textWidth).lineHeight;
+    final lineOf = <int, int>{};
+    for (final (i, line) in lines.indexed) {
+      if (line is TextLine) {
+        for (final (a, w) in line.words) {
+          lineOf[VariantRepository.key(a.surah, a.number, w)] = i;
+        }
+      }
+    }
     final top = outer + header + OrnamentFrame.inset;
     final shown = entries.sublist(0, split);
     final tops = [
@@ -509,7 +518,6 @@ class _MushafPageState extends State<MushafPage> {
       style: (m.mutashabih ? _mutashabihStyle : const TextStyle()).copyWith(
         fontFamily: shown.font,
         fontSize: fontSize,
-        fontWeight: FontWeight.bold,
         height: 1.0,
         color: m.color ?? MushafColors.ink,
         backgroundColor: m.color?.withAlpha(28),

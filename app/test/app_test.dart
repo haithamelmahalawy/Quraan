@@ -117,6 +117,11 @@ void main() {
     await shot(t, 1, ReaderSettings.memory(), 'p1_hafs');
   });
 
+  testWidgets('page 3, Hafs only: the 15 printed lines', tags: 'golden',
+      (t) async {
+    await shot(t, 3, ReaderSettings.memory(), 'p3_hafs');
+  });
+
   testWidgets('page 1, Nafi + Ibn Kathir + Abu Amr highlighted', tags: 'golden', (t) async {
     await shot(
         t,

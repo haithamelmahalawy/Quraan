@@ -94,11 +94,12 @@ abstract final class MushafColors {
 /// A hair of ink around the strokes, so the text reads as firmly as the
 /// printed page (the ink of the print spreads slightly).
 List<Shadow> inkSpread(Color color, double fontSize) {
-  final d = fontSize * 0.015;
+  final d = fontSize * 0.022;
   return [
     Shadow(color: color, offset: Offset(d, 0)),
     Shadow(color: color, offset: Offset(-d, 0)),
     Shadow(color: color, offset: Offset(0, d)),
+    Shadow(color: color, offset: Offset(0, -d)),
   ];
 }
 
