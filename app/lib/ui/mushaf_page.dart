@@ -30,7 +30,6 @@ class MushafPage extends StatefulWidget {
     this.showHamesh = true,
     this.onZoomChanged,
     this.onPageNumberTap,
-    this.focus,
     this.qcf = false,
   });
 
@@ -49,9 +48,6 @@ class MushafPage extends StatefulWidget {
 
   /// Tapping the page number (opens the page picker).
   final VoidCallback? onPageNumberTap;
-
-  /// The mutashabih word chosen for the double blink (VariantRepository.key).
-  final int? focus;
 
   /// Draw with the QCF V2 font of this page (it is loaded).
   final bool qcf;
@@ -529,17 +525,6 @@ class _MushafPageState extends State<MushafPage> {
           word,
           Positioned(top: -6, left: 0, child: _Dots(colors: m.colors)),
         ],
-      );
-    }
-    if (widget.focus == VariantRepository.key(ayah.surah, ayah.number, w)) {
-      // Drawn over the word, so the line keeps its width.
-      word = DecoratedBox(
-        position: DecorationPosition.foreground,
-        decoration: BoxDecoration(
-          border: Border.all(color: MushafColors.green, width: 1.5),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: word,
       );
     }
     if (m.all.isEmpty && !m.mutashabih) return word;

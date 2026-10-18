@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
-import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../services/blink_detector.dart';
 import '../services/qcf_fonts.dart';
@@ -16,6 +15,7 @@ import 'mushaf_page.dart';
 import 'page_side_hint.dart';
 import 'mutashabihat_sheet.dart';
 import 'qiraat_sheet.dart';
+import 'riwayat_menu.dart';
 import 'surah_index.dart';
 import 'theme.dart';
 import 'variant_sheet.dart';
@@ -52,15 +52,19 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// While a page is zoomed in, drags pan it instead of turning pages.
   bool _zoomed = false;
 
-  /// Double blink: opens the mutashabihat of the focused word (or the first
-  /// on the page); while they are open, moves to the next place.
+  /// Double blink: opens the mutashabih on the line being looked at; while
+  /// the mutashabihat are open, moves to the next place.
   final _blink = BlinkDetector();
-  StreamSubscription<void>? _blinks;
+  StreamSubscription<double?>? _blinks;
+
+  /// Calibration: 0 waits for a double blink on the first line, 1 on the
+  /// last line; -1 when calibrated (or blinking is off).
+  int _calibration = -1;
+  double? _calibrationTop;
   final _advance = ValueNotifier(0);
   bool _sheetOpen = false;
   bool _blinkFlash = false;
   bool _resumed = true;
-  (Ayah, int)? _focus;
 
   /// Right / left of the open mushaf, shown briefly when a page opens.
   late final _hint = AnimationController(
@@ -80,7 +84,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     WidgetsBinding.instance.addObserver(this);
     widget.settings.addListener(_onSettings);
     QcfFonts.instance.addListener(_onFonts);
-    _blinks = _blink.doubleBlinks.listen((_) => _onDoubleBlink());
+    _blinks = _blink.doubleBlinks.listen(_onDoubleBlink);
     _onSettings();
     WidgetsBinding.instance.addPostFrameCallback((_) => _showSide());
   }
@@ -112,6 +116,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         await _blink.start();
         if (mounted) setState(() {});
       } catch (_) {
+        _calibration = -1;
         if (!mounted) return;
         widget.settings.blinkToOpen = false;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -121,33 +126,93 @@ class _ReaderScreenState extends State<ReaderScreen>
     } else {
       await _blink.stop();
     }
+    final calibrate = widget.settings.blinkToOpen &&
+        !widget.settings.gazeCalibrated &&
+        _blink.isRunning;
+    if (calibrate && _calibration < 0) {
+      setState(() => _calibration = 0);
+    } else if (!calibrate && _calibration >= 0) {
+      setState(() => _calibration = -1);
+    }
   }
 
-  void _onDoubleBlink() {
+  void _onDoubleBlink(double? gaze) {
     HapticFeedback.mediumImpact();
     setState(() => _blinkFlash = true);
     Future.delayed(const Duration(milliseconds: 450), () {
       if (mounted) setState(() => _blinkFlash = false);
     });
+    if (_calibration >= 0) {
+      if (gaze == null) return;
+      if (_calibration == 0) {
+        setState(() {
+          _calibrationTop = gaze;
+          _calibration = 1;
+        });
+      } else {
+        widget.settings.setGaze(_calibrationTop, gaze);
+        setState(() => _calibration = -1);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('تمت المعايرة. انظر إلى متشابه وارمش مرتين لفتحه.'),
+        ));
+      }
+      return;
+    }
     if (_sheetOpen) {
       _advance.value++;
       return;
     }
-    final target = _focus ?? _firstMutashabih();
-    if (target == null) return;
+    final target = _mutashabihAt(_gazeFraction(gaze));
+    if (target == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('لا توجد متشابهات في هذه الصفحة.'),
+      ));
+      return;
+    }
     final (ayah, word) = target;
-    final places =
-        widget.mutashabihat.placesFor(ayah.surah, ayah.number, word);
-    if (places.length > 1) _openMutashabihat(places);
+    _openMutashabihat(
+        widget.mutashabihat.placesFor(ayah.surah, ayah.number, word));
   }
 
-  (Ayah, int)? _firstMutashabih() {
-    for (final a in widget.quran.page(_page)) {
-      for (var w = 0; w < a.words.length; w++) {
-        if (widget.mutashabihat.isShared(a.surah, a.number, w)) return (a, w);
+  /// How far down the page the reader looks: 0 first line .. 1 last line.
+  double? _gazeFraction(double? gaze) {
+    final s = widget.settings;
+    if (gaze == null || !s.gazeCalibrated) return null;
+    return ((gaze - s.gazeTop!) / (s.gazeBottom! - s.gazeTop!)).clamp(0.0, 1.0);
+  }
+
+  /// The mutashabih on the page's line nearest to [fraction] of the page
+  /// (the first on the page without a gaze).
+  (Ayah, int)? _mutashabihAt(double? fraction) {
+    final lines = widget.quran.lines(_page);
+    (Ayah, int)? best;
+    var bestDistance = double.infinity;
+    void consider(Ayah a, int w, double position) {
+      if (!widget.mutashabihat.isShared(a.surah, a.number, w)) return;
+      if (widget.mutashabihat.placesFor(a.surah, a.number, w).length < 2) return;
+      final d = fraction == null ? position : (position - fraction).abs();
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = (a, w);
       }
     }
-    return null;
+
+    if (lines == null) {
+      for (final a in widget.quran.page(_page)) {
+        for (var w = 0; w < a.words.length; w++) {
+          consider(a, w, 0);
+        }
+      }
+      return best;
+    }
+    for (final (i, line) in lines.indexed) {
+      if (line is! TextLine) continue;
+      final position = lines.length < 2 ? 0.0 : i / (lines.length - 1);
+      for (final (a, w) in line.words) {
+        consider(a, w, position);
+      }
+    }
+    return best;
   }
 
   void _onFonts() {
@@ -208,8 +273,6 @@ class _ReaderScreenState extends State<ReaderScreen>
     final places = widget.settings.showMutashabihat
         ? widget.mutashabihat.placesFor(ayah.surah, ayah.number, word)
         : const <MutashabihPlace>[];
-    // A tapped mutashabih becomes the target of the double blink.
-    if (places.length > 1) setState(() => _focus = (ayah, word));
     final hasReadings = widget.variants
         .at(widget.settings.selected, ayah.surah, ayah.number, word)
         .isNotEmpty;
@@ -258,11 +321,6 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   @override
   Widget build(BuildContext context) {
-    final selected = [
-      for (final q in qiraat)
-        for (final r in q.riwayat)
-          if (widget.settings.selected.contains(r.id)) r,
-    ];
     Widget page(int number, {required bool hamesh}) => MushafPage(
           page: number,
           quran: widget.quran,
@@ -274,10 +332,6 @@ class _ReaderScreenState extends State<ReaderScreen>
           onZoomChanged: (z) => setState(() => _zoomed = z),
           onPageNumberTap: _pickPage,
           qcf: widget.settings.qcfFont && QcfFonts.instance.isReady(number),
-          focus: _focus == null
-              ? null
-              : VariantRepository.key(
-                  _focus!.$1.surah, _focus!.$1.number, _focus!.$2),
         );
 
     final two = _twoPages;
@@ -294,7 +348,6 @@ class _ReaderScreenState extends State<ReaderScreen>
         setState(() {
           _page = number;
           _zoomed = false;
-          _focus = null;
         });
         widget.settings.page = number;
         _fetchOnline(number);
@@ -360,14 +413,14 @@ class _ReaderScreenState extends State<ReaderScreen>
               child: Row(
                 children: [
                   _BarButton(
-                    tooltip: 'القراءات',
-                    icon: Badge(
-                      isLabelVisible: selected.isNotEmpty,
-                      label: Text('${selected.length}'),
-                      child: const Icon(Icons.layers_outlined, size: 22),
-                    ),
+                    tooltip: 'الإعدادات',
+                    icon: const Icon(Icons.tune, size: 22),
                     onPressed: () => QiraatSheet.show(
                         context, widget.settings, widget.variants),
+                  ),
+                  RiwayatMenu(
+                    settings: widget.settings,
+                    variants: widget.variants,
                   ),
                   _BarButton(
                     tooltip: 'فهرس السور',
@@ -451,10 +504,34 @@ class _ReaderScreenState extends State<ReaderScreen>
     );
   }
 
-  /// The page area with the right / left hint flying to the top bar.
+  /// The page area with the right / left hint flying to the top bar, the
+  /// gaze marker and the calibration prompt.
   Widget _withHint(Widget pages) => Stack(
         children: [
           Positioned.fill(child: pages),
+          if (_blink.isRunning && widget.settings.gazeCalibrated)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ValueListenableBuilder<double?>(
+                  valueListenable: _blink.gaze,
+                  builder: (context, gaze, _) {
+                    final f = _gazeFraction(gaze);
+                    if (f == null) return const SizedBox();
+                    return AnimatedAlign(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                      // Lines span roughly 8%–92% of the page area.
+                      alignment: Alignment(-1, -0.84 + f * 1.68),
+                      child: const _GazeMarker(),
+                    );
+                  },
+                ),
+              ),
+            ),
+          if (_calibration >= 0)
+            Positioned.fill(
+              child: _CalibrationPrompt(firstLine: _calibration == 0),
+            ),
           if (_hint.isAnimating)
             Positioned.fill(
               child: PageSideHint(
@@ -544,4 +621,71 @@ class _Spine extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// Where the camera estimates the reader is looking: a soft glowing eye at
+/// the page edge.
+class _GazeMarker extends StatelessWidget {
+  const _GazeMarker();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 26,
+        height: 26,
+        margin: const EdgeInsets.only(left: 2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: MushafColors.green.withAlpha(60),
+          boxShadow: [
+            BoxShadow(color: MushafColors.green.withAlpha(120), blurRadius: 12),
+          ],
+        ),
+        child: Icon(Icons.remove_red_eye, size: 16, color: MushafColors.green),
+      );
+}
+
+/// Calibration: look at the first (then the last) line and blink twice.
+class _CalibrationPrompt extends StatelessWidget {
+  const _CalibrationPrompt({required this.firstLine});
+
+  final bool firstLine;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Align(
+        alignment: firstLine ? const Alignment(0, -0.82) : const Alignment(0, 0.82),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            color: MushafColors.paper.withAlpha(235),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: MushafColors.green, width: 1.5),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withAlpha(80), blurRadius: 18),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                firstLine ? Icons.arrow_upward : Icons.arrow_downward,
+                color: MushafColors.green,
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  firstLine
+                      ? 'معايرة النظر (١/٢): انظر إلى السطر الأول من الصفحة ثم ارمش مرتين.'
+                      : 'معايرة النظر (٢/٢): انظر الآن إلى السطر الأخير ثم ارمش مرتين.',
+                  style: TextStyle(color: MushafColors.ink, fontSize: 15),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

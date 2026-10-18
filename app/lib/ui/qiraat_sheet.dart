@@ -113,11 +113,18 @@ class QiraatSheet extends StatelessWidget {
               secondary: const Icon(Icons.visibility_outlined),
               title: const Text('فتح المتشابهات بالرمش مرتين'),
               subtitle: const Text(
-                  'تستخدم الكاميرا الأمامية لاكتشاف الرمش فقط، وتتم المعالجة على الجهاز '
-                  'دون تسجيل أو إرسال أي صورة. اضغط على متشابه لتحديده، ثم ارمش '
-                  'مرتين لفتح مواضعه، ومرتين أخريين للانتقال إلى الموضع التالي.'),
+                  'انظر إلى السطر الذي فيه المتشابه وارمش مرتين فتُفتح مواضعه، '
+                  'وارمش مرتين أخريين للانتقال إلى الموضع التالي. تُقدَّر جهة النظر '
+                  'تقريبيًا من ميل الرأس والجفون بعد معايرة قصيرة. تتم المعالجة على '
+                  'الجهاز دون تسجيل أو إرسال أي صورة.'),
               onChanged: (v) => settings.blinkToOpen = v,
             ),
+            if (settings.blinkToOpen && settings.gazeCalibrated)
+              ListTile(
+                leading: const Icon(Icons.center_focus_strong_outlined),
+                title: const Text('إعادة معايرة النظر'),
+                onTap: () => settings.setGaze(null, null),
+              ),
             const Divider(height: 32),
             SwitchListTile(
               value: settings.qcfFont,

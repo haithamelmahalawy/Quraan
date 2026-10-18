@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:ui' show ImageFilter;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,8 +14,9 @@ import '../services/page_scanner.dart';
 import '../state/reader_settings.dart';
 import 'theme.dart';
 
-/// Point the camera at a page of a printed mushaf: the page is recognised
-/// and opened in the app with the riwayat chosen here.
+/// Point the camera at a page of a printed mushaf: once at least one riwaya
+/// is chosen, the camera keeps reading until it recognises the page, then
+/// opens it in the app with those riwayat.
 class ScanScreen extends StatefulWidget {
   const ScanScreen({
     super.key,
@@ -32,24 +37,43 @@ class ScanScreen extends StatefulWidget {
   State<ScanScreen> createState() => _ScanScreenState();
 }
 
-class _ScanScreenState extends State<ScanScreen> {
+class _ScanScreenState extends State<ScanScreen>
+    with SingleTickerProviderStateMixin {
   CameraController? _camera;
   late final _scanner = PageScanner(PageMatcher(widget.quran));
+  late final _sweep = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..repeat(reverse: true);
   String? _error;
-  bool _busy = false;
-  ({int page, double score})? _found;
-  bool _notFound = false;
+  bool _running = true;
+  bool _opened = false;
+  Completer<Frame>? _wantFrame;
+  int? _lastPage;
+  int _attempts = 0;
+
+  bool get _ready => widget.settings.selected.isNotEmpty;
 
   @override
   void initState() {
     super.initState();
+    widget.settings.addListener(_onSettings);
     _startCamera();
   }
 
   @override
   void dispose() {
-    _camera?.dispose();
+    _running = false;
+    widget.settings.removeListener(_onSettings);
+    _sweep.dispose();
+    final camera = _camera;
+    _camera = null;
+    camera?.stopImageStream().catchError((_) {}).whenComplete(camera.dispose);
     super.dispose();
+  }
+
+  void _onSettings() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _startCamera() async {
@@ -63,42 +87,67 @@ class _ScanScreenState extends State<ScanScreen> {
         back,
         ResolutionPreset.veryHigh,
         enableAudio: false,
+        imageFormatGroup:
+            Platform.isIOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.yuv420,
       );
       await camera.initialize();
-      await camera.setFocusMode(FocusMode.auto);
       if (!mounted) {
         await camera.dispose();
         return;
       }
+      await camera.setFocusMode(FocusMode.auto).catchError((_) {});
+      final rotation = Platform.isIOS ? 0 : back.sensorOrientation;
+      // Keep only a frame that the reading loop asked for.
+      await camera.startImageStream((image) {
+        final want = _wantFrame;
+        if (want != null && !want.isCompleted) {
+          _wantFrame = null;
+          want.complete(Frame.copy(image, rotation));
+        }
+      });
       setState(() => _camera = camera);
+      _loop();
     } catch (e) {
       if (mounted) setState(() => _error = 'تعذر تشغيل الكاميرا: $e');
     }
   }
 
-
-  Future<void> _scan() async {
-    final camera = _camera;
-    if (camera == null || _busy) return;
-    setState(() {
-      _busy = true;
-      _found = null;
-      _notFound = false;
-    });
-    try {
-      final photo = await camera.takePicture();
-      final found = await _scanner.scan(photo.path);
-      if (!mounted) return;
-      HapticFeedback.mediumImpact();
-      setState(() {
-        _found = found;
-        _notFound = found == null;
-      });
-    } catch (e) {
-      if (mounted) setState(() => _error = 'تعذر قراءة الصفحة: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
+  /// Reads a frame every ~1.5 s while at least one riwaya is chosen, until
+  /// the page is recognised.
+  Future<void> _loop() async {
+    while (_running && mounted && !_opened) {
+      if (!_ready) {
+        await Future.delayed(const Duration(milliseconds: 400));
+        continue;
+      }
+      final started = DateTime.now();
+      try {
+        final want = _wantFrame = Completer<Frame>();
+        final frame = await want.future.timeout(const Duration(seconds: 3));
+        final found = await _scanner.scan(frame);
+        if (!mounted || !_running) return;
+        setState(() => _attempts++);
+        // Confident at once, or the same page twice in a row.
+        if (found != null && (found.score >= 40 || found.page == _lastPage)) {
+          _open(found.page);
+          return;
+        }
+        _lastPage = found?.page;
+      } catch (e) {
+        debugPrint('scan: $e');
+      }
+      final spent = DateTime.now().difference(started);
+      if (spent < const Duration(milliseconds: 1500)) {
+        await Future.delayed(const Duration(milliseconds: 1500) - spent);
+      }
     }
+  }
+
+  void _open(int page) {
+    _opened = true;
+    _running = false;
+    HapticFeedback.heavyImpact();
+    widget.onOpen(page);
   }
 
   @override
@@ -122,17 +171,46 @@ class _ScanScreenState extends State<ScanScreen> {
                           style: const TextStyle(color: Colors.white)),
                     ),
             ),
-          // Where to put the page.
+          // Blurred until a riwaya is chosen.
+          if (!_ready)
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: ColoredBox(color: Colors.black.withAlpha(90)),
+              ),
+            ),
+          // The guide frame, with a sweeping line while reading.
           IgnorePointer(
             child: Center(
               child: FractionallySizedBox(
-                widthFactor: 0.86,
-                heightFactor: 0.62,
+                widthFactor: 0.88,
+                heightFactor: 0.66,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     border: Border.all(color: MushafColors.gold, width: 2.5),
                     borderRadius: BorderRadius.circular(18),
                   ),
+                  child: _ready
+                      ? AnimatedBuilder(
+                          animation: _sweep,
+                          builder: (context, _) => Align(
+                            alignment: Alignment(0, _sweep.value * 2 - 1),
+                            child: Container(
+                              height: 3,
+                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: MushafColors.gold,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: MushafColors.gold.withAlpha(160),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
               ),
             ),
@@ -140,18 +218,35 @@ class _ScanScreenState extends State<ScanScreen> {
           SafeArea(
             child: Column(
               children: [
-                _TopPanel(
-                  variants: widget.variants,
-                  settings: widget.settings,
-                ),
+                _TopPanel(variants: widget.variants, settings: widget.settings),
                 const Spacer(),
-                _BottomPanel(
-                  busy: _busy,
-                  found: _found,
-                  notFound: _notFound,
-                  quran: widget.quran,
-                  onScan: _scan,
-                  onOpen: (page) => widget.onOpen(page),
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(160),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _ready ? Icons.document_scanner : Icons.touch_app,
+                        color: MushafColors.gold,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          !_ready
+                              ? 'اختر رواية واحدة على الأقل من الأعلى لبدء التعرف على الصفحة.'
+                              : _attempts == 0
+                                  ? 'جارٍ قراءة الصفحة… اجعلها كاملة داخل الإطار.'
+                                  : 'جارٍ البحث عن الصفحة… قرّب الكاميرا وثبّتها (محاولة $_attempts).',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -178,146 +273,57 @@ class _TopPanel extends StatelessWidget {
         color: Colors.black.withAlpha(150),
         borderRadius: BorderRadius.circular(18),
       ),
-      child: ListenableBuilder(
-        listenable: settings,
-        builder: (context, _) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                color: Colors.white,
+                icon: const Icon(Icons.arrow_forward),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              const Expanded(
+                child: Text(
+                  'وجّه الكاميرا إلى صفحة من المصحف',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(8, 0, 8, 6),
+            child: Text('الروايات التي تظهر على الصفحة:',
+                style: TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
               children: [
-                IconButton(
-                  color: Colors.white,
-                  icon: const Icon(Icons.arrow_forward),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-                const Expanded(
-                  child: Text(
-                    'وجّه الكاميرا إلى صفحة من المصحف',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
-                  ),
-                ),
+                for (final q in qiraat)
+                  for (final r in q.riwayat)
+                    if (r.id != hafsId && variants.isAvailable(r.id))
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 6),
+                        child: FilterChip(
+                          label: Text(r.nameAr),
+                          selected: settings.selected.contains(r.id),
+                          selectedColor: q.color.withAlpha(120),
+                          avatar: CircleAvatar(backgroundColor: q.color),
+                          showCheckmark: false,
+                          onSelected: (on) {
+                            final next = {...settings.selected};
+                            on ? next.add(r.id) : next.remove(r.id);
+                            settings.setSelected(next);
+                          },
+                        ),
+                      ),
               ],
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(8, 0, 8, 6),
-              child: Text('الروايات التي تظهر على الصفحة:',
-                  style: TextStyle(color: Colors.white70, fontSize: 12)),
-            ),
-            SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  for (final q in qiraat)
-                    for (final r in q.riwayat)
-                      if (r.id != hafsId && variants.isAvailable(r.id))
-                        Padding(
-                          padding: const EdgeInsetsDirectional.only(end: 6),
-                          child: FilterChip(
-                            label: Text(r.nameAr),
-                            selected: settings.selected.contains(r.id),
-                            selectedColor: q.color.withAlpha(120),
-                            avatar: CircleAvatar(backgroundColor: q.color),
-                            showCheckmark: false,
-                            onSelected: (on) {
-                              final next = {...settings.selected};
-                              on ? next.add(r.id) : next.remove(r.id);
-                              settings.setSelected(next);
-                            },
-                          ),
-                        ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomPanel extends StatelessWidget {
-  const _BottomPanel({
-    required this.busy,
-    required this.found,
-    required this.notFound,
-    required this.quran,
-    required this.onScan,
-    required this.onOpen,
-  });
-
-  final bool busy;
-  final ({int page, double score})? found;
-  final bool notFound;
-  final QuranRepository quran;
-  final VoidCallback onScan;
-  final ValueChanged<int> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final f = found;
-    return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.black.withAlpha(160),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: f != null
-                ? Column(
-                    key: const ValueKey('found'),
-                    children: [
-                      Text(
-                        'صفحة ${f.page} • سورة ${quran.surah(quran.page(f.page).first.surah).nameAr}',
-                        style: TextStyle(
-                          fontFamily: 'Hafs',
-                          fontSize: 22,
-                          color: MushafColors.gold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: MushafColors.green,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () => onOpen(f.page),
-                        icon: const Icon(Icons.menu_book),
-                        label: const Text('افتح الصفحة بالروايات المختارة'),
-                      ),
-                    ],
-                  )
-                : Text(
-                    busy
-                        ? 'جارٍ قراءة الصفحة…'
-                        : notFound
-                            ? 'لم أتعرف على الصفحة. قرّب الكاميرا واجعل الصفحة كاملة داخل الإطار.'
-                            : 'اجعل الصفحة داخل الإطار ثم اضغط للتعرف عليها.',
-                    key: ValueKey('$busy$notFound'),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox.square(
-            dimension: 72,
-            child: busy
-                ? const CircularProgressIndicator(color: Colors.white)
-                : FloatingActionButton.large(
-                    heroTag: 'scan',
-                    backgroundColor: MushafColors.gold,
-                    onPressed: onScan,
-                    child: const Icon(Icons.document_scanner_outlined,
-                        size: 34, color: Colors.white),
-                  ),
           ),
         ],
       ),

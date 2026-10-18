@@ -37,6 +37,7 @@ class ReaderSettings extends ChangeNotifier {
   bool _blinkToOpen = false;
   bool _twoPages = false;
   bool _qcfFont = true;
+  double? _gazeTop, _gazeBottom;
 
   /// Selected riwayat (Hafs is always the base text and never listed here).
   Set<String> get selected => _selected;
@@ -60,6 +61,26 @@ class ReaderSettings extends ChangeNotifier {
   /// page fonts, downloaded once per page).
   bool get qcfFont => _qcfFont;
 
+  /// Gaze values (see BlinkDetector.gaze) when looking at the first and the
+  /// last line of the page; null until calibrated.
+  double? get gazeTop => _gazeTop;
+  double? get gazeBottom => _gazeBottom;
+  bool get gazeCalibrated =>
+      _gazeTop != null && _gazeBottom != null && _gazeTop != _gazeBottom;
+
+  void setGaze(double? top, double? bottom) {
+    _gazeTop = top;
+    _gazeBottom = bottom;
+    if (top == null || bottom == null) {
+      _prefs?.remove('gazeTop');
+      _prefs?.remove('gazeBottom');
+    } else {
+      _prefs?.setDouble('gazeTop', top);
+      _prefs?.setDouble('gazeBottom', bottom);
+    }
+    notifyListeners();
+  }
+
   /// The replace mode only makes sense for a single riwaya.
   DisplayMode get mode =>
       _mode == DisplayMode.replace && _selected.length != 1
@@ -82,6 +103,8 @@ class ReaderSettings extends ChangeNotifier {
     s._blinkToOpen = prefs.getBool('blink') ?? false;
     s._twoPages = prefs.getBool('twoPages') ?? false;
     s._qcfFont = prefs.getBool('qcf') ?? true;
+    s._gazeTop = prefs.getDouble('gazeTop');
+    s._gazeBottom = prefs.getDouble('gazeBottom');
     s._themeMode = ThemeMode.values.asNameMap()[prefs.getString('theme')] ??
         ThemeMode.dark;
     return s;
