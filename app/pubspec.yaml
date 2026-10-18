@@ -1,4 +1,4 @@
-﻿name: qiraat_mushaf
+name: qiraat_mushaf
 description: "Mushaf (Hafs base) that overlays the differences of the ten qiraat."
 publish_to: 'none'
 version: 1.0.0+1
@@ -19,6 +19,7 @@ dependencies:
   # Local copy with an Android build script for current tooling (see its build.gradle.kts).
   flutter_tesseract_ocr:
     path: third_party/flutter_tesseract_ocr
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

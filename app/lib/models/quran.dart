@@ -15,7 +15,7 @@ class Surah {
 }
 
 class Ayah {
-  const Ayah({
+  Ayah({
     required this.surah,
     required this.number,
     required this.page,
@@ -30,6 +30,11 @@ class Ayah {
 
   /// Hafs words (KFGQPC Uthmanic encoding), without the ayah number.
   final List<String> words;
+
+  /// The same words as glyphs of the QCF V2 page font (empty for a word
+  /// drawn together with the previous one), and the ayah-end ornament.
+  List<String>? glyphs;
+  String? endGlyph;
 }
 
 /// Word-level difference between a riwaya and Hafs.

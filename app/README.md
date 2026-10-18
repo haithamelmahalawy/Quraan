@@ -85,6 +85,11 @@ dart run tool/build_mutashabihat.dart
   spelling conventions are not reported as differences, and describes each
   difference in Arabic. The descriptions are generated and should be
   reviewed by a specialist.
+- **Printed calligraphy:** KFGQPC QCF V2 page fonts (one per page, each word a
+  glyph), downloaded once per page from the quran.com CDN and kept on the
+  device; glyph codes per word (`code_v2`) in `assets/data/qcf_v2.json`,
+  built by `tool/build_layout.dart`. Without the font (offline, first open)
+  a page is drawn with the KFGQPC Hafs font. Setting: "خط مصحف المدينة".
 - **Line layout:** quran.com API (`line_v2`, `v2_page`, the KFGQPC 1421H
   print). It matches the KFGQPC 1441H text on 525 of 604 pages; the QUL
   "KFGQPC V4 layout (1441H print)" covers the remaining 79 exactly.

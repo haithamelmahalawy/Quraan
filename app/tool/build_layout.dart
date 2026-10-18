@@ -7,7 +7,14 @@
 // verses-by-chapter dumps in layoutDir (default ../tools/source/layout,
 // s1.json ... s114.json with word_fields=line_v2,v2_page,text_uthmani).
 //
-// Output: assets/data/layout.json
+// Output: assets/data/layout.json and assets/data/qcf_v2.json
+//
+// qcf_v2.json gives, for every ayah (in quran.json order), the glyphs of
+// the KFGQPC QCF V2 page font for each Hafs word and the ayah-end ornament:
+//   {"ayahs": [[["glyphs", ...], "end"], ...]}
+// The page fonts (p1.ttf .. p604.ttf) draw the words as printed.
+//
+// layout.json:
 //   {"source": ..., "pages": [[line, ...], ...]} where a line is
 //   ["s", surah]                       surah name
 //   ["b", surah]                       basmala
@@ -34,8 +41,9 @@ void main(List<String> args) {
     ayahOrder.add(key);
   }
 
-  // (page, line) of every Hafs word.
+  // (page, line) of every Hafs word, and its QCF V2 glyphs.
   final place = <WordRef, (int, int)>{};
+  final glyphs = <String, (List<String>, String)>{};
   for (var s = 1; s <= 114; s++) {
     final json = jsonDecode(File('$dir/s$s.json').readAsStringSync());
     for (final v in json['verses'] as List) {
@@ -48,6 +56,22 @@ void main(List<String> args) {
       final lineOf = _mapWords(
         ours,
         [for (final w in api) w['text_uthmani'] as String],
+      );
+      // Each of our words shows the glyphs of the quran.com words it covers
+      // (the two texts split a few ayahs differently).
+      final end = (v['words'] as List)
+          .firstWhere((w) => w['char_type_name'] == 'end')['code_v2'] as String;
+      glyphs[key] = (
+        [
+          for (var i = 0; i < ours.length; i++)
+            [
+              for (var k = lineOf[i];
+                  k < (i + 1 < ours.length ? lineOf[i + 1] : api.length);
+                  k++)
+                api[k]['code_v2'] as String,
+            ].join(' '),
+        ],
+        end,
       );
       for (var i = 0; i < ours.length; i++) {
         final w = api[lineOf[i]];
@@ -117,6 +141,12 @@ void main(List<String> args) {
   File('assets/data/layout.json').writeAsStringSync(jsonEncode({
     'source': 'Madinah mushaf, KFGQPC V2 (1421H) line layout via quran.com',
     'pages': pages,
+  }));
+  File('assets/data/qcf_v2.json').writeAsStringSync(jsonEncode({
+    'source': 'KFGQPC QCF V2 glyph codes via quran.com (code_v2)',
+    'ayahs': [
+      for (final key in ayahOrder) [glyphs[key]!.$1, glyphs[key]!.$2],
+    ],
   }));
   final headers =
       pages.expand((p) => p).whereType<List>().where((l) => l[0] != 'a').length;

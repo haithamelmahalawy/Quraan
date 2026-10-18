@@ -1,9 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
 
-/// Madinah-mushaf style page border: a patterned band of green diamonds on
-/// gold between two rules, with corner squares.
+/// Madinah-mushaf style page border: a band of rose rosettes between rose
+/// and gold rules, with rosette corners, as in the printed mushaf.
 class OrnamentFrame extends StatelessWidget {
   const OrnamentFrame({super.key, required this.child});
 
@@ -18,84 +20,88 @@ class OrnamentFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _FramePainter(band),
-      child: Padding(
-        padding: const EdgeInsets.all(inset),
-        child: child,
-      ),
+      painter: _FramePainter(),
+      child: Padding(padding: const EdgeInsets.all(inset), child: child),
     );
   }
 }
 
+/// A small four-petal rosette, the motif of the border and banners.
+void _rosette(Canvas canvas, Offset c, double r, Color petal, Color heart) {
+  final p = Paint()..color = petal;
+  for (var k = 0; k < 4; k++) {
+    final a = k * math.pi / 2 + math.pi / 4;
+    canvas.drawCircle(
+        c + Offset(math.cos(a), math.sin(a)) * r * 0.55, r * 0.42, p);
+  }
+  canvas.drawCircle(c, r * 0.3, Paint()..color = heart);
+}
+
 class _FramePainter extends CustomPainter {
-  _FramePainter(this.band);
-
-  final double band;
-
   @override
   void paint(Canvas canvas, Size size) {
+    const band = OrnamentFrame.band;
     final outer = Offset.zero & size;
     final inner = outer.deflate(band);
-    final gold = Paint()..color = MushafColors.gold;
-    final green = Paint()..color = MushafColors.green;
-    final rule = Paint()
-      ..color = MushafColors.green
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4;
+    final rose = MushafColors.rose, gold = MushafColors.gold;
 
-    // Band background and paper inside.
-    canvas.drawRect(outer, gold);
+    canvas.drawRect(outer, Paint()..color = MushafColors.roseLight);
     canvas.drawRect(inner, Paint()..color = MushafColors.page);
 
-    // Diamonds along each side.
-    void diamonds(Offset from, Offset to) {
+    // Rosettes along each side, small gold dots between them.
+    void along(Offset from, Offset to) {
       final length = (to - from).distance;
-      final count = (length / band).floor();
+      final count = math.max(1, (length / (band * 1.25)).floor());
       final step = (to - from) / count.toDouble();
-      final dir = step / step.distance;
-      final normal = Offset(-dir.dy, dir.dx);
-      final r = band / 2 - 2;
       for (var i = 0; i < count; i++) {
-        final c = from + step * (i + 0.5);
-        final path = Path()
-          ..moveTo(c.dx + dir.dx * r, c.dy + dir.dy * r)
-          ..lineTo(c.dx + normal.dx * r, c.dy + normal.dy * r)
-          ..lineTo(c.dx - dir.dx * r, c.dy - dir.dy * r)
-          ..lineTo(c.dx - normal.dx * r, c.dy - normal.dy * r)
-          ..close();
-        canvas.drawPath(path, green);
-        canvas.drawCircle(c, 1.6, Paint()..color = MushafColors.paper);
+        _rosette(canvas, from + step * (i + 0.5), band * 0.42,
+            rose.withAlpha(200), gold);
+        if (i > 0) {
+          canvas.drawCircle(
+              from + step * i.toDouble(), 1.3, Paint()..color = gold);
+        }
       }
     }
 
-    final h = band / 2;
-    diamonds(Offset(band, h), Offset(size.width - band, h));
-    diamonds(Offset(band, size.height - h), Offset(size.width - band, size.height - h));
-    diamonds(Offset(h, band), Offset(h, size.height - band));
-    diamonds(Offset(size.width - h, band), Offset(size.width - h, size.height - band));
+    const h = band / 2;
+    along(const Offset(band, h), Offset(size.width - band, h));
+    along(Offset(band, size.height - h),
+        Offset(size.width - band, size.height - h));
+    along(const Offset(h, band), Offset(h, size.height - band));
+    along(Offset(size.width - h, band),
+        Offset(size.width - h, size.height - band));
 
     // Corner squares.
     for (final c in [
-      Offset(h, h),
+      const Offset(h, h),
       Offset(size.width - h, h),
       Offset(h, size.height - h),
       Offset(size.width - h, size.height - h),
     ]) {
-      canvas.drawRect(Rect.fromCenter(center: c, width: band, height: band), green);
-      canvas.drawCircle(c, band / 4, gold);
+      canvas.drawRect(Rect.fromCenter(center: c, width: band, height: band),
+          Paint()..color = rose);
+      _rosette(canvas, c, band * 0.4, MushafColors.roseLight, gold);
     }
 
-    // Double rules: outside, and inside the band with a thin gap.
-    canvas.drawRect(outer.deflate(0.7), rule);
-    canvas.drawRect(inner, rule);
-    canvas.drawRect(inner.deflate(3), rule..strokeWidth = 0.8);
+    // Rules: rose outside; gold then rose inside.
+    final line = Paint()..style = PaintingStyle.stroke;
+    canvas.drawRect(outer.deflate(0.6), line
+      ..color = rose
+      ..strokeWidth = 1.2);
+    canvas.drawRect(inner, line
+      ..color = gold
+      ..strokeWidth = 1.4);
+    canvas.drawRect(inner.deflate(2.5), line
+      ..color = rose
+      ..strokeWidth = 0.8);
   }
 
   @override
-  bool shouldRepaint(_FramePainter old) => old.band != band;
+  bool shouldRepaint(_FramePainter old) => false;
 }
 
-/// Surah title banner: patterned side panels and a central cartouche.
+/// Surah title banner as printed: a rose lattice panel with rosettes and a
+/// central cartouche holding the name.
 class SurahBanner extends StatelessWidget {
   const SurahBanner({
     super.key,
@@ -125,7 +131,7 @@ class SurahBanner extends StatelessWidget {
               fontFamily: 'Hafs',
               fontSize: fontSize,
               height: 1.1,
-              color: MushafColors.ink,
+              color: MushafColors.rose,
             ),
           ),
         ),
@@ -138,45 +144,63 @@ class _BannerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final gold = Paint()..color = MushafColors.gold;
-    final green = Paint()..color = MushafColors.green;
-    final stroke = Paint()
-      ..color = MushafColors.green
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4;
+    final rose = MushafColors.rose, gold = MushafColors.gold;
 
-    canvas.drawRect(rect, gold);
+    // Panel with a fine diagonal lattice.
+    canvas.drawRect(rect, Paint()..color = MushafColors.roseLight);
+    canvas.save();
+    canvas.clipRect(rect);
+    final lattice = Paint()
+      ..color = rose.withAlpha(70)
+      ..strokeWidth = 0.8;
+    final step = size.height / 3;
+    for (var x = -size.height; x < size.width + size.height; x += step) {
+      canvas.drawLine(
+          Offset(x, 0), Offset(x + size.height, size.height), lattice);
+      canvas.drawLine(
+          Offset(x, size.height), Offset(x + size.height, 0), lattice);
+    }
+    canvas.restore();
 
-    // Side panels: alternating green lozenges.
-    final panel = rect.deflate(4);
-    canvas.drawRect(panel, Paint()..color = MushafColors.goldLight);
-    final cy = size.height / 2;
-    final r = panel.height / 2 - 2;
-    for (var x = panel.left + r + 2; x < panel.right - r; x += r * 2 + 4) {
-      final path = Path()
-        ..moveTo(x - r, cy)
-        ..lineTo(x, cy - r)
-        ..lineTo(x + r, cy)
-        ..lineTo(x, cy + r)
-        ..close();
-      canvas.drawPath(path, green);
-      canvas.drawCircle(Offset(x, cy), r / 3, gold);
+    // Rosettes on both sides of the cartouche.
+    final r = size.height * 0.26;
+    for (final x in [0.08, 0.17, 0.83, 0.92]) {
+      _rosette(canvas, Offset(size.width * x, size.height / 2), r, rose, gold);
     }
 
-    // Central cartouche for the name.
-    final cartouche = Rect.fromCenter(
-      center: rect.center,
-      width: size.width * 0.5,
-      height: size.height - 6,
-    );
-    final rr = RRect.fromRectAndRadius(cartouche, Radius.circular(cartouche.height / 2));
-    canvas.drawRRect(rr.inflate(3), gold);
-    canvas.drawRRect(rr, Paint()..color = MushafColors.page);
-    canvas.drawRRect(rr, stroke);
-    canvas.drawRRect(rr.inflate(3), stroke..strokeWidth = 1);
+    // The cartouche: a frame with pointed ends for the name.
+    final w = size.width * 0.52, hh = size.height - 8;
+    final c = rect.center;
+    Path cartouche(double grow) {
+      final left = c.dx - w / 2 - grow, right = c.dx + w / 2 + grow;
+      final top = c.dy - hh / 2 - grow, bottom = c.dy + hh / 2 + grow;
+      final tip = hh / 2 + grow;
+      return Path()
+        ..moveTo(left + tip, top)
+        ..lineTo(right - tip, top)
+        ..quadraticBezierTo(right - tip * 0.2, top, right, c.dy)
+        ..quadraticBezierTo(right - tip * 0.2, bottom, right - tip, bottom)
+        ..lineTo(left + tip, bottom)
+        ..quadraticBezierTo(left + tip * 0.2, bottom, left, c.dy)
+        ..quadraticBezierTo(left + tip * 0.2, top, left + tip, top)
+        ..close();
+    }
 
-    canvas.drawRect(rect.deflate(0.7), stroke..strokeWidth = 1.4);
-    canvas.drawRect(panel, stroke..strokeWidth = 0.8);
+    canvas.drawPath(cartouche(3), Paint()..color = gold);
+    canvas.drawPath(cartouche(0), Paint()..color = MushafColors.page);
+    final stroke = Paint()..style = PaintingStyle.stroke;
+    canvas.drawPath(cartouche(0), stroke
+      ..color = rose
+      ..strokeWidth = 1.2);
+    canvas.drawPath(cartouche(3), stroke
+      ..color = rose
+      ..strokeWidth = 0.8);
+    canvas.drawRect(rect.deflate(0.6), stroke
+      ..color = rose
+      ..strokeWidth = 1.2);
+    canvas.drawRect(rect.deflate(2.5), stroke
+      ..color = gold
+      ..strokeWidth = 0.8);
   }
 
   @override

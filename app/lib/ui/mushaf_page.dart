@@ -10,6 +10,7 @@ import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../state/reader_settings.dart';
 import 'mushaf_decor.dart';
+import '../services/qcf_fonts.dart';
 import 'mushaf_lines.dart';
 import 'theme.dart';
 
@@ -30,6 +31,7 @@ class MushafPage extends StatefulWidget {
     this.onZoomChanged,
     this.onPageNumberTap,
     this.focus,
+    this.qcf = false,
   });
 
   final int page;
@@ -50,6 +52,9 @@ class MushafPage extends StatefulWidget {
 
   /// The mutashabih word chosen for the double blink (VariantRepository.key).
   final int? focus;
+
+  /// Draw with the QCF V2 font of this page (it is loaded).
+  final bool qcf;
 
   @override
   State<MushafPage> createState() => _MushafPageState();
@@ -192,6 +197,7 @@ class _MushafPageState extends State<MushafPage> {
       quran: widget.quran,
       wordBuilder: _word,
       display: _display,
+      marker: _marker,
       height: textHeight,
     );
     final first = ayahs.first;
@@ -486,8 +492,20 @@ class _MushafPageState extends State<MushafPage> {
         );
       }
     }
+    if (widget.qcf && ayah.glyphs != null) {
+      final glyph = ayah.glyphs![w];
+      return glyph.isEmpty
+          ? null
+          : (text: glyph, font: QcfFonts.family(widget.page));
+    }
     return (text: ayah.words[w], font: 'Hafs');
   }
+
+  /// The ayah-end ornament: the printed one from the page font when loaded.
+  ({String text, String font})? _marker(Ayah ayah) =>
+      widget.qcf && ayah.endGlyph != null
+          ? (text: ' ${ayah.endGlyph}', font: QcfFonts.family(widget.page))
+          : null;
 
   /// One word of a printed line.
   Widget _word(Ayah ayah, int w, double fontSize) {
@@ -608,16 +626,13 @@ class _PageFrame extends StatelessWidget {
             child: Center(
               child: GestureDetector(
                 onTap: onNumberTap,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: MushafColors.gold),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    arabicDigits(page),
-                    style: TextStyle(fontSize: 12, color: MushafColors.green),
+                // Not the Hafs font: it draws digits as ayah-end ornaments.
+                child: Text(
+                  arabicDigits(page),
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.2,
+                    color: MushafColors.ink,
                   ),
                 ),
               ),
@@ -653,7 +668,7 @@ class _PageHeader extends StatelessWidget {
       fontFamily: 'Hafs',
       fontSize: 15,
       height: 1.1,
-      color: MushafColors.green,
+      color: MushafColors.ink,
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10),

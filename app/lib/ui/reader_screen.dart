@@ -9,6 +9,7 @@ import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../services/blink_detector.dart';
+import '../services/qcf_fonts.dart';
 import '../state/reader_settings.dart';
 import 'book_pager.dart';
 import 'mushaf_page.dart';
@@ -78,6 +79,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.settings.addListener(_onSettings);
+    QcfFonts.instance.addListener(_onFonts);
     _blinks = _blink.doubleBlinks.listen((_) => _onDoubleBlink());
     _onSettings();
     WidgetsBinding.instance.addPostFrameCallback((_) => _showSide());
@@ -87,6 +89,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.settings.removeListener(_onSettings);
+    QcfFonts.instance.removeListener(_onFonts);
     _blinks?.cancel();
     _blink.dispose();
     _advance.dispose();
@@ -147,9 +150,21 @@ class _ReaderScreenState extends State<ReaderScreen>
     return null;
   }
 
+  void _onFonts() {
+    if (mounted) setState(() {});
+  }
+
+  /// The printed-mushaf fonts of the pages around [page].
+  void _loadFonts(int page) {
+    if (widget.settings.qcfFont) {
+      QcfFonts.instance.ensure([page, page + 1, page - 1, page + 2, page - 2]);
+    }
+  }
+
   /// Loads newly selected riwayat before the pages are redrawn with them.
   Future<void> _onSettings() async {
     _syncCamera();
+    _loadFonts(_page);
     final missing = widget.settings.selected
         .where((id) => !widget.variants.isLoaded(id))
         .toList();
@@ -258,6 +273,7 @@ class _ReaderScreenState extends State<ReaderScreen>
           showHamesh: hamesh,
           onZoomChanged: (z) => setState(() => _zoomed = z),
           onPageNumberTap: _pickPage,
+          qcf: widget.settings.qcfFont && QcfFonts.instance.isReady(number),
           focus: _focus == null
               ? null
               : VariantRepository.key(
@@ -282,6 +298,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         });
         widget.settings.page = number;
         _fetchOnline(number);
+        _loadFonts(number);
         if (two && number < QuranRepository.pageCount) _fetchOnline(number + 1);
         _showSide();
       },

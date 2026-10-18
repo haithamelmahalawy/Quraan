@@ -44,15 +44,17 @@ class QuranRepository {
 
   static Future<QuranRepository> load([AssetBundle? bundle]) async {
     final b = bundle ?? rootBundle;
-    final (raw, layout) = await (
+    final (raw, layout, qcf) = await (
       b.loadString('assets/data/quran.json'),
       b.loadString('assets/data/layout.json').then<String?>((s) => s,
           onError: (_) => null),
+      b.loadString('assets/data/qcf_v2.json').then<String?>((s) => s,
+          onError: (_) => null),
     ).wait;
-    return parse(raw, layout);
+    return parse(raw, layout, qcf);
   }
 
-  static QuranRepository parse(String raw, [String? layout]) {
+  static QuranRepository parse(String raw, [String? layout, String? qcf]) {
     final json = jsonDecode(raw) as Map<String, dynamic>;
     final surahs = [
       for (final s in json['surahs'] as List)
@@ -65,7 +67,10 @@ class QuranRepository {
         ),
     ];
     final pages = List.generate(pageCount, (_) => <Ayah>[]);
-    for (final a in json['ayahs'] as List) {
+    final glyphs = qcf == null
+        ? null
+        : (jsonDecode(qcf) as Map<String, dynamic>)['ayahs'] as List;
+    for (final (i, a) in (json['ayahs'] as List).indexed) {
       final ayah = Ayah(
         surah: a[0] as int,
         number: a[1] as int,
@@ -73,6 +78,11 @@ class QuranRepository {
         juz: a[3] as int,
         words: (a[4] as String).split(' '),
       );
+      if (glyphs != null) {
+        ayah
+          ..glyphs = (glyphs[i][0] as List).cast<String>()
+          ..endGlyph = glyphs[i][1] as String;
+      }
       pages[ayah.page - 1].add(ayah);
     }
     if (layout == null) return QuranRepository._(surahs, pages, null, {});

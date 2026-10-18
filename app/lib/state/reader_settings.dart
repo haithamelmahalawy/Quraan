@@ -36,6 +36,7 @@ class ReaderSettings extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   bool _blinkToOpen = false;
   bool _twoPages = false;
+  bool _qcfFont = true;
 
   /// Selected riwayat (Hafs is always the base text and never listed here).
   Set<String> get selected => _selected;
@@ -54,6 +55,10 @@ class ReaderSettings extends ChangeNotifier {
 
   /// Two facing pages at once, as the mushaf lies open (right page odd).
   bool get twoPages => _twoPages;
+
+  /// Draw pages with the calligraphy of the printed Madinah mushaf (QCF V2
+  /// page fonts, downloaded once per page).
+  bool get qcfFont => _qcfFont;
 
   /// The replace mode only makes sense for a single riwaya.
   DisplayMode get mode =>
@@ -76,6 +81,7 @@ class ReaderSettings extends ChangeNotifier {
     s._showMutashabihat = prefs.getBool('mutashabihat') ?? true;
     s._blinkToOpen = prefs.getBool('blink') ?? false;
     s._twoPages = prefs.getBool('twoPages') ?? false;
+    s._qcfFont = prefs.getBool('qcf') ?? true;
     s._themeMode = ThemeMode.values.asNameMap()[prefs.getString('theme')] ??
         ThemeMode.dark;
     return s;
@@ -119,6 +125,12 @@ class ReaderSettings extends ChangeNotifier {
   set showMutashabihat(bool value) {
     _showMutashabihat = value;
     _prefs?.setBool('mutashabihat', value);
+    notifyListeners();
+  }
+
+  set qcfFont(bool value) {
+    _qcfFont = value;
+    _prefs?.setBool('qcf', value);
     notifyListeners();
   }
 

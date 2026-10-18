@@ -25,6 +25,7 @@ class MushafLines extends StatelessWidget {
     required this.quran,
     required this.wordBuilder,
     this.display,
+    this.marker,
     this.height,
   });
 
@@ -35,6 +36,12 @@ class MushafLines extends StatelessWidget {
 
   /// Defaults to the Hafs word in the Hafs font.
   final WordDisplay? display;
+
+  /// The ayah-end ornament; defaults to the number in the Hafs font.
+  final ({String text, String font})? Function(Ayah ayah)? marker;
+
+  ({String text, String font}) _marker(Ayah ayah) =>
+      marker?.call(ayah) ?? (text: ' ${_ayahMarker(ayah.number)}', font: 'Hafs');
 
   /// When given, the lines are spread evenly over this height (the page
   /// fills the screen, like a printed mushaf); otherwise each line is as
@@ -108,10 +115,11 @@ class MushafLines extends StatelessWidget {
     final shown = _show(ayah, w) != null;
     final closes = w == ayah.words.length - 1;
     if (!shown && !closes) return null;
+    final end = _marker(ayah);
     final marker = Text(
-      ' ${_ayahMarker(ayah.number)}',
+      end.text,
       textDirection: TextDirection.rtl,
-      style: _style(fontSize, 'Hafs'),
+      style: _style(fontSize, end.font),
     );
     if (!shown) return marker;
     final word = wordBuilder(ayah, w, fontSize);
@@ -138,7 +146,8 @@ class MushafLines extends StatelessWidget {
           items++;
         }
         if (i == ayah.words.length - 1) {
-          w += _measure(' ${_ayahMarker(ayah.number)}', 'Hafs');
+          final end = _marker(ayah);
+          w += _measure(end.text, end.font);
         }
       }
       // Minimum word gap (and the padding of centred lines).

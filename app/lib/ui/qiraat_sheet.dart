@@ -119,6 +119,16 @@ class QiraatSheet extends StatelessWidget {
               onChanged: (v) => settings.blinkToOpen = v,
             ),
             const Divider(height: 32),
+            SwitchListTile(
+              value: settings.qcfFont,
+              secondary: const Icon(Icons.brush_outlined),
+              title: const Text('خط مصحف المدينة'),
+              subtitle: const Text(
+                  'رسم الصفحات بخط المصحف المطبوع (خطوط مجمع الملك فهد QCF)، '
+                  'ويُنزَّل خط كل صفحة مرة واحدة عند فتحها لأول مرة.'),
+              onChanged: (v) => settings.qcfFont = v,
+            ),
+            const Divider(height: 32),
             _section(context, 'المظهر'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
