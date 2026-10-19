@@ -60,3 +60,8 @@ flutter_launcher_icons:
   adaptive_icon_background: "#1F5A40"
   adaptive_icon_foreground: tool/icon/foreground.png
   remove_alpha_ios: true
+
+dependency_overrides:
+  # 2.5.0 (Oct 2026) moved to JNI and fails at start on Android
+  # (NoSuchMethodError: SharedPreferencesApiRegistrar.getAll): keep 2.4.x.
+  shared_preferences_android: 2.4.28
