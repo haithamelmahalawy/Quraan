@@ -17,6 +17,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# A new push builds only the latest commit: older iOS builds of the same
+# branch, waiting for a macOS runner or running, are cancelled.
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ios:
     runs-on: macos-15

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/quran_repository.dart';
 import '../models/quran.dart';
 
 enum DisplayMode {
@@ -42,7 +43,10 @@ class ReaderSettings extends ChangeNotifier {
   Set<String> get selected => _selected;
   Set<VariantKind> get kinds => _kinds;
   double get fontSize => _fontSize;
-  int get page => _page;
+  /// The page read, in the mushaf open ([edition]).
+  int get page => edition == MushafEdition.madani
+      ? _page
+      : _get('page.${edition.name}') as int? ?? 2;
 
   /// Highlight words shared with similar ayahs (mutashabihat).
   bool get showMutashabihat => _showMutashabihat;
@@ -184,9 +188,26 @@ class ReaderSettings extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Remembers the page without rebuilding listeners.
+  /// Remembers the page (of the mushaf open) without rebuilding listeners.
   set page(int value) {
-    _page = value;
-    _prefs?.setInt('page', value);
+    if (edition == MushafEdition.madani) {
+      _page = value;
+      _prefs?.setInt('page', value);
+    } else {
+      _memory['page.${edition.name}'] = value;
+      _prefs?.setInt('page.${edition.name}', value);
+    }
+  }
+
+  /// The printed mushaf whose pages are shown.
+  MushafEdition get edition =>
+      MushafEdition.values.asNameMap()[_get('edition')] ?? MushafEdition.madani;
+
+  /// Opens [value] at [page] (its page holding the place read).
+  void openEdition(MushafEdition value, int page) {
+    _memory['edition'] = value.name;
+    _prefs?.setString('edition', value.name);
+    this.page = page;
+    notifyListeners();
   }
 }

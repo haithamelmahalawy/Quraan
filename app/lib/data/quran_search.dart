@@ -13,8 +13,10 @@ typedef SearchHit = ({Ayah ayah, int page, int from, int to});
 class QuranSearch {
   QuranSearch(QuranRepository quran)
     : _ayahs = [
-        for (var p = 1; p <= QuranRepository.pageCount; p++)
-          for (final a in quran.page(p)) _Indexed(a, p),
+        for (var p = quran.firstPage; p <= quran.lastPage; p++)
+          for (final a in quran.page(p))
+            // Once, on the page where it starts.
+            if (quran.pageOf(a.surah, a.number) == p) _Indexed(a, p),
       ];
 
   final List<_Indexed> _ayahs;

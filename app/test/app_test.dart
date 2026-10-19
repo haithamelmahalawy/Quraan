@@ -15,7 +15,7 @@ const fonts = {'Hafs': 'hafs.18'};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  late QuranRepository quran;
+  late QuranRepository quran, shamarly;
   late VariantRepository variants;
   late MutashabihatRepository mutashabihat;
 
@@ -26,6 +26,7 @@ void main() {
       )..addFont(rootBundle.load('assets/fonts/$file.ttf'))).load();
     }
     quran = await QuranRepository.load();
+    shamarly = await QuranRepository.load(null, MushafEdition.shamarly);
     variants = await VariantRepository.discover();
     mutashabihat = await MutashabihatRepository.load();
     await variants.ensureLoaded(variants.available);
@@ -36,7 +37,7 @@ void main() {
     expect(quran.page(1), hasLength(7));
     expect(quran.page(604).last.surah, 114);
     var ayahs = 0;
-    for (var p = 1; p <= QuranRepository.pageCount; p++) {
+    for (var p = 1; p <= quran.pageCount; p++) {
       ayahs += quran.page(p).length;
     }
     expect(ayahs, 6236);
@@ -90,8 +91,9 @@ void main() {
     WidgetTester tester,
     int page,
     ReaderSettings settings,
-    String name,
-  ) async {
+    String name, {
+    QuranRepository? mushaf,
+  }) async {
     tester.view.physicalSize = const Size(1080, 2000);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
@@ -107,7 +109,7 @@ void main() {
           child: Scaffold(
             body: MushafPage(
               page: page,
-              quran: quran,
+              quran: mushaf ?? quran,
               variants: variants,
               mutashabihat: mutashabihat,
               settings: settings,
@@ -127,6 +129,12 @@ void main() {
 
   testWidgets('page 1, Hafs only', tags: 'golden', (t) async {
     await shot(t, 1, ReaderSettings.memory(), 'p1_hafs');
+  });
+
+  testWidgets('Shamarly page 42: header over two lines, Nafi in the hamesh',
+      tags: 'golden', (t) async {
+    await shot(t, 42, ReaderSettings.memory(selected: {'warsh', 'qalun'}),
+        'shamarly_p42', mushaf: shamarly);
   });
 
   testWidgets('page 3, Hafs only: the 15 printed lines', tags: 'golden', (

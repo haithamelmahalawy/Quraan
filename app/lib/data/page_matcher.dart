@@ -12,8 +12,10 @@ import 'quran_repository.dart';
 /// line is also compared as a run of letters, spaces ignored: pages score
 /// for every run of [_gram] letters they share with it.
 class PageMatcher {
-  PageMatcher(QuranRepository quran) {
-    for (var p = 1; p <= QuranRepository.pageCount; p++) {
+  PageMatcher(QuranRepository quran)
+      : _first = quran.firstPage,
+        _last = quran.lastPage {
+    for (var p = _first; p <= _last; p++) {
       final words = [
         for (final a in quran.page(p))
           for (final w in a.words) skeleton(w),
@@ -49,7 +51,9 @@ class PageMatcher {
     }
   }
 
-  double _weight(int pages) => math.log(QuranRepository.pageCount / pages);
+  final int _first, _last;
+
+  double _weight(int pages) => math.log((_last - _first + 1) / pages);
 
   /// The best page for [text], or null when no page clearly stands out.
   ({int page, double score})? match(String text) {
@@ -120,7 +124,7 @@ class PageMatcher {
             .join()),
     };
     for (final n in numbers) {
-      if (n >= 1 && n <= QuranRepository.pageCount && scores.containsKey(n)) {
+      if (n >= _first && n <= _last && scores.containsKey(n)) {
         scores[n] = scores[n]! + 6;
       }
     }

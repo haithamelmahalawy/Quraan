@@ -10,15 +10,15 @@ import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final (quran, variants, mutashabihat, settings) = await (
-    QuranRepository.load(),
+  final (mushafs, variants, mutashabihat, settings) = await (
+    Mushafs.load(),
     VariantRepository.discover(),
     MutashabihatRepository.load(),
     ReaderSettings.load(),
   ).wait;
   runApp(
     QiraatApp(
-      quran: quran,
+      mushafs: mushafs,
       variants: variants,
       mutashabihat: mutashabihat,
       settings: settings,
@@ -29,13 +29,13 @@ Future<void> main() async {
 class QiraatApp extends StatelessWidget {
   const QiraatApp({
     super.key,
-    required this.quran,
+    required this.mushafs,
     required this.variants,
     required this.mutashabihat,
     required this.settings,
   });
 
-  final QuranRepository quran;
+  final Mushafs mushafs;
   final VariantRepository variants;
   final MutashabihatRepository mutashabihat;
   final ReaderSettings settings;
@@ -61,7 +61,7 @@ class QiraatApp extends StatelessWidget {
         supportedLocales: const [Locale('ar'), Locale('en')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         home: HomeScreen(
-          quran: quran,
+          mushafs: mushafs,
           variants: variants,
           mutashabihat: mutashabihat,
           settings: settings,

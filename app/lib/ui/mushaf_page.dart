@@ -240,13 +240,16 @@ class _MushafPageState extends State<MushafPage> {
 
     // Vertical position of each note: level with its word's line.
     final lineHeight = mushafLines.metrics(textWidth).lineHeight;
+    // The printed line each word is on (a Shamarly header takes two).
     final lineOf = <int, int>{};
-    for (final (i, line) in lines.indexed) {
+    var at = 0;
+    for (final line in lines) {
       if (line is TextLine) {
         for (final (a, w) in line.words) {
-          lineOf[VariantRepository.key(a.surah, a.number, w)] = i;
+          lineOf[VariantRepository.key(a.surah, a.number, w)] = at;
         }
       }
+      at += line.span;
     }
     final top = outer + header + OrnamentFrame.inset;
     final shown = entries.sublist(0, split);
@@ -571,8 +574,26 @@ class _MushafPageState extends State<MushafPage> {
     );
   }
 
-  List<HameshEntry> _hameshEntries(List<Ayah> ayahs) =>
-      _entriesOf(ayahs, widget.variants, widget.settings);
+  /// The notes of the words on this page (an ayah running over a page, as
+  /// in the Shamarly print, has its other words on the next).
+  List<HameshEntry> _hameshEntries(List<Ayah> ayahs) {
+    final lines = widget.quran.lines(widget.page);
+    final entries = _entriesOf(ayahs, widget.variants, widget.settings);
+    if (lines == null) return entries;
+    final here = {
+      for (final l in lines)
+        if (l is TextLine)
+          for (final (a, w) in l.words)
+            VariantRepository.key(a.surah, a.number, w),
+    };
+    return [
+      for (final e in entries)
+        if (here.contains(
+          VariantRepository.key(e.ayah.surah, e.ayah.number, e.word),
+        ))
+          e,
+    ];
+  }
 
   TapGestureRecognizer _recognizer(Ayah ayah, int word) {
     final r = TapGestureRecognizer()

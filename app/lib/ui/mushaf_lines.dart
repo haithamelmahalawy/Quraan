@@ -58,7 +58,8 @@ class MushafLines extends StatelessWidget {
     if (height == null || lines.isEmpty) {
       return (fontSize: fit, lineHeight: fit * 2.05);
     }
-    final lineHeight = height! / lines.length;
+    // A line of the print each; the Shamarly surah headers take two.
+    final lineHeight = height! / lines.fold(0, (n, l) => n + l.span);
     return (fontSize: math.min(fit, lineHeight / 1.75), lineHeight: lineHeight);
   }
 
@@ -77,7 +78,7 @@ class MushafLines extends StatelessWidget {
           children: [
             for (final line in lines)
               SizedBox(
-                height: lineHeight,
+                height: lineHeight * line.span,
                 child: switch (line) {
                   SurahNameLine(:final surah) => SurahBanner(
                     title: 'سورة ${quran.surah(surah).nameAr}',

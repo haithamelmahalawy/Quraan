@@ -13,15 +13,18 @@ class SearchScreen extends StatefulWidget {
 
   final QuranRepository quran;
 
-  /// Built once: the search index of the whole text.
-  static QuranSearch? _index;
+  /// Built once per mushaf: the search index of the whole text.
+  static final _index = <MushafEdition, QuranSearch>{};
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  late final _search = SearchScreen._index ??= QuranSearch(widget.quran);
+  late final _search = SearchScreen._index.putIfAbsent(
+    widget.quran.edition,
+    () => QuranSearch(widget.quran),
+  );
   final _query = TextEditingController();
   Timer? _debounce;
   List<SearchHit> _hits = const [];

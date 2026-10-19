@@ -129,6 +129,21 @@ lists the few words it places in a neighbouring ayah and those it cannot place
 102:3). Quranpedia keeps correcting its data: rebuild from a newer dump to take
 the corrections in.
 
+### The Shamarly mushaf (Egyptian print)
+
+The pages can follow either the Madinah mushaf (604 pages) or the Shamarly
+mushaf (522 pages from page 2, 15 lines), chosen on the start page or in the
+reader's bar; the place read carries over. `assets/data/layout_shamarly.json`
+is built by `flutter test tool/shamarly/build_shamarly_test.dart` from
+`../tools/source/shamarly` (see its README): the page and line of every
+ayah-end marker ([Mr-DDDAlKilanny/Shamarly](https://github.com/Mr-DDDAlKilanny/Shamarly))
+and the word each page starts with
+([quran_android#1180](https://github.com/quran/quran_android/issues/1180)).
+Pages, ayah ends and surah headers (two lines, then the basmala) are as
+printed; inside an ayah the words are spread over its printed stretch by
+their width, so in long ayahs a word at the edge of a line can fall one line
+off (pages 4 and 42 checked against the print: most lines exact).
+
 ### Tafsir and recitations
 
 Holding a word (or tapping one without readings) opens its ayah: the

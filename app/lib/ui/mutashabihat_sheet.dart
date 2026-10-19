@@ -97,7 +97,7 @@ class _MutashabihatSheetState extends State<MutashabihatSheet>
     );
   }
 
-  int _pageOf(MutashabihPlace p) => widget.quran.ayah(p.surah, p.ayah).page;
+  int _pageOf(MutashabihPlace p) => widget.quran.pageOf(p.surah, p.ayah);
 
   @override
   Widget build(BuildContext context) {
@@ -531,7 +531,7 @@ class _PlaceCard extends StatelessWidget {
                   ),
                   _Chip(ayahLabel),
                   const SizedBox(width: 6),
-                  _Chip('ص ${first.page}'),
+                  _Chip('ص ${quran.pageOf(first.surah, first.number)}'),
                 ],
               ),
             ),

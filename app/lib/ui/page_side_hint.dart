@@ -4,10 +4,6 @@ import 'package:flutter/material.dart';
 
 import 'theme.dart';
 
-/// Whether [page] lies on the right of the open Madinah mushaf: odd pages
-/// are on the right (Al-Fatiha, page 1), even pages on the left.
-bool isRightPage(int page) => page.isOdd;
-
 /// The open mushaf: the current page (pictured, outlined) on its side and
 /// the facing page dimmed beside it.
 class OpenMushafView extends StatelessWidget {
@@ -90,6 +86,7 @@ class PageSideHint extends StatelessWidget {
   const PageSideHint({
     super.key,
     required this.page,
+    required this.right,
     required this.progress,
     required this.target,
     this.current,
@@ -97,6 +94,10 @@ class PageSideHint extends StatelessWidget {
   });
 
   final int page;
+
+  /// The page lies on the right of the open mushaf
+  /// ([QuranRepository.isRightPage]).
+  final bool right;
 
   /// 0..1 of the animation.
   final double progress;
@@ -109,7 +110,6 @@ class PageSideHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final right = isRightPage(page);
     final t = progress;
     // Appear (0–0.12), hold (–0.5), fly to the icon (–1).
     final appear = Curves.easeOutBack.transform((t / 0.12).clamp(0.0, 1.0));

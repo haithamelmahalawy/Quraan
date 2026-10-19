@@ -54,7 +54,7 @@ void main() {
     var right = 0, wrong = 0, unsure = 0;
     final failures = <String>[];
     for (var k = 0; k < 80; k++) {
-      final page = 1 + rnd.nextInt(QuranRepository.pageCount);
+      final page = 1 + rnd.nextInt(quran.pageCount);
       final m = matcher.match(noisyOcr(quran, page, rnd));
       if (m == null) {
         unsure++;

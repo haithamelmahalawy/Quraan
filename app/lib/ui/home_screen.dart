@@ -17,23 +17,26 @@ import 'theme.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
-    required this.quran,
+    required this.mushafs,
     required this.variants,
     required this.mutashabihat,
     required this.settings,
   });
 
-  final QuranRepository quran;
+  final Mushafs mushafs;
   final VariantRepository variants;
   final MutashabihatRepository mutashabihat;
   final ReaderSettings settings;
+
+  /// The mushaf open: Madinah or Shamarly.
+  QuranRepository get quran => mushafs.of(settings.edition);
 
   Future<void> _openMushaf(BuildContext context, {int? page}) {
     if (page != null) settings.page = page;
     return Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ReaderScreen(
-          quran: quran,
+          mushafs: mushafs,
           variants: variants,
           mutashabihat: mutashabihat,
           settings: settings,
@@ -42,17 +45,30 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  /// The camera recognises Madinah pages; the page opens in the mushaf open.
   void _openScan(BuildContext context) => Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (scanContext) => ScanScreen(
-        quran: quran,
+        quran: mushafs.madani,
         variants: variants,
         mutashabihat: mutashabihat,
         settings: settings,
-        onOpen: (page) => _openMushaf(scanContext, page: page),
+        onOpen: (page) => _openMushaf(
+          scanContext,
+          page: mushafs.convert(page, MushafEdition.madani, settings.edition),
+        ),
       ),
     ),
   );
+
+  /// Switches the mushaf, at the place read.
+  void _setEdition(MushafEdition edition) {
+    if (edition == settings.edition) return;
+    settings.openEdition(
+      edition,
+      mushafs.convert(settings.page, settings.edition, edition),
+    );
+  }
 
   /// A page chosen on another screen (surah index, search) opens in the
   /// mushaf.
@@ -89,9 +105,15 @@ class HomeScreen extends StatelessWidget {
                   _HeroTile(
                     icon: Icons.menu_book_rounded,
                     title: 'المصحف',
-                    subtitle: 'مصحف المدينة برواية حفص، والقراءات في الهامش',
+                    subtitle:
+                        '${settings.edition.nameAr} برواية حفص، والقراءات في الهامش',
                     color: MushafColors.green,
                     onTap: () => _openMushaf(context),
+                  ),
+                  const SizedBox(height: 12),
+                  _EditionChoice(
+                    edition: settings.edition,
+                    onChanged: _setEdition,
                   ),
                   const SizedBox(height: 16),
                   _HeroTile(
@@ -356,6 +378,61 @@ class _Badge extends StatelessWidget {
           size: size * 0.55,
           color: light ? Colors.white : color,
         ),
+      ),
+    );
+  }
+}
+
+/// Which printed mushaf the pages follow: Madinah or Shamarly (Egyptian).
+class _EditionChoice extends StatelessWidget {
+  const _EditionChoice({required this.edition, required this.onChanged});
+
+  final MushafEdition edition;
+  final ValueChanged<MushafEdition> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Raised(
+      padding: const EdgeInsets.all(6),
+      child: Row(
+        children: [
+          for (final e in MushafEdition.values)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: Raised(
+                  color: e == edition ? MushafColors.green : null,
+                  depth: e == edition ? 0.7 : 0.25,
+                  radius: 16,
+                  tooltip: e.nameAr,
+                  onTap: () => onChanged(e),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Column(
+                    children: [
+                      Text(
+                        e.nameAr,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: e == edition ? Colors.white : MushafColors.green,
+                        ),
+                      ),
+                      Text(
+                        e == MushafEdition.madani
+                            ? '٦٠٤ صفحة'
+                            : 'الطبعة المصرية • ٥٢٢ صفحة',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: e == edition
+                              ? Colors.white.withAlpha(220)
+                              : MushafColors.frame,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

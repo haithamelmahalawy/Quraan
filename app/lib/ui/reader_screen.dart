@@ -29,13 +29,14 @@ import 'variant_sheet.dart';
 class ReaderScreen extends StatefulWidget {
   const ReaderScreen({
     super.key,
-    required this.quran,
+    required this.mushafs,
     required this.variants,
     required this.mutashabihat,
     required this.settings,
   });
 
-  final QuranRepository quran;
+  /// The printed mushafs; [ReaderSettings.edition] is the one shown.
+  final Mushafs mushafs;
   final VariantRepository variants;
   final MutashabihatRepository mutashabihat;
   final ReaderSettings settings;
@@ -85,6 +86,29 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   bool get _twoPages => widget.settings.twoPages;
 
+  /// The mushaf shown, and the one the pager was built for.
+  QuranRepository get _quran => widget.mushafs.of(widget.settings.edition);
+  late MushafEdition _edition = widget.settings.edition;
+
+  /// Pager positions: a page, or a spread of two from the mushaf's first
+  /// page ((1, 2), (3, 4) in the Madinah mushaf; (2, 3) in the Shamarly).
+  int _indexOf(int page) {
+    final i = page - _quran.firstPage;
+    return _twoPages ? i ~/ 2 : i;
+  }
+
+  int _pageAt(int index) =>
+      _quran.firstPage + (_twoPages ? 2 * index : index);
+
+  /// Switches the mushaf, at the place read.
+  void _setEdition(MushafEdition edition) {
+    if (edition == widget.settings.edition) return;
+    widget.settings.openEdition(
+      edition,
+      widget.mushafs.convert(_page, widget.settings.edition, edition),
+    );
+  }
+
   /// Once the page is drawn: picture it and its facing page, then show
   /// where it lies in the open mushaf.
   void _showSide() {
@@ -93,8 +117,8 @@ class _ReaderScreenState extends State<ReaderScreen>
       if (!mounted) return;
       final pager = _pager.currentState;
       if (pager != null) {
-        final index = _page - 1;
-        final facing = isRightPage(_page) ? index + 1 : index - 1;
+        final index = _indexOf(_page);
+        final facing = _quran.isRightPage(_page) ? index + 1 : index - 1;
         _currentPicture?.dispose();
         _facingPicture?.dispose();
         _currentPicture = pager.capture(index);
@@ -206,13 +230,23 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   /// The printed-mushaf fonts of the pages around [page].
   void _loadFonts(int page) {
-    if (widget.settings.qcfFont) {
+    if (widget.settings.qcfFont && _quran.edition == MushafEdition.madani) {
       QcfFonts.instance.ensure([page, page + 1, page - 1, page + 2, page - 2]);
     }
   }
 
   /// Loads newly selected riwayat before the pages are redrawn with them.
   Future<void> _onSettings() async {
+    // Another mushaf: a new pager, at the page of the place read.
+    if (widget.settings.edition != _edition) {
+      setState(() {
+        _edition = widget.settings.edition;
+        _page = widget.settings.page;
+        _pager = GlobalKey<BookPagerState>();
+        _zoomed = false;
+      });
+      _showSide();
+    }
     _syncCamera();
     _loadFonts(_page);
     final missing = widget.settings.selected
@@ -249,7 +283,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       VariantSheet(
         ayah: ayah,
         word: word,
-        surahName: widget.quran.surah(ayah.surah).nameAr,
+        surahName: _quran.surah(ayah.surah).nameAr,
         settings: widget.settings,
         variants: widget.variants,
         onAyah: () {
@@ -269,7 +303,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   void _openAyah(Ayah ayah) => AyahSheet.show(
     context,
     ayah: ayah,
-    quran: widget.quran,
+    quran: _quran,
     settings: widget.settings,
   );
 
@@ -277,12 +311,11 @@ class _ReaderScreenState extends State<ReaderScreen>
       MutashabihatSheet.show(
         context,
         places: places,
-        quran: widget.quran,
+        quran: _quran,
         onGo: _goToPage,
       );
 
-  void _goToPage(int page) =>
-      _pager.currentState?.jumpTo(_twoPages ? (page - 1) ~/ 2 : page - 1);
+  void _goToPage(int page) => _pager.currentState?.jumpTo(_indexOf(page));
 
   void _setFullScreen(bool on) {
     SystemChrome.setEnabledSystemUIMode(
@@ -295,7 +328,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   Widget build(BuildContext context) {
     Widget page(int number, {required bool hamesh}) => MushafPage(
       page: number,
-      quran: widget.quran,
+      quran: _quran,
       variants: widget.variants,
       mutashabihat: widget.mutashabihat,
       settings: widget.settings,
@@ -304,20 +337,22 @@ class _ReaderScreenState extends State<ReaderScreen>
       showHamesh: hamesh,
       onZoomChanged: (z) => setState(() => _zoomed = z),
       onPageNumberTap: _pickPage,
-      qcf: widget.settings.qcfFont && QcfFonts.instance.isReady(number),
+      // The QCF page fonts draw the Madinah pages only.
+      qcf:
+          widget.settings.qcfFont &&
+          _quran.edition == MushafEdition.madani &&
+          QcfFonts.instance.isReady(number),
     );
 
     final two = _twoPages;
     final book = BookPager(
       key: _pager,
-      // Two-page view turns a spread at a time: pages (1, 2), (3, 4), ...
-      itemCount: two
-          ? (QuranRepository.pageCount + 1) ~/ 2
-          : QuranRepository.pageCount,
-      initialIndex: two ? (_page - 1) ~/ 2 : _page - 1,
+      // Two-page view turns a spread at a time (see _indexOf).
+      itemCount: two ? (_quran.pageCount + 1) ~/ 2 : _quran.pageCount,
+      initialIndex: _indexOf(_page),
       enabled: !_zoomed,
       onPageChanged: (i) {
-        final number = two ? 2 * i + 1 : i + 1;
+        final number = _pageAt(i);
         setState(() {
           _page = number;
           _zoomed = false;
@@ -334,16 +369,16 @@ class _ReaderScreenState extends State<ReaderScreen>
                 // The right page (odd) first, as the mushaf lies open.
                 textDirection: TextDirection.rtl,
                 children: [
-                  Expanded(child: page(2 * i + 1, hamesh: false)),
+                  Expanded(child: page(_pageAt(i), hamesh: false)),
                   const _Spine(),
                   Expanded(
-                    child: 2 * i + 2 <= QuranRepository.pageCount
-                        ? page(2 * i + 2, hamesh: false)
+                    child: _pageAt(i) + 1 <= _quran.lastPage
+                        ? page(_pageAt(i) + 1, hamesh: false)
                         : const SizedBox(),
                   ),
                 ],
               )
-            : page(i + 1, hamesh: !_fullScreen),
+            : page(_pageAt(i), hamesh: !_fullScreen),
       ),
     );
     final pages = _withHint(book);
@@ -403,6 +438,32 @@ class _ReaderScreenState extends State<ReaderScreen>
                                     Navigator.of(context)
                                         .popUntil((route) => route.isFirst),
                               ),
+                              // Madinah or Shamarly, at the place read.
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 3),
+                                child: Raised(
+                                  radius: 19,
+                                  depth: 0.6,
+                                  tooltip: 'التبديل بين مصحف المدينة والشمرلي',
+                                  onTap: () => _setEdition(
+                                    _edition == MushafEdition.madani
+                                        ? MushafEdition.shamarly
+                                        : MushafEdition.madani,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 8),
+                                  child: Text(
+                                    _edition == MushafEdition.madani
+                                        ? 'المدينة'
+                                        : 'الشمرلي',
+                                    style: TextStyle(
+                                      color: MushafColors.green,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
                               RiwayatMenu(
                                 settings: widget.settings,
                                 variants: widget.variants,
@@ -415,7 +476,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                                       .push<int>(
                                         MaterialPageRoute(
                                           builder: (_) =>
-                                              SearchScreen(quran: widget.quran),
+                                              SearchScreen(quran: _quran),
                                         ),
                                       );
                                   if (page != null) _goToPage(page);
@@ -429,7 +490,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                                       .push<int>(
                                         MaterialPageRoute(
                                           builder: (_) =>
-                                              SurahIndex(quran: widget.quran),
+                                              SurahIndex(quran: _quran),
                                         ),
                                       );
                                   if (page != null) _goToPage(page);
@@ -508,13 +569,13 @@ class _ReaderScreenState extends State<ReaderScreen>
                       ),
                       if (!two && !_turning)
                         Tooltip(
-                          message: isRightPage(_page)
+                          message: _quran.isRightPage(_page)
                               ? 'الصفحة في يمين المصحف'
                               : 'الصفحة في يسار المصحف',
                           child: GestureDetector(
                             onTap: _showSide,
                             child: OpenMushafView(
-                              right: isRightPage(_page),
+                              right: _quran.isRightPage(_page),
                               width: 44,
                               current: _currentPicture,
                               facing: _facingPicture,
@@ -546,7 +607,7 @@ class _ReaderScreenState extends State<ReaderScreen>
               ),
             ),
             Expanded(child: pages),
-            SurahSlider(quran: widget.quran, page: _page, onGo: _goToPage),
+            SurahSlider(quran: _quran, page: _page, onGo: _goToPage),
           ],
         ),
       ),
@@ -599,6 +660,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         Positioned.fill(
           child: PageSideHint(
             page: _page,
+            right: _quran.isRightPage(_page),
             progress: _hint.value,
             current: _currentPicture,
             facing: _facingPicture,
@@ -616,16 +678,16 @@ class _ReaderScreenState extends State<ReaderScreen>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialog) {
-          final first = widget.quran.page(value.round()).first;
+          final first = _quran.page(value.round()).first;
           return AlertDialog(
             title: Text(
-              'صفحة ${value.round()} • سورة ${widget.quran.surah(first.surah).nameAr}',
+              'صفحة ${value.round()} • سورة ${_quran.surah(first.surah).nameAr}',
               style: TextStyle(color: MushafColors.green, fontSize: 18),
             ),
             content: Slider(
-              min: 1,
-              max: QuranRepository.pageCount.toDouble(),
-              divisions: QuranRepository.pageCount - 1,
+              min: _quran.firstPage.toDouble(),
+              max: _quran.lastPage.toDouble(),
+              divisions: _quran.pageCount - 1,
               value: value,
               label: '${value.round()}',
               onChanged: (v) => setDialog(() => value = v),
