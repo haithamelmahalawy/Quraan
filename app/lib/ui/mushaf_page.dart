@@ -591,7 +591,8 @@ class _MushafPageState extends State<MushafPage> {
   Widget _word(Ayah ayah, int w, double fontSize, [int kashida = 0]) {
     final m = _mark(ayah, w);
     final shown = _display(ayah, w)!;
-    final hafsFont = shown.font == 'Hafs';
+    // Not the page glyphs of the Madinah print: letters to colour and draw out.
+    final hafsFont = !shown.font.startsWith('QCF_');
     final coloured = hafsFont ? _letterParts(ayah, w, shown.text) : null;
     final parts = hafsFont
         ? _stretched(shown.text, coloured, kashida)
@@ -606,7 +607,7 @@ class _MushafPageState extends State<MushafPage> {
         color: coloured != null
             ? MushafColors.ink
             : m.color ?? MushafColors.ink,
-        backgroundColor: coloured != null ? null : m.color?.withAlpha(28),
+        // Coloured text only, as the coloured prints (no box behind it).
       ),
     );
     if (m.mutashabih) {

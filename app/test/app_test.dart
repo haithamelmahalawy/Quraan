@@ -11,7 +11,9 @@ import 'package:qiraat_mushaf/ui/mushaf_page.dart';
 import 'package:qiraat_mushaf/ui/mutashabihat_sheet.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
-const fonts = {'Hafs': 'hafs.18'};
+const fonts = {
+  'Hafs': 'hafs.18',
+};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

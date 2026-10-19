@@ -67,7 +67,7 @@ class MushafLines extends StatelessWidget {
     }
     // A line of the print each; the Shamarly surah headers take two.
     final lineHeight = height! / lines.fold(0, (n, l) => n + l.span);
-    return (fontSize: math.min(fit, lineHeight / 1.75), lineHeight: lineHeight);
+    return (fontSize: math.min(fit, lineHeight / 1.45), lineHeight: lineHeight);
   }
 
   static const _probe = 20.0;
@@ -111,7 +111,13 @@ class MushafLines extends StatelessWidget {
     );
   }
 
-  Widget _textLine(List<(Ayah, int)> words, double fontSize, double width) {
+  Widget _textLine(List<(Ayah, int)> words, double pageSize, double width) {
+    // A line longer than the others (a riwaya's longer words) is set a
+    // little smaller rather than the whole page.
+    final natural = _naturalWidth(words);
+    final fontSize = centered || natural == 0
+        ? pageSize
+        : math.min(pageSize, _probe * width * 0.995 / natural);
     final kashida = centered
         ? const <int, int>{}
         : _kashida(words, fontSize, width);
@@ -147,12 +153,15 @@ class MushafLines extends StatelessWidget {
     var items = 0;
     final slots = <int, int>{};
     final lengths = <int, int>{};
+    String? stretchFont;
     for (final (i, (ayah, w)) in words.indexed) {
       final shown = _show(ayah, w);
       if (shown != null) {
         natural += _measure(shown.text, shown.font) * scale;
         items++;
-        if (shown.font == 'Hafs') {
+        // Letters to draw out, not the page glyphs of the Madinah print.
+        if (!shown.font.startsWith('QCF_')) {
+          stretchFont ??= shown.font;
           final letters = lettersOf(shown.text);
           final n = kashidaSlots(letters).length;
           if (n > 0) {
@@ -169,7 +178,7 @@ class MushafLines extends StatelessWidget {
     if (slots.isEmpty) return const {};
     // Words keep at least a narrow space between them.
     natural += math.max(0, items - 1) * fontSize * 0.18;
-    final tatweelWidth = _measure(tatweel, 'Hafs') * scale;
+    final tatweelWidth = _measure(tatweel, stretchFont ?? 'Hafs') * scale;
     if (tatweelWidth <= 0) return const {};
     var count = ((width * 0.985 - natural) / tatweelWidth).floor();
     if (count <= 0) return const {};
@@ -178,7 +187,7 @@ class MushafLines extends StatelessWidget {
     final order = slots.keys.toList()
       ..sort((a, b) => lengths[b]!.compareTo(lengths[a]!));
     final out = <int, int>{};
-    for (var joins = 1; count > 0 && joins <= 3; joins++) {
+    for (var joins = 1; count > 0 && joins <= 1; joins++) {
       for (final i in order) {
         if (count == 0) break;
         final int most = kashidaPerJoin * math.min(joins, slots[i]!);
@@ -217,35 +226,47 @@ class MushafLines extends StatelessWidget {
   /// every full line then fills the width, as in the print: the words keep
   /// their natural spacing instead of being spread apart.
   double _fitFontSize(double width) {
-    var widest = 0.0;
-    for (final line in lines) {
-      if (line is! TextLine) continue;
-      var w = 0.0;
-      var items = 0;
-      String? font;
-      for (final (ayah, i) in line.words) {
-        final shown = _show(ayah, i);
-        if (shown != null) {
-          w += _measure(shown.text, shown.font);
-          font ??= shown.font;
-          items++;
-        }
-        if (i == ayah.words.length - 1) {
-          final end = _marker(ayah);
-          w += _measure(end.text, end.font);
-        }
-      }
-      // Word spacing: the font's space; centred lines pad every word.
-      w += centered
-          ? items * _probe * 0.25
-          : math.max(0, items - 1) *
-                math.max(_measure(' ', font ?? 'Hafs'), _probe * 0.08);
-      widest = math.max(widest, w);
-    }
-    if (widest == 0) return width / 16;
-    // A small margin for rounding between measured and laid-out glyphs;
+    final widths = [
+      for (final line in lines)
+        if (line is TextLine) _naturalWidth(line.words),
+    ].where((w) => w > 0).toList()..sort();
+    if (widths.isEmpty) return width / 16;
+    // The page is sized by its usual line, as the print: a line a riwaya
+    // makes longer is set smaller itself (at most a tenth), so one long
+    // line does not shrink the whole page.
+    final widest = widths.last;
+    final usual = centered ? widest : widths[widths.length ~/ 2];
+    final size = math.min(
+      _probe * width * 0.995 / usual,
+      _probe * width * 0.995 / widest * 1.1,
+    );
     // Al-Fatiha and the start of Al-Baqarah have short, centred lines.
-    return math.min(_probe * width * 0.995 / widest, width / 13);
+    return math.min(size, width / 13);
+  }
+
+  /// Width of [words] at the probe size with the font's own word spacing
+  /// (centred lines pad every word).
+  double _naturalWidth(List<(Ayah, int)> words) {
+    var w = 0.0;
+    var items = 0;
+    String? font;
+    for (final (ayah, i) in words) {
+      final shown = _show(ayah, i);
+      if (shown != null) {
+        w += _measure(shown.text, shown.font);
+        font ??= shown.font;
+        items++;
+      }
+      if (i == ayah.words.length - 1) {
+        final end = _marker(ayah);
+        w += _measure(end.text, end.font);
+      }
+    }
+    return w +
+        (centered
+            ? items * _probe * 0.25
+            : math.max(0, items - 1) *
+                  math.max(_measure(' ', font ?? 'Hafs'), _probe * 0.08));
   }
 
   static final _cache = <String, double>{};

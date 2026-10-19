@@ -199,7 +199,7 @@ List<int> kashidaSlots(List<String> letters) {
 }
 
 /// Kashidas one join takes before the next join of the word is drawn out.
-const kashidaPerJoin = 3;
+const kashidaPerJoin = 2;
 
 /// [letters] with [count] kashidas on its [kashidaSlots], each added to the
 /// letter it draws out: the last join first, as far as [kashidaPerJoin].

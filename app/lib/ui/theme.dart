@@ -123,7 +123,7 @@ class InkText extends StatelessWidget {
   final double firmness;
 
   /// Outline width: how much firmer than the font's own strokes.
-  static double weight(double fontSize) => fontSize * 0.06;
+  static double weight(double fontSize) => fontSize * 0.025;
 
   @override
   Widget build(BuildContext context) {
