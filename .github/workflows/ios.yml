@@ -25,7 +25,10 @@ concurrency:
 
 jobs:
   ios:
-    runs-on: macos-15
+    # Intel: GitHub's Apple-silicon (arm64) macOS runners are short of
+    # capacity and jobs waiting for one were cancelled after 15 minutes
+    # ("not acquired by Runner of type hosted").
+    runs-on: macos-15-intel
     timeout-minutes: 60
     defaults:
       run:
