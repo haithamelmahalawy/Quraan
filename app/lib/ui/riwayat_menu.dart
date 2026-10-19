@@ -18,6 +18,13 @@ class RiwayatMenu extends StatelessWidget {
   final ReaderSettings settings;
   final VariantRepository variants;
 
+  /// [ids] in the order of the catalogue.
+  static List<String> _ordered(Set<String> ids) => [
+    for (final q in qiraat)
+      for (final r in q.riwayat)
+        if (ids.contains(r.id)) r.id,
+  ];
+
   void _toggle(String id, bool on) {
     final next = {...settings.selected};
     on ? next.add(id) : next.remove(id);
@@ -36,6 +43,33 @@ class RiwayatMenu extends StatelessWidget {
           ),
         ),
         menuChildren: [
+          // Which riwaya the page shows; the others are compared with it.
+          if (settings.selected.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+              child: Text(
+                'المصحف المعروض برواية',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: MushafColors.green,
+                ),
+              ),
+            ),
+            for (final id in [hafsId, ..._ordered(settings.selected)])
+              RadioMenuButton<String>(
+                value: id,
+                groupValue: settings.displayed ?? hafsId,
+                closeOnActivate: false,
+                onChanged: (v) =>
+                    settings.displayed = v == hafsId ? null : v,
+                child: Text(
+                  id == hafsId
+                      ? 'حفص (النص الأساسي)'
+                      : 'رواية ${riwayaById(id).nameAr} عن ${qiraaOf(id).shortAr}',
+                ),
+              ),
+            const Divider(height: 12),
+          ],
           if (settings.selected.isNotEmpty)
             MenuItemButton(
               leadingIcon: const Icon(Icons.clear_all),
@@ -84,7 +118,10 @@ class RiwayatMenu extends StatelessWidget {
                 Text(
                   settings.selected.isEmpty
                       ? 'الروايات'
-                      : 'الروايات (${settings.selected.length})',
+                      : settings.displayed == null
+                      ? 'الروايات (${settings.selected.length})'
+                      : 'برواية ${riwayaById(settings.displayed!).nameAr} '
+                            '(${settings.selected.length})',
                   style: TextStyle(
                     color: MushafColors.green,
                     fontWeight: FontWeight.bold,

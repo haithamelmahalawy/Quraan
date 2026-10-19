@@ -91,6 +91,7 @@ Map<int, List<Variant>> _index((String, String) input) {
       text: madinahScript(v[4] as String),
       kind: VariantKind.fromCode(v[5] as String),
       description: v.length > 6 ? v[6] as String : '',
+      rule: v.length > 7 ? v[7] as String : '',
     );
     for (var w = variant.word; w < variant.word + variant.count; w++) {
       index

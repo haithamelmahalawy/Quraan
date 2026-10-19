@@ -144,6 +144,27 @@ printed; inside an ayah the words are spread over its printed stretch by
 their width, so in long ayahs a word at the edge of a line can fall one line
 off (pages 4 and 42 checked against the print: most lines exact).
 
+### Recitation rules, the base riwaya, and the Shatibiyya and Durrah
+
+- **Rules applied to the Hafs text** (`dart run tool/build_usul.dart`, after
+  the riwayat are built): for Warsh, madd al-badal (shown green, like
+  imala), tarqiq of the ra and taghliz of the lam (orange); for Khalaf 'an
+  Hamzah, the sakt on ال, شيء and a sakin before a hamza (marked ۜ). The texts
+  do not spell these; the tool applies the rules of the Shatibiyya with their
+  main exceptions (see its header), so rare words with a ruling of their own
+  may differ. Its readings carry their rule as an 8th field. It also drops
+  "differences" written exactly as Hafs.
+- **Base riwaya:** with several riwayat selected, the riwayat menu chooses the
+  one the page shows; its differences from Hafs are coloured, and the others
+  are noted only where they differ from it (a riwaya reading as Hafs has no
+  note).
+- **References:** a note of the hamesh (or a reading in the word's sheet)
+  opens the verses of the Shatibiyya (the seven) or the Durrah (Abu Ja'far,
+  Ya'qub, Khalaf al-'Ashir) that name the word, in the chapter of its surah or
+  of its rule, and the whole chapter. Text: Quranpedia's books 127 and 126,
+  built by `dart run tool/build_manzumat.dart` into `assets/data/manzumat.json`
+  (1173 + 240 verses).
+
 ### Tafsir and recitations
 
 Holding a word (or tapping one without readings) opens its ayah: the

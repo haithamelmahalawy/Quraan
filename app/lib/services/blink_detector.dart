@@ -16,6 +16,9 @@ class DoubleBlink extends EyeGesture {
   const DoubleBlink();
 }
 
+/// What the camera sees of the reader's eyes.
+enum EyeState { noFace, open, closed }
+
 /// Recognises a double blink with the front camera.
 ///
 /// Frames are analysed on the device by ML Kit face detection (eye-open
@@ -24,6 +27,12 @@ class BlinkDetector {
   final _gestures = StreamController<EyeGesture>.broadcast();
 
   Stream<EyeGesture> get gestures => _gestures.stream;
+
+  /// The eyes now, so the reader can see that the camera follows them.
+  final eyes = ValueNotifier(EyeState.noFace);
+
+  /// Counts every blink seen.
+  final blinks = ValueNotifier(0);
 
   CameraController? _camera;
   FaceDetector? _faces;
@@ -50,7 +59,8 @@ class BlinkDetector {
     );
     final camera = CameraController(
       front,
-      ResolutionPreset.low,
+      // Sharp enough for ML Kit to judge open and closed eyes.
+      ResolutionPreset.medium,
       enableAudio: false,
       imageFormatGroup:
           Platform.isIOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.nv21,
@@ -89,6 +99,8 @@ class BlinkDetector {
   Future<void> dispose() async {
     await stop();
     await _gestures.close();
+    eyes.dispose();
+    blinks.dispose();
   }
 
   Future<void> _onFrame(CameraImage image) async {
@@ -98,7 +110,11 @@ class BlinkDetector {
     _busy = true;
     try {
       final faces = await _faces?.processImage(input) ?? const [];
-      if (faces.isNotEmpty) _onFace(faces.first);
+      if (faces.isNotEmpty) {
+        _onFace(faces.first);
+      } else {
+        eyes.value = EyeState.noFace;
+      }
     } on PlatformException catch (e) {
       debugPrint('blink detector: $e');
     } finally {
@@ -106,12 +122,21 @@ class BlinkDetector {
     }
   }
 
-  static const _shut = 0.3, _open = 0.6;
+  static const _shut = 0.35, _open = 0.55;
+
+  /// The longest pause between the two blinks of a double blink.
+  static const _pause = Duration(milliseconds: 900);
 
   void _onFace(Face face) {
     final left = face.leftEyeOpenProbability;
     final right = face.rightEyeOpenProbability;
-    if (left == null || right == null) return;
+    if (left == null || right == null) {
+      eyes.value = EyeState.noFace;
+      return;
+    }
+    if (kDebugMode) {
+      debugPrint('eyes ${left.toStringAsFixed(2)} ${right.toStringAsFixed(2)}');
+    }
     feed(left, right, at: DateTime.now());
   }
 
@@ -120,9 +145,11 @@ class BlinkDetector {
   void feed(double left, double right, {required DateTime at}) {
     // Both eyes shut: a blink in progress.
     if (left < _shut && right < _shut) {
+      eyes.value = EyeState.closed;
       _closedAt ??= at;
       return;
     }
+    eyes.value = EyeState.open;
     // A blink ends when both eyes are open again.
     final closedAt = _closedAt;
     if (closedAt != null && left > _open && right > _open) {
@@ -131,13 +158,14 @@ class BlinkDetector {
     }
   }
 
-  /// Collects blinks into a sequence and judges it after a short pause:
-  /// exactly two blinks make a double blink.
+  /// Collects blinks into a sequence and judges it after a pause of
+  /// [_pause]: exactly two blinks make a double blink.
   void _onBlink(Duration shut) {
     if (shut.inMilliseconds < 50 || shut.inMilliseconds > 1200) return;
+    blinks.value++;
     _blinks++;
     _sequenceEnd?.cancel();
-    _sequenceEnd = Timer(const Duration(milliseconds: 650), () {
+    _sequenceEnd = Timer(_pause, () {
       if (_blinks == 2) _gestures.add(const DoubleBlink());
       _blinks = 0;
     });

@@ -87,6 +87,9 @@ abstract final class MushafColors {
   static Color get roseLight => _p.roseLight;
   static Color get multi => _p.multi;
 
+  /// Tarqiq of the ra and taghliz of the lam (Warsh): orange.
+  static Color get rule => tone(const Color(0xFFE8730C));
+
   /// A qiraa colour adjusted for the background (lighter on dark pages).
   static Color tone(Color c) =>
       isDark ? Color.lerp(c, const Color(0xFFFFFFFF), 0.38)! : c;

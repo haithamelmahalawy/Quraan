@@ -75,6 +75,21 @@ class ReaderSettings extends ChangeNotifier {
   int get tafsirBook => _get('tafsir') as int? ?? 2012;
   set tafsirBook(int id) => _set('tafsir', id);
 
+  /// The riwaya whose text the mushaf shows, when not Hafs: one of the
+  /// selected riwayat (chosen in the riwayat menu), or the single one in
+  /// the "replace" mode. The other selected riwayat are compared with it.
+  String? get displayed {
+    final base = _get('base') as String?;
+    if (base != null && _selected.contains(base)) return base;
+    if (mode == DisplayMode.replace && _selected.length == 1) {
+      return _selected.single;
+    }
+    return null;
+  }
+
+  /// Shows the mushaf in [riwaya] (a selected riwaya), or Hafs (null).
+  set displayed(String? riwaya) => _set('base', riwaya ?? 'hafs');
+
   /// The riwaya last listened to.
   String? get listenRiwaya => _get('listenRiwaya') as String?;
   set listenRiwaya(String? id) => _set('listenRiwaya', id ?? 'hafs');

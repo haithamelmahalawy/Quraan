@@ -362,6 +362,7 @@ class _PageReadingsState extends State<_PageReadings> {
         surahName: widget.quran.surah(ayah.surah).nameAr,
         settings: widget.settings,
         variants: widget.variants,
+        surahNames: [for (final s in widget.quran.surahs) s.nameAr],
         onAyah: () {
           Navigator.of(context).pop();
           _openAyah(ayah);

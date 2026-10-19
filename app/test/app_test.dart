@@ -213,6 +213,20 @@ void main() {
   );
 
   testWidgets(
+    'page 3 shown in Warsh (badal green, tarqiq orange), Qalun against it',
+    tags: 'golden',
+    (t) async {
+      await shot(
+        t,
+        3,
+        ReaderSettings.memory(selected: {'warsh', 'qalun'})
+          ..displayed = 'warsh',
+        'p3_warsh_base',
+      );
+    },
+  );
+
+  testWidgets(
     'page 225, Hamzah and al-Kisa\'i: imala sign added',
     tags: 'golden',
     (t) async {

@@ -31,6 +31,15 @@ void main() {
     expect(g.single, isA<DoubleBlink>());
   });
 
+  test('two slower blinks, 0.7 s apart', () async {
+    final g = await run([
+      (open, open, 400),
+      (shut, shut, 200), (open, open, 700),
+      (shut, shut, 200), (open, open, 400),
+    ]);
+    expect(g.single, isA<DoubleBlink>());
+  });
+
   test('one blink does nothing', () async {
     expect(await run([(open, open, 400), (shut, shut, 120), (open, open, 400)]),
         isEmpty);

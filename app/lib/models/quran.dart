@@ -48,6 +48,7 @@ class Variant {
     required this.text,
     required this.kind,
     this.description = '',
+    this.rule = '',
   });
 
   final String riwayaId;
@@ -67,11 +68,22 @@ class Variant {
   /// How the reading differs, in Arabic: "بالتاء", "بضم الهاء", ...
   final String description;
 
+  /// The recitation rule it applies, for readings made by applying a rule
+  /// to the Hafs text (tool/build_usul.dart): 'badal' (madd al-badal),
+  /// 'tarqiq' (of the ra), 'taghliz' (of the lam), 'sakt'; empty otherwise.
+  final String rule;
+
   /// A reading with imala (or taqlil, the lesser imala).
   bool get isImala =>
       text.contains('۪') ||
       RegExp(r'إمالة|الإمالة|تقليل|التقليل|بين بين|بين اللفظين')
           .hasMatch(description);
+
+  /// Shown in green, like imala: madd al-badal.
+  bool get isBadal => rule == 'badal';
+
+  /// Shown in orange: tarqiq of the ra, taghliz of the lam.
+  bool get isTarqiqOrTaghliz => rule == 'tarqiq' || rule == 'taghliz';
 }
 
 enum VariantKind {

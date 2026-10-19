@@ -286,6 +286,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         surahName: _quran.surah(ayah.surah).nameAr,
         settings: widget.settings,
         variants: widget.variants,
+        surahNames: [for (final s in _quran.surahs) s.nameAr],
         onAyah: () {
           Navigator.of(context).pop();
           _openAyah(ayah);
@@ -524,35 +525,26 @@ class _ReaderScreenState extends State<ReaderScreen>
                                 onTap: () => widget.settings.showMutashabihat =
                                     !widget.settings.showMutashabihat,
                               ),
+                              // The double blink: turns the front camera on
+                              // or off.
+                              RaisedIcon(
+                                icon: widget.settings.blinkToOpen
+                                    ? Icons.remove_red_eye_rounded
+                                    : Icons.visibility_off_outlined,
+                                tooltip: widget.settings.blinkToOpen
+                                    ? 'إيقاف التقليب بالرمش مرتين'
+                                    : 'التقليب بالرمش مرتين (الكاميرا الأمامية)',
+                                color: widget.settings.blinkToOpen
+                                    ? MushafColors.gold
+                                    : null,
+                                onTap: () => widget.settings.blinkToOpen =
+                                    !widget.settings.blinkToOpen,
+                              ),
                               RaisedIcon(
                                 icon: Icons.fullscreen_rounded,
                                 tooltip: 'ملء الشاشة',
                                 onTap: () => _setFullScreen(true),
                               ),
-                              if (widget.settings.blinkToOpen &&
-                                  _blink.isRunning)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                  ),
-                                  child: Tooltip(
-                                    message:
-                                        'الرمش مرتين ينقلك إلى الصفحة التالية',
-                                    child: AnimatedScale(
-                                      scale: _blinkFlash ? 1.5 : 1,
-                                      duration: const Duration(
-                                        milliseconds: 200,
-                                      ),
-                                      child: Icon(
-                                        _blinkFlash
-                                            ? Icons.visibility
-                                            : Icons.visibility_outlined,
-                                        size: 20,
-                                        color: MushafColors.green,
-                                      ),
-                                    ),
-                                  ),
-                                ),
                               if (_loading)
                                 const Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 8),
@@ -567,6 +559,8 @@ class _ReaderScreenState extends State<ReaderScreen>
                           ),
                         ),
                       ),
+                      if (widget.settings.blinkToOpen && _blink.isRunning)
+                        _EyeIndicator(blink: _blink, flash: _blinkFlash),
                       if (!two && !_turning)
                         Tooltip(
                           message: _quran.isRightPage(_page)
@@ -727,4 +721,62 @@ class _Spine extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// What the front camera sees of the eyes, live: no face (grey), eyes open
+/// (green) or closed (gold); it beats at every blink and grows when a double
+/// blink turns the page. So the reader sees at once whether it follows them.
+class _EyeIndicator extends StatelessWidget {
+  const _EyeIndicator({required this.blink, required this.flash});
+
+  final BlinkDetector blink;
+
+  /// A double blink was just recognised.
+  final bool flash;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: blink.blinks,
+      builder: (context, count, _) => ValueListenableBuilder<EyeState>(
+        valueListenable: blink.eyes,
+        builder: (context, eyes, _) {
+          final (icon, color, tip) = switch (eyes) {
+            EyeState.noFace => (
+              Icons.face_retouching_off_rounded,
+              MushafColors.frame,
+              'لا تظهر عيناك للكاميرا الأمامية: قرّب وجهك وأضئ المكان',
+            ),
+            EyeState.open => (
+              Icons.visibility_rounded,
+              MushafColors.green,
+              'الكاميرا ترى عينيك: ارمش مرتين للصفحة التالية',
+            ),
+            EyeState.closed => (
+              Icons.visibility_off_rounded,
+              MushafColors.gold,
+              'عيناك مغمضتان',
+            ),
+          };
+          return Tooltip(
+            message: tip,
+            child: TweenAnimationBuilder<double>(
+              // Restarts at each blink: a short beat.
+              key: ValueKey(count),
+              tween: Tween(begin: count == 0 ? 1 : 1.35, end: 1),
+              duration: const Duration(milliseconds: 250),
+              builder: (context, beat, child) => Transform.scale(
+                scale: flash ? 1.5 : beat,
+                child: child,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Icon(icon, size: 22, color: color),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }

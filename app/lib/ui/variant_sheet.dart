@@ -4,6 +4,7 @@ import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../state/reader_settings.dart';
+import 'reference_sheet.dart';
 
 /// How each riwaya reads one Hafs word: the selected riwayat first, then
 /// every other riwaya that has data.
@@ -17,6 +18,7 @@ class VariantSheet extends StatelessWidget {
     required this.variants,
     this.onMutashabihat,
     this.onAyah,
+    this.surahNames,
   });
 
   final Ayah ayah;
@@ -30,6 +32,10 @@ class VariantSheet extends StatelessWidget {
 
   /// Opens the ayah: its tafsir and recitation.
   final VoidCallback? onAyah;
+
+  /// The surah names of the mushaf: with them, a reading opens its place
+  /// in the Shatibiyya or the Durrah.
+  final List<String>? surahNames;
 
   static Future<void> show(BuildContext context, VariantSheet sheet) =>
       showModalBottomSheet(
@@ -118,11 +124,11 @@ class VariantSheet extends StatelessWidget {
               if (settings.selected.isNotEmpty) ...[
                 _header(context, 'القراءات المختارة'),
                 for (final id in _ordered(settings.selected))
-                  _tile(id, from, to),
+                  _tile(context, id, from, to),
               ],
               if (others.isNotEmpty) ...[
                 _header(context, 'بقية الروايات المتوفرة'),
-                for (final id in others) _tile(id, from, to),
+                for (final id in others) _tile(context, id, from, to),
               ],
             ],
           ],
@@ -143,7 +149,7 @@ class VariantSheet extends StatelessWidget {
   );
 
   /// The reading of Hafs words [from, to) in riwaya [id].
-  Widget _tile(String id, int from, int to) {
+  Widget _tile(BuildContext context, String id, int from, int to) {
     final riwaya = riwayaById(id);
     final qiraa = qiraaOf(id);
     final list = variants.at([id], ayah.surah, ayah.number, word).toList();
@@ -172,6 +178,15 @@ class VariantSheet extends StatelessWidget {
       font: riwaya.fontFamily ?? 'Hafs',
       kind: v.kind,
       description: v.description,
+      onTap: surahNames == null
+          ? null
+          : () => ReferenceSheet.show(
+              context,
+              readings: [v],
+              word: ayah.words.sublist(from, to).join(' '),
+              surah: ayah.surah,
+              surahNames: surahNames!,
+            ),
     );
   }
 }
@@ -185,6 +200,7 @@ class _ReadingTile extends StatelessWidget {
     this.kind,
     this.description = '',
     this.dimmed = false,
+    this.onTap,
   });
 
   final Color color;
@@ -195,9 +211,16 @@ class _ReadingTile extends StatelessWidget {
   final String description;
   final bool dimmed;
 
+  /// Opens where the reading is stated (Shatibiyya, Durrah).
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    return GestureDetector(onTap: onTap, child: _box(theme));
+  }
+
+  Widget _box(ThemeData theme) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.all(12),
@@ -214,6 +237,14 @@ class _ReadingTile extends StatelessWidget {
               Expanded(child: Text(title, style: theme.textTheme.labelLarge)),
               if (kind != null)
                 Text(kind!.labelAr, style: theme.textTheme.labelSmall),
+              if (onTap != null)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 6),
+                  child: Tooltip(
+                    message: 'الدليل من الشاطبية أو الدرة',
+                    child: Icon(Icons.menu_book_rounded, size: 18, color: color),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 4),

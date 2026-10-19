@@ -13,6 +13,7 @@ import '../state/reader_settings.dart';
 import 'mushaf_decor.dart';
 import '../services/qcf_fonts.dart';
 import 'mushaf_lines.dart';
+import 'reference_sheet.dart';
 import 'theme.dart';
 
 typedef WordTap = void Function(Ayah ayah, int word);
@@ -280,7 +281,7 @@ class _MushafPageState extends State<MushafPage> {
                   child: _SideHamesh(
                     entries: shown,
                     tops: tops,
-                    onTap: widget.onWordTap,
+                    onTap: _openReference,
                     onFit: (fit) => _setSplit(signature, fit),
                   ),
                 ),
@@ -293,7 +294,7 @@ class _MushafPageState extends State<MushafPage> {
               child: _HameshBox(
                 title: 'تتمة الهامش',
                 entries: entries.sublist(split),
-                onTap: widget.onWordTap,
+                onTap: _openReference,
                 columns: narrow ? 3 : 4,
               ),
             ),
@@ -486,26 +487,23 @@ class _MushafPageState extends State<MushafPage> {
   /// under its letter when read with imala.
   ({String text, String font})? _display(Ayah ayah, int w) {
     final s = widget.settings;
-    final selected = s.selected.where(widget.variants.isLoaded).toList();
-    if (s.mode == DisplayMode.replace && selected.length == 1) {
-      final v = widget.variants
-          .at(selected, ayah.surah, ayah.number, w)
-          .where((v) => v.text.isNotEmpty || v.description.isEmpty)
-          .firstOrNull;
-      if (v != null) {
-        if (v.word != w || v.text.isEmpty) return null;
-        return (text: v.text, font: 'Hafs');
-      }
+    final base = _baseAt(widget.variants, s, ayah, w);
+    // The riwaya shown in place of Hafs: its reading takes the place of the
+    // Hafs word(s).
+    final v = base
+        .where((v) => v.text.isNotEmpty || v.description.isEmpty)
+        .firstOrNull;
+    if (v != null) {
+      if (v.word != w || v.text.isEmpty) return null;
+      return (text: v.text, font: 'Hafs');
     }
     final glyph = widget.qcf ? (ayah.glyphs?[w]) : null;
     // Drawn with the word before.
     if (glyph != null && glyph.isEmpty) return null;
-    final imala = _readingsAt(
-      widget.variants,
-      s,
-      ayah,
-      w,
-    ).shown.any((v) => v.word == w && v.isImala);
+    final imala = [
+      ...base,
+      ..._readingsAt(widget.variants, s, ayah, w).shown,
+    ].any((v) => v.word == w && v.isImala);
     // The page font has no imala sign to add: such a word is drawn in the
     // Hafs font.
     if (imala) return (text: withImalaSign(ayah.words[w]), font: 'Hafs');
@@ -574,6 +572,28 @@ class _MushafPageState extends State<MushafPage> {
     );
   }
 
+  /// A note of the hamesh tapped: where its readings are stated in the
+  /// Shatibiyya and the Durrah.
+  void _openReference(Ayah ayah, int w) {
+    final readings = _readingsAt(
+      widget.variants,
+      widget.settings,
+      ayah,
+      w,
+    ).shown.where((v) => v.word == w).toList();
+    if (readings.isEmpty) return;
+    final shown = _display(ayah, w)?.font == 'Hafs'
+        ? _display(ayah, w)!.text
+        : ayah.words[w];
+    ReferenceSheet.show(
+      context,
+      readings: readings,
+      word: shown,
+      surah: ayah.surah,
+      surahNames: [for (final s in widget.quran.surahs) s.nameAr],
+    );
+  }
+
   /// The notes of the words on this page (an ayah running over a page, as
   /// in the Shamarly print, has its other words on the next).
   List<HameshEntry> _hameshEntries(List<Ayah> ayahs) {
@@ -603,13 +623,48 @@ class _MushafPageState extends State<MushafPage> {
   }
 }
 
-/// The selected riwayat's readings of a Hafs word (all, and those of the
-/// kinds shown) and its colour: green for imala, the qiraa's colour, or
-/// [MushafColors.multi] when several qiraat differ.
+/// The readings of the riwaya the mushaf shows ([ReaderSettings.displayed])
+/// at a Hafs word; none when it shows Hafs.
+List<Variant> _baseAt(
+  VariantRepository variants,
+  ReaderSettings s,
+  Ayah ayah,
+  int w,
+) {
+  final base = s.displayed;
+  if (base == null || !variants.isLoaded(base)) return const [];
+  return variants.at([base], ayah.surah, ayah.number, w).toList();
+}
+
+/// The colour of readings: green for imala and madd al-badal (in every
+/// riwaya), orange for tarqiq of the ra and taghliz of the lam, otherwise
+/// the qiraa's colour, or [MushafColors.multi] when several qiraat differ.
+Color? _colorOf(List<Variant> readings) {
+  if (readings.isEmpty) return null;
+  if (readings.every((v) => v.isImala || v.isBadal)) return MushafColors.green;
+  if (readings.every((v) => v.isTarqiqOrTaghliz)) return MushafColors.rule;
+  final qiraat = {for (final v in readings) qiraaOf(v.riwayaId)};
+  return qiraat.length == 1 ? qiraat.single.color : MushafColors.multi;
+}
+
+/// How the other selected riwayat read a word, compared with the riwaya the
+/// mushaf shows (Hafs, or [ReaderSettings.displayed]): a riwaya that reads
+/// it as the shown text is not listed, nor one that reads it as Hafs (it has
+/// no reading). Readings of the kinds shown, their qiraat's colours, and the
+/// word's colour: theirs, or else the shown riwaya's own where it differs
+/// from Hafs.
 ({List<Variant> all, List<Variant> shown, List<Color> colors, Color? color})
 _readingsAt(VariantRepository variants, ReaderSettings s, Ayah ayah, int w) {
+  final base = _baseAt(variants, s, ayah, w);
+  final same = {for (final v in base) _readingKey(v)};
   final all = variants
-      .at(s.selected.where(variants.isLoaded), ayah.surah, ayah.number, w)
+      .at(
+        s.selected.where((id) => id != s.displayed && variants.isLoaded(id)),
+        ayah.surah,
+        ayah.number,
+        w,
+      )
+      .where((v) => !same.contains(_readingKey(v)))
       .toList(growable: false);
   final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
   final colors = [
@@ -619,14 +674,9 @@ _readingsAt(VariantRepository variants, ReaderSettings s, Ayah ayah, int w) {
     all: all,
     shown: shown,
     colors: colors,
-    color: colors.isEmpty
-        ? null
-        // Imala is green in every riwaya.
-        : shown.every((v) => v.isImala)
-        ? MushafColors.green
-        : colors.length == 1
-        ? colors.single
-        : MushafColors.multi,
+    color:
+        _colorOf(shown) ??
+        _colorOf(base.where((v) => s.kinds.contains(v.kind)).toList()),
   );
 }
 
@@ -648,7 +698,12 @@ List<HameshEntry> _entriesOf(
       final end = starting
           .map((v) => v.word + v.count)
           .reduce((a, b) => a > b ? a : b);
-      final hafs = ayah.words.sublist(w, end).join(' ');
+      // The word as shown on the page: Hafs, or the riwaya shown.
+      final shownText = _baseAt(variants, settings, ayah, w)
+          .where((v) => v.word == w && v.text.isNotEmpty)
+          .firstOrNull
+          ?.text;
+      final hafs = shownText ?? ayah.words.sublist(w, end).join(' ');
       final key = [
         _bare(hafs),
         for (final v in starting) '${v.riwayaId}=${_readingKey(v)}',
