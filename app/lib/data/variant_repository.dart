@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../models/quran.dart';
+import 'arabic.dart';
 
 /// Loads the per-riwaya difference files from `assets/data/qiraat/` and
 /// answers "which selected riwayat read this Hafs word differently?".
@@ -18,7 +19,7 @@ import '../models/quran.dart';
 /// number of Hafs words the reading replaces; the description is optional.
 class VariantRepository {
   VariantRepository(this.available, [AssetBundle? bundle])
-      : _bundle = bundle ?? rootBundle;
+    : _bundle = bundle ?? rootBundle;
 
   static const _dir = 'assets/data/qiraat/';
 
@@ -32,8 +33,9 @@ class VariantRepository {
   bool isAvailable(String riwayaId) => available.contains(riwayaId);
 
   static Future<VariantRepository> discover([AssetBundle? bundle]) async {
-    final manifest =
-        await AssetManifest.loadFromAssetBundle(bundle ?? rootBundle);
+    final manifest = await AssetManifest.loadFromAssetBundle(
+      bundle ?? rootBundle,
+    );
     final ids = manifest
         .listAssets()
         .where((a) => a.startsWith(_dir) && a.endsWith('.json'))
@@ -45,10 +47,10 @@ class VariantRepository {
   bool isLoaded(String riwayaId) => _loaded.containsKey(riwayaId);
 
   Future<void> ensureLoaded(Iterable<String> riwayaIds) => Future.wait([
-        for (final id in riwayaIds)
-          if (available.contains(id) && !_loaded.containsKey(id))
-            _loading.putIfAbsent(id, () => _load(id)),
-      ]);
+    for (final id in riwayaIds)
+      if (available.contains(id) && !_loaded.containsKey(id))
+        _loading.putIfAbsent(id, () => _load(id)),
+  ]);
 
   Future<void> _load(String id) async {
     final raw = await _bundle.loadString('$_dir$id.json');
@@ -85,14 +87,17 @@ Map<int, List<Variant>> _index((String, String) input) {
       ayah: v[1] as int,
       word: v[2] as int,
       count: v[3] as int,
-      text: v[4] as String,
+      // Read in the script of the Madinah page around it.
+      text: madinahScript(v[4] as String),
       kind: VariantKind.fromCode(v[5] as String),
       description: v.length > 6 ? v[6] as String : '',
     );
     for (var w = variant.word; w < variant.word + variant.count; w++) {
       index
           .putIfAbsent(
-              VariantRepository.key(variant.surah, variant.ayah, w), () => [])
+            VariantRepository.key(variant.surah, variant.ayah, w),
+            () => [],
+          )
           .add(variant);
     }
   }

@@ -19,6 +19,7 @@ class Qiraa {
   /// Name used in the hamesh, e.g. "نافع".
   final String shortAr;
   final String nameEn;
+
   /// The qiraa's colour on a light page.
   final Color baseColor;
 
@@ -41,7 +42,8 @@ class Riwaya {
   final String nameAr;
   final String nameEn;
 
-  /// Font that matches the encoding of this riwaya's text; Hafs otherwise.
+  /// Font of the text; the readings of every riwaya are drawn in the Hafs
+  /// font, in the script of the Madinah mushaf.
   final String? fontFamily;
 }
 
@@ -55,8 +57,8 @@ const qiraat = <Qiraa>[
     nameEn: "Nafi' al-Madani",
     baseColor: Color(0xFFC62828),
     riwayat: [
-      Riwaya(id: 'qalun', nameAr: 'قالون', nameEn: 'Qalun', fontFamily: 'Qaloon'),
-      Riwaya(id: 'warsh', nameAr: 'ورش', nameEn: 'Warsh', fontFamily: 'Warsh'),
+      Riwaya(id: 'qalun', nameAr: 'قالون', nameEn: 'Qalun'),
+      Riwaya(id: 'warsh', nameAr: 'ورش', nameEn: 'Warsh'),
     ],
   ),
   Qiraa(
@@ -66,8 +68,8 @@ const qiraat = <Qiraa>[
     nameEn: 'Ibn Kathir al-Makki',
     baseColor: Color(0xFF1565C0),
     riwayat: [
-      Riwaya(id: 'bazzi', nameAr: 'البزي', nameEn: 'al-Bazzi', fontFamily: 'Bazzi'),
-      Riwaya(id: 'qunbul', nameAr: 'قنبل', nameEn: 'Qunbul', fontFamily: 'Qumbul'),
+      Riwaya(id: 'bazzi', nameAr: 'البزي', nameEn: 'al-Bazzi'),
+      Riwaya(id: 'qunbul', nameAr: 'قنبل', nameEn: 'Qunbul'),
     ],
   ),
   Qiraa(
@@ -77,8 +79,8 @@ const qiraat = <Qiraa>[
     nameEn: "Abu 'Amr al-Basri",
     baseColor: Color(0xFF2E7D32),
     riwayat: [
-      Riwaya(id: 'duri_abuamr', nameAr: 'الدوري', nameEn: 'al-Duri', fontFamily: 'Doori'),
-      Riwaya(id: 'susi', nameAr: 'السوسي', nameEn: 'al-Susi', fontFamily: 'Soosi'),
+      Riwaya(id: 'duri_abuamr', nameAr: 'الدوري', nameEn: 'al-Duri'),
+      Riwaya(id: 'susi', nameAr: 'السوسي', nameEn: 'al-Susi'),
     ],
   ),
   Qiraa(
@@ -99,7 +101,7 @@ const qiraat = <Qiraa>[
     nameEn: "'Asim al-Kufi",
     baseColor: Color(0xFF00838F),
     riwayat: [
-      Riwaya(id: 'shubah', nameAr: 'شعبة', nameEn: "Shu'bah", fontFamily: 'Shouba'),
+      Riwaya(id: 'shubah', nameAr: 'شعبة', nameEn: "Shu'bah"),
       Riwaya(id: hafsId, nameAr: 'حفص', nameEn: 'Hafs', fontFamily: 'Hafs'),
     ],
   ),

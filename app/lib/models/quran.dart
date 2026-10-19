@@ -66,6 +66,12 @@ class Variant {
 
   /// How the reading differs, in Arabic: "بالتاء", "بضم الهاء", ...
   final String description;
+
+  /// A reading with imala (or taqlil, the lesser imala).
+  bool get isImala =>
+      text.contains('۪') ||
+      RegExp(r'إمالة|الإمالة|تقليل|التقليل|بين بين|بين اللفظين')
+          .hasMatch(description);
 }
 
 enum VariantKind {

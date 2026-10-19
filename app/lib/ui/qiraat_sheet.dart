@@ -22,22 +22,21 @@ class QiraatSheet extends StatelessWidget {
     BuildContext context,
     ReaderSettings settings,
     VariantRepository variants,
-  ) =>
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
-        builder: (_) => DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.85,
-          maxChildSize: 0.95,
-          builder: (context, controller) => QiraatSheet(
-            settings: settings,
-            variants: variants,
-            controller: controller,
-          ),
-        ),
-      );
+  ) => showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.85,
+      maxChildSize: 0.95,
+      builder: (context, controller) => QiraatSheet(
+        settings: settings,
+        variants: variants,
+        controller: controller,
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +85,8 @@ class QiraatSheet extends StatelessWidget {
                       subtitle: m == DisplayMode.replace
                           ? const Text('متاح عند اختيار رواية واحدة')
                           : null,
-                      enabled: m != DisplayMode.replace ||
+                      enabled:
+                          m != DisplayMode.replace ||
                           settings.selected.length == 1,
                     ),
                 ],
@@ -105,7 +105,8 @@ class QiraatSheet extends StatelessWidget {
               value: settings.showMutashabihat,
               title: const Text('إظهار المتشابهات اللفظية'),
               subtitle: const Text(
-                  'خط منقط تحت الكلمات المتكررة في آيات متشابهة، اضغط عليها للتنقل بين مواضعها'),
+                'تظليل خفيف خلف الكلمات المتكررة في آيات متشابهة، اضغط عليها للتنقل بين مواضعها',
+              ),
               onChanged: (v) => settings.showMutashabihat = v,
             ),
             SwitchListTile(
@@ -113,8 +114,9 @@ class QiraatSheet extends StatelessWidget {
               secondary: const Icon(Icons.visibility_outlined),
               title: const Text('التحكم بالعينين'),
               subtitle: const Text(
-                  'رمشتان متتاليتان: الصفحة التالية. تتم المعالجة على الجهاز '
-                  'دون تسجيل أو إرسال أي صورة.'),
+                'رمشتان متتاليتان: الصفحة التالية. تتم المعالجة على الجهاز '
+                'دون تسجيل أو إرسال أي صورة.',
+              ),
               onChanged: (v) => settings.blinkToOpen = v,
             ),
             const Divider(height: 32),
@@ -123,8 +125,9 @@ class QiraatSheet extends StatelessWidget {
               secondary: const Icon(Icons.brush_outlined),
               title: const Text('خط مصحف المدينة'),
               subtitle: const Text(
-                  'رسم الصفحات بخط المصحف المطبوع (خطوط مجمع الملك فهد QCF)، '
-                  'ويُنزَّل خط كل صفحة مرة واحدة عند فتحها لأول مرة.'),
+                'رسم الصفحات بخط المصحف المطبوع (خطوط مجمع الملك فهد QCF)، '
+                'ويُنزَّل خط كل صفحة مرة واحدة عند فتحها لأول مرة.',
+              ),
               onChanged: (v) => settings.qcfFont = v,
             ),
             const Divider(height: 32),
@@ -183,9 +186,9 @@ class QiraatSheet extends StatelessWidget {
   }
 
   Widget _section(BuildContext context, String title) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-        child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-      );
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+    child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+  );
 }
 
 class _QiraaTile extends StatelessWidget {
@@ -205,8 +208,8 @@ class _QiraaTile extends StatelessWidget {
     final bool? state = chosen == 0
         ? false
         : chosen == usable.length
-            ? true
-            : null;
+        ? true
+        : null;
 
     void set(Iterable<String> ids, bool on) {
       final next = {...settings.selected};
@@ -244,8 +247,8 @@ class _QiraaTile extends StatelessWidget {
               subtitle: r.id == hafsId
                   ? const Text('النص الأساسي')
                   : variants.isAvailable(r.id)
-                      ? null
-                      : const Text('غير متوفرة'),
+                  ? null
+                  : const Text('غير متوفرة'),
               onChanged: (v) => set([r.id], v!),
             ),
           ),

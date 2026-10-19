@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../data/arabic.dart';
 import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
@@ -31,6 +32,7 @@ class MushafPage extends StatefulWidget {
     this.onZoomChanged,
     this.onPageNumberTap,
     this.qcf = false,
+    this.onAyahTap,
   });
 
   final int page;
@@ -51,6 +53,9 @@ class MushafPage extends StatefulWidget {
 
   /// Draw with the QCF V2 font of this page (it is loaded).
   final bool qcf;
+
+  /// A word held: opens its ayah (tafsir, recitation).
+  final ValueChanged<Ayah>? onAyahTap;
 
   @override
   State<MushafPage> createState() => _MushafPageState();
@@ -441,12 +446,12 @@ class _MushafPageState extends State<MushafPage> {
   }
 
   /// A clear, solid line under the words a mutashabih shares.
-  static TextStyle get _mutashabihStyle => TextStyle(
-    decoration: TextDecoration.underline,
-    decorationStyle: TextDecorationStyle.solid,
-    decorationColor: MushafColors.green,
-    decorationThickness: 3,
-  );
+  /// The soft highlight behind the words a mutashabih shares.
+  static Color get _mutashabihGlow =>
+      MushafColors.gold.withAlpha(MushafColors.isDark ? 70 : 60);
+
+  static TextStyle get _mutashabihStyle =>
+      TextStyle(backgroundColor: _mutashabihGlow);
 
   /// The selected riwayat's readings of a Hafs word, its colour (the qiraa's
   /// colour, or [MushafColors.multi] when several qiraat differ) and whether
@@ -473,8 +478,9 @@ class _MushafPageState extends State<MushafPage> {
   }
 
   /// What a word shows on a printed line. When one riwaya is shown in full
-  /// (replace), its reading takes the place of the Hafs word(s), in its own
-  /// font; readings given only as a description keep the Hafs word.
+  /// (replace), its reading takes the place of the Hafs word(s); readings
+  /// given only as a description keep the Hafs word, with the imala sign
+  /// under its letter when read with imala.
   ({String text, String font})? _display(Ayah ayah, int w) {
     final s = widget.settings;
     final selected = s.selected.where(widget.variants.isLoaded).toList();
@@ -485,18 +491,22 @@ class _MushafPageState extends State<MushafPage> {
           .firstOrNull;
       if (v != null) {
         if (v.word != w || v.text.isEmpty) return null;
-        return (
-          text: v.text,
-          font: riwayaById(v.riwayaId).fontFamily ?? 'Hafs',
-        );
+        return (text: v.text, font: 'Hafs');
       }
     }
-    if (widget.qcf && ayah.glyphs != null) {
-      final glyph = ayah.glyphs![w];
-      return glyph.isEmpty
-          ? null
-          : (text: glyph, font: QcfFonts.family(widget.page));
-    }
+    final glyph = widget.qcf ? (ayah.glyphs?[w]) : null;
+    // Drawn with the word before.
+    if (glyph != null && glyph.isEmpty) return null;
+    final imala = _readingsAt(
+      widget.variants,
+      s,
+      ayah,
+      w,
+    ).shown.any((v) => v.word == w && v.isImala);
+    // The page font has no imala sign to add: such a word is drawn in the
+    // Hafs font.
+    if (imala) return (text: withImalaSign(ayah.words[w]), font: 'Hafs');
+    if (glyph != null) return (text: glyph, font: QcfFonts.family(widget.page));
     return (text: ayah.words[w], font: 'Hafs');
   }
 
@@ -510,18 +520,37 @@ class _MushafPageState extends State<MushafPage> {
   Widget _word(Ayah ayah, int w, double fontSize) {
     final m = _mark(ayah, w);
     final shown = _display(ayah, w)!;
-    Widget word = Text(
+    Widget word = InkText(
       shown.text,
-      textDirection: TextDirection.rtl,
-      style: (m.mutashabih ? _mutashabihStyle : const TextStyle()).copyWith(
+      style: TextStyle(
         fontFamily: shown.font,
         fontSize: fontSize,
         height: 1.0,
         color: m.color ?? MushafColors.ink,
         backgroundColor: m.color?.withAlpha(28),
-        shadows: inkSpread(m.color ?? MushafColors.ink, fontSize),
       ),
     );
+    if (m.mutashabih) {
+      // A soft highlight over the word and its marks, without taking room.
+      word = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: -1,
+            right: -1,
+            top: -fontSize * 0.28,
+            bottom: -fontSize * 0.3,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: _mutashabihGlow,
+                borderRadius: BorderRadius.circular(fontSize * 0.25),
+              ),
+            ),
+          ),
+          word,
+        ],
+      );
+    }
     if (m.colors.length > 1 && widget.settings.mode == DisplayMode.highlight) {
       word = Stack(
         clipBehavior: Clip.none,
@@ -531,10 +560,13 @@ class _MushafPageState extends State<MushafPage> {
         ],
       );
     }
-    if (m.all.isEmpty && !m.mutashabih) return word;
+    // Every word opens its readings (or its ayah); held, its ayah.
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => widget.onWordTap(ayah, w),
+      onLongPress: widget.onAyahTap == null
+          ? null
+          : () => widget.onAyahTap!(ayah),
       child: word,
     );
   }
@@ -551,8 +583,8 @@ class _MushafPageState extends State<MushafPage> {
 }
 
 /// The selected riwayat's readings of a Hafs word (all, and those of the
-/// kinds shown) and its colour: the qiraa's colour, or [MushafColors.multi]
-/// when several qiraat differ.
+/// kinds shown) and its colour: green for imala, the qiraa's colour, or
+/// [MushafColors.multi] when several qiraat differ.
 ({List<Variant> all, List<Variant> shown, List<Color> colors, Color? color})
 _readingsAt(VariantRepository variants, ReaderSettings s, Ayah ayah, int w) {
   final all = variants
@@ -568,6 +600,9 @@ _readingsAt(VariantRepository variants, ReaderSettings s, Ayah ayah, int w) {
     colors: colors,
     color: colors.isEmpty
         ? null
+        // Imala is green in every riwaya.
+        : shown.every((v) => v.isImala)
+        ? MushafColors.green
         : colors.length == 1
         ? colors.single
         : MushafColors.multi,
@@ -874,13 +909,19 @@ class _EntryView extends StatelessWidget {
                       ),
                     ),
                   TextSpan(text: ': ', style: label),
-                  if (g.text.isNotEmpty || g.description.isEmpty)
+                  if (g.text.isNotEmpty || g.description.isEmpty || g.imala)
                     TextSpan(
-                      text: g.text.isEmpty ? '(بحذفها)' : g.text,
+                      text: g.text.isNotEmpty
+                          ? g.text
+                          : g.imala
+                          ? withImalaSign(e.hafs)
+                          : '(بحذفها)',
                       style: TextStyle(
                         fontFamily: g.font,
                         fontSize: quran,
-                        color: g.names.length == 1
+                        color: g.imala
+                            ? MushafColors.green
+                            : g.names.length == 1
                             ? g.names.single.$2
                             : MushafColors.multi,
                       ),
@@ -909,7 +950,14 @@ class _EntryView extends StatelessWidget {
       same != null
           ? same.names.add((name, color))
           : out.add(
-              _Reading([(name, color)], font, v.text, v.description, key),
+              _Reading(
+                [(name, color)],
+                font,
+                v.text,
+                v.description,
+                key,
+                imala: v.isImala,
+              ),
             );
     }
 
@@ -946,7 +994,14 @@ class _EntryView extends StatelessWidget {
 }
 
 class _Reading {
-  _Reading(this.names, this.font, this.text, this.description, this.key);
+  _Reading(
+    this.names,
+    this.font,
+    this.text,
+    this.description,
+    this.key, {
+    this.imala = false,
+  });
 
   final List<(String, Color)> names;
   final String font;
@@ -955,6 +1010,9 @@ class _Reading {
   /// e.g. "بالتاء", "بضم الهاء"; empty when not generated.
   final String description;
   final String key;
+
+  /// Read with imala: shown as the word with the imala sign, in green.
+  final bool imala;
 }
 
 class _Dots extends StatelessWidget {

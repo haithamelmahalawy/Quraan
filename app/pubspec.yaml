@@ -21,6 +21,7 @@ dependencies:
     path: third_party/flutter_tesseract_ocr
   path_provider: ^2.1.6
   image: ^4.12.0
+  just_audio: ^0.10.6
 
 dev_dependencies:
   flutter_test:
@@ -35,36 +36,20 @@ flutter:
     - assets/data/
     # One file per riwaya; dropping a new <riwaya-id>.json here enables it.
     - assets/data/qiraat/
+    # Offline tafsir books (tool/build_tafsir.dart).
+    - assets/data/tafsir/
     # Tesseract Arabic model (tessdata_fast), to recognise a printed page.
     - assets/tessdata/
     - assets/tessdata_config.json
+    # The app icon, shown on the start page (drawn by tool/icon).
+    - assets/images/logo.png
 
   fonts:
-    # KFGQPC Uthmanic fonts, one per riwaya (each text uses its own glyphs).
+    # KFGQPC Uthmanic Hafs font: the page, and every riwaya's readings in the
+    # script of the Madinah mushaf (see madinahScript).
     - family: Hafs
       fonts:
         - asset: assets/fonts/hafs.18.ttf
-    - family: Warsh
-      fonts:
-        - asset: assets/fonts/warsh.10.ttf
-    - family: Qaloon
-      fonts:
-        - asset: assets/fonts/qaloon.10.ttf
-    - family: Bazzi
-      fonts:
-        - asset: assets/fonts/bazzi.7.ttf
-    - family: Qumbul
-      fonts:
-        - asset: assets/fonts/qumbul.7.ttf
-    - family: Doori
-      fonts:
-        - asset: assets/fonts/doori.9.ttf
-    - family: Soosi
-      fonts:
-        - asset: assets/fonts/soosi.9.ttf
-    - family: Shouba
-      fonts:
-        - asset: assets/fonts/shouba.8.ttf
 
 # The app icon, «خُذِ ٱلۡكِتَٰبَ بِقُوَّةٖ»: drawn by tool/icon/render_icon_test.dart,
 # installed with `dart run flutter_launcher_icons`.

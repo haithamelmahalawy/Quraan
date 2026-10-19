@@ -17,6 +17,7 @@ import '../services/qcf_fonts.dart';
 import '../state/reader_settings.dart';
 import 'mushaf_page.dart';
 import 'theme.dart';
+import 'ayah_sheet.dart';
 import 'variant_sheet.dart';
 
 /// Point the camera at a page of a printed mushaf: once at least one riwaya
@@ -135,35 +136,34 @@ class _ScanScreenState extends State<ScanScreen>
     }
   }
 
-  /// Reads a frame every ~1.5 s while at least one riwaya is chosen, for as
-  /// long as [camera] is open: each page recognised replaces the last one.
+  /// Reads frames one after the other while at least one riwaya is chosen,
+  /// for as long as [camera] is open: each page recognised replaces the
+  /// last one.
   Future<void> _loop(CameraController camera) async {
     while (_running && mounted && identical(_camera, camera)) {
       if (!_ready) {
         await Future.delayed(const Duration(milliseconds: 400));
         continue;
       }
-      final started = DateTime.now();
       try {
         final want = _wantFrame = Completer<Frame>();
         final frame = await want.future.timeout(const Duration(seconds: 3));
         final found = await _scanner.scan(frame);
         if (!mounted || !identical(_camera, camera)) return;
         setState(() => _attempts++);
-        // Confident at once, or the same page twice in a row.
+        // Confident at once (photographed pages read as noise score up to
+        // ~20), or the same page twice in a row.
         if (found != null &&
             found.page != _found &&
-            (found.score >= 40 || found.page == _lastPage)) {
+            (found.score >= 34 || found.page == _lastPage)) {
           HapticFeedback.heavyImpact();
           setState(() => _found = found.page);
         }
         _lastPage = found?.page;
       } catch (e) {
         debugPrint('scan: $e');
-      }
-      final spent = DateTime.now().difference(started);
-      if (spent < const Duration(milliseconds: 1500)) {
-        await Future.delayed(const Duration(milliseconds: 1500) - spent);
+        // No frame or a failed read: a moment before the next.
+        await Future.delayed(const Duration(milliseconds: 300));
       }
     }
   }
@@ -349,15 +349,32 @@ class _PageReadingsState extends State<_PageReadings> {
     if (widget.settings.qcfFont) QcfFonts.instance.ensure([widget.page]);
   }
 
-  void _openWord(Ayah ayah, int word) => VariantSheet.show(
+  void _openWord(Ayah ayah, int word) {
+    final readings = widget.variants
+        .at(widget.settings.selected, ayah.surah, ayah.number, word)
+        .isNotEmpty;
+    if (!readings) return _openAyah(ayah);
+    VariantSheet.show(
+      context,
+      VariantSheet(
+        ayah: ayah,
+        word: word,
+        surahName: widget.quran.surah(ayah.surah).nameAr,
+        settings: widget.settings,
+        variants: widget.variants,
+        onAyah: () {
+          Navigator.of(context).pop();
+          _openAyah(ayah);
+        },
+      ),
+    );
+  }
+
+  void _openAyah(Ayah ayah) => AyahSheet.show(
     context,
-    VariantSheet(
-      ayah: ayah,
-      word: word,
-      surahName: widget.quran.surah(ayah.surah).nameAr,
-      settings: widget.settings,
-      variants: widget.variants,
-    ),
+    ayah: ayah,
+    quran: widget.quran,
+    settings: widget.settings,
   );
 
   @override
@@ -421,6 +438,7 @@ class _PageReadingsState extends State<_PageReadings> {
                   mutashabihat: widget.mutashabihat,
                   settings: widget.settings,
                   onWordTap: _openWord,
+                  onAyahTap: _openAyah,
                   qcf:
                       widget.settings.qcfFont &&
                       QcfFonts.instance.isReady(page),

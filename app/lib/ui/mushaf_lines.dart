@@ -12,7 +12,10 @@ typedef WordBuilder = Widget Function(Ayah ayah, int word, double fontSize);
 
 /// What a Hafs word shows on the line: its text and font, or null when the
 /// word is not shown (read as part of a longer replacement before it).
-typedef WordDisplay = ({String text, String font})? Function(Ayah ayah, int word);
+typedef WordDisplay = ({String text, String font})? Function(
+  Ayah ayah,
+  int word,
+);
 
 /// A mushaf page drawn line by line exactly as printed: every line starts and
 /// ends with the same words as the Madinah mushaf and is justified edge to
@@ -41,7 +44,8 @@ class MushafLines extends StatelessWidget {
   final ({String text, String font})? Function(Ayah ayah)? marker;
 
   ({String text, String font}) _marker(Ayah ayah) =>
-      marker?.call(ayah) ?? (text: ' ${_ayahMarker(ayah.number)}', font: 'Hafs');
+      marker?.call(ayah) ??
+      (text: ' ${_ayahMarker(ayah.number)}', font: 'Hafs');
 
   /// When given, the lines are spread evenly over this height (the page
   /// fills the screen, like a printed mushaf); otherwise each line is as
@@ -65,28 +69,28 @@ class MushafLines extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final (:fontSize, :lineHeight) = metrics(constraints.maxWidth);
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final line in lines)
-            SizedBox(
-              height: lineHeight,
-              child: switch (line) {
-                SurahNameLine(:final surah) => SurahBanner(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final (:fontSize, :lineHeight) = metrics(constraints.maxWidth);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final line in lines)
+              SizedBox(
+                height: lineHeight,
+                child: switch (line) {
+                  SurahNameLine(:final surah) => SurahBanner(
                     title: 'سورة ${quran.surah(surah).nameAr}',
                     fontSize: fontSize * 0.95,
                     height: null,
                   ),
-                BasmalaLine() => Center(
-                    child: Text(
+                  BasmalaLine() => Center(
+                    child: InkText(
                       quran.basmala,
-                      textDirection: TextDirection.rtl,
                       style: _style(fontSize, 'Hafs'),
                     ),
                   ),
-                TextLine(:final words) => Row(
+                  TextLine(:final words) => Row(
                     textDirection: TextDirection.rtl,
                     mainAxisAlignment: centered
                         ? MainAxisAlignment.center
@@ -97,17 +101,19 @@ class MushafLines extends StatelessWidget {
                           Padding(
                             padding: centered
                                 ? EdgeInsets.symmetric(
-                                    horizontal: fontSize * 0.12)
+                                    horizontal: fontSize * 0.12,
+                                  )
                                 : EdgeInsets.zero,
                             child: item,
                           ),
                     ],
                   ),
-              },
-            ),
-        ],
-      );
-    });
+                },
+              ),
+          ],
+        );
+      },
+    );
   }
 
   /// A word, followed by the ayah-end marker when it closes its ayah.
@@ -116,10 +122,10 @@ class MushafLines extends StatelessWidget {
     final closes = w == ayah.words.length - 1;
     if (!shown && !closes) return null;
     final end = _marker(ayah);
-    final marker = Text(
+    final marker = InkText(
       end.text,
-      textDirection: TextDirection.rtl,
       style: _style(fontSize, end.font),
+      firmness: 0.35,
     );
     if (!shown) return marker;
     final word = wordBuilder(ayah, w, fontSize);
@@ -158,7 +164,7 @@ class MushafLines extends StatelessWidget {
       w += centered
           ? items * _probe * 0.25
           : math.max(0, items - 1) *
-              math.max(_measure(' ', font ?? 'Hafs'), _probe * 0.08);
+                math.max(_measure(' ', font ?? 'Hafs'), _probe * 0.08);
       widest = math.max(widest, w);
     }
     if (widest == 0) return width / 16;
@@ -181,12 +187,11 @@ class MushafLines extends StatelessWidget {
       });
 
   static TextStyle _style(double size, String font) => TextStyle(
-        fontFamily: font,
-        fontSize: size,
-        height: 1.0,
-        color: MushafColors.ink,
-        shadows: inkSpread(MushafColors.ink, size),
-      );
+    fontFamily: font,
+    fontSize: size,
+    height: 1.0,
+    color: MushafColors.ink,
+  );
 }
 
 String _ayahMarker(int n) => n

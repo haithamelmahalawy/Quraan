@@ -3,12 +3,17 @@ import 'package:flutter/material.dart';
 import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../state/reader_settings.dart';
+import 'raised.dart';
 import 'theme.dart';
 
 /// "الروايات ▾": a drop-down list of every available riwaya, grouped by
 /// qiraa, with a check box each; it stays open while several are ticked.
 class RiwayatMenu extends StatelessWidget {
-  const RiwayatMenu({super.key, required this.settings, required this.variants});
+  const RiwayatMenu({
+    super.key,
+    required this.settings,
+    required this.variants,
+  });
 
   final ReaderSettings settings;
   final VariantRepository variants;
@@ -27,7 +32,8 @@ class RiwayatMenu extends StatelessWidget {
         style: MenuStyle(
           backgroundColor: WidgetStatePropertyAll(MushafColors.page),
           maximumSize: WidgetStatePropertyAll(
-              Size(320, MediaQuery.sizeOf(context).height * 0.7)),
+            Size(320, MediaQuery.sizeOf(context).height * 0.7),
+          ),
         ),
         menuChildren: [
           if (settings.selected.isNotEmpty)
@@ -63,15 +69,30 @@ class RiwayatMenu extends StatelessWidget {
                 ),
           ],
         ],
-        builder: (context, controller, _) => TextButton.icon(
-          onPressed: () =>
-              controller.isOpen ? controller.close() : controller.open(),
-          icon: Icon(Icons.arrow_drop_down, color: MushafColors.green),
-          label: Text(
-            settings.selected.isEmpty
-                ? 'الروايات'
-                : 'الروايات (${settings.selected.length})',
-            style: TextStyle(color: MushafColors.green),
+        builder: (context, controller, _) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          child: Raised(
+            radius: 19,
+            depth: 0.6,
+            color: settings.selected.isEmpty ? null : MushafColors.goldLight,
+            onTap: () =>
+                controller.isOpen ? controller.close() : controller.open(),
+            padding: const EdgeInsets.fromLTRB(12, 7, 6, 7),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  settings.selected.isEmpty
+                      ? 'الروايات'
+                      : 'الروايات (${settings.selected.length})',
+                  style: TextStyle(
+                    color: MushafColors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, color: MushafColors.green),
+              ],
+            ),
           ),
         ),
       ),

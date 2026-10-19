@@ -129,6 +129,31 @@ lists the few words it places in a neighbouring ayah and those it cannot place
 102:3). Quranpedia keeps correcting its data: rebuild from a newer dump to take
 the corrections in.
 
+### Tafsir and recitations
+
+Holding a word (or tapping one without readings) opens its ayah: the
+recitation and the tafsir. Both come from Quranpedia's dumps too:
+
+- **Tafsir, offline:** التفسير الميسر، المختصر، السعدي، الجلالين and معاني
+  الكلمات (السراج) are in `assets/data/tafsir/<book id>.json.gz` (3.9 MB; a
+  text explaining several ayahs is stored once).
+- **Tafsir, online:** ابن كثير، الطبري، البغوي، ابن عاشور، الوسيط، زاد المسير،
+  المحرر الوجيز، فتح القدير and أضواء البيان are read per ayah from
+  `https://api.quranpedia.net/v1/ayah/{s}/{a}/book/{id}` and kept for the
+  session (`lib/data/tafsir_repository.dart`).
+- **Recitations:** `assets/data/reciters.json` lists, for each of the twenty
+  riwayat, the sheikhs recorded ayah by ayah (45 for Hafs, 7 for Warsh, at
+  least one for every other riwaya); the ayah streams from
+  `<server><sss><aaa>.mp3` (Quranpedia and mp3quran.net), played with
+  `just_audio` (`lib/services/ayah_player.dart`). The listener chooses among
+  Hafs and the selected riwayat, and the sheikh of each.
+
+```
+cd <dumps>; curl -LO https://quranpedia.net/dumps/reciters-index.json.gz
+for id in 2012 2003 272 3 2013; do curl -LO https://quranpedia.net/dumps/tafsir-book-$id.json.gz; done
+dart run tool/build_tafsir.dart <dumps>
+```
+
 ### Adding a riwaya
 
 To add or replace a riwaya's text, put `assets/data/qiraat/<id>.json` in the

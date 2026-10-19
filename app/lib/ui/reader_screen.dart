@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+
 import 'dart:async';
 
 import 'package:flutter/services.dart';
@@ -12,11 +13,12 @@ import '../models/quran.dart';
 import '../services/blink_detector.dart';
 import '../services/qcf_fonts.dart';
 import '../state/reader_settings.dart';
+import 'ayah_sheet.dart';
 import 'book_pager.dart';
 import 'mushaf_page.dart';
 import 'page_side_hint.dart';
 import 'mutashabihat_sheet.dart';
-import 'qiraat_sheet.dart';
+import 'raised.dart';
 import 'riwayat_menu.dart';
 import 'search_screen.dart';
 import 'surah_index.dart';
@@ -157,9 +159,13 @@ class _ReaderScreenState extends State<ReaderScreen>
       } catch (_) {
         if (!mounted) return;
         widget.settings.blinkToOpen = false;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('تعذر تشغيل الكاميرا الأمامية. تحقق من إذن الكاميرا.'),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'تعذر تشغيل الكاميرا الأمامية. تحقق من إذن الكاميرا.',
+            ),
+          ),
+        );
       }
     } else {
       await _blink.stop();
@@ -233,6 +239,11 @@ class _ReaderScreenState extends State<ReaderScreen>
       _openMutashabihat(places);
       return;
     }
+    // A word with nothing to compare opens its ayah: tafsir, recitation.
+    if (!hasReadings) {
+      _openAyah(ayah);
+      return;
+    }
     VariantSheet.show(
       context,
       VariantSheet(
@@ -241,6 +252,10 @@ class _ReaderScreenState extends State<ReaderScreen>
         surahName: widget.quran.surah(ayah.surah).nameAr,
         settings: widget.settings,
         variants: widget.variants,
+        onAyah: () {
+          Navigator.of(context).pop();
+          _openAyah(ayah);
+        },
         onMutashabihat: places.length > 1
             ? () {
                 Navigator.of(context).pop();
@@ -250,6 +265,13 @@ class _ReaderScreenState extends State<ReaderScreen>
       ),
     );
   }
+
+  void _openAyah(Ayah ayah) => AyahSheet.show(
+    context,
+    ayah: ayah,
+    quran: widget.quran,
+    settings: widget.settings,
+  );
 
   Future<void> _openMutashabihat(List<MutashabihPlace> places) =>
       MutashabihatSheet.show(
@@ -264,24 +286,26 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   void _setFullScreen(bool on) {
     SystemChrome.setEnabledSystemUIMode(
-        on ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge);
+      on ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+    );
     setState(() => _fullScreen = on);
   }
 
   @override
   Widget build(BuildContext context) {
     Widget page(int number, {required bool hamesh}) => MushafPage(
-          page: number,
-          quran: widget.quran,
-          variants: widget.variants,
-          mutashabihat: widget.mutashabihat,
-          settings: widget.settings,
-          onWordTap: _openWord,
-          showHamesh: hamesh,
-          onZoomChanged: (z) => setState(() => _zoomed = z),
-          onPageNumberTap: _pickPage,
-          qcf: widget.settings.qcfFont && QcfFonts.instance.isReady(number),
-        );
+      page: number,
+      quran: widget.quran,
+      variants: widget.variants,
+      mutashabihat: widget.mutashabihat,
+      settings: widget.settings,
+      onWordTap: _openWord,
+      onAyahTap: _openAyah,
+      showHamesh: hamesh,
+      onZoomChanged: (z) => setState(() => _zoomed = z),
+      onPageNumberTap: _pickPage,
+      qcf: widget.settings.qcfFont && QcfFonts.instance.isReady(number),
+    );
 
     final two = _twoPages;
     final book = BookPager(
@@ -355,118 +379,174 @@ class _ReaderScreenState extends State<ReaderScreen>
       body: SafeArea(
         child: Column(
           children: [
-            SizedBox(
-              height: 40,
-              child: Row(
-                children: [
-                  _BarButton(
-                    tooltip: 'الإعدادات',
-                    icon: const Icon(Icons.tune, size: 22),
-                    onPressed: () => QiraatSheet.show(
-                        context, widget.settings, widget.variants),
-                  ),
-                  RiwayatMenu(
-                    settings: widget.settings,
-                    variants: widget.variants,
-                  ),
-                  _BarButton(
-                    tooltip: 'بحث',
-                    icon: const Icon(Icons.search, size: 22),
-                    onPressed: () async {
-                      final page = await Navigator.of(context).push<int>(
-                        MaterialPageRoute(
-                          builder: (_) => SearchScreen(quran: widget.quran),
-                        ),
-                      );
-                      if (page != null) _goToPage(page);
-                    },
-                  ),
-                  _BarButton(
-                    tooltip: 'فهرس السور',
-                    icon: const Icon(Icons.list, size: 22),
-                    onPressed: () async {
-                      final page = await Navigator.of(context).push<int>(
-                        MaterialPageRoute(
-                          builder: (_) => SurahIndex(quran: widget.quran),
-                        ),
-                      );
-                      if (page != null) _goToPage(page);
-                    },
-                  ),
-                  _BarButton(
-                    tooltip: two ? 'صفحة واحدة' : 'صفحتان متقابلتان',
-                    icon: Icon(
-                      two ? Icons.crop_portrait : Icons.auto_stories_outlined,
-                      size: 22,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _pager = GlobalKey<BookPagerState>();
-                        _zoomed = false;
-                      });
-                      widget.settings.twoPages = !two;
-                    },
-                  ),
-                  _BarButton(
-                    tooltip: 'ملء الشاشة',
-                    icon: const Icon(Icons.fullscreen, size: 24),
-                    onPressed: () => _setFullScreen(true),
-                  ),
-                  if (widget.settings.blinkToOpen && _blink.isRunning)
-                    Tooltip(
-                      message: 'الرمش مرتين ينقلك إلى الصفحة التالية',
-                      child: AnimatedScale(
-                        scale: _blinkFlash ? 1.5 : 1,
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          _blinkFlash
-                              ? Icons.visibility
-                              : Icons.visibility_outlined,
-                          size: 20,
-                          color: MushafColors.green,
+            // The controls, raised above the page; those that do not fit
+            // scroll sideways, the page's place stays in view.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+              child: Raised(
+                radius: 26,
+                depth: 0.8,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: SizedBox(
+                  height: 38,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              RaisedIcon(
+                                icon: Icons.home_rounded,
+                                tooltip: 'الصفحة الرئيسية',
+                                onTap: () =>
+                                    Navigator.of(context)
+                                        .popUntil((route) => route.isFirst),
+                              ),
+                              RiwayatMenu(
+                                settings: widget.settings,
+                                variants: widget.variants,
+                              ),
+                              RaisedIcon(
+                                icon: Icons.search_rounded,
+                                tooltip: 'بحث',
+                                onTap: () async {
+                                  final page = await Navigator.of(context)
+                                      .push<int>(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              SearchScreen(quran: widget.quran),
+                                        ),
+                                      );
+                                  if (page != null) _goToPage(page);
+                                },
+                              ),
+                              RaisedIcon(
+                                icon: Icons.format_list_bulleted_rounded,
+                                tooltip: 'فهرس السور',
+                                onTap: () async {
+                                  final page = await Navigator.of(context)
+                                      .push<int>(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              SurahIndex(quran: widget.quran),
+                                        ),
+                                      );
+                                  if (page != null) _goToPage(page);
+                                },
+                              ),
+                              RaisedIcon(
+                                icon: two
+                                    ? Icons.crop_portrait_rounded
+                                    : Icons.auto_stories_rounded,
+                                tooltip: two
+                                    ? 'صفحة واحدة'
+                                    : 'صفحتان متقابلتان',
+                                onTap: () {
+                                  setState(() {
+                                    _pager = GlobalKey<BookPagerState>();
+                                    _zoomed = false;
+                                  });
+                                  widget.settings.twoPages = !two;
+                                },
+                              ),
+                              RaisedIcon(
+                                icon: widget.settings.showMutashabihat
+                                    ? Icons.highlight_rounded
+                                    : Icons.highlight_off_rounded,
+                                tooltip: widget.settings.showMutashabihat
+                                    ? 'إخفاء تظليل المتشابهات'
+                                    : 'إظهار تظليل المتشابهات',
+                                color: widget.settings.showMutashabihat
+                                    ? MushafColors.gold
+                                    : null,
+                                onTap: () => widget.settings.showMutashabihat =
+                                    !widget.settings.showMutashabihat,
+                              ),
+                              RaisedIcon(
+                                icon: Icons.fullscreen_rounded,
+                                tooltip: 'ملء الشاشة',
+                                onTap: () => _setFullScreen(true),
+                              ),
+                              if (widget.settings.blinkToOpen &&
+                                  _blink.isRunning)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  child: Tooltip(
+                                    message:
+                                        'الرمش مرتين ينقلك إلى الصفحة التالية',
+                                    child: AnimatedScale(
+                                      scale: _blinkFlash ? 1.5 : 1,
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      child: Icon(
+                                        _blinkFlash
+                                            ? Icons.visibility
+                                            : Icons.visibility_outlined,
+                                        size: 20,
+                                        color: MushafColors.green,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (_loading)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 8),
+                                  child: SizedBox.square(
+                                    dimension: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  if (_loading)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: SizedBox.square(
-                        dimension: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  const Spacer(),
-                  if (!two && !_turning)
-                    Tooltip(
-                      message: isRightPage(_page)
-                          ? 'الصفحة في يمين المصحف'
-                          : 'الصفحة في يسار المصحف',
-                      child: GestureDetector(
-                        onTap: _showSide,
-                        child: OpenMushafView(
-                          right: isRightPage(_page),
-                          width: 44,
-                          current: _currentPicture,
-                          facing: _facingPicture,
+                      if (!two && !_turning)
+                        Tooltip(
+                          message: isRightPage(_page)
+                              ? 'الصفحة في يمين المصحف'
+                              : 'الصفحة في يسار المصحف',
+                          child: GestureDetector(
+                            onTap: _showSide,
+                            child: OpenMushafView(
+                              right: isRightPage(_page),
+                              width: 44,
+                              current: _currentPicture,
+                              facing: _facingPicture,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(width: 4),
+                      Raised(
+                        color: MushafColors.green,
+                        radius: 19,
+                        depth: 0.6,
+                        tooltip: 'اختر صفحة',
+                        onTap: _pickPage,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: Text(
+                          'ص $_page',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                  TextButton(
-                    onPressed: _pickPage,
-                    child: Text(
-                      'صفحة $_page',
-                      style: TextStyle(color: MushafColors.green),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
             Expanded(child: pages),
-            SurahSlider(
-              quran: widget.quran,
-              page: _page,
-              onGo: _goToPage,
-            ),
+            SurahSlider(quran: widget.quran, page: _page, onGo: _goToPage),
           ],
         ),
       ),
@@ -475,55 +555,59 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   /// The page area with the right / left hint flying to the top bar.
   Widget _withHint(Widget pages) => Stack(
-        children: [
-          Positioned.fill(child: pages),
-          // What the last eye gesture did.
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 24,
-            child: IgnorePointer(
-              child: Center(
-                child: AnimatedOpacity(
-                  opacity: _gestureLabel == null ? 0 : 1,
-                  duration: const Duration(milliseconds: 200),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: MushafColors.green.withAlpha(220),
-                      borderRadius: BorderRadius.circular(22),
+    children: [
+      Positioned.fill(child: pages),
+      // What the last eye gesture did.
+      Positioned(
+        left: 0,
+        right: 0,
+        bottom: 24,
+        child: IgnorePointer(
+          child: Center(
+            child: AnimatedOpacity(
+              opacity: _gestureLabel == null ? 0 : 1,
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: MushafColors.green.withAlpha(220),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.visibility, color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      _gestureLabel ?? '',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.visibility, color: Colors.white, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          _gestureLabel ?? '',
-                          style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
-          if (_hint.isAnimating)
-            Positioned.fill(
-              child: PageSideHint(
-                page: _page,
-                progress: _hint.value,
-                current: _currentPicture,
-                facing: _facingPicture,
-                // Just under the small icon by the page number.
-                target: const Alignment(-0.78, -1.04),
-              ),
-            ),
-        ],
-      );
+        ),
+      ),
+      if (_hint.isAnimating)
+        Positioned.fill(
+          child: PageSideHint(
+            page: _page,
+            progress: _hint.value,
+            current: _currentPicture,
+            facing: _facingPicture,
+            // Just under the small icon by the page number.
+            target: const Alignment(-0.78, -1.04),
+          ),
+        ),
+    ],
+  );
 
   /// Small dialog to go to any page.
   Future<void> _pickPage() async {
@@ -564,42 +648,21 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 }
 
-class _BarButton extends StatelessWidget {
-  const _BarButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tooltip;
-  final Widget icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => IconButton(
-        tooltip: tooltip,
-        visualDensity: VisualDensity.compact,
-        color: MushafColors.green,
-        icon: icon,
-        onPressed: onPressed,
-      );
-}
-
 /// The fold between two facing pages.
 class _Spine extends StatelessWidget {
   const _Spine();
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 6,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.black.withAlpha(10),
-              Colors.black.withAlpha(90),
-              Colors.black.withAlpha(10),
-            ],
-          ),
-        ),
-      );
+    width: 6,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.black.withAlpha(10),
+          Colors.black.withAlpha(90),
+          Colors.black.withAlpha(10),
+        ],
+      ),
+    ),
+  );
 }

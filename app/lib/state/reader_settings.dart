@@ -44,8 +44,36 @@ class ReaderSettings extends ChangeNotifier {
   double get fontSize => _fontSize;
   int get page => _page;
 
-  /// Underline words shared with similar ayahs (mutashabihat).
+  /// Highlight words shared with similar ayahs (mutashabihat).
   bool get showMutashabihat => _showMutashabihat;
+
+  /// Choices kept without [SharedPreferences] (tests).
+  final _memory = <String, Object>{};
+
+  Object? _get(String key) => _prefs?.get(key) ?? _memory[key];
+
+  void _set(String key, Object value) {
+    _memory[key] = value;
+    switch (value) {
+      case int v:
+        _prefs?.setInt(key, v);
+      case String v:
+        _prefs?.setString(key, v);
+    }
+    notifyListeners();
+  }
+
+  /// The sheikh chosen for a riwaya (a reciter id), null for the first.
+  int? reciterFor(String riwaya) => _get('reciter.$riwaya') as int?;
+  void setReciter(String riwaya, int id) => _set('reciter.$riwaya', id);
+
+  /// The tafsir book shown first (a Quranpedia book id): al-Muyassar.
+  int get tafsirBook => _get('tafsir') as int? ?? 2012;
+  set tafsirBook(int id) => _set('tafsir', id);
+
+  /// The riwaya last listened to.
+  String? get listenRiwaya => _get('listenRiwaya') as String?;
+  set listenRiwaya(String? id) => _set('listenRiwaya', id ?? 'hafs');
 
   /// Dark by default; light or following the system on request.
   ThemeMode get themeMode => _themeMode;

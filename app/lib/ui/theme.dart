@@ -71,8 +71,9 @@ class MushafPalette {
 abstract final class MushafColors {
   static MushafPalette _p = MushafPalette.light;
 
-  static void use(Brightness brightness) => _p =
-      brightness == Brightness.dark ? MushafPalette.dark : MushafPalette.light;
+  static void use(Brightness brightness) => _p = brightness == Brightness.dark
+      ? MushafPalette.dark
+      : MushafPalette.light;
 
   static bool get isDark => _p.brightness == Brightness.dark;
   static Color get paper => _p.paper;
@@ -91,16 +92,54 @@ abstract final class MushafColors {
       isDark ? Color.lerp(c, const Color(0xFFFFFFFF), 0.38)! : c;
 }
 
-/// A hair of ink around the strokes, so the text reads as firmly as the
-/// printed page (the ink of the print spreads slightly).
-List<Shadow> inkSpread(Color color, double fontSize) {
-  final d = fontSize * 0.022;
-  return [
-    Shadow(color: color, offset: Offset(d, 0)),
-    Shadow(color: color, offset: Offset(-d, 0)),
-    Shadow(color: color, offset: Offset(0, d)),
-    Shadow(color: color, offset: Offset(0, -d)),
-  ];
+/// Mushaf text with a hair of ink around its strokes, so it reads as firmly
+/// as the printed page (the ink of the print spreads slightly). The outline
+/// is drawn evenly around every letter, so all words have the same weight
+/// wherever they fall on the pixels (offset shadows did not).
+class InkText extends StatelessWidget {
+  const InkText(this.text, {super.key, required this.style, this.firmness = 1});
+
+  final String text;
+
+  /// Font, size and colour (ink by default); background and decoration are
+  /// drawn once, under the outline.
+  final TextStyle style;
+
+  /// Share of the full outline: the fine rings of the ayah-end ornament
+  /// fill in with the whole of it.
+  final double firmness;
+
+  /// Outline width: how much firmer than the font's own strokes.
+  static double weight(double fontSize) => fontSize * 0.06;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = style.color ?? MushafColors.ink;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Text(
+          text,
+          textDirection: TextDirection.rtl,
+          style: TextStyle(
+            fontFamily: style.fontFamily,
+            fontSize: style.fontSize,
+            height: style.height,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = weight(style.fontSize ?? 14) * firmness
+              ..strokeJoin = StrokeJoin.round
+              ..color = color,
+          ),
+        ),
+        Text(
+          text,
+          textDirection: TextDirection.rtl,
+          style: style.copyWith(color: color),
+        ),
+      ],
+    );
+  }
 }
 
 ThemeData buildTheme(MushafPalette p) {

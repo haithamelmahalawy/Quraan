@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -13,11 +14,21 @@ import '../data/page_matcher.dart';
 /// or BGRA (iOS) bytes.
 class Frame {
   Frame.copy(CameraImage image, this.rotation)
-      : width = image.width,
-        height = image.height,
-        bgra = image.format.group == ImageFormatGroup.bgra8888,
-        bytesPerRow = image.planes.first.bytesPerRow,
-        bytes = Uint8List.fromList(image.planes.first.bytes);
+    : width = image.width,
+      height = image.height,
+      bgra = image.format.group == ImageFormatGroup.bgra8888,
+      bytesPerRow = image.planes.first.bytesPerRow,
+      bytes = Uint8List.fromList(image.planes.first.bytes);
+
+  @visibleForTesting
+  Frame.raw({
+    required this.width,
+    required this.height,
+    required this.bytesPerRow,
+    required this.rotation,
+    required this.bgra,
+    required this.bytes,
+  });
 
   final int width, height, bytesPerRow, rotation;
   final bool bgra;
@@ -40,7 +51,7 @@ class PageScanner {
   Future<({int page, double score})?> scan(Frame frame) async {
     _path ??= '${(await getTemporaryDirectory()).path}/scan_frame.png';
     final png = await compute(_toPng, frame);
-    await File(_path!).writeAsBytes(png, flush: true);
+    await File(_path!).writeAsBytes(png);
     final text = await FlutterTesseractOcr.extractText(
       _path!,
       language: 'ara',
@@ -49,6 +60,9 @@ class PageScanner {
         // of a photographed mushaf page to its border and ornaments.
         'psm': '6',
         'preserve_interword_spaces': '1',
+        // A printed page has no light-on-dark text: skip reading every
+        // unsure line a second time inverted.
+        'tessedit_do_invert': '0',
       },
     );
     return matcher.match(text);
@@ -57,57 +71,142 @@ class PageScanner {
 
 /// Black and white, upright, cropped to the guide frame, 1100 px wide.
 Uint8List _toPng(Frame f) {
-  var gray = img.Image(width: f.width, height: f.height, numChannels: 1);
-  for (var y = 0; y < f.height; y++) {
-    final row = y * f.bytesPerRow;
-    for (var x = 0; x < f.width; x++) {
-      final int v;
-      if (f.bgra) {
-        final i = row + x * 4;
-        v = (f.bytes[i] * 29 + f.bytes[i + 1] * 150 + f.bytes[i + 2] * 77) >> 8;
-      } else {
-        v = f.bytes[row + x];
-      }
-      gray.setPixelR(x, y, v);
-    }
-  }
-  if (f.rotation != 0) gray = img.copyRotate(gray, angle: f.rotation);
-  // The guide frame covers the middle of the preview.
-  final cw = (gray.width * 0.9).round(), ch = (gray.height * 0.72).round();
-  gray = img.copyCrop(gray,
-      x: (gray.width - cw) ~/ 2, y: (gray.height - ch) ~/ 2, width: cw, height: ch);
-  // Letters must be about the size Tesseract and the threshold expect.
-  gray = img.copyResize(gray, width: 1100, interpolation: img.Interpolation.linear);
-  return img.encodePng(binarize(gray));
+  final (:width, :height, :pixels) = prepareFrame(f);
+  binarize(pixels, width, height);
+  return img.encodePng(
+    img.Image.fromBytes(
+      width: width,
+      height: height,
+      bytes: pixels.buffer,
+      numChannels: 1,
+    ),
+    level: 1, // black and white compresses well even at the fastest level
+  );
 }
 
-/// Adaptive threshold: a pixel is ink when it is darker than the mean of
-/// the square around it (radius [r]) by more than [c]. Unlike one global
-/// threshold, this copes with shadows and uneven light across the page.
+/// The frame's luminance, turned upright (clockwise by [Frame.rotation]),
+/// cropped to the guide frame (the middle 90% × 72%) and scaled to 1100 px
+/// wide, in one pass: each pixel is sampled from the camera's bytes.
 @visibleForTesting
-img.Image binarize(img.Image gray, {int r = 20, int c = 10}) {
-  final w = gray.width, h = gray.height;
-  // Integral image: sums of all pixels above and to the left.
-  final sums = Float64List((w + 1) * (h + 1));
-  for (var y = 0; y < h; y++) {
-    var row = 0.0;
-    for (var x = 0; x < w; x++) {
-      row += gray.getPixel(x, y).r;
-      sums[(y + 1) * (w + 1) + x + 1] = sums[y * (w + 1) + x + 1] + row;
+({int width, int height, Uint8List pixels}) prepareFrame(Frame f) {
+  final turned = f.rotation == 90 || f.rotation == 270;
+  final rw = turned ? f.height : f.width, rh = turned ? f.width : f.height;
+  final cw = rw * 0.9, ch = rh * 0.72;
+  final cx = (rw - cw) / 2, cy = (rh - ch) / 2;
+  const width = 1100;
+  final scale = cw / width;
+  final height = (ch / scale).round();
+
+  // The luminance plane: the Y plane itself, or computed from BGRA.
+  final Uint8List lum;
+  final int stride;
+  if (f.bgra) {
+    lum = Uint8List(f.width * f.height);
+    for (var y = 0; y < f.height; y++) {
+      for (var x = 0; x < f.width; x++) {
+        final i = y * f.bytesPerRow + x * 4;
+        lum[y * f.width + x] =
+            (f.bytes[i] * 29 + f.bytes[i + 1] * 150 + f.bytes[i + 2] * 77) >> 8;
+      }
+    }
+    stride = f.width;
+  } else {
+    lum = f.bytes;
+    stride = f.bytesPerRow;
+  }
+
+  // Each output column and row samples one camera column or row (which one
+  // depends on the rotation), between two pixels: the first and the share
+  // of the second.
+  ({Int32List at, Float64List share}) axis(
+    int count,
+    double start,
+    int size,
+    bool reversed,
+  ) {
+    final at = Int32List(count), share = Float64List(count);
+    for (var i = 0; i < count; i++) {
+      var p = start + (i + 0.5) * scale - 0.5;
+      if (reversed) p = size - 1 - p;
+      p = p.clamp(0.0, size - 1.0);
+      at[i] = math.min(p.floor(), size - 2);
+      share[i] = p - at[i];
+    }
+    return (at: at, share: share);
+  }
+
+  final r = f.rotation;
+  // Upright x runs along the camera's x (0, 180) or y (90, 270).
+  final cols = axis(
+    width,
+    cx,
+    turned ? f.height : f.width,
+    r == 90 || r == 180,
+  );
+  final rows = axis(
+    height,
+    cy,
+    turned ? f.width : f.height,
+    r == 180 || r == 270,
+  );
+
+  final pixels = Uint8List(width * height);
+  for (var oy = 0; oy < height; oy++) {
+    for (var ox = 0; ox < width; ox++) {
+      final int sx, sy;
+      final double fx, fy;
+      if (turned) {
+        sx = rows.at[oy];
+        fx = rows.share[oy];
+        sy = cols.at[ox];
+        fy = cols.share[ox];
+      } else {
+        sx = cols.at[ox];
+        fx = cols.share[ox];
+        sy = rows.at[oy];
+        fy = rows.share[oy];
+      }
+      // Bilinear: the four camera pixels around the point.
+      final i = sy * stride + sx;
+      final a = lum[i],
+          b = lum[i + 1],
+          c = lum[i + stride],
+          d = lum[i + stride + 1];
+      final top = a + (b - a) * fx, bottom = c + (d - c) * fx;
+      pixels[oy * width + ox] = (top + (bottom - top) * fy).round();
     }
   }
-  final out = img.Image(width: w, height: h, numChannels: 1);
+  return (width: width, height: height, pixels: pixels);
+}
+
+/// Adaptive threshold, in place: a pixel is ink (0) when it is darker than
+/// the mean of the square around it (radius [r]) by more than [c], paper
+/// (255) otherwise. Unlike one global threshold, this copes with shadows and
+/// uneven light across the page.
+@visibleForTesting
+void binarize(Uint8List pixels, int w, int h, {int r = 20, int c = 10}) {
+  // Integral image: sums of all pixels above and to the left.
+  final stride = w + 1;
+  final sums = Uint32List(stride * (h + 1));
+  for (var y = 0; y < h; y++) {
+    var row = 0;
+    for (var x = 0; x < w; x++) {
+      row += pixels[y * w + x];
+      sums[(y + 1) * stride + x + 1] = sums[y * stride + x + 1] + row;
+    }
+  }
   for (var y = 0; y < h; y++) {
     final y0 = math.max(0, y - r), y1 = math.min(h, y + r + 1);
     for (var x = 0; x < w; x++) {
       final x0 = math.max(0, x - r), x1 = math.min(w, x + r + 1);
-      final sum = sums[y1 * (w + 1) + x1] -
-          sums[y0 * (w + 1) + x1] -
-          sums[y1 * (w + 1) + x0] +
-          sums[y0 * (w + 1) + x0];
-      final mean = sum / ((x1 - x0) * (y1 - y0));
-      out.setPixelR(x, y, gray.getPixel(x, y).r < mean - c ? 0 : 255);
+      final sum =
+          sums[y1 * stride + x1] -
+          sums[y0 * stride + x1] -
+          sums[y1 * stride + x0] +
+          sums[y0 * stride + x0];
+      final i = y * w + x;
+      // pixel < mean - c, without dividing.
+      pixels[i] = (pixels[i] + c) * (x1 - x0) * (y1 - y0) < sum ? 0 : 255;
     }
   }
-  return out;
 }

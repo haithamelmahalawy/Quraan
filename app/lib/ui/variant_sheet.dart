@@ -16,6 +16,7 @@ class VariantSheet extends StatelessWidget {
     required this.settings,
     required this.variants,
     this.onMutashabihat,
+    this.onAyah,
   });
 
   final Ayah ayah;
@@ -27,6 +28,9 @@ class VariantSheet extends StatelessWidget {
   /// Opens the similar ayahs of this word, when it belongs to a mutashabih.
   final VoidCallback? onMutashabihat;
 
+  /// Opens the ayah: its tafsir and recitation.
+  final VoidCallback? onAyah;
+
   static Future<void> show(BuildContext context, VariantSheet sheet) =>
       showModalBottomSheet(
         context: context,
@@ -36,10 +40,8 @@ class VariantSheet extends StatelessWidget {
           expand: false,
           initialChildSize: 0.6,
           maxChildSize: 0.95,
-          builder: (context, controller) => PrimaryScrollController(
-            controller: controller,
-            child: sheet,
-          ),
+          builder: (context, controller) =>
+              PrimaryScrollController(controller: controller, child: sheet),
         ),
       );
 
@@ -62,7 +64,11 @@ class VariantSheet extends StatelessWidget {
         var from = word, to = word + 1;
         if (ready) {
           for (final v in variants.at(
-              [...settings.selected, ...others], ayah.surah, ayah.number, word)) {
+            [...settings.selected, ...others],
+            ayah.surah,
+            ayah.number,
+            word,
+          )) {
             if (v.word < from) from = v.word;
             if (v.word + v.count > to) to = v.word + v.count;
           }
@@ -79,6 +85,15 @@ class VariantSheet extends StatelessWidget {
                     style: theme.textTheme.labelLarge,
                   ),
                 ),
+                if (onAyah != null)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 6),
+                    child: FilledButton.tonalIcon(
+                      onPressed: onAyah,
+                      icon: const Icon(Icons.menu_book_rounded, size: 18),
+                      label: const Text('التفسير والاستماع'),
+                    ),
+                  ),
                 if (onMutashabihat != null)
                   FilledButton.tonalIcon(
                     onPressed: onMutashabihat,
@@ -117,15 +132,15 @@ class VariantSheet extends StatelessWidget {
   }
 
   Iterable<String> _ordered(Set<String> ids) => [
-        for (final q in qiraat)
-          for (final r in q.riwayat)
-            if (ids.contains(r.id)) r.id,
-      ];
+    for (final q in qiraat)
+      for (final r in q.riwayat)
+        if (ids.contains(r.id)) r.id,
+  ];
 
   Widget _header(BuildContext context, String title) => Padding(
-        padding: const EdgeInsets.only(top: 16, bottom: 4),
-        child: Text(title, style: Theme.of(context).textTheme.titleSmall),
-      );
+    padding: const EdgeInsets.only(top: 16, bottom: 4),
+    child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+  );
 
   /// The reading of Hafs words [from, to) in riwaya [id].
   Widget _tile(String id, int from, int to) {
@@ -149,9 +164,11 @@ class VariantSheet extends StatelessWidget {
       title: title,
       text: v.text.isEmpty && v.description.isNotEmpty
           ? ayah.words.sublist(from, to).join(' ')
-          : [before, v.text.isEmpty ? '(بحذف الكلمة)' : v.text, after]
-              .where((t) => t.isNotEmpty)
-              .join(' '),
+          : [
+              before,
+              v.text.isEmpty ? '(بحذف الكلمة)' : v.text,
+              after,
+            ].where((t) => t.isNotEmpty).join(' '),
       font: riwaya.fontFamily ?? 'Hafs',
       kind: v.kind,
       description: v.description,
