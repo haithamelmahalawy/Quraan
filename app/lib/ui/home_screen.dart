@@ -27,18 +27,18 @@ class HomeScreen extends StatelessWidget {
   final MutashabihatRepository mutashabihat;
   final ReaderSettings settings;
 
-  void _openMushaf(BuildContext context, {int? page, bool replace = false}) {
+  Future<void> _openMushaf(BuildContext context, {int? page}) {
     if (page != null) settings.page = page;
-    final route = MaterialPageRoute<void>(
-      builder: (_) => ReaderScreen(
-        quran: quran,
-        variants: variants,
-        mutashabihat: mutashabihat,
-        settings: settings,
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ReaderScreen(
+          quran: quran,
+          variants: variants,
+          mutashabihat: mutashabihat,
+          settings: settings,
+        ),
       ),
     );
-    final nav = Navigator.of(context);
-    replace ? nav.pushReplacement(route) : nav.push(route);
   }
 
   @override
@@ -78,17 +78,16 @@ class HomeScreen extends StatelessWidget {
                 _HomeTile(
                   icon: Icons.document_scanner_rounded,
                   title: 'قراءة الروايات من المصحف',
-                  subtitle:
-                      'وجّه الكاميرا إلى صفحة من مصحفك الورقي فتُفتح بالروايات التي تختارها',
+                  subtitle: 'وجّه الكاميرا إلى صفحة من مصحفك الورقي فتُفتح بالروايات التي تختارها',
                   color: MushafColors.gold,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (scanContext) => ScanScreen(
                         quran: quran,
                         variants: variants,
+                        mutashabihat: mutashabihat,
                         settings: settings,
-                        onOpen: (page) =>
-                            _openMushaf(scanContext, page: page, replace: true),
+                        onOpen: (page) => _openMushaf(scanContext, page: page),
                       ),
                     ),
                   ),
@@ -97,11 +96,14 @@ class HomeScreen extends StatelessWidget {
                 Card(
                   color: MushafColors.page,
                   child: ListTile(
-                    leading: Icon(Icons.bookmark_rounded,
-                        color: MushafColors.green),
+                    leading: Icon(
+                      Icons.bookmark_rounded,
+                      color: MushafColors.green,
+                    ),
                     title: const Text('متابعة القراءة'),
                     subtitle: Text(
-                        'صفحة ${settings.page} • سورة ${quran.surah(last.surah).nameAr}'),
+                      'صفحة ${settings.page} • سورة ${quran.surah(last.surah).nameAr}',
+                    ),
                     onTap: () => _openMushaf(context),
                   ),
                 ),
@@ -111,8 +113,10 @@ class HomeScreen extends StatelessWidget {
                       child: Card(
                         color: MushafColors.page,
                         child: ListTile(
-                          leading: Icon(Icons.list_rounded,
-                              color: MushafColors.green),
+                          leading: Icon(
+                            Icons.list_rounded,
+                            color: MushafColors.green,
+                          ),
                           title: const Text('فهرس السور'),
                           onTap: () async {
                             final page = await Navigator.of(context).push<int>(
@@ -131,8 +135,10 @@ class HomeScreen extends StatelessWidget {
                       child: Card(
                         color: MushafColors.page,
                         child: ListTile(
-                          leading: Icon(Icons.tune_rounded,
-                              color: MushafColors.green),
+                          leading: Icon(
+                            Icons.tune_rounded,
+                            color: MushafColors.green,
+                          ),
                           title: const Text('الإعدادات'),
                           onTap: () =>
                               QiraatSheet.show(context, settings, variants),

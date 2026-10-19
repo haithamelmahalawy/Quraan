@@ -6,32 +6,39 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../data/mutashabihat_repository.dart';
 import '../data/page_matcher.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
+import '../models/quran.dart';
 import '../services/page_scanner.dart';
+import '../services/qcf_fonts.dart';
 import '../state/reader_settings.dart';
+import 'mushaf_page.dart';
 import 'theme.dart';
+import 'variant_sheet.dart';
 
 /// Point the camera at a page of a printed mushaf: once at least one riwaya
-/// is chosen, the camera keeps reading until it recognises the page, then
-/// opens it in the app with those riwayat.
+/// is chosen, the camera keeps reading, and each page it recognises is shown
+/// over it as in the mushaf, with those riwayat, ready to open in the mushaf.
 class ScanScreen extends StatefulWidget {
   const ScanScreen({
     super.key,
     required this.quran,
     required this.variants,
+    required this.mutashabihat,
     required this.settings,
     required this.onOpen,
   });
 
   final QuranRepository quran;
   final VariantRepository variants;
+  final MutashabihatRepository mutashabihat;
   final ReaderSettings settings;
 
-  /// Opens the mushaf at a page.
-  final ValueChanged<int> onOpen;
+  /// Opens the mushaf at a page; completes when the reader comes back.
+  final Future<void> Function(int page) onOpen;
 
   @override
   State<ScanScreen> createState() => _ScanScreenState();
@@ -46,11 +53,15 @@ class _ScanScreenState extends State<ScanScreen>
     duration: const Duration(milliseconds: 1800),
   )..repeat(reverse: true);
   String? _error;
+
+  /// The camera reads frames while this screen is in front.
   bool _running = true;
-  bool _opened = false;
   Completer<Frame>? _wantFrame;
   int? _lastPage;
   int _attempts = 0;
+
+  /// The page last recognised, whose readings are shown over the camera.
+  int? _found;
 
   bool get _ready => widget.settings.selected.isNotEmpty;
 
@@ -58,6 +69,7 @@ class _ScanScreenState extends State<ScanScreen>
   void initState() {
     super.initState();
     widget.settings.addListener(_onSettings);
+    _onSettings();
     _startCamera();
   }
 
@@ -66,14 +78,24 @@ class _ScanScreenState extends State<ScanScreen>
     _running = false;
     widget.settings.removeListener(_onSettings);
     _sweep.dispose();
-    final camera = _camera;
-    _camera = null;
-    camera?.stopImageStream().catchError((_) {}).whenComplete(camera.dispose);
+    _stopCamera();
     super.dispose();
   }
 
-  void _onSettings() {
+  /// The readings of newly chosen riwayat are loaded, then shown.
+  Future<void> _onSettings() async {
     if (mounted) setState(() {});
+    await widget.variants.ensureLoaded(widget.settings.selected);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _stopCamera() async {
+    final camera = _camera;
+    _camera = null;
+    _wantFrame = null;
+    if (camera == null) return;
+    await camera.stopImageStream().catchError((_) {});
+    await camera.dispose();
   }
 
   Future<void> _startCamera() async {
@@ -87,11 +109,12 @@ class _ScanScreenState extends State<ScanScreen>
         back,
         ResolutionPreset.veryHigh,
         enableAudio: false,
-        imageFormatGroup:
-            Platform.isIOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.yuv420,
+        imageFormatGroup: Platform.isIOS
+            ? ImageFormatGroup.bgra8888
+            : ImageFormatGroup.yuv420,
       );
       await camera.initialize();
-      if (!mounted) {
+      if (!mounted || !_running) {
         await camera.dispose();
         return;
       }
@@ -106,16 +129,16 @@ class _ScanScreenState extends State<ScanScreen>
         }
       });
       setState(() => _camera = camera);
-      _loop();
+      _loop(camera);
     } catch (e) {
       if (mounted) setState(() => _error = 'تعذر تشغيل الكاميرا: $e');
     }
   }
 
-  /// Reads a frame every ~1.5 s while at least one riwaya is chosen, until
-  /// the page is recognised.
-  Future<void> _loop() async {
-    while (_running && mounted && !_opened) {
+  /// Reads a frame every ~1.5 s while at least one riwaya is chosen, for as
+  /// long as [camera] is open: each page recognised replaces the last one.
+  Future<void> _loop(CameraController camera) async {
+    while (_running && mounted && identical(_camera, camera)) {
       if (!_ready) {
         await Future.delayed(const Duration(milliseconds: 400));
         continue;
@@ -125,12 +148,14 @@ class _ScanScreenState extends State<ScanScreen>
         final want = _wantFrame = Completer<Frame>();
         final frame = await want.future.timeout(const Duration(seconds: 3));
         final found = await _scanner.scan(frame);
-        if (!mounted || !_running) return;
+        if (!mounted || !identical(_camera, camera)) return;
         setState(() => _attempts++);
         // Confident at once, or the same page twice in a row.
-        if (found != null && (found.score >= 40 || found.page == _lastPage)) {
-          _open(found.page);
-          return;
+        if (found != null &&
+            found.page != _found &&
+            (found.score >= 40 || found.page == _lastPage)) {
+          HapticFeedback.heavyImpact();
+          setState(() => _found = found.page);
         }
         _lastPage = found?.page;
       } catch (e) {
@@ -143,16 +168,23 @@ class _ScanScreenState extends State<ScanScreen>
     }
   }
 
-  void _open(int page) {
-    _opened = true;
+  /// Opens the page in the mushaf with the chosen riwayat; the camera is
+  /// closed meanwhile and reads again on coming back.
+  Future<void> _open(int page) async {
     _running = false;
-    HapticFeedback.heavyImpact();
-    widget.onOpen(page);
+    await _stopCamera();
+    if (mounted) setState(() {});
+    await widget.onOpen(page);
+    if (!mounted) return;
+    _running = true;
+    _lastPage = null;
+    _startCamera();
   }
 
   @override
   Widget build(BuildContext context) {
     final camera = _camera;
+    final found = _found;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -166,9 +198,11 @@ class _ScanScreenState extends State<ScanScreen>
                   ? const CircularProgressIndicator()
                   : Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Text(_error!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white)),
+                      child: Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white),
+                      ),
                     ),
             ),
           // Blurred until a riwaya is chosen.
@@ -220,37 +254,179 @@ class _ScanScreenState extends State<ScanScreen>
               children: [
                 _TopPanel(variants: widget.variants, settings: widget.settings),
                 const Spacer(),
-                Container(
-                  margin: const EdgeInsets.all(16),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(160),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _ready ? Icons.document_scanner : Icons.touch_app,
-                        color: MushafColors.gold,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          !_ready
-                              ? 'اختر رواية واحدة على الأقل من الأعلى لبدء التعرف على الصفحة.'
-                              : _attempts == 0
-                                  ? 'جارٍ قراءة الصفحة… اجعلها كاملة داخل الإطار.'
-                                  : 'جارٍ البحث عن الصفحة… قرّب الكاميرا وثبّتها (محاولة $_attempts).',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                if (found != null && _ready)
+                  _PageReadings(
+                    page: found,
+                    quran: widget.quran,
+                    variants: widget.variants,
+                    mutashabihat: widget.mutashabihat,
+                    settings: widget.settings,
+                    onOpen: () => _open(found),
+                  )
+                else
+                  _hint(),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _hint() => Container(
+    margin: const EdgeInsets.all(16),
+    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+    decoration: BoxDecoration(
+      color: Colors.black.withAlpha(160),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      children: [
+        Icon(
+          _ready ? Icons.document_scanner : Icons.touch_app,
+          color: MushafColors.gold,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            !_ready
+                ? 'اختر رواية واحدة على الأقل من الأعلى لبدء التعرف على الصفحة.'
+                : _attempts == 0
+                ? 'جارٍ قراءة الصفحة… اجعلها كاملة داخل الإطار.'
+                : 'جارٍ البحث عن الصفحة… قرّب الكاميرا وثبّتها (محاولة $_attempts).',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The page recognised, over the camera, drawn as in the mushaf: the chosen
+/// riwayat on its words and in its hamesh. A button opens it in the mushaf;
+/// it folds down to its title so the camera can be aimed at another page,
+/// which then takes its place.
+class _PageReadings extends StatefulWidget {
+  const _PageReadings({
+    required this.page,
+    required this.quran,
+    required this.variants,
+    required this.mutashabihat,
+    required this.settings,
+    required this.onOpen,
+  });
+
+  final int page;
+  final QuranRepository quran;
+  final VariantRepository variants;
+  final MutashabihatRepository mutashabihat;
+  final ReaderSettings settings;
+  final VoidCallback onOpen;
+
+  @override
+  State<_PageReadings> createState() => _PageReadingsState();
+}
+
+class _PageReadingsState extends State<_PageReadings> {
+  bool _folded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFont();
+  }
+
+  @override
+  void didUpdateWidget(_PageReadings old) {
+    super.didUpdateWidget(old);
+    if (old.page != widget.page) {
+      _folded = false; // a new page opens unfolded
+      _loadFont();
+    }
+  }
+
+  void _loadFont() {
+    if (widget.settings.qcfFont) QcfFonts.instance.ensure([widget.page]);
+  }
+
+  void _openWord(Ayah ayah, int word) => VariantSheet.show(
+    context,
+    VariantSheet(
+      ayah: ayah,
+      word: word,
+      surahName: widget.quran.surah(ayah.surah).nameAr,
+      settings: widget.settings,
+      variants: widget.variants,
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final page = widget.page;
+    final surah = widget.quran
+        .surah(widget.quran.page(page).first.surah)
+        .nameAr;
+    final header = Padding(
+      padding: const EdgeInsets.fromLTRB(6, 4, 10, 4),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: _folded ? 'إظهار الصفحة' : 'طي الصفحة',
+            icon: Icon(_folded ? Icons.expand_less : Icons.expand_more),
+            color: MushafColors.green,
+            onPressed: () => setState(() => _folded = !_folded),
+          ),
+          Expanded(
+            child: Text(
+              'صفحة $page • سورة $surah',
+              style: TextStyle(
+                color: MushafColors.green,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: widget.onOpen,
+            icon: const Icon(Icons.menu_book_rounded, size: 18),
+            label: const Text('فتح في المصحف'),
+          ),
+        ],
+      ),
+    );
+    return Container(
+      margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      height: _folded ? null : MediaQuery.sizeOf(context).height * 0.62,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: MushafColors.paper,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: MushafColors.gold, width: 1.5),
+        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 16)],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          if (!_folded)
+            Expanded(
+              child: ListenableBuilder(
+                listenable: QcfFonts.instance,
+                builder: (context, _) => MushafPage(
+                  key: ValueKey(page),
+                  page: page,
+                  quran: widget.quran,
+                  variants: widget.variants,
+                  mutashabihat: widget.mutashabihat,
+                  settings: widget.settings,
+                  onWordTap: _openWord,
+                  qcf:
+                      widget.settings.qcfFont &&
+                      QcfFonts.instance.isReady(page),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -287,17 +463,20 @@ class _TopPanel extends StatelessWidget {
                 child: Text(
                   'وجّه الكاميرا إلى صفحة من المصحف',
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
           ),
           const Padding(
             padding: EdgeInsets.fromLTRB(8, 0, 8, 6),
-            child: Text('الروايات التي تظهر على الصفحة:',
-                style: TextStyle(color: Colors.white70, fontSize: 12)),
+            child: Text(
+              'الروايات التي تظهر على الصفحة:',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
           ),
           SizedBox(
             height: 40,

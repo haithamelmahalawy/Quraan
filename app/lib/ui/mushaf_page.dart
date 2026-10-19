@@ -118,41 +118,43 @@ class _MushafPageState extends State<MushafPage> {
     final lines = widget.quran.lines(widget.page);
     final printed = lines != null && s.mode != DisplayMode.inline;
 
-    return LayoutBuilder(builder: (context, viewport) {
-      final content = printed
-          ? _printedPage(ayahs, lines, viewport.biggest, narrow)
-          : SingleChildScrollView(
-              physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
-              child: _PageFrame(
-                page: widget.page,
-                onNumberTap: widget.onPageNumberTap,
-                child: _flowingText(ayahs, narrow),
-              ),
-            );
-      // Pinch zooms the whole page image: frame, text and hamesh together.
-      return Stack(
-        children: [
-          InteractiveViewer(
-            transformationController: _zoom,
-            minScale: 1,
-            maxScale: 4,
-            panEnabled: _zoomed,
-            child: SizedBox.fromSize(size: viewport.biggest, child: content),
-          ),
-          if (_zoomed)
-            PositionedDirectional(
-              bottom: 12,
-              end: 12,
-              child: FilledButton.tonalIcon(
-                onPressed: () => _zoom.value = Matrix4.identity(),
-                icon: const Icon(Icons.zoom_out_map, size: 18),
-                label: const Text('حجم الصفحة'),
-              ),
+    return LayoutBuilder(
+      builder: (context, viewport) {
+        final content = printed
+            ? _printedPage(ayahs, lines, viewport.biggest, narrow)
+            : SingleChildScrollView(
+                physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
+                child: _PageFrame(
+                  page: widget.page,
+                  onNumberTap: widget.onPageNumberTap,
+                  child: _flowingText(ayahs, narrow),
+                ),
+              );
+        // Pinch zooms the whole page image: frame, text and hamesh together.
+        return Stack(
+          children: [
+            InteractiveViewer(
+              transformationController: _zoom,
+              minScale: 1,
+              maxScale: 4,
+              panEnabled: _zoomed,
+              child: SizedBox.fromSize(size: viewport.biggest, child: content),
             ),
-        ],
-      );
-    });
+            if (_zoomed)
+              PositionedDirectional(
+                bottom: 12,
+                end: 12,
+                child: FilledButton.tonalIcon(
+                  onPressed: () => _zoom.value = Matrix4.identity(),
+                  icon: const Icon(Icons.zoom_out_map, size: 18),
+                  label: const Text('حجم الصفحة'),
+                ),
+              ),
+          ],
+        );
+      },
+    );
   }
 
   /// The printed page filling the screen: the header line (surah, juz), the
@@ -160,11 +162,15 @@ class _MushafPageState extends State<MushafPage> {
   /// each note level with its line. Notes that do not fit continue below,
   /// and the page then leaves a little room for them at the bottom.
   Widget _printedPage(
-      List<Ayah> ayahs, List<MushafLine> lines, Size size, bool narrow) {
+    List<Ayah> ayahs,
+    List<MushafLine> lines,
+    Size size,
+    bool narrow,
+  ) {
     final entries =
         widget.settings.mode == DisplayMode.hamesh && widget.showHamesh
-            ? _hameshEntries(ayahs)
-            : const <HameshEntry>[];
+        ? _hameshEntries(ayahs)
+        : const <HameshEntry>[];
     // The hamesh takes room beside the page only when it has notes; the
     // page otherwise has the whole width, and its text the largest size.
     final withHamesh = entries.isNotEmpty;
@@ -172,7 +178,8 @@ class _MushafPageState extends State<MushafPage> {
       widget.page,
       size.width,
       size.height,
-      for (final e in entries) '${e.ayah.number}:${e.word}:${e.readings.length}',
+      for (final e in entries)
+        '${e.ayah.number}:${e.word}:${e.readings.length}',
     ].join('|');
     if (signature != _splitFor) {
       _split = null;
@@ -183,10 +190,12 @@ class _MushafPageState extends State<MushafPage> {
 
     const outer = 4.0, header = 22.0;
     final pageHeight = size.height * (overflow ? 0.9 : 1.0);
-    final pageWidth =
-        withHamesh ? size.width * (narrow ? 0.81 : 0.84) : size.width;
+    final pageWidth = withHamesh
+        ? size.width * (narrow ? 0.81 : 0.84)
+        : size.width;
     final textWidth = pageWidth - 2 * outer - 2 * OrnamentFrame.inset;
-    final textHeight = pageHeight -
+    final textHeight =
+        pageHeight -
         2 * outer -
         header -
         2 * OrnamentFrame.inset -
@@ -239,7 +248,11 @@ class _MushafPageState extends State<MushafPage> {
     final tops = [
       for (final e in shown)
         top +
-            (lineOf[VariantRepository.key(e.ayah.surah, e.ayah.number, e.word)] ??
+            (lineOf[VariantRepository.key(
+                      e.ayah.surah,
+                      e.ayah.number,
+                      e.word,
+                    )] ??
                     0) *
                 lineHeight,
     ];
@@ -447,27 +460,12 @@ class _MushafPageState extends State<MushafPage> {
   })
   _mark(Ayah ayah, int w) {
     final s = widget.settings;
-    final all = widget.variants
-        .at(
-          s.selected.where(widget.variants.isLoaded),
-          ayah.surah,
-          ayah.number,
-          w,
-        )
-        .toList(growable: false);
-    final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
-    final colors = [
-      for (final q in {for (final v in shown) qiraaOf(v.riwayaId)}) q.color,
-    ];
+    final r = _readingsAt(widget.variants, s, ayah, w);
     return (
-      all: all,
-      shown: shown,
-      colors: colors,
-      color: colors.isEmpty
-          ? null
-          : colors.length == 1
-          ? colors.single
-          : MushafColors.multi,
+      all: r.all,
+      shown: r.shown,
+      colors: r.colors,
+      color: r.color,
       mutashabih:
           s.showMutashabihat &&
           widget.mutashabihat.isShared(ayah.surah, ayah.number, w),
@@ -505,8 +503,8 @@ class _MushafPageState extends State<MushafPage> {
   /// The ayah-end ornament: the printed one from the page font when loaded.
   ({String text, String font})? _marker(Ayah ayah) =>
       widget.qcf && ayah.endGlyph != null
-          ? (text: ' ${ayah.endGlyph}', font: QcfFonts.family(widget.page))
-          : null;
+      ? (text: ' ${ayah.endGlyph}', font: QcfFonts.family(widget.page))
+      : null;
 
   /// One word of a printed line.
   Widget _word(Ayah ayah, int w, double fontSize) {
@@ -541,31 +539,8 @@ class _MushafPageState extends State<MushafPage> {
     );
   }
 
-  /// Hamesh entries in page order: one per word where a selected reading
-  /// starts. The same word read the same way again on the page is listed
-  /// once.
-  List<HameshEntry> _hameshEntries(List<Ayah> ayahs) {
-    final out = <HameshEntry>[];
-    final seen = <String>{};
-    for (final ayah in ayahs) {
-      for (var w = 0; w < ayah.words.length; w++) {
-        final m = _mark(ayah, w);
-        final starting = m.shown.where((v) => v.word == w).toList();
-        if (starting.isEmpty) continue;
-        final end = starting
-            .map((v) => v.word + v.count)
-            .reduce((a, b) => a > b ? a : b);
-        final hafs = ayah.words.sublist(w, end).join(' ');
-        final key = [
-          _bare(hafs),
-          for (final v in starting) '${v.riwayaId}=${_readingKey(v)}',
-        ].join('|');
-        if (!seen.add(key)) continue;
-        out.add(HameshEntry(ayah, w, hafs, m.color!, starting));
-      }
-    }
-    return out;
-  }
+  List<HameshEntry> _hameshEntries(List<Ayah> ayahs) =>
+      _entriesOf(ayahs, widget.variants, widget.settings);
 
   TapGestureRecognizer _recognizer(Ayah ayah, int word) {
     final r = TapGestureRecognizer()
@@ -573,6 +548,60 @@ class _MushafPageState extends State<MushafPage> {
     _recognizers.add(r);
     return r;
   }
+}
+
+/// The selected riwayat's readings of a Hafs word (all, and those of the
+/// kinds shown) and its colour: the qiraa's colour, or [MushafColors.multi]
+/// when several qiraat differ.
+({List<Variant> all, List<Variant> shown, List<Color> colors, Color? color})
+_readingsAt(VariantRepository variants, ReaderSettings s, Ayah ayah, int w) {
+  final all = variants
+      .at(s.selected.where(variants.isLoaded), ayah.surah, ayah.number, w)
+      .toList(growable: false);
+  final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
+  final colors = [
+    for (final q in {for (final v in shown) qiraaOf(v.riwayaId)}) q.color,
+  ];
+  return (
+    all: all,
+    shown: shown,
+    colors: colors,
+    color: colors.isEmpty
+        ? null
+        : colors.length == 1
+        ? colors.single
+        : MushafColors.multi,
+  );
+}
+
+/// Hamesh entries of [ayahs] in page order: one per word where a reading
+/// of the selected riwayat starts. The same word read the same way again on
+/// the page is listed once.
+List<HameshEntry> _entriesOf(
+  List<Ayah> ayahs,
+  VariantRepository variants,
+  ReaderSettings settings,
+) {
+  final out = <HameshEntry>[];
+  final seen = <String>{};
+  for (final ayah in ayahs) {
+    for (var w = 0; w < ayah.words.length; w++) {
+      final m = _readingsAt(variants, settings, ayah, w);
+      final starting = m.shown.where((v) => v.word == w).toList();
+      if (starting.isEmpty) continue;
+      final end = starting
+          .map((v) => v.word + v.count)
+          .reduce((a, b) => a > b ? a : b);
+      final hafs = ayah.words.sublist(w, end).join(' ');
+      final key = [
+        _bare(hafs),
+        for (final v in starting) '${v.riwayaId}=${_readingKey(v)}',
+      ].join('|');
+      if (!seen.add(key)) continue;
+      out.add(HameshEntry(ayah, w, hafs, m.color!, starting));
+    }
+  }
+  return out;
 }
 
 /// Identifies a reading independently of each riwaya's text encoding: the
@@ -728,8 +757,7 @@ class _NotesLayout extends MultiChildLayoutDelegate {
       final child = layoutChild(i, BoxConstraints(maxWidth: size.width - 4));
       final top = math.max(tops[i], bottom);
       if (fit == tops.length && top + child.height > size.height) fit = i;
-      positionChild(
-          i, Offset(2, i >= fit ? size.height + child.height : top));
+      positionChild(i, Offset(2, i >= fit ? size.height + child.height : top));
       bottom = top + child.height + 3;
     }
     onFit(fit);
