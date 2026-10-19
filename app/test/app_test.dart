@@ -227,6 +227,48 @@ void main() {
   );
 
   testWidgets(
+    'page 28 in Warsh: naql and alef of wasl without circles',
+    tags: 'golden',
+    (t) async {
+      await shot(
+        t,
+        28,
+        ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+        'p28_warsh_naql',
+      );
+    },
+  );
+
+  testWidgets(
+    'page 7 in Khalaf: sakt with its sign, no description in the text',
+    tags: 'golden',
+    (t) async {
+      await shot(
+        t,
+        7,
+        ReaderSettings.memory(selected: {'khalaf_hamzah'})
+          ..displayed = 'khalaf_hamzah',
+        'p7_khalaf',
+      );
+    },
+  );
+
+  testWidgets(
+    'page 2 and 13 in Warsh: only the naql and badal letters coloured',
+    tags: 'golden',
+    (t) async {
+      for (final page in [2, 13]) {
+        await shot(
+          t,
+          page,
+          ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+          'p${page}_warsh_letters',
+        );
+      }
+    },
+  );
+
+  testWidgets(
     'page 225, Hamzah and al-Kisa\'i: imala sign added',
     tags: 'golden',
     (t) async {

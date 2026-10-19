@@ -30,9 +30,20 @@ String skeleton(String word) {
 /// like the page around it: the Maghribi yeh barree ے of the KFGQPC Warsh
 /// and Qalun texts becomes ى, ya before a dagger alef (أَر۪يٰكُمْ) becomes
 /// ى as in Hafs (أَرَىٰكُمۡ), and the dot below that marks imala in the
-/// Shu'bah text becomes the Madinah imala sign ۪.
-String madinahScript(String text) =>
-    text.replaceAll('ے', 'ى').replaceAll('يٰ', 'ىٰ').replaceAll('ٜ', '۪');
+/// Shu'bah text becomes the Madinah imala sign ۪. The Maghribi marks on the
+/// first alef of a word, which the Hafs font draws as big circles, go: the
+/// sifr on the alef whose hamza gave its vowel to the word before by naql
+/// (قَرِيبٌ ا۟جِيبُ), and the dot of the alef of wasl (اَ۬لدَّاعِ), written ٱ as
+/// in Hafs.
+String madinahScript(String text) => text
+    .replaceAll('ے', 'ى')
+    .replaceAll('يٰ', 'ىٰ')
+    .replaceAll('ٜ', '۪')
+    .replaceAllMapped(_naqlAlef, (m) => '${m[1]}ا')
+    .replaceAllMapped(_waslAlef, (m) => '${m[1]}ٱ');
+
+final _naqlAlef = RegExp(r'(^|\s)ا۟');
+final _waslAlef = RegExp(r'(^|\s)ا[َُِ]?۬');
 
 /// The imala sign of the Madinah mushaf, a dot below the letter.
 const imalaSign = '۪';
@@ -80,4 +91,56 @@ String withImalaSign(String word) {
   if (target == null || target < 0) return word;
   clusters[target].add(imalaSign.codeUnitAt(0));
   return String.fromCharCodes(clusters.expand((c) => c));
+}
+
+/// [word] as its letters, each with its marks.
+List<String> lettersOf(String word) {
+  final out = <String>[];
+  for (final c in word.runes) {
+    final s = String.fromCharCode(c);
+    if (_isMark(c) && out.isNotEmpty) {
+      out.last += s;
+    } else {
+      out.add(s);
+    }
+  }
+  return out;
+}
+
+const _hamzas = 'ءأإؤئٔ';
+const _alefs = 'اٱ';
+
+/// The letter that receives the vowel of the hamza by naql, among [letters]
+/// of a word: the lam of al before its hamza (وَبِالَاخِرَةِ), or with
+/// [last], the last letter of a word followed by the hamza (وَلَقَدَ ءَاتَيۡنَا).
+int? naqlLetter(List<String> letters, {bool last = false}) {
+  if (last) return letters.isEmpty ? null : letters.length - 1;
+  for (var i = 1; i + 1 < letters.length; i++) {
+    if (letters[i].startsWith('ل') &&
+        _alefs.contains(letters[i - 1][0]) &&
+        (_alefs.contains(letters[i + 1][0]) ||
+            _hamzas.contains(letters[i + 1][0]))) {
+      return i;
+    }
+  }
+  return null;
+}
+
+/// The letter of madd al-badal among [letters]: the madd after the hamza
+/// (ءَامَنُواْ, إِيمَٰن, أُوتُواْ), the hamza itself when it carries the madd
+/// (ٱلۡأٓخِرَةِ, ءَٰدَم), or, the hamza dropped by naql, the alef after the
+/// lam (وَبِالَاخِرَةِ) or at the start of the word (اٰتَيْنَا).
+int? badalLetter(List<String> letters) {
+  bool madd(int i) => i < letters.length && 'اوىي'.contains(letters[i][0]);
+  for (var i = 0; i < letters.length; i++) {
+    final l = letters[i];
+    if (_hamzas.contains(l[0]) || l.contains('ٔ') || l.startsWith('آ')) {
+      if (l.startsWith('آ') || l.contains('ٓ') || l.contains('ٰ')) return i;
+      if (madd(i + 1)) return i + 1;
+    }
+  }
+  final naql = naqlLetter(letters);
+  if (naql != null) return naql + 1;
+  if (letters.isNotEmpty && _alefs.contains(letters.first[0])) return 0;
+  return null;
 }

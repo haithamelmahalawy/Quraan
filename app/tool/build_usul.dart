@@ -99,7 +99,7 @@ bool hasBadal(String word, String where) {
 
 bool hasTarqiq(String word) {
   final b = bare(word);
-  if (b.contains('برهيم') || b.contains('عمرن') || b.contains('سريل')) {
+  if (RegExp('برهي?م').hasMatch(b) || b.contains('عمرن') || b.contains('سريل')) {
     return false;
   }
   final cs = clusters(word);
@@ -253,6 +253,46 @@ void main() {
       }
     }
     if (id == 'khalaf_hamzah') {
+      // Where the readings give both ways, with and without sakt, keep the
+      // sakt, Khalaf's way in the Shatibiyya.
+      bool withoutSakt(List v) =>
+          RegExp('(دون|بعدم|عدم) ال?سكت').hasMatch(v[6] as String);
+      final withSakt = {
+        for (final v in variants)
+          if (v.length > 6 &&
+              (v[6] as String).contains('سكت') &&
+              !withoutSakt(v))
+            '${v[0]}:${v[1]}:${v[2]}',
+      };
+      variants.removeWhere(
+        (v) =>
+            v.length > 6 &&
+            withoutSakt(v) &&
+            withSakt.contains('${v[0]}:${v[1]}:${v[2]}'),
+      );
+      // Readings with sakt written without its sign: the sign on each
+      // sakin before a hamza (يَأۡمُرُكُمۡۜ أَن).
+      for (final v in variants) {
+        if (v.length < 7 ||
+            !(v[6] as String).contains('سكت') ||
+            withoutSakt(v) ||
+            (v[4] as String).contains('ۜ')) {
+          continue;
+        }
+        final ws = (v[4] as String).split(' ');
+        final after = words['${v[0]}:${v[1]}']!;
+        final end = (v[2] as int) + (v[3] as int);
+        for (var i = 0; i < ws.length; i++) {
+          final next = i + 1 < ws.length
+              ? ws[i + 1]
+              : end < after.length
+              ? after[end]
+              : null;
+          if (ws[i].isEmpty || next == null || next.isEmpty) continue;
+          ws[i] = sakt(ws[i], next) ?? ws[i];
+        }
+        v[4] = ws.join(' ');
+      }
       // Not where the riwaya's own readings already speak of the sakt.
       final told = {
         for (final v in variants)

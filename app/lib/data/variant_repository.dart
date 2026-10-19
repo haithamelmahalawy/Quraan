@@ -81,6 +81,15 @@ Map<int, List<Variant>> _index((String, String) input) {
   final json = jsonDecode(raw) as Map<String, dynamic>;
   final index = <int, List<Variant>>{};
   for (final v in json['variants'] as List) {
+    // A few readings of the source give their description as the text
+    // (بتفخيم الراء والسكت على الساكن قبل الهمزة): not to be drawn as the
+    // words of the page.
+    if (_isDescription(v[4] as String) && (v.length < 7 || v[6] == '')) {
+      v as List;
+      final description = v[4] as String;
+      v[4] = '';
+      v.length < 7 ? v.addAll([description]) : v[6] = description;
+    }
     final variant = Variant(
       riwayaId: id,
       surah: v[0] as int,
@@ -104,3 +113,12 @@ Map<int, List<Variant>> _index((String, String) input) {
   }
   return index;
 }
+
+/// Text without a vowel that tells of a reading rather than writes it.
+bool _isDescription(String text) =>
+    !RegExp('[ً-ْ]').hasMatch(text) &&
+    RegExp(
+      r'(^|\s)(ب|و)?(ال)?(سكت|تفخيم|ترقيق|إدغام|ادغام|تحقيق|تسهيل|إمالة|تقليل|'
+      r'توسط|تسكين|إسكان|اسكان|إظهار|اظهار|جر|رفع|نصب|ضم|فتح|كسر|ياء|غنة|إبدال|ابدال|'
+      r'نقل|صلة|قصر|قصرالبدل|إخفاء|اخفاء|حذف|مد|إشمام|اشمام|امالة|ادغم)(\s|$)',
+    ).hasMatch(text);

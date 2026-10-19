@@ -225,6 +225,14 @@ class _MushafPageState extends State<MushafPage> {
             child: _PageHeader(
               surah: widget.quran.surah(first.surah).nameAr,
               juz: first.juz,
+              usul: _usulKey(
+                [
+                  for (final l in lines)
+                    if (l is TextLine) ...l.words,
+                ],
+                widget.variants,
+                widget.settings,
+              ),
             ),
           ),
           Expanded(
@@ -507,8 +515,48 @@ class _MushafPageState extends State<MushafPage> {
     // The page font has no imala sign to add: such a word is drawn in the
     // Hafs font.
     if (imala) return (text: withImalaSign(ayah.words[w]), font: 'Hafs');
+    // Nor letters coloured apart.
+    if (_letterReadings(ayah, w) != null) {
+      return (text: ayah.words[w], font: 'Hafs');
+    }
     if (glyph != null) return (text: glyph, font: QcfFonts.family(widget.page));
     return (text: ayah.words[w], font: 'Hafs');
+  }
+
+  /// The readings of a word when they are only naql and madd al-badal, which
+  /// colour single letters rather than the word: the letter that takes the
+  /// hamza's vowel, and the madd.
+  List<Variant>? _letterReadings(Ayah ayah, int w) {
+    final s = widget.settings;
+    final readings = [
+      ..._baseAt(widget.variants, s, ayah, w),
+      ..._readingsAt(widget.variants, s, ayah, w).shown,
+    ].where((v) => v.word == w && s.kinds.contains(v.kind)).toList();
+    if (readings.isEmpty ||
+        !readings.every((v) => v.isBadal || _naqlKind(v) != null)) {
+      return null;
+    }
+    return readings;
+  }
+
+  /// [text] of a word in parts, its naql and madd letters coloured.
+  List<(String, Color?)>? _letterParts(Ayah ayah, int w, String text) {
+    final readings = _letterReadings(ayah, w);
+    if (readings == null) return null;
+    final letters = lettersOf(text);
+    final colors = <int, Color>{};
+    for (final v in readings) {
+      final kind = v.isBadal ? null : _naqlKind(v);
+      final i = v.isBadal
+          ? badalLetter(letters)
+          : kind == _Naql.dropped
+          ? null
+          : naqlLetter(letters, last: kind == _Naql.last);
+      if (i != null) {
+        colors[i] = v.isBadal ? MushafColors.green : qiraaOf(v.riwayaId).color;
+      }
+    }
+    return [for (final (i, l) in letters.indexed) (l, colors[i])];
   }
 
   /// The ayah-end ornament: the printed one from the page font when loaded.
@@ -521,14 +569,18 @@ class _MushafPageState extends State<MushafPage> {
   Widget _word(Ayah ayah, int w, double fontSize) {
     final m = _mark(ayah, w);
     final shown = _display(ayah, w)!;
+    final parts = shown.font == 'Hafs'
+        ? _letterParts(ayah, w, shown.text)
+        : null;
     Widget word = InkText(
       shown.text,
+      parts: parts,
       style: TextStyle(
         fontFamily: shown.font,
         fontSize: fontSize,
         height: 1.0,
-        color: m.color ?? MushafColors.ink,
-        backgroundColor: m.color?.withAlpha(28),
+        color: parts != null ? MushafColors.ink : m.color ?? MushafColors.ink,
+        backgroundColor: parts != null ? null : m.color?.withAlpha(28),
       ),
     );
     if (m.mutashabih) {
@@ -680,6 +732,50 @@ _readingsAt(VariantRepository variants, ReaderSettings s, Ayah ayah, int w) {
   );
 }
 
+/// The usul coloured on [words] of the page, as a key: each colour with
+/// what it means, in the order green, orange, then sakt.
+List<(Color, String)> _usulKey(
+  Iterable<(Ayah, int)> words,
+  VariantRepository variants,
+  ReaderSettings s,
+) {
+  var imala = false, badal = false, tarqiq = false, taghliz = false;
+  final sakt = <Color>{};
+  for (final (ayah, w) in words) {
+    final m = _readingsAt(variants, s, ayah, w);
+    for (final v in [
+      ...m.shown,
+      ..._baseAt(variants, s, ayah, w).where((v) => s.kinds.contains(v.kind)),
+    ]) {
+      if (v.word != w || !v.isUsul) continue;
+      if (v.isBadal) {
+        badal = true;
+      } else if (v.rule == 'tarqiq') {
+        tarqiq = true;
+      } else if (v.rule == 'taghliz') {
+        taghliz = true;
+      } else if (v.isSakt) {
+        sakt.add(qiraaOf(v.riwayaId).color);
+      } else {
+        imala = true;
+      }
+    }
+  }
+  return [
+    if (imala || badal)
+      (
+        MushafColors.green,
+        [if (imala) 'الإمالة والتقليل', if (badal) 'مد البدل'].join(' و'),
+      ),
+    if (tarqiq || taghliz)
+      (
+        MushafColors.rule,
+        [if (tarqiq) 'ترقيق الراء', if (taghliz) 'تغليظ اللام'].join(' و'),
+      ),
+    for (final c in sakt) (c, 'السكت قبل الهمز'),
+  ];
+}
+
 /// Hamesh entries of [ayahs] in page order: one per word where a reading
 /// of the selected riwayat starts. The same word read the same way again on
 /// the page is listed once.
@@ -693,7 +789,10 @@ List<HameshEntry> _entriesOf(
   for (final ayah in ayahs) {
     for (var w = 0; w < ayah.words.length; w++) {
       final m = _readingsAt(variants, settings, ayah, w);
-      final starting = m.shown.where((v) => v.word == w).toList();
+      // Usul are told once by their colour, in the page's key.
+      final starting = m.shown
+          .where((v) => v.word == w && !v.isUsul)
+          .toList();
       if (starting.isEmpty) continue;
       final end = starting
           .map((v) => v.word + v.count)
@@ -714,6 +813,22 @@ List<HameshEntry> _entriesOf(
   }
   return out;
 }
+
+enum _Naql { lam, last, dropped }
+
+/// How a reading is naql: the hamza's vowel given to the lam of al, or to
+/// the last letter of the word, or the hamza dropped after it; null when
+/// it is something else.
+_Naql? _naqlKind(Variant v) => switch (v.description) {
+  'بنقل حركة الهمزة إليها' => _Naql.last,
+  'بحذف الهمزة' => _Naql.dropped,
+  final d
+      when RegExp(
+        r'^(بفتح اللام و)?ب?نقل حركة الهمزة إلى اللام( والقصر)?$',
+      ).hasMatch(d) =>
+    _Naql.lam,
+  _ => null,
+};
 
 /// Identifies a reading independently of each riwaya's text encoding: the
 /// generated description when there is one, otherwise the bare letters.
@@ -778,10 +893,17 @@ class _PageFrame extends StatelessWidget {
 /// The line above the frame, as printed: surah name on the right, juz on
 /// the left.
 class _PageHeader extends StatelessWidget {
-  const _PageHeader({required this.surah, required this.juz});
+  const _PageHeader({
+    required this.surah,
+    required this.juz,
+    this.usul = const [],
+  });
 
   final String surah;
   final int juz;
+
+  /// The colours of the usul on the page and what they mean.
+  final List<(Color, String)> usul;
 
   static const _juzNames = [
     'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', //
@@ -806,7 +928,38 @@ class _PageHeader extends StatelessWidget {
       child: Row(
         children: [
           Text('سورة $surah', style: style),
-          const Spacer(),
+          Expanded(
+            child: usul.isEmpty
+                ? const SizedBox()
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      children: [
+                        for (final (color, meaning) in usul) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            meaning,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: color,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                  ),
+          ),
           Text('الجزء ${_juzNames[juz - 1]}', style: style),
         ],
       ),

@@ -84,6 +84,22 @@ class Variant {
 
   /// Shown in orange: tarqiq of the ra, taghliz of the lam.
   bool get isTarqiqOrTaghliz => rule == 'tarqiq' || rule == 'taghliz';
+
+  /// Sakt (Khalaf) before a hamza, on ال and on شيء.
+  bool get isSakt => rule == 'sakt';
+
+  /// A reading by one of the riwaya's general rules (usul) alone: imala or
+  /// taqlil (with the madd that goes with it), madd al-badal, tarqiq,
+  /// taghliz, sakt. The page explains these once by their colour instead
+  /// of a note at each word.
+  bool get isUsul =>
+      rule.isNotEmpty ||
+      (isImala && (description.isEmpty || _imalaOnly.hasMatch(description)));
+
+  static final _imalaOnly = RegExp(
+    r'^(ب?ال|ب)?(إمالة|تقليل)( الألف| الراء والألف)?'
+    r'( و?مدها \d حركات| ومد المتصل \d حركات| والقصر)?$',
+  );
 }
 
 enum VariantKind {

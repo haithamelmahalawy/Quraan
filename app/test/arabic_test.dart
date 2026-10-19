@@ -9,6 +9,25 @@ void main() {
     expect(madinahScript('مُوسَےٰ'), 'مُوسَىٰ');
     // Shu'bah's dot below for imala becomes the Madinah imala sign.
     expect(madinahScript('رَمَٜى'), 'رَمَ۪ى');
+    // Warsh's naql (قَرِيبٌ اُجِيبُ) and alef of wasl, without the circles.
+    expect(madinahScript('ا۟جِيبُ'), 'اجِيبُ');
+    expect(madinahScript('ا۟خَرَۖ'), 'اخَرَۖ');
+    expect(madinahScript('اَ۬لدَّاعِۦٓ'), 'ٱلدَّاعِۦٓ');
+    expect(madinahScript('قَالُواْ اَ۬لْءَٰنَ'), 'قَالُواْ ٱلْءَٰنَ');
+  });
+
+  test('the letters of naql and madd al-badal', () {
+    // Warsh's وَلَقَدَ اٰتَيْنَا: the dal takes the vowel, the alef is the madd.
+    expect(naqlLetter(lettersOf('وَلَقَدَ'), last: true), 3);
+    expect(badalLetter(lettersOf('اٰتَيْنَا')), 0);
+    // وَبِالَاخِرَةِ: the lam (4th letter) takes it, the alef after is the madd.
+    final akhira = lettersOf('وَبِالَاخِرَةِ');
+    expect(naqlLetter(akhira), 3);
+    expect(badalLetter(akhira), 4);
+    // Hafs text: ءَامَنُواْ, أُوتُواْ, ٱلۡأٓخِرَةِ.
+    expect(badalLetter(lettersOf('ءَامَنُواْ')), 1);
+    expect(badalLetter(lettersOf('أُوتُواْ')), 1);
+    expect(badalLetter(lettersOf('ٱلۡأٓخِرَةِ')), 2);
   });
 
   test('the imala sign goes under the letter read with imala', () {

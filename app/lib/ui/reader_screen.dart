@@ -109,9 +109,10 @@ class _ReaderScreenState extends State<ReaderScreen>
     );
   }
 
-  /// Once the page is drawn: picture it and its facing page, then show
-  /// where it lies in the open mushaf.
-  void _showSide() {
+  /// Once the page is drawn: picture it and its facing page for the small
+  /// icon; with [fly] (the icon tapped), show where it lies in the open
+  /// mushaf too. Turning pages shows only the icon.
+  void _showSide({bool fly = false}) {
     if (_twoPages) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -124,7 +125,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         _currentPicture = pager.capture(index);
         _facingPicture = pager.capture(facing);
       }
-      _hint.forward(from: 0);
+      fly ? _hint.forward(from: 0) : setState(() {});
     });
   }
 
@@ -567,7 +568,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                               ? 'الصفحة في يمين المصحف'
                               : 'الصفحة في يسار المصحف',
                           child: GestureDetector(
-                            onTap: _showSide,
+                            onTap: () => _showSide(fly: true),
                             child: OpenMushafView(
                               right: _quran.isRightPage(_page),
                               width: 44,

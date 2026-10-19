@@ -100,9 +100,19 @@ abstract final class MushafColors {
 /// is drawn evenly around every letter, so all words have the same weight
 /// wherever they fall on the pixels (offset shadows did not).
 class InkText extends StatelessWidget {
-  const InkText(this.text, {super.key, required this.style, this.firmness = 1});
+  const InkText(
+    this.text, {
+    super.key,
+    required this.style,
+    this.firmness = 1,
+    this.parts,
+  });
 
   final String text;
+
+  /// The text in parts with their own colour (null: [style]'s), when some
+  /// letters are coloured apart from the word. Joins [text].
+  final List<(String, Color?)>? parts;
 
   /// Font, size and colour (ink by default); background and decoration are
   /// drawn once, under the outline.
@@ -118,23 +128,47 @@ class InkText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = style.color ?? MushafColors.ink;
+    TextStyle outline(Color c) => TextStyle(
+      fontFamily: style.fontFamily,
+      fontSize: style.fontSize,
+      height: style.height,
+      foreground: Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = weight(style.fontSize ?? 14) * firmness
+        ..strokeJoin = StrokeJoin.round
+        ..color = c,
+    );
+    final parts = this.parts;
+    if (parts != null) {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Text.rich(
+            TextSpan(
+              children: [
+                for (final (t, c) in parts)
+                  TextSpan(text: t, style: outline(c ?? color)),
+              ],
+            ),
+            textDirection: TextDirection.rtl,
+          ),
+          Text.rich(
+            TextSpan(
+              style: style.copyWith(color: color),
+              children: [
+                for (final (t, c) in parts)
+                  TextSpan(text: t, style: TextStyle(color: c ?? color)),
+              ],
+            ),
+            textDirection: TextDirection.rtl,
+          ),
+        ],
+      );
+    }
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Text(
-          text,
-          textDirection: TextDirection.rtl,
-          style: TextStyle(
-            fontFamily: style.fontFamily,
-            fontSize: style.fontSize,
-            height: style.height,
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = weight(style.fontSize ?? 14) * firmness
-              ..strokeJoin = StrokeJoin.round
-              ..color = color,
-          ),
-        ),
+        Text(text, textDirection: TextDirection.rtl, style: outline(color)),
         Text(
           text,
           textDirection: TextDirection.rtl,
