@@ -43,7 +43,8 @@ String madinahScript(String text) => text
     .replaceAllMapped(_waslAlef, (m) => '${m[1]}ٱ');
 
 final _naqlAlef = RegExp(r'(^|\s)ا۟');
-final _waslAlef = RegExp(r'(^|\s)ا[َُِ]?۬');
+// The dot above (after a fatha or damma) or below (after a kasra: اِ۪تَّخَذتُّمُ).
+final _waslAlef = RegExp(r'(^|\s)ا[َُِ]?[۪۬]');
 
 /// The imala sign of the Madinah mushaf, a dot below the letter.
 const imalaSign = '۪';
@@ -143,4 +144,75 @@ int? badalLetter(List<String> letters) {
   if (naql != null) return naql + 1;
   if (letters.isNotEmpty && _alefs.contains(letters.first[0])) return 0;
   return null;
+}
+
+/// The ra read with tarqiq among [letters]: the last ra with a fatha, damma
+/// or tanween (وَبِالَاخِرَةِ, خَيۡرٞ).
+int? raLetter(List<String> letters) {
+  for (var i = letters.length - 1; i > 0; i--) {
+    final l = letters[i];
+    if (l.startsWith('ر') && RegExp('[\u064B-\u064F\u08F0-\u08F2]').hasMatch(l)) {
+      return i;
+    }
+  }
+  return null;
+}
+
+/// The lam read with taghliz among [letters]: a lam with a fatha after a
+/// ص, ط or ظ (ٱلصَّلَوٰة, ظَلَمُواْ).
+int? lamLetter(List<String> letters) {
+  for (var i = 1; i < letters.length; i++) {
+    if (letters[i].startsWith('ل') &&
+        'صطظ'.contains(letters[i - 1][0]) &&
+        RegExp('[\u064E\u064B\u0657]').hasMatch(letters[i])) {
+      return i;
+    }
+  }
+  return null;
+}
+
+/// The tatweel that draws a letter's join out (kashida).
+const tatweel = 'ـ';
+
+/// Letters that join only to the letter before them: no kashida after.
+const _rightJoining = 'اأإآٱٲٳدذرزوؤةءى';
+
+/// Where a kashida can stretch [letters] of a word: after each letter that
+/// joins to the next, last first (the print stretches the end of the word,
+/// خَالِصَةً). Not inside lam-alef, nor before the last letter's marks only.
+List<int> kashidaSlots(List<String> letters) {
+  bool isLetter(String l) {
+    final c = l.codeUnitAt(0);
+    return (c >= 0x0621 && c <= 0x064A) || c == 0x0671 || c == 0x0640;
+  }
+
+  return [
+    for (var i = letters.length - 2; i >= 0; i--)
+      if (isLetter(letters[i]) &&
+          isLetter(letters[i + 1]) &&
+          !_rightJoining.contains(letters[i][0]) &&
+          letters[i + 1][0] != 'ء' &&
+          // Lam-alef is one shape.
+          !(letters[i][0] == 'ل' && 'اأإآٱ'.contains(letters[i + 1][0])))
+        i,
+  ];
+}
+
+/// Kashidas one join takes before the next join of the word is drawn out.
+const kashidaPerJoin = 3;
+
+/// [letters] with [count] kashidas on its [kashidaSlots], each added to the
+/// letter it draws out: the last join first, as far as [kashidaPerJoin].
+List<String> withKashida(List<String> letters, int count) {
+  final slots = kashidaSlots(letters);
+  if (count <= 0 || slots.isEmpty) return letters;
+  final out = [...letters];
+  for (var k = 0; k < count; k++) {
+    final full = k ~/ kashidaPerJoin;
+    final i = full < slots.length
+        ? slots[full]
+        : slots[k % slots.length];
+    out[i] = '${out[i]}$tatweel';
+  }
+  return out;
 }

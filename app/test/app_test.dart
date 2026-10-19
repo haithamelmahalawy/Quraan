@@ -240,16 +240,19 @@ void main() {
   );
 
   testWidgets(
-    'page 7 in Khalaf: sakt with its sign, no description in the text',
+    'pages 7 and 19 in Khalaf: sakt with its sign, no description in the '
+    'text, no difference where only the ghunna differs',
     tags: 'golden',
     (t) async {
-      await shot(
-        t,
-        7,
-        ReaderSettings.memory(selected: {'khalaf_hamzah'})
-          ..displayed = 'khalaf_hamzah',
-        'p7_khalaf',
-      );
+      for (final page in [7, 19]) {
+        await shot(
+          t,
+          page,
+          ReaderSettings.memory(selected: {'khalaf_hamzah'})
+            ..displayed = 'khalaf_hamzah',
+          'p${page}_khalaf',
+        );
+      }
     },
   );
 

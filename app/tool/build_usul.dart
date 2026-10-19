@@ -222,7 +222,8 @@ void main() {
     final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
     final variants = [
       for (final v in json['variants'] as List)
-        if ((v as List).length < 8) v, // not one of ours
+        // Not one of ours (the rules this tool adds).
+        if ((v as List).length < 8 || !const {'badal', 'tarqiq', 'taghliz', 'sakt'}.contains(v[7])) v,
     ];
     final before = variants.length;
     variants.removeWhere((v) {

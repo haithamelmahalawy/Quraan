@@ -2,13 +2,20 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../data/arabic.dart';
 import '../data/quran_repository.dart';
 import '../models/quran.dart';
 import 'mushaf_decor.dart';
 import 'theme.dart';
 
-/// Builds the widget for one word at the given font size.
-typedef WordBuilder = Widget Function(Ayah ayah, int word, double fontSize);
+/// Builds the widget for one word at the given font size, drawn out by
+/// [kashida] tatweels where its letters join.
+typedef WordBuilder = Widget Function(
+  Ayah ayah,
+  int word,
+  double fontSize,
+  int kashida,
+);
 
 /// What a Hafs word shows on the line: its text and font, or null when the
 /// word is not shown (read as part of a longer replacement before it).
@@ -91,23 +98,10 @@ class MushafLines extends StatelessWidget {
                       style: _style(fontSize, 'Hafs'),
                     ),
                   ),
-                  TextLine(:final words) => Row(
-                    textDirection: TextDirection.rtl,
-                    mainAxisAlignment: centered
-                        ? MainAxisAlignment.center
-                        : MainAxisAlignment.spaceBetween,
-                    children: [
-                      for (final (ayah, w) in words)
-                        if (_item(ayah, w, fontSize) case final item?)
-                          Padding(
-                            padding: centered
-                                ? EdgeInsets.symmetric(
-                                    horizontal: fontSize * 0.12,
-                                  )
-                                : EdgeInsets.zero,
-                            child: item,
-                          ),
-                    ],
+                  TextLine(:final words) => _textLine(
+                    words,
+                    fontSize,
+                    constraints.maxWidth,
                   ),
                 },
               ),
@@ -117,8 +111,88 @@ class MushafLines extends StatelessWidget {
     );
   }
 
+  Widget _textLine(List<(Ayah, int)> words, double fontSize, double width) {
+    final kashida = centered
+        ? const <int, int>{}
+        : _kashida(words, fontSize, width);
+    return Row(
+      textDirection: TextDirection.rtl,
+      mainAxisAlignment: centered
+          ? MainAxisAlignment.center
+          : MainAxisAlignment.spaceBetween,
+      children: [
+        for (final (i, (ayah, w)) in words.indexed)
+          if (_item(ayah, w, fontSize, kashida[i] ?? 0) case final item?)
+            Padding(
+              padding: centered
+                  ? EdgeInsets.symmetric(horizontal: fontSize * 0.12)
+                  : EdgeInsets.zero,
+              child: item,
+            ),
+      ],
+    );
+  }
+
+  /// How many kashidas each word of a justified line takes (by its index in
+  /// [words]): the room the line leaves at [fontSize] is filled by drawing
+  /// out the joins of its longest words in the Hafs font, as the print
+  /// does, rather than by spreading the words apart.
+  Map<int, int> _kashida(
+    List<(Ayah, int)> words,
+    double fontSize,
+    double width,
+  ) {
+    final scale = fontSize / _probe;
+    var natural = 0.0;
+    var items = 0;
+    final slots = <int, int>{};
+    final lengths = <int, int>{};
+    for (final (i, (ayah, w)) in words.indexed) {
+      final shown = _show(ayah, w);
+      if (shown != null) {
+        natural += _measure(shown.text, shown.font) * scale;
+        items++;
+        if (shown.font == 'Hafs') {
+          final letters = lettersOf(shown.text);
+          final n = kashidaSlots(letters).length;
+          if (n > 0) {
+            slots[i] = n;
+            lengths[i] = letters.length;
+          }
+        }
+      }
+      if (w == ayah.words.length - 1) {
+        final end = _marker(ayah);
+        natural += _measure(end.text, end.font) * scale;
+      }
+    }
+    if (slots.isEmpty) return const {};
+    // Words keep at least a narrow space between them.
+    natural += math.max(0, items - 1) * fontSize * 0.18;
+    final tatweelWidth = _measure(tatweel, 'Hafs') * scale;
+    if (tatweelWidth <= 0) return const {};
+    var count = ((width * 0.985 - natural) / tatweelWidth).floor();
+    if (count <= 0) return const {};
+    // As the print: one or two words drawn out, the longest first, at one
+    // join each; more joins only on a line with much room.
+    final order = slots.keys.toList()
+      ..sort((a, b) => lengths[b]!.compareTo(lengths[a]!));
+    final out = <int, int>{};
+    for (var joins = 1; count > 0 && joins <= 3; joins++) {
+      for (final i in order) {
+        if (count == 0) break;
+        final int most = kashidaPerJoin * math.min(joins, slots[i]!);
+        final int add = math.min(count, most - (out[i] ?? 0));
+        if (add <= 0) continue;
+        out[i] = (out[i] ?? 0) + add;
+        count -= add;
+      }
+    }
+    return out;
+  }
+
   /// A word, followed by the ayah-end marker when it closes its ayah.
-  Widget? _item(Ayah ayah, int w, double fontSize) {
+  Widget? _item(Ayah ayah, int w, double fontSize, int kashida) {
     final shown = _show(ayah, w) != null;
     final closes = w == ayah.words.length - 1;
     if (!shown && !closes) return null;
@@ -129,7 +203,7 @@ class MushafLines extends StatelessWidget {
       firmness: 0.35,
     );
     if (!shown) return marker;
-    final word = wordBuilder(ayah, w, fontSize);
+    final word = wordBuilder(ayah, w, fontSize, kashida);
     if (!closes) return word;
     return Row(
       mainAxisSize: MainAxisSize.min,

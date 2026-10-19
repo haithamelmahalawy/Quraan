@@ -85,6 +85,11 @@ class Variant {
   /// Shown in orange: tarqiq of the ra, taghliz of the lam.
   bool get isTarqiqOrTaghliz => rule == 'tarqiq' || rule == 'taghliz';
 
+  /// Written and read as Hafs on the page: Khalaf's idgham without ghunna
+  /// in the waw and the ya is all that differs. Told only in the readings
+  /// of the word.
+  bool get readsAsHafs => rule == 'ghunna';
+
   /// Sakt (Khalaf) before a hamza, on ال and on شيء.
   bool get isSakt => rule == 'sakt';
 

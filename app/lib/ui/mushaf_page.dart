@@ -523,17 +523,18 @@ class _MushafPageState extends State<MushafPage> {
     return (text: ayah.words[w], font: 'Hafs');
   }
 
-  /// The readings of a word when they are only naql and madd al-badal, which
-  /// colour single letters rather than the word: the letter that takes the
-  /// hamza's vowel, and the madd.
+  /// The readings of a word when they are only naql and madd al-badal (with
+  /// tarqiq or taghliz), which colour single letters rather than the word:
+  /// the letter that takes the hamza's vowel, the madd, the ra or the lam.
   List<Variant>? _letterReadings(Ayah ayah, int w) {
     final s = widget.settings;
     final readings = [
       ..._baseAt(widget.variants, s, ayah, w),
       ..._readingsAt(widget.variants, s, ayah, w).shown,
     ].where((v) => v.word == w && s.kinds.contains(v.kind)).toList();
-    if (readings.isEmpty ||
-        !readings.every((v) => v.isBadal || _naqlKind(v) != null)) {
+    bool naqlOrBadal(Variant v) => v.isBadal || _naqlKind(v) != null;
+    if (!readings.any(naqlOrBadal) ||
+        !readings.every((v) => naqlOrBadal(v) || v.isTarqiqOrTaghliz)) {
       return null;
     }
     return readings;
@@ -546,6 +547,11 @@ class _MushafPageState extends State<MushafPage> {
     final letters = lettersOf(text);
     final colors = <int, Color>{};
     for (final v in readings) {
+      if (v.isTarqiqOrTaghliz) {
+        final i = v.rule == 'tarqiq' ? raLetter(letters) : lamLetter(letters);
+        if (i != null) colors[i] = MushafColors.rule;
+        continue;
+      }
       final kind = v.isBadal ? null : _naqlKind(v);
       final i = v.isBadal
           ? badalLetter(letters)
@@ -559,6 +565,22 @@ class _MushafPageState extends State<MushafPage> {
     return [for (final (i, l) in letters.indexed) (l, colors[i])];
   }
 
+  /// [parts] (or [text] whole) drawn out by [kashida] tatweels.
+  List<(String, Color?)>? _stretched(
+    String text,
+    List<(String, Color?)>? parts,
+    int kashida,
+  ) {
+    if (kashida == 0) return parts;
+    final letters = parts == null
+        ? lettersOf(text)
+        : [for (final (l, _) in parts) l];
+    final drawn = withKashida(letters, kashida);
+    return [
+      for (final (i, l) in drawn.indexed) (l, parts == null ? null : parts[i].$2),
+    ];
+  }
+
   /// The ayah-end ornament: the printed one from the page font when loaded.
   ({String text, String font})? _marker(Ayah ayah) =>
       widget.qcf && ayah.endGlyph != null
@@ -566,11 +588,13 @@ class _MushafPageState extends State<MushafPage> {
       : null;
 
   /// One word of a printed line.
-  Widget _word(Ayah ayah, int w, double fontSize) {
+  Widget _word(Ayah ayah, int w, double fontSize, [int kashida = 0]) {
     final m = _mark(ayah, w);
     final shown = _display(ayah, w)!;
-    final parts = shown.font == 'Hafs'
-        ? _letterParts(ayah, w, shown.text)
+    final hafsFont = shown.font == 'Hafs';
+    final coloured = hafsFont ? _letterParts(ayah, w, shown.text) : null;
+    final parts = hafsFont
+        ? _stretched(shown.text, coloured, kashida)
         : null;
     Widget word = InkText(
       shown.text,
@@ -579,8 +603,10 @@ class _MushafPageState extends State<MushafPage> {
         fontFamily: shown.font,
         fontSize: fontSize,
         height: 1.0,
-        color: parts != null ? MushafColors.ink : m.color ?? MushafColors.ink,
-        backgroundColor: parts != null ? null : m.color?.withAlpha(28),
+        color: coloured != null
+            ? MushafColors.ink
+            : m.color ?? MushafColors.ink,
+        backgroundColor: coloured != null ? null : m.color?.withAlpha(28),
       ),
     );
     if (m.mutashabih) {
@@ -685,7 +711,10 @@ List<Variant> _baseAt(
 ) {
   final base = s.displayed;
   if (base == null || !variants.isLoaded(base)) return const [];
-  return variants.at([base], ayah.surah, ayah.number, w).toList();
+  return variants
+      .at([base], ayah.surah, ayah.number, w)
+      .where((v) => !v.readsAsHafs)
+      .toList();
 }
 
 /// The colour of readings: green for imala and madd al-badal (in every
@@ -716,7 +745,7 @@ _readingsAt(VariantRepository variants, ReaderSettings s, Ayah ayah, int w) {
         ayah.number,
         w,
       )
-      .where((v) => !same.contains(_readingKey(v)))
+      .where((v) => !v.readsAsHafs && !same.contains(_readingKey(v)))
       .toList(growable: false);
   final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
   final colors = [

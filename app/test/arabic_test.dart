@@ -28,6 +28,9 @@ void main() {
     expect(badalLetter(lettersOf('ءَامَنُواْ')), 1);
     expect(badalLetter(lettersOf('أُوتُواْ')), 1);
     expect(badalLetter(lettersOf('ٱلۡأٓخِرَةِ')), 2);
+    // Tarqiq and taghliz: the ra of وَبِالَاخِرَةِ, the lam of ٱلصَّلَوٰةَ.
+    expect(raLetter(akhira), 6);
+    expect(lamLetter(lettersOf('ٱلصَّلَوٰةَ')), 3);
   });
 
   test('the imala sign goes under the letter read with imala', () {
@@ -51,5 +54,15 @@ void main() {
     expect(under('رَحۡمَةٞ'), 'رحم');
     // Already marked: unchanged.
     expect(withImalaSign('مَجۡر۪ىٰهَا'), 'مَجۡر۪ىٰهَا');
+  });
+
+  test('kashida draws out the last join of a word, never lam-alef', () {
+    // خَالِصَةً: after the sad (before the ta marbuta), the lam, the kha.
+    final khalisa = lettersOf('خَالِصَةً');
+    expect(kashidaSlots(khalisa), [3, 2, 0]);
+    expect(withKashida(khalisa, 2).join(), 'خَالِصَــةً');
+    // No join to stretch in دَارُ; none inside lam-alef (ٱلۡأٓخِرَةِ's لأ).
+    expect(kashidaSlots(lettersOf('دَارُ')), isEmpty);
+    expect(kashidaSlots(lettersOf('لَا')), isEmpty);
   });
 }

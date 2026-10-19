@@ -81,6 +81,8 @@ class ReaderSettings extends ChangeNotifier {
   String? get displayed {
     final base = _get('base') as String?;
     if (base != null && _selected.contains(base)) return base;
+    // Hafs chosen.
+    if (base == 'hafs') return null;
     if (mode == DisplayMode.replace && _selected.length == 1) {
       return _selected.single;
     }
