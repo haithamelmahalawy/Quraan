@@ -154,6 +154,19 @@ void main() {
     },
   );
 
+  testWidgets(
+    'page 251 with Warsh: no qasr where Warsh reads as Hafs (ولله يسجد)',
+    tags: 'golden',
+    (t) async {
+      await shot(
+        t,
+        251,
+        ReaderSettings.memory(selected: {'warsh'}),
+        'p251_warsh',
+      );
+    },
+  );
+
   testWidgets('page 4 full screen: no bands at the sides', tags: 'golden', (
     t,
   ) async {

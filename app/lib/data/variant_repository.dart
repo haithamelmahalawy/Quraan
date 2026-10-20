@@ -54,8 +54,14 @@ class VariantRepository {
 
   Future<void> _load(String id) async {
     final raw = await _bundle.loadString('$_dir$id.json');
-    _loaded[id] = await compute(_index, (id, raw));
+    final book = await (_book ??= _bundle
+        .loadString('assets/data/kharouf.json')
+        .then<String?>((s) => s, onError: (_) => null));
+    _loaded[id] = await compute(_index, (id, raw, book));
   }
+
+  /// The certified source (assets/data/kharouf.json), read once.
+  Future<String?>? _book;
 
   /// Variants of [riwayaIds] that start at, or cover, the given Hafs word.
   Iterable<Variant> at(
@@ -75,9 +81,11 @@ class VariantRepository {
       surah * 1000000 + ayah * 1000 + word;
 }
 
-/// Indexes a riwaya file by every Hafs word each variant covers.
-Map<int, List<Variant>> _index((String, String) input) {
-  final (id, raw) = input;
+/// Indexes a riwaya file by every Hafs word each variant covers, with
+/// what the certified source says of the riwaya ([book]): its readings
+/// marked certified, and those it states but the file lacks added.
+Map<int, List<Variant>> _index((String, String, String?) input) {
+  final (id, raw, book) = input;
   final json = jsonDecode(raw) as Map<String, dynamic>;
   final index = <int, List<Variant>>{};
   for (final v in json['variants'] as List) {
@@ -111,7 +119,61 @@ Map<int, List<Variant>> _index((String, String) input) {
           .add(variant);
     }
   }
+  if (book != null) _certify(id, index, book);
   return index;
+}
+
+void _certify(String id, Map<int, List<Variant>> index, String book) {
+  final places =
+      ((jsonDecode(book) as Map<String, dynamic>)['riwayat'] as Map)[id]
+          as List?;
+  if (places == null) return;
+  for (final p in places) {
+    final (surah, ayah, word, count) = (
+      p[0] as int,
+      p[1] as int,
+      p[2] as int,
+      p[3] as int,
+    );
+    final keys = [
+      for (var w = word; w < word + count; w++)
+        VariantRepository.key(surah, ayah, w),
+    ];
+    var found = false;
+    for (final k in keys) {
+      final list = index[k];
+      if (list == null) continue;
+      found = true;
+      for (final v in [...list]) {
+        if (v.certified || v.rule.isNotEmpty) continue;
+        // The same reading is listed at every word it covers.
+        final certified = v.withCertified();
+        for (var w = v.word; w < v.word + v.count; w++) {
+          final at = index[VariantRepository.key(v.surah, v.ayah, w)]!;
+          at[at.indexOf(v)] = certified;
+        }
+      }
+    }
+    // A farsh reading the book states and the riwaya file lacks.
+    if (!found && p[6] == 'farsh') {
+      final how = p[5] as String;
+      final variant = Variant(
+        riwayaId: id,
+        surah: surah,
+        ayah: ayah,
+        word: word,
+        count: count,
+        text: madinahScript(p[4] as String),
+        kind: VariantKind.farsh,
+        description: how,
+        rule: 'kharouf',
+        certified: true,
+      );
+      for (final k in keys) {
+        (index[k] ??= []).add(variant);
+      }
+    }
+  }
 }
 
 /// Text without a vowel that tells of a reading rather than writes it.

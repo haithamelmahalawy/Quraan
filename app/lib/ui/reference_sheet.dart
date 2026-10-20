@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/manzumat.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
+import 'kharouf_section.dart';
 import 'theme.dart';
 
 /// Where the readings of a word are stated: for each, the verses of the
@@ -80,6 +81,13 @@ class ReferenceSheet extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(color: MushafColors.frame),
             ),
+            // The certified source first: the verses it cites for the word.
+            if (readings.isNotEmpty)
+              KharoufSection(
+                surah: readings.first.surah,
+                ayah: readings.first.ayah,
+                word: readings.first.word,
+              ),
             for (final v in readings) ...[
               const SizedBox(height: 14),
               _ReadingReference(

@@ -4,6 +4,7 @@ import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../state/reader_settings.dart';
+import 'kharouf_section.dart';
 import 'reference_sheet.dart';
 
 /// How each riwaya reads one Hafs word: the selected riwayat first, then
@@ -115,6 +116,7 @@ class VariantSheet extends StatelessWidget {
               text: ayah.words.sublist(from, to).join(' '),
               font: 'Hafs',
             ),
+            KharoufSection(surah: ayah.surah, ayah: ayah.number, word: word),
             if (!ready)
               const Padding(
                 padding: EdgeInsets.all(24),

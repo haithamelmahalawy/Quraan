@@ -49,6 +49,7 @@ class Variant {
     required this.kind,
     this.description = '',
     this.rule = '',
+    this.certified = false,
   });
 
   final String riwayaId;
@@ -71,7 +72,25 @@ class Variant {
   /// The recitation rule it applies, for readings made by applying a rule
   /// to the Hafs text (tool/build_usul.dart): 'badal' (madd al-badal),
   /// 'tarqiq' (of the ra), 'taghliz' (of the lam), 'sakt'; empty otherwise.
+  /// 'kharouf' when the reading comes from the certified source alone.
   final String rule;
+
+  /// Stated by the certified source, «التسهيل لقراءات التنزيل»: this riwaya
+  /// reads the word differently from Hafs.
+  final bool certified;
+
+  Variant withCertified() => Variant(
+    riwayaId: riwayaId,
+    surah: surah,
+    ayah: ayah,
+    word: word,
+    count: count,
+    text: text,
+    kind: kind,
+    description: description,
+    rule: rule,
+    certified: true,
+  );
 
   /// A reading with imala (or taqlil, the lesser imala).
   bool get isImala =>
@@ -98,8 +117,12 @@ class Variant {
   /// taghliz, sakt. The page explains these once by their colour instead
   /// of a note at each word.
   bool get isUsul =>
-      rule.isNotEmpty ||
+      (rule.isNotEmpty && rule != 'kharouf') ||
+      isQasr ||
       (isImala && (description.isEmpty || _imalaOnly.hasMatch(description)));
+
+  /// Qasr of the separated madd (Qalun, Ibn Kathir, al-Susi): بِمَا أُنزِلَ.
+  bool get isQasr => description == 'بالقصر';
 
   static final _imalaOnly = RegExp(
     r'^(ب?ال|ب)?(إمالة|تقليل)( الألف| الراء والألف)?'

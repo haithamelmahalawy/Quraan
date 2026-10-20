@@ -799,6 +799,7 @@ List<(Color, String)> _usulKey(
 ) {
   var imala = false, badal = false, tarqiq = false, taghliz = false;
   final sakt = <Color>{};
+  final qasr = <Color>{};
   for (final (ayah, w) in words) {
     final m = _readingsAt(variants, s, ayah, w);
     for (final v in [
@@ -814,6 +815,8 @@ List<(Color, String)> _usulKey(
         taghliz = true;
       } else if (v.isSakt) {
         sakt.add(qiraaOf(v.riwayaId).color);
+      } else if (v.isQasr) {
+        qasr.add(qiraaOf(v.riwayaId).color);
       } else {
         imala = true;
       }
@@ -831,6 +834,7 @@ List<(Color, String)> _usulKey(
         [if (tarqiq) 'ترقيق الراء', if (taghliz) 'تغليظ اللام'].join(' و'),
       ),
     for (final c in sakt) (c, 'السكت قبل الهمز'),
+    for (final c in qasr) (c, 'قصر المنفصل'),
   ];
 }
 
@@ -1185,14 +1189,30 @@ class _EntryView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            e.hafs,
-            style: TextStyle(
-              fontFamily: 'Hafs',
-              fontSize: quran,
-              height: 1.4,
-              color: e.color,
-              backgroundColor: e.color.withAlpha(28),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: e.hafs,
+                  style: TextStyle(
+                    fontFamily: 'Hafs',
+                    fontSize: quran,
+                    height: 1.4,
+                    color: e.color,
+                    backgroundColor: e.color.withAlpha(28),
+                  ),
+                ),
+                // Confirmed by the certified source (التسهيل).
+                if (e.readings.every((v) => v.certified))
+                  TextSpan(
+                    text: ' ✓',
+                    style: TextStyle(
+                      fontSize: quran * 0.8,
+                      color: MushafColors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ],
             ),
           ),
           for (final g in _readings(e.readings))

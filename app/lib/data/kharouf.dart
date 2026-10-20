@@ -1,0 +1,111 @@
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
+
+/// One way a word is read, as «التسهيل لقراءات التنزيل» states it.
+class KharoufReading {
+  const KharoufReading({
+    required this.text,
+    required this.riwayat,
+    required this.disputed,
+    required this.how,
+    required this.stopOnly,
+    required this.taqlil,
+  });
+
+  /// The reading as the book quotes it; empty when only described.
+  final String text;
+
+  /// Riwayat that read it (ids of the catalog), and those that read it
+  /// with a dispute (بخلف).
+  final List<String> riwayat;
+  final List<String> disputed;
+
+  /// Short technical wording of how it is read (بتسهيل الهمزة الثانية).
+  final String how;
+
+  /// When stopping on the word only (وقفاً).
+  final bool stopOnly;
+
+  /// Taqlil rather than full imala (in the الممال section).
+  final bool taqlil;
+
+  bool get readsAsHafs => riwayat.contains('hafs');
+}
+
+/// The book's note on a Hafs word: its readings and the verses of the
+/// Shatibiyya and the Durrah it cites.
+class KharoufEntry {
+  const KharoufEntry({
+    required this.surah,
+    required this.ayah,
+    required this.word,
+    required this.count,
+    required this.section,
+    required this.readings,
+    required this.verses,
+  });
+
+  final int surah, ayah, word, count;
+
+  /// farsh, mumal (imala), mudgham (idgham).
+  final String section;
+  final List<KharoufReading> readings;
+  final List<String> verses;
+
+  String get sectionAr => switch (section) {
+    'mumal' => 'الممال',
+    'mudgham' => 'المدغم',
+    _ => 'الفرش',
+  };
+}
+
+/// The certified source of who reads what: Kharouf's «التسهيل لقراءات
+/// التنزيل من الشاطبية والدرة», reviewed by Sheikh Karim Rajih
+/// (assets/data/kharouf.json, built by tool/build_kharouf.dart).
+class Kharouf {
+  Kharouf._(this.source, this._index);
+
+  final String source;
+  final Map<int, List<KharoufEntry>> _index;
+
+  static Future<Kharouf>? _loading;
+
+  static Future<Kharouf> load([AssetBundle? bundle]) => _loading ??= () async {
+    final raw = await (bundle ?? rootBundle).loadString('assets/data/kharouf.json');
+    final json = jsonDecode(raw) as Map<String, dynamic>;
+    final index = <int, List<KharoufEntry>>{};
+    for (final e in json['entries'] as List) {
+      final entry = KharoufEntry(
+        surah: e[0] as int,
+        ayah: e[1] as int,
+        word: e[2] as int,
+        count: e[3] as int,
+        section: e[4] as String,
+        readings: [
+          for (final g in e[5] as List)
+            KharoufReading(
+              text: g[0] as String,
+              riwayat: (g[1] as List).cast<String>(),
+              disputed: (g[2] as List).cast<String>(),
+              how: g[3] as String,
+              stopOnly: g[4] as bool,
+              taqlil: g.length > 5 && g[5] == true,
+            ),
+        ],
+        verses: (e[6] as List).cast<String>(),
+      );
+      for (var w = entry.word; w < entry.word + entry.count; w++) {
+        (index[_key(entry.surah, entry.ayah, w)] ??= []).add(entry);
+      }
+    }
+    return Kharouf._(json['source'] as String, index);
+  }();
+
+  static int _key(int surah, int ayah, int word) =>
+      surah * 1000000 + ayah * 1000 + word;
+
+  /// The book's notes on the Hafs word [word] of [surah]:[ayah].
+  List<KharoufEntry> at(int surah, int ayah, int word) =>
+      _index[_key(surah, ayah, word)] ?? const [];
+}

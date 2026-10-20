@@ -241,6 +241,15 @@ void main() {
     }
 
     if (id == 'warsh') {
+      // Warsh has no qasr in the separated madd: «بالقصر» there is only the
+      // madd sign of the Hafs text (وَلِلَّهِۤ يَسۡجُدُۤ), and «والقصر» after a
+      // naql is the madd al-badal, told by its own rule.
+      variants.removeWhere((v) => v.length > 6 && v[6] == 'بالقصر');
+      for (final v in variants) {
+        if (v.length > 6 && (v[6] as String).endsWith(' والقصر')) {
+          v[6] = (v[6] as String).substring(0, (v[6] as String).length - 7);
+        }
+      }
       for (final a in ayahs) {
         for (final (w, word) in a.words.indexed) {
           final where = '${a.surah}:${a.ayah}';
