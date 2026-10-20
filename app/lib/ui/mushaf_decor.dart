@@ -7,9 +7,16 @@ import 'theme.dart';
 /// Madinah-mushaf style page border: a band of rose rosettes between rose
 /// and gold rules, with rosette corners, as in the printed mushaf.
 class OrnamentFrame extends StatelessWidget {
-  const OrnamentFrame({super.key, required this.child});
+  const OrnamentFrame({super.key, required this.child, this.sides = true});
 
   final Widget child;
+
+  /// The bands at the right and left too; without them (full screen) the
+  /// text has the whole width, between the bands above and below.
+  final bool sides;
+
+  /// Distance from the right or left edge to the content.
+  static double sideInset(bool sides) => sides ? inset : 6;
 
   /// Width of the patterned band.
   static const band = 14.0;
@@ -20,8 +27,14 @@ class OrnamentFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _FramePainter(),
-      child: Padding(padding: const EdgeInsets.all(inset), child: child),
+      painter: _FramePainter(sides),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: inset,
+          horizontal: sideInset(sides),
+        ),
+        child: child,
+      ),
     );
   }
 }
@@ -38,15 +51,22 @@ void _rosette(Canvas canvas, Offset c, double r, Color petal, Color heart) {
 }
 
 class _FramePainter extends CustomPainter {
+  _FramePainter(this.sides);
+
+  final bool sides;
+
   @override
   void paint(Canvas canvas, Size size) {
     const band = OrnamentFrame.band;
     final outer = Offset.zero & size;
-    final inner = outer.deflate(band);
+    final inner = sides
+        ? outer.deflate(band)
+        : Rect.fromLTRB(0, band, size.width, size.height - band);
     final rose = MushafColors.rose, gold = MushafColors.gold;
 
     canvas.drawRect(outer, Paint()..color = MushafColors.roseLight);
     canvas.drawRect(inner, Paint()..color = MushafColors.page);
+    if (!sides) return _bandsOnly(canvas, size, inner);
 
     // Rosettes along each side, small gold dots between them.
     void along(Offset from, Offset to) {
@@ -96,8 +116,32 @@ class _FramePainter extends CustomPainter {
       ..strokeWidth = 0.8);
   }
 
+  /// Full screen: the bands above and below the text only.
+  void _bandsOnly(Canvas canvas, Size size, Rect inner) {
+    const band = OrnamentFrame.band, h = band / 2;
+    final count = math.max(1, (size.width / (band * 1.25)).floor());
+    final step = size.width / count;
+    for (final y in [h, size.height - h]) {
+      for (var i = 0; i < count; i++) {
+        _rosette(canvas, Offset(step * (i + 0.5), y), band * 0.42,
+            MushafColors.rose.withAlpha(200), MushafColors.gold);
+        if (i > 0) {
+          canvas.drawCircle(
+              Offset(step * i, y), 1.3, Paint()..color = MushafColors.gold);
+        }
+      }
+    }
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..color = MushafColors.gold;
+    for (final y in [inner.top, inner.bottom]) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
+    }
+  }
+
   @override
-  bool shouldRepaint(_FramePainter old) => false;
+  bool shouldRepaint(_FramePainter old) => old.sides != sides;
 }
 
 /// Surah title banner as printed: a rose lattice panel with rosettes and a

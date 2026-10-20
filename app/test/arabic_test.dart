@@ -56,6 +56,13 @@ void main() {
     expect(withImalaSign('مَجۡر۪ىٰهَا'), 'مَجۡر۪ىٰهَا');
   });
 
+  test('naql: the alef keeps the vowel of the hamza', () {
+    expect(withNaqlVowel(madinahScript('ا۟خَرَۖ'), 'أُخَرَۚ'), 'اُخَرَۖ');
+    expect(withNaqlVowel(madinahScript('ا۟جِيبُ'), 'أُجِيبُ'), 'اُجِيبُ');
+    // Not a naql: unchanged.
+    expect(withNaqlVowel('ءَامَنُواْ', 'ءَامَنُوٓاْ'), 'ءَامَنُواْ');
+  });
+
   test('kashida draws out the last join of a word, never lam-alef', () {
     // خَالِصَةً: after the sad (before the ta marbuta), the lam, the kha.
     final khalisa = lettersOf('خَالِصَةً');

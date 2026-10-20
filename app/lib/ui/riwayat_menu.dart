@@ -93,6 +93,14 @@ class RiwayatMenu extends StatelessWidget {
                 ],
               ),
             ),
+            // Hafs, compared with the riwaya the mushaf shows.
+            if (q.riwayat.any((r) => r.id == hafsId))
+              CheckboxMenuButton(
+                value: settings.compareHafs,
+                closeOnActivate: false,
+                onChanged: (v) => settings.compareHafs = v ?? false,
+                child: const Text('رواية حفص'),
+              ),
             for (final r in q.riwayat)
               if (r.id != hafsId && variants.isAvailable(r.id))
                 CheckboxMenuButton(

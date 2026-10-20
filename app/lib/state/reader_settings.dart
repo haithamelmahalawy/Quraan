@@ -63,6 +63,8 @@ class ReaderSettings extends ChangeNotifier {
         _prefs?.setInt(key, v);
       case String v:
         _prefs?.setString(key, v);
+      case bool v:
+        _prefs?.setBool(key, v);
     }
     notifyListeners();
   }
@@ -92,6 +94,11 @@ class ReaderSettings extends ChangeNotifier {
   /// Shows the mushaf in [riwaya] (a selected riwaya), or Hafs (null).
   set displayed(String? riwaya) => _set('base', riwaya ?? 'hafs');
 
+  /// Hafs among the riwayat compared with the one the mushaf shows: where
+  /// that riwaya differs from Hafs, the hamesh gives Hafs's reading.
+  bool get compareHafs => _get('compareHafs') as bool? ?? false;
+  set compareHafs(bool on) => _set('compareHafs', on);
+
   /// The riwaya last listened to.
   String? get listenRiwaya => _get('listenRiwaya') as String?;
   set listenRiwaya(String? id) => _set('listenRiwaya', id ?? 'hafs');
@@ -109,8 +116,11 @@ class ReaderSettings extends ChangeNotifier {
   /// page fonts, downloaded once per page).
   bool get qcfFont => _qcfFont;
 
-  /// The replace mode only makes sense for a single riwaya.
-  DisplayMode get mode => _mode == DisplayMode.replace && _selected.length != 1
+  /// The replace mode only makes sense for a single riwaya, and not when
+  /// Hafs is chosen as the mushaf shown: then its readings go to the hamesh.
+  DisplayMode get mode =>
+      _mode == DisplayMode.replace &&
+          (_selected.length != 1 || _get('base') == 'hafs')
       ? DisplayMode.hamesh
       : _mode;
 

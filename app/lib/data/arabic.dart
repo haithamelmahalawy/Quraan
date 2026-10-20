@@ -216,3 +216,19 @@ List<String> withKashida(List<String> letters, int count) {
   }
   return out;
 }
+
+/// A reading whose first hamza was dropped by naql, its alef written bare
+/// (ا۟خَرَ, after [madinahScript]: اخَرَ), with the hamza's vowel of the Hafs
+/// word on the alef, as the print writes it (مِنۡ أَيَّامٍ اُخَرَ).
+String withNaqlVowel(String text, String hafs) {
+  final letters = lettersOf(text);
+  final from = lettersOf(hafs);
+  if (letters.length < 2 ||
+      letters[0] != 'ا' ||
+      from.isEmpty ||
+      !'أإ'.contains(from[0][0])) {
+    return text;
+  }
+  final vowel = from[0].replaceAll(RegExp('[^َُِ]'), '');
+  return vowel.isEmpty ? text : 'ا$vowel${letters.skip(1).join()}';
+}

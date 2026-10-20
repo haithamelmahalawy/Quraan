@@ -199,7 +199,10 @@ class _MushafPageState extends State<MushafPage> {
     final pageWidth = withHamesh
         ? size.width * (narrow ? 0.81 : 0.84)
         : size.width;
-    final textWidth = pageWidth - 2 * outer - 2 * OrnamentFrame.inset;
+    // Full screen: no bands at the sides, the text has the whole width.
+    final sides = widget.showHamesh;
+    final textWidth =
+        pageWidth - 2 * outer - 2 * OrnamentFrame.sideInset(sides);
     final textHeight =
         pageHeight -
         2 * outer -
@@ -217,7 +220,10 @@ class _MushafPageState extends State<MushafPage> {
     );
     final first = ayahs.first;
     final page = Padding(
-      padding: const EdgeInsets.all(outer),
+      padding: EdgeInsets.symmetric(
+        vertical: outer,
+        horizontal: sides ? outer : 0,
+      ),
       child: Column(
         children: [
           SizedBox(
@@ -238,6 +244,7 @@ class _MushafPageState extends State<MushafPage> {
           Expanded(
             child: _PageFrame(
               page: widget.page,
+              sides: sides,
               onNumberTap: widget.onPageNumberTap,
               child: mushafLines,
             ),
@@ -503,7 +510,7 @@ class _MushafPageState extends State<MushafPage> {
         .firstOrNull;
     if (v != null) {
       if (v.word != w || v.text.isEmpty) return null;
-      return (text: v.text, font: 'Hafs');
+      return (text: withNaqlVowel(v.text, ayah.words[w]), font: 'Hafs');
     }
     final glyph = widget.qcf ? (ayah.glyphs?[w]) : null;
     // Drawn with the word before.
@@ -555,6 +562,8 @@ class _MushafPageState extends State<MushafPage> {
       final kind = v.isBadal ? null : _naqlKind(v);
       final i = v.isBadal
           ? badalLetter(letters)
+          : kind == _Naql.alef
+          ? 0
           : kind == _Naql.dropped
           ? null
           : naqlLetter(letters, last: kind == _Naql.last);
@@ -747,7 +756,26 @@ _readingsAt(VariantRepository variants, ReaderSettings s, Ayah ayah, int w) {
         w,
       )
       .where((v) => !v.readsAsHafs && !same.contains(_readingKey(v)))
-      .toList(growable: false);
+      .toList();
+  // Hafs, where the riwaya shown differs from it (not by its usul alone).
+  if (s.compareHafs) {
+    for (final v in base) {
+      if (v.isUsul || all.any((h) => h.riwayaId == hafsId && h.word == v.word)) {
+        continue;
+      }
+      all.add(
+        Variant(
+          riwayaId: hafsId,
+          surah: ayah.surah,
+          ayah: ayah.number,
+          word: v.word,
+          count: v.count,
+          text: ayah.words.sublist(v.word, v.word + v.count).join(' '),
+          kind: v.kind,
+        ),
+      );
+    }
+  }
   final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
   final colors = [
     for (final q in {for (final v in shown) qiraaOf(v.riwayaId)}) q.color,
@@ -844,7 +872,7 @@ List<HameshEntry> _entriesOf(
   return out;
 }
 
-enum _Naql { lam, last, dropped }
+enum _Naql { lam, last, dropped, alef }
 
 /// How a reading is naql: the hamza's vowel given to the lam of al, or to
 /// the last letter of the word, or the hamza dropped after it; null when
@@ -852,6 +880,11 @@ enum _Naql { lam, last, dropped }
 _Naql? _naqlKind(Variant v) => switch (v.description) {
   'بنقل حركة الهمزة إليها' => _Naql.last,
   'بحذف الهمزة' => _Naql.dropped,
+  // The alef left of a hamza whose vowel went to the word before (اُخَرَ).
+  'بتخفيف الهمزة' when RegExp(r'^ا[َ-ِ]?[ء-ي]').hasMatch(
+    v.text,
+  ) =>
+    _Naql.alef,
   final d
       when RegExp(
         r'^(بفتح اللام و)?ب?نقل حركة الهمزة إلى اللام( والقصر)?$',
@@ -880,9 +913,15 @@ String arabicDigits(int n) => n
 
 /// Ornamented mushaf border around the Hafs text, with the page number.
 class _PageFrame extends StatelessWidget {
-  const _PageFrame({required this.page, required this.child, this.onNumberTap});
+  const _PageFrame({
+    required this.page,
+    required this.child,
+    this.onNumberTap,
+    this.sides = true,
+  });
 
   final int page;
+  final bool sides;
   final Widget child;
   final VoidCallback? onNumberTap;
 
@@ -892,6 +931,7 @@ class _PageFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return OrnamentFrame(
+      sides: sides,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,

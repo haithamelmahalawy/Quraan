@@ -95,6 +95,7 @@ void main() {
     ReaderSettings settings,
     String name, {
     QuranRepository? mushaf,
+    bool fullScreen = false,
   }) async {
     tester.view.physicalSize = const Size(1080, 2000);
     tester.view.devicePixelRatio = 2.5;
@@ -116,6 +117,7 @@ void main() {
               mutashabihat: mutashabihat,
               settings: settings,
               onWordTap: (_, _) {},
+              showHamesh: !fullScreen,
             ),
           ),
         ),
@@ -128,6 +130,35 @@ void main() {
       matchesGoldenFile('goldens/$name.png'),
     );
   }
+
+  testWidgets(
+    'page 28: Warsh alone with Hafs shown, in the hamesh; Warsh shown with '
+    'Hafs compared',
+    tags: 'golden',
+    (t) async {
+      await shot(
+        t,
+        28,
+        ReaderSettings.memory(selected: {'warsh'}, mode: DisplayMode.replace)
+          ..displayed = null,
+        'p28_hafs_warsh_hamesh',
+      );
+      await shot(
+        t,
+        28,
+        ReaderSettings.memory(selected: {'warsh'})
+          ..displayed = 'warsh'
+          ..compareHafs = true,
+        'p28_warsh_hafs_compared',
+      );
+    },
+  );
+
+  testWidgets('page 4 full screen: no bands at the sides', tags: 'golden', (
+    t,
+  ) async {
+    await shot(t, 4, ReaderSettings.memory(), 'p4_full_screen', fullScreen: true);
+  });
 
   testWidgets('page 1, Hafs only', tags: 'golden', (t) async {
     await shot(t, 1, ReaderSettings.memory(), 'p1_hafs');
