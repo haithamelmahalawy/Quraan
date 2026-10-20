@@ -55,15 +55,45 @@ class AyahSheet extends StatefulWidget {
 class _AyahSheetState extends State<AyahSheet> {
   Recitations? _recitations;
 
+  /// The ayah shown: the one opened, then each one the sheikh goes on to.
+  late Ayah _ayah = widget.ayah;
+
+  /// The ayah playing when last seen.
+  ({int surah, int ayah})? _playing;
+
   @override
   void initState() {
     super.initState();
     AyahSheet._recitations.then((r) {
       if (mounted) setState(() => _recitations = r);
     });
-    AyahPlayer.instance.ayahCounts = [
-      for (final s in widget.quran.surahs) s.ayahCount,
-    ];
+    final player = AyahPlayer.instance;
+    player.ayahCounts = [for (final s in widget.quran.surahs) s.ayahCount];
+    _playing = _now(player);
+    player.addListener(_follow);
+  }
+
+  @override
+  void dispose() {
+    AyahPlayer.instance.removeListener(_follow);
+    super.dispose();
+  }
+
+  static ({int surah, int ayah})? _now(AyahPlayer player) {
+    final c = player.current;
+    return c == null ? null : (surah: c.surah, ayah: c.ayah);
+  }
+
+  /// The recitation went on from the ayah shown to the next: show that one,
+  /// with its tafsir.
+  void _follow() {
+    final now = _now(AyahPlayer.instance);
+    final before = _playing;
+    _playing = now;
+    if (now == null || now == before) return;
+    if (before?.surah == _ayah.surah && before?.ayah == _ayah.number) {
+      setState(() => _ayah = widget.quran.ayah(now.surah, now.ayah));
+    }
   }
 
   ReaderSettings get s => widget.settings;
@@ -80,7 +110,7 @@ class _AyahSheetState extends State<AyahSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final ayah = widget.ayah;
+    final ayah = _ayah;
     final surah = widget.quran.surah(ayah.surah).nameAr;
     return ListenableBuilder(
       listenable: Listenable.merge([s, AyahPlayer.instance]),
@@ -132,7 +162,7 @@ class _AyahSheetState extends State<AyahSheet> {
       orElse: () => reciters.first,
     );
     final player = AyahPlayer.instance;
-    final ayah = widget.ayah;
+    final ayah = _ayah;
     final here = player.isPlaying(ayah.surah, ayah.number);
     return Raised(
       padding: const EdgeInsets.all(12),
@@ -261,6 +291,13 @@ class _Tafsir extends StatefulWidget {
 class _TafsirState extends State<_Tafsir> {
   late Future<String?> _text = _load();
   late int _book = widget.settings.tafsirBook;
+
+  @override
+  void didUpdateWidget(_Tafsir old) {
+    super.didUpdateWidget(old);
+    // The sheikh went on to the next ayah: its tafsir.
+    if (old.ayah != widget.ayah) _text = _load();
+  }
 
   Future<String?> _load() => AyahSheet._tafsir.text(
     TafsirRepository.book(widget.settings.tafsirBook),

@@ -24,7 +24,7 @@ class AyahPlayer extends ChangeNotifier {
   List<int> ayahCounts = const [];
 
   /// Go on to the following ayahs.
-  bool continuous = false;
+  bool continuous = true;
 
   Object? error;
 

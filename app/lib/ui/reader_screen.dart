@@ -10,6 +10,7 @@ import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
 import '../models/quran.dart';
+import '../services/ayah_player.dart';
 import '../services/blink_detector.dart';
 import '../services/qcf_fonts.dart';
 import '../state/reader_settings.dart';
@@ -148,13 +149,31 @@ class _ReaderScreenState extends State<ReaderScreen>
     widget.settings.addListener(_onSettings);
     QcfFonts.instance.addListener(_onFonts);
     _blinks = _blink.gestures.listen(_onGesture);
+    AyahPlayer.instance.addListener(_onRecitation);
     _onSettings();
     _showSide();
+  }
+
+  /// The ayah recited when last seen.
+  (int, int)? _recited;
+
+  /// Following the recitation from ayah to ayah: the page turns with it.
+  void _onRecitation() {
+    final player = AyahPlayer.instance;
+    final c = player.current;
+    final now = c == null ? null : (c.surah, c.ayah);
+    if (now == _recited) return;
+    final before = _recited;
+    _recited = now;
+    if (c == null || before == null || !player.continuous) return;
+    final page = _quran.pageOf(c.surah, c.ayah);
+    if (page != _page) _goToPage(page);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    AyahPlayer.instance.removeListener(_onRecitation);
     widget.settings.removeListener(_onSettings);
     QcfFonts.instance.removeListener(_onFonts);
     _blinks?.cancel();
