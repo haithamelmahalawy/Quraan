@@ -302,7 +302,12 @@ void main(List<String> args) {
               if (p.disputed.contains(id)) id,
           ],
           how.length > 60 ? '' : how,
-          p.stopOnly || stopOnly(how),
+          // «فمن قرأ بالجمع وقف بالتاء» tells of the stop of a reading
+          // quoted, not of a reading on stopping only.
+          p.stopOnly ||
+              (stopOnly(how) &&
+                  (text.isEmpty ||
+                      RegExp(r'^[وف]?(عند )?(ال)?وقف').hasMatch(how.trim()))),
           p.taqlil,
         ]);
       }

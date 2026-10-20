@@ -7,15 +7,18 @@ import 'theme.dart';
 /// Who reads a word how, as stated by the certified source, «التسهيل
 /// لقراءات التنزيل»: each reading with its readers, and the verses of the
 /// Shatibiyya and the Durrah it cites. Nothing when the book has no note.
+/// Only the readings of [riwayat] are told, by them alone.
 class KharoufSection extends StatelessWidget {
   const KharoufSection({
     super.key,
     required this.surah,
     required this.ayah,
     required this.word,
+    required this.riwayat,
   });
 
   final int surah, ayah, word;
+  final Set<String> riwayat;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +27,10 @@ class KharoufSection extends StatelessWidget {
       builder: (context, snapshot) {
         final book = snapshot.data;
         if (book == null) return const SizedBox.shrink();
-        final entries = book.at(surah, ayah, word);
+        final entries = [
+          for (final e in book.at(surah, ayah, word))
+            if (_mine(e).isNotEmpty) e,
+        ];
         if (entries.isEmpty) return const SizedBox.shrink();
         final theme = Theme.of(context);
         return Container(
@@ -59,7 +65,7 @@ class KharoufSection extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(e.sectionAr, style: theme.textTheme.labelMedium),
                   ),
-                for (final r in e.readings) _reading(theme, r),
+                for (final r in _mine(e)) _reading(theme, r),
                 for (final v in e.verses)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
@@ -87,8 +93,18 @@ class KharoufSection extends StatelessWidget {
     );
   }
 
+  /// The readings of [e] by [riwayat].
+  List<KharoufReading> _mine(KharoufEntry e) => [
+    for (final r in e.readings)
+      if (r.riwayat.any(riwayat.contains) || r.disputed.any(riwayat.contains))
+        r,
+  ];
+
   Widget _reading(ThemeData theme, KharoufReading r) {
-    final who = readersAr(r.riwayat, r.disputed);
+    final all = readersAr(
+      r.riwayat.where(riwayat.contains).toList(),
+      r.disputed.where(riwayat.contains).toList(),
+    );
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Text.rich(
@@ -107,7 +123,7 @@ class KharoufSection extends StatelessWidget {
               TextSpan(text: '${r.how} ', style: theme.textTheme.bodyMedium),
             if (r.taqlil) TextSpan(text: 'بالتقليل ', style: theme.textTheme.bodyMedium),
             TextSpan(
-              text: who,
+              text: all,
               style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             if (r.stopOnly)

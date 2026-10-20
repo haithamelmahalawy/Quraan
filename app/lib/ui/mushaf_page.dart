@@ -800,13 +800,14 @@ List<(Color, String)> _usulKey(
   var imala = false, badal = false, tarqiq = false, taghliz = false;
   final sakt = <Color>{};
   final qasr = <Color>{};
+  final other = <Color, Set<String>>{};
   for (final (ayah, w) in words) {
     final m = _readingsAt(variants, s, ayah, w);
     for (final v in [
       ...m.shown,
       ..._baseAt(variants, s, ayah, w).where((v) => s.kinds.contains(v.kind)),
     ]) {
-      if (v.word != w || !v.isUsul) continue;
+      if (v.word != w || v.inHamesh) continue;
       if (v.isBadal) {
         badal = true;
       } else if (v.rule == 'tarqiq') {
@@ -817,8 +818,14 @@ List<(Color, String)> _usulKey(
         sakt.add(qiraaOf(v.riwayaId).color);
       } else if (v.isQasr) {
         qasr.add(qiraaOf(v.riwayaId).color);
-      } else {
+      } else if (v.isImala && _usulOf(v).isEmpty) {
         imala = true;
+      } else {
+        if (v.isImala) imala = true;
+        final labels = _usulOf(v);
+        (other[qiraaOf(v.riwayaId).color] ??= <String>{}).addAll(
+          labels.isEmpty ? ['أصول أخرى'] : labels,
+        );
       }
     }
   }
@@ -835,6 +842,25 @@ List<(Color, String)> _usulKey(
       ),
     for (final c in sakt) (c, 'السكت قبل الهمز'),
     for (final c in qasr) (c, 'قصر المنفصل'),
+    for (final MapEntry(key: c, value: l) in other.entries) (c, l.join('، ')),
+  ];
+}
+
+/// The usul a reading applies, by its description: the key's wording.
+List<String> _usulOf(Variant v) {
+  final d = v.description;
+  return [
+    if (RegExp('صلة (ال)?ميم|وصلة الميم|صلة الميم').hasMatch(d)) 'صلة ميم الجمع',
+    if (RegExp('صلة (ال)?هاء|بصلة الهاء|ترك صلة').hasMatch(d)) 'صلة هاء الضمير',
+    if (RegExp('إدغام|ادغام|الإدغام').hasMatch(d)) 'الإدغام',
+    if (RegExp(r'نقل').hasMatch(d)) 'النقل',
+    if (RegExp('إبدال|ابدال').hasMatch(d)) 'إبدال الهمز',
+    if (RegExp('تخفيف الهمز|تسهيل|حذف الهمزة').hasMatch(d)) 'تخفيف الهمز',
+    if (RegExp('تحقيق الهمز').hasMatch(d)) 'تحقيق الهمز',
+    if (RegExp(r'(^|\s)(ب|و)?(ال)?مد|ومدها|القصر').hasMatch(d) && !v.isQasr)
+      'المدود',
+    if (RegExp('إشمام|الإشمام').hasMatch(d)) 'الإشمام',
+    if (RegExp('سكت').hasMatch(d) && !d.contains('دون سكت')) 'السكت',
   ];
 }
 
@@ -851,9 +877,10 @@ List<HameshEntry> _entriesOf(
   for (final ayah in ayahs) {
     for (var w = 0; w < ayah.words.length; w++) {
       final m = _readingsAt(variants, settings, ayah, w);
-      // Usul are told once by their colour, in the page's key.
+      // Usul are told once by their colour, in the page's key; beside the
+      // farsh, only what the certified source states.
       final starting = m.shown
-          .where((v) => v.word == w && !v.isUsul)
+          .where((v) => v.word == w && v.inHamesh)
           .toList();
       if (starting.isEmpty) continue;
       final end = starting
@@ -898,9 +925,14 @@ _Naql? _naqlKind(Variant v) => switch (v.description) {
 };
 
 /// Identifies a reading independently of each riwaya's text encoding: the
-/// generated description when there is one, otherwise the bare letters.
+/// description when there is one, otherwise the bare letters.
 String _readingKey(Variant v) =>
     v.description.isNotEmpty ? v.description : _bare(v.text);
+
+/// The hamesh's few words on a reading: none when the certified source
+/// states it and it is written out (its wording shows on tap).
+String _brief(Variant v) =>
+    v.certified ? (v.text.isEmpty ? v.bookHow : '') : v.description;
 
 /// Letters only (no vowels, waqf signs or tatweel).
 String _bare(String text) => String.fromCharCodes(
@@ -1273,7 +1305,7 @@ class _EntryView extends StatelessWidget {
                 [(name, color)],
                 font,
                 v.text,
-                v.description,
+                _brief(v),
                 key,
                 imala: v.isImala,
               ),

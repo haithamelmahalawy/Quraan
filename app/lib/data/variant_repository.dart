@@ -124,9 +124,28 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
 }
 
 void _certify(String id, Map<int, List<Variant>> index, String book) {
-  final places =
-      ((jsonDecode(book) as Map<String, dynamic>)['riwayat'] as Map)[id]
-          as List?;
+  final json = jsonDecode(book) as Map<String, dynamic>;
+  // Farsh the book says this riwaya reads as Hafs: the file's farsh
+  // readings there are not shown (the book is the certified source).
+  for (final e in json['entries'] as List) {
+    if (e[4] != 'farsh') continue;
+    final readings = e[5] as List;
+    bool reads(List g) =>
+        (g[1] as List).contains(id) || (g[2] as List).contains(id);
+    final asHafs = readings.any(
+      (g) => (g[1] as List).contains('hafs') && (g[1] as List).contains(id),
+    );
+    final other = readings.any(
+      (g) => !(g[1] as List).contains('hafs') && reads(g as List),
+    );
+    if (!asHafs || other) continue;
+    for (var w = e[2] as int; w < (e[2] as int) + (e[3] as int); w++) {
+      index[VariantRepository.key(e[0] as int, e[1] as int, w)]?.removeWhere(
+        (v) => v.kind == VariantKind.farsh && v.rule.isEmpty,
+      );
+    }
+  }
+  final places = (json['riwayat'] as Map)[id] as List?;
   if (places == null) return;
   for (final p in places) {
     final (surah, ayah, word, count) = (
@@ -135,6 +154,7 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       p[2] as int,
       p[3] as int,
     );
+    final how = p[5] as String;
     final keys = [
       for (var w = word; w < word + count; w++)
         VariantRepository.key(surah, ayah, w),
@@ -143,20 +163,21 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
     for (final k in keys) {
       final list = index[k];
       if (list == null) continue;
-      found = true;
       for (final v in [...list]) {
-        if (v.certified || v.rule.isNotEmpty) continue;
+        if (v.rule.isNotEmpty) continue;
+        found = true;
+        if (v.certified) continue;
         // The same reading is listed at every word it covers.
-        final certified = v.withCertified();
+        final certified = v.withCertified(how);
         for (var w = v.word; w < v.word + v.count; w++) {
           final at = index[VariantRepository.key(v.surah, v.ayah, w)]!;
-          at[at.indexOf(v)] = certified;
+          final i = at.indexOf(v);
+          if (i >= 0) at[i] = certified;
         }
       }
     }
     // A farsh reading the book states and the riwaya file lacks.
     if (!found && p[6] == 'farsh') {
-      final how = p[5] as String;
       final variant = Variant(
         riwayaId: id,
         surah: surah,
@@ -168,6 +189,7 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
         description: how,
         rule: 'kharouf',
         certified: true,
+        bookHow: how,
       );
       for (final k in keys) {
         (index[k] ??= []).add(variant);

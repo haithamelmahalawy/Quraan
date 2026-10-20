@@ -50,6 +50,7 @@ class Variant {
     this.description = '',
     this.rule = '',
     this.certified = false,
+    this.bookHow = '',
   });
 
   final String riwayaId;
@@ -79,7 +80,19 @@ class Variant {
   /// reads the word differently from Hafs.
   final bool certified;
 
-  Variant withCertified() => Variant(
+  /// How the certified source words the reading (بتسهيل الهمزة الثانية),
+  /// told in place of [description] once [certified]; may be empty.
+  final String bookHow;
+
+  /// Told in the hamesh: the riwaya's farsh, and what the certified source
+  /// states of its other readings. Usul are told by their colour only.
+  bool get inHamesh => !isUsul && (certified || kind == VariantKind.farsh);
+
+  /// The description to show: the certified source's when it states the
+  /// reading, else the riwaya file's.
+  String get shownDescription => certified ? bookHow : description;
+
+  Variant withCertified([String how = '']) => Variant(
     riwayaId: riwayaId,
     surah: surah,
     ayah: ayah,
@@ -90,6 +103,7 @@ class Variant {
     description: description,
     rule: rule,
     certified: true,
+    bookHow: how,
   );
 
   /// A reading with imala (or taqlil, the lesser imala).
@@ -114,10 +128,12 @@ class Variant {
 
   /// A reading by one of the riwaya's general rules (usul) alone: imala or
   /// taqlil (with the madd that goes with it), madd al-badal, tarqiq,
-  /// taghliz, sakt. The page explains these once by their colour instead
+  /// taghliz, sakt, and the rest of the usul kind (silah, idgham, madd).
+  /// The page explains these once by their colour instead
   /// of a note at each word.
   bool get isUsul =>
       (rule.isNotEmpty && rule != 'kharouf') ||
+      (kind == VariantKind.usul && rule != 'kharouf') ||
       isQasr ||
       (isImala && (description.isEmpty || _imalaOnly.hasMatch(description)));
 

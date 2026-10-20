@@ -116,7 +116,17 @@ class VariantSheet extends StatelessWidget {
               text: ayah.words.sublist(from, to).join(' '),
               font: 'Hafs',
             ),
-            KharoufSection(surah: ayah.surah, ayah: ayah.number, word: word),
+            KharoufSection(
+              surah: ayah.surah,
+              ayah: ayah.number,
+              word: word,
+              // The book's note told of the riwayat on the page only.
+              riwayat: {
+                ...settings.selected,
+                if (settings.displayed != null) settings.displayed!,
+                if (settings.displayed == null || settings.compareHafs) 'hafs',
+              },
+            ),
             if (!ready)
               const Padding(
                 padding: EdgeInsets.all(24),
@@ -179,7 +189,9 @@ class VariantSheet extends StatelessWidget {
             ].where((t) => t.isNotEmpty).join(' '),
       font: riwaya.fontFamily ?? 'Hafs',
       kind: v.kind,
-      description: v.description,
+      description: v.shownDescription,
+      // Beside the farsh, readings the certified source does not state.
+      uncertified: !v.certified && !v.isUsul,
       onTap: surahNames == null
           ? null
           : () => ReferenceSheet.show(
@@ -202,6 +214,7 @@ class _ReadingTile extends StatelessWidget {
     this.kind,
     this.description = '',
     this.dimmed = false,
+    this.uncertified = false,
     this.onTap,
   });
 
@@ -212,6 +225,7 @@ class _ReadingTile extends StatelessWidget {
   final VariantKind? kind;
   final String description;
   final bool dimmed;
+  final bool uncertified;
 
   /// Opens where the reading is stated (Shatibiyya, Durrah).
   final VoidCallback? onTap;
@@ -259,6 +273,11 @@ class _ReadingTile extends StatelessWidget {
           ),
           if (description.isNotEmpty)
             Text(description, style: theme.textTheme.bodyMedium),
+          if (uncertified)
+            Text(
+              'غير مذكور في التسهيل لقراءات التنزيل',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+            ),
         ],
       ),
     );

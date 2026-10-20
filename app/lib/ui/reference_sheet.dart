@@ -87,6 +87,7 @@ class ReferenceSheet extends StatelessWidget {
                 surah: readings.first.surah,
                 ayah: readings.first.ayah,
                 word: readings.first.word,
+                riwayat: {for (final v in readings) v.riwayaId},
               ),
             for (final v in readings) ...[
               const SizedBox(height: 14),
@@ -155,8 +156,8 @@ class _ReadingReferenceState extends State<_ReadingReference> {
                 color: MushafColors.ink,
               ),
             ),
-          if (v.description.isNotEmpty)
-            Text(v.description, style: TextStyle(color: MushafColors.frame)),
+          if (v.shownDescription.isNotEmpty)
+            Text(v.shownDescription, style: TextStyle(color: MushafColors.frame)),
           const Divider(height: 18),
           Text(
             '${r.poem.nameAr} • ${r.chapter}',
