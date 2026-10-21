@@ -131,7 +131,7 @@ class KharoufSection extends StatelessWidget {
               style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             if (r.stopOnly && !r.how.startsWith('وقفاً'))
-              TextSpan(text: ' (وقفاً)', style: theme.textTheme.bodySmall),
+              TextSpan(text: ' (وقفاً لا وصلاً)', style: theme.textTheme.bodySmall),
           ],
         ),
         textDirection: TextDirection.rtl,

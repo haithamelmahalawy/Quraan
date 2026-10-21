@@ -199,6 +199,9 @@ class Unit {
   /// fatha / damma / kasra, or null for sukun / no vowel.
   int? vowel;
   bool shadda = false;
+
+  /// Written as alef maqsura (ى, ے), read as a ya.
+  bool maqsura = false;
   String? tanween;
 
   /// Madd, imala / taqlil, tasheel / ishmam, saktah.
@@ -260,7 +263,7 @@ List<Unit> _units(String word) {
     if (ch == 'ل' && (wasl || i == spellingLam)) ms = [];
     wasl = isWasl;
 
-    final u = Unit(ch);
+    final u = Unit(ch)..maqsura = groups[i].$1 == 'ى' || groups[i].$1 == 'ے';
     // Small high seen: on sad it means "read as seen", elsewhere it is saktah.
     if (ms.contains(0x06DC)) {
       ms = ms.where((m) => m != 0x06DC).toList();
@@ -301,8 +304,29 @@ List<Unit> _units(String word) {
         u.vowel = m;
       }
     }
+    // Tanween before ba (iqlab) is the vowel with a small mim: تُۢ, تِۭ.
+    final raw = groups[i].$2;
+    // (Without a written vowel, the small low mim is Abu 'Amr's taqlil: مُوسۭيٰ.)
+    if (u.tanween == null &&
+        raw.any((m) => m == _fatha || m == _damma || m == _kasra) &&
+        (raw.contains(0x06E2) || raw.contains(0x06ED))) {
+      u.tanween = const {_fatha: 'an', _damma: 'un', _kasra: 'in'}[u.vowel];
+      u.vowel = null;
+      u.marks.remove(0x06ED);
+    }
     out.add(u);
     if (ms.contains(_dagger)) out.add(Unit('ا'));
+  }
+  // The tanween of fath written on the alef (or final alef maqsura) after
+  // the letter (اِثْماٗ، سِوىٗ), as in Hafs on the letter (إِثۡمٗا، سُوٗى).
+  for (var k = 1; k < out.length; k++) {
+    if ((out[k].letter == 'ا' ||
+            (out[k].maqsura && k == out.length - 1)) &&
+        out[k].tanween != null &&
+        out[k - 1].tanween == null) {
+      out[k - 1].tanween = out[k].tanween;
+      out[k].tanween = null;
+    }
   }
   return out;
 }
@@ -395,7 +419,17 @@ String describe(String hafs, String other) {
   if (_hasSilah(a) != _hasSilah(b)) {
     final last = units(_dropSilah(_hasSilah(b) ? b : a)).last;
     final which = last.letter == 'م' ? 'ميم الجمع' : 'الهاء';
-    phrases.add(_hasSilah(b) ? 'صلة $which' : 'ترك صلة $which');
+    // A ha read with sukun (يُؤَدِّهۡ) is told by the letters below
+    // (إسكان الهاء), not as a silah left out.
+    final sukun = !_hasSilah(b) && which == 'الهاء' &&
+        units(_dropSilah(b)).last.vowel == null;
+    phrases.add(
+      sukun
+          ? 'إسكان الهاء'
+          : _hasSilah(b)
+          ? 'صلة $which'
+          : 'ترك صلة $which',
+    );
     a = _dropSilah(a);
     b = _dropSilah(b);
   }
@@ -493,7 +527,21 @@ bool _compareUnit(Unit a, Unit b, int index, List<String> out, [Unit? before]) {
     out.add(b.shadda ? 'تشديد $name' : 'تخفيف $name');
   }
   var changed = false;
-  if (a.letter == 'ء' && a.seat != b.seat && a.vowel == b.vowel) {
+  if (a.tanween != b.tanween) {
+    // مُوهِنُ ↔ مُوهِنٌ, ثَمُودَاْ ↔ ثَمُودًا, مُسَخَّرَٰتُ ↔ مُسَخَّرَٰتٍ.
+    changed = true;
+    out.add(switch (b.tanween) {
+      'an' => 'تنوين $name بالفتح',
+      'un' => 'تنوين $name بالضم',
+      'in' => 'تنوين $name بالكسر',
+      _ => switch (b.vowel) {
+        _fatha => 'فتح $name دون تنوين',
+        _damma => 'ضم $name دون تنوين',
+        _kasra => 'كسر $name دون تنوين',
+        _ => 'ترك تنوين $name',
+      },
+    });
+  } else if (a.letter == 'ء' && a.seat != b.seat && a.vowel == b.vowel) {
     // Same hamza on another seat: spelling only.
   } else if (a.vowel != b.vowel && !(a.letter == 'ا' && b.vowel == null)) {
     changed = true;
@@ -506,6 +554,8 @@ bool _compareUnit(Unit a, Unit b, int index, List<String> out, [Unit? before]) {
   }
   for (final mark in b.marks) {
     if (a.marks.contains(mark)) continue;
+    // The small mim of iqlab under a tanween (ـِۭ), not an imala sign.
+    if (mark == 0x06ED && b.tanween != null) continue;
     switch (mark) {
       case 0x06EA || 0x06ED || 0x065C:
         out.add(_imalaName(mark));
