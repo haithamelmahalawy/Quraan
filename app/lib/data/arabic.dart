@@ -57,7 +57,11 @@ bool _isMark(int c) =>
 /// ٱلنَّ۪ارِ) or carrying a dagger alef (ٱلۡأَبۡرَٰرِ), before the ta marbuta
 /// (رَحۡمَة, al-Kisa'i's imala of the feminine ha), or else before the last
 /// alef. Unchanged when it has the sign already or no such letter.
-String withImalaSign(String word) {
+String withImalaSign(String word, [String? reading]) {
+  if (reading != null) {
+    final marked = _imalaAsIn(word, reading);
+    if (marked != null) return marked;
+  }
   if (word.contains(imalaSign)) return word;
   // Letters with their marks.
   final clusters = <List<int>>[];
@@ -92,6 +96,38 @@ String withImalaSign(String word) {
   if (target == null || target < 0) return word;
   clusters[target].add(imalaSign.codeUnitAt(0));
   return String.fromCharCodes(clusters.expand((c) => c));
+}
+
+/// [word] with the imala sign under the letters [reading] marks with it
+/// (رٜءٜا: the ra and the hamza, Shu'bah's رَءَا كَوۡكَبٗا); null when the
+/// reading marks none or its letters are not the word's.
+String? _imalaAsIn(String word, String reading) {
+  List<List<int>> clustersOf(String s) {
+    final out = <List<int>>[];
+    for (final c in s.runes) {
+      if (_isMark(c) && out.isNotEmpty) {
+        out.last.add(c);
+      } else {
+        out.add([c]);
+      }
+    }
+    return out;
+  }
+
+  const signs = [0x06EA, 0x065C]; // ۪ and ٜ
+  final r = clustersOf(reading);
+  final w = clustersOf(word);
+  if (!r.any((c) => c.skip(1).any(signs.contains))) return null;
+  if (r.length != w.length ||
+      [for (var i = 0; i < r.length; i++) r[i][0] == w[i][0]].contains(false)) {
+    return null;
+  }
+  for (var i = 0; i < r.length; i++) {
+    if (r[i].skip(1).any(signs.contains) && !w[i].contains(0x06EA)) {
+      w[i].add(0x06EA);
+    }
+  }
+  return String.fromCharCodes(w.expand((c) => c));
 }
 
 /// [word] as its letters, each with its marks.

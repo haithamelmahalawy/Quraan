@@ -236,6 +236,11 @@ class QuranpediaQiraat {
   static VariantKind kindOf(String text, String description, String hafs) {
     if (text.isNotEmpty && skeleton(text) != hafs) return VariantKind.farsh;
     final d = description.isEmpty ? text : description;
+    // Ya' al-idafa (إسكان الياء، فتح الياء), and the present tense ya'
+    // (بفتح الياء وإسكان الباء): farsh, whatever madd goes with it.
+    if (RegExp(r'(إسكان|اسكان|فتح) (ال)?ياء|ياء الإضافة').hasMatch(d)) {
+      return VariantKind.farsh;
+    }
     if (RegExp(r'تسهيل|إبدال|بالإبدال|نقل|همزتين|بالهمز|دون همز|بتحقيق|مسهلة')
         .hasMatch(d)) {
       return VariantKind.hamza;

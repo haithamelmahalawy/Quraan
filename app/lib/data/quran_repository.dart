@@ -82,7 +82,7 @@ class QuranRepository {
     }
     final (layout, qcf) = await (
       optional('assets/data/layout.json'),
-      optional('assets/data/qcf_v2.json'),
+      optional('assets/data/qcf.json'),
     ).wait;
     return parse(raw, layout, qcf);
   }

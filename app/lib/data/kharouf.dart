@@ -11,6 +11,7 @@ class KharoufReading {
     required this.how,
     required this.stopOnly,
     required this.taqlil,
+    this.notes = const [],
   });
 
   /// The reading as the book quotes it; empty when only described.
@@ -29,6 +30,10 @@ class KharoufReading {
 
   /// Taqlil rather than full imala (in the الممال section).
   final bool taqlil;
+
+  /// What the book adds on other readers (ووقف حمزة بالتسهيل، ولورش ثلاثة
+  /// البدل), each with the riwayat it names: told only where they are read.
+  final List<(String, List<String>)> notes;
 
   bool get readsAsHafs => riwayat.contains('hafs');
 }
@@ -91,6 +96,11 @@ class Kharouf {
               how: g[3] as String,
               stopOnly: g[4] as bool,
               taqlil: g.length > 5 && g[5] == true,
+              notes: [
+                if (g.length > 6)
+                  for (final n in g[6] as List)
+                    (n[0] as String, (n[1] as List).cast<String>()),
+              ],
             ),
         ],
         verses: (e[6] as List).cast<String>(),

@@ -338,6 +338,55 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   void _goToPage(int page) => _pager.currentState?.jumpTo(_indexOf(page));
 
+  /// «تنبيه الاختلافات»: how the words that differ from Hafs move, or off.
+  Future<void> _chooseDiffAlert() async {
+    final current = widget.settings.diffAlert;
+    final chosen = await showDialog<Object>(
+      context: context,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SimpleDialog(
+          title: const Text('تنبيه الاختلافات'),
+          children: [
+            for (final style in DiffAlert.values)
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, style),
+                child: Row(
+                  children: [
+                    Icon(
+                      style == current
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(style.labelAr),
+                  ],
+                ),
+              ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, 'off'),
+              child: Row(
+                children: [
+                  Icon(
+                    current == null
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('إيقاف'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (chosen == null) return;
+    widget.settings.diffAlert = chosen is DiffAlert ? chosen : null;
+  }
+
   void _setFullScreen(bool on) {
     SystemChrome.setEnabledSystemUIMode(
       on ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
@@ -559,6 +608,16 @@ class _ReaderScreenState extends State<ReaderScreen>
                                     : null,
                                 onTap: () => widget.settings.blinkToOpen =
                                     !widget.settings.blinkToOpen,
+                              ),
+                              // «تنبيه الاختلافات»: the words that differ
+                              // from Hafs move, in the way chosen.
+                              RaisedIcon(
+                                icon: Icons.notifications_active_rounded,
+                                tooltip: 'تنبيه الاختلافات',
+                                color: widget.settings.diffAlert != null
+                                    ? MushafColors.gold
+                                    : null,
+                                onTap: _chooseDiffAlert,
                               ),
                               RaisedIcon(
                                 icon: Icons.fullscreen_rounded,

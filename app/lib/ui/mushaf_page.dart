@@ -12,6 +12,7 @@ import '../models/quran.dart';
 import '../state/reader_settings.dart';
 import 'mushaf_decor.dart';
 import '../services/qcf_fonts.dart';
+import 'kharouf_section.dart' show readersAr;
 import 'mushaf_lines.dart';
 import 'reference_sheet.dart';
 import 'theme.dart';
@@ -74,7 +75,8 @@ class HameshEntry {
   final List<Variant> readings;
 }
 
-class _MushafPageState extends State<MushafPage> {
+class _MushafPageState extends State<MushafPage>
+    with SingleTickerProviderStateMixin {
   final _recognizers = <TapGestureRecognizer>[];
 
   /// How many hamesh notes fit beside the page (the rest go below it),
@@ -85,6 +87,24 @@ class _MushafPageState extends State<MushafPage> {
   /// Pinch zoom of the page.
   final _zoom = TransformationController();
   bool _zoomed = false;
+
+  /// The page with its hamesh and usul below it.
+  final _scroll = ScrollController();
+
+  /// Moves the words that differ from Hafs («تنبيه الاختلافات»).
+  late final _alert = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 650),
+  );
+
+  void _syncAlert() {
+    if (widget.settings.diffAlert == null) {
+      if (_alert.isAnimating) _alert.stop();
+      _alert.value = 0;
+    } else if (!_alert.isAnimating) {
+      _alert.repeat(reverse: true);
+    }
+  }
 
   @override
   void initState() {
@@ -101,6 +121,8 @@ class _MushafPageState extends State<MushafPage> {
   void dispose() {
     _disposeRecognizers();
     _zoom.dispose();
+    _scroll.dispose();
+    _alert.dispose();
     super.dispose();
   }
 
@@ -114,6 +136,7 @@ class _MushafPageState extends State<MushafPage> {
   @override
   Widget build(BuildContext context) {
     _disposeRecognizers();
+    _syncAlert();
     // The riwayat or their data may have changed since the last build.
     _readingsMemo.clear();
     final ayahs = widget.quran.page(widget.page);
@@ -221,6 +244,16 @@ class _MushafPageState extends State<MushafPage> {
       height: textHeight,
     );
     final first = ayahs.first;
+    final usul = sides
+        ? _usulNotes(
+            [
+              for (final l in lines)
+                if (l is TextLine) ...l.words,
+            ],
+            widget.variants,
+            widget.settings,
+          )
+        : const <_UsulGroup>[];
     final page = Padding(
       padding: EdgeInsets.symmetric(
         vertical: outer,
@@ -233,14 +266,8 @@ class _MushafPageState extends State<MushafPage> {
             child: _PageHeader(
               surah: widget.quran.surah(first.surah).nameAr,
               juz: first.juz,
-              usul: _usulKey(
-                [
-                  for (final l in lines)
-                    if (l is TextLine) ...l.words,
-                ],
-                widget.variants,
-                widget.settings,
-              ),
+              // The usul are told below the page; the header points there.
+              onUsul: usul.isEmpty ? null : _showUsul,
             ),
           ),
           Expanded(
@@ -254,7 +281,23 @@ class _MushafPageState extends State<MushafPage> {
         ],
       ),
     );
-    if (!withHamesh) return page;
+    final usulBox = usul.isEmpty
+        ? null
+        : Padding(
+            padding: const EdgeInsets.fromLTRB(6, 2, 6, 24),
+            child: _UsulBox(groups: usul, onTap: _openReference),
+          );
+    if (!withHamesh) {
+      if (usulBox == null) return page;
+      return SingleChildScrollView(
+        controller: _scroll,
+        physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [SizedBox(height: size.height, child: page), usulBox],
+        ),
+      );
+    }
 
     // Vertical position of each note: level with its word's line.
     final lineHeight = mushafLines.metrics(textWidth).lineHeight;
@@ -284,6 +327,7 @@ class _MushafPageState extends State<MushafPage> {
     ];
 
     return SingleChildScrollView(
+      controller: _scroll,
       physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -315,8 +359,19 @@ class _MushafPageState extends State<MushafPage> {
                 columns: narrow ? 3 : 4,
               ),
             ),
+          ?usulBox,
         ],
       ),
+    );
+  }
+
+  /// Scrolls down to the usul of the page.
+  void _showUsul() {
+    if (!_scroll.hasClients) return;
+    _scroll.animateTo(
+      _scroll.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOut,
     );
   }
 
@@ -520,10 +575,12 @@ class _MushafPageState extends State<MushafPage> {
     final imala = [
       ...base,
       ..._readingsAt(widget.variants, s, ayah, w).shown,
-    ].any((v) => v.word == w && v.isImala);
+    ].where((v) => v.word == w && v.isImala).firstOrNull;
     // The page font has no imala sign to add: such a word is drawn in the
-    // Hafs font.
-    if (imala) return (text: withImalaSign(ayah.words[w]), font: 'Hafs');
+    // Hafs font, with the sign under the letters the reading marks.
+    if (imala != null) {
+      return (text: withImalaSign(ayah.words[w], imala.text), font: 'Hafs');
+    }
     // Nor letters coloured apart.
     if (_letterReadings(ayah, w) != null) {
       return (text: ayah.words[w], font: 'Hafs');
@@ -641,6 +698,10 @@ class _MushafPageState extends State<MushafPage> {
           word,
         ],
       );
+    }
+    final alert = widget.settings.diffAlert;
+    if (alert != null && (m.color != null || coloured != null)) {
+      word = _Alerting(animation: _alert, style: alert, child: word);
     }
     if (m.colors.length > 1 && widget.settings.mode == DisplayMode.highlight) {
       word = Stack(
@@ -817,60 +878,75 @@ _Readings _readingsOf(
   );
 }
 
-/// The usul coloured on [words] of the page, as a key: each colour with
-/// what it means, in the order green, orange, then sakt.
-List<(Color, String)> _usulKey(
+/// The usul of the page, by kind: each with its colour, and every word of
+/// [words] it is read in, with who reads it so (الإمالة: «هُدَ۪ى» حمزة،
+/// الكسائي). The page colours them; they are told once, below it.
+List<_UsulGroup> _usulNotes(
   Iterable<(Ayah, int)> words,
   VariantRepository variants,
   ReaderSettings s,
 ) {
-  var imala = false, badal = false, tarqiq = false, taghliz = false;
-  final sakt = <Color>{};
-  final qasr = <Color>{};
-  final other = <Color, Set<String>>{};
+  final groups = <String, _UsulGroup>{};
   for (final (ayah, w) in words) {
     final m = _readingsAt(variants, s, ayah, w);
     for (final v in [
       ...m.shown,
       ..._baseAt(variants, s, ayah, w).where((v) => s.kinds.contains(v.kind)),
     ]) {
-      if (v.word != w || v.inHamesh) continue;
-      if (v.isBadal) {
-        badal = true;
-      } else if (v.rule == 'tarqiq') {
-        tarqiq = true;
-      } else if (v.rule == 'taghliz') {
-        taghliz = true;
-      } else if (v.isSakt) {
-        sakt.add(qiraaOf(v.riwayaId).color);
-      } else if (v.isQasr) {
-        qasr.add(qiraaOf(v.riwayaId).color);
-      } else if (v.isImala && _usulOf(v).isEmpty) {
-        imala = true;
-      } else {
-        if (v.isImala) imala = true;
-        final labels = _usulOf(v);
-        (other[qiraaOf(v.riwayaId).color] ??= <String>{}).addAll(
-          labels.isEmpty ? ['أصول أخرى'] : labels,
+      if (v.word != w || v.inHamesh || v.riwayaId == hafsId) continue;
+      final own = qiraaOf(v.riwayaId).color;
+      final kinds = v.isBadal
+          ? [('مد البدل', MushafColors.green)]
+          : v.rule == 'tarqiq'
+          ? [('ترقيق الراء', MushafColors.rule)]
+          : v.rule == 'taghliz'
+          ? [('تغليظ اللام', MushafColors.rule)]
+          : v.isSakt
+          ? [('السكت قبل الهمز', own)]
+          : v.readsAsHafs
+          ? [('الإدغام بلا غنة', own)]
+          : v.isQasr
+          ? [('قصر المنفصل', own)]
+          : [
+              if (v.isImala)
+                RegExp('تقليل|بين').hasMatch(v.description)
+                    ? ('التقليل', MushafColors.green)
+                    : ('الإمالة', MushafColors.green),
+              for (final l in _usulOf(v))
+                if (!v.isImala || l != 'المدود') (l, own),
+              if (!v.isImala && _usulOf(v).isEmpty) ('أصول أخرى', own),
+            ];
+      final word = v.isImala
+          ? withImalaSign(ayah.words[w], v.text)
+          : ayah.words.sublist(w, w + v.count).join(' ');
+      for (final (label, color) in kinds) {
+        final g = groups.putIfAbsent(label, () => _UsulGroup(label, color));
+        final item = g.items.putIfAbsent(
+          '${ayah.surah}:${ayah.number}:$w',
+          () => _UsulItem(ayah, w, word),
         );
+        item.riwayat.add(v.riwayaId);
       }
     }
   }
-  return [
-    if (imala || badal)
-      (
-        MushafColors.green,
-        [if (imala) 'الإمالة والتقليل', if (badal) 'مد البدل'].join(' و'),
-      ),
-    if (tarqiq || taghliz)
-      (
-        MushafColors.rule,
-        [if (tarqiq) 'ترقيق الراء', if (taghliz) 'تغليظ اللام'].join(' و'),
-      ),
-    for (final c in sakt) (c, 'السكت قبل الهمز'),
-    for (final c in qasr) (c, 'قصر المنفصل'),
-    for (final MapEntry(key: c, value: l) in other.entries) (c, l.join('، ')),
-  ];
+  return groups.values.toList();
+}
+
+class _UsulGroup {
+  _UsulGroup(this.label, this.color);
+
+  final String label;
+  final Color color;
+  final items = <String, _UsulItem>{};
+}
+
+class _UsulItem {
+  _UsulItem(this.ayah, this.word, this.text);
+
+  final Ayah ayah;
+  final int word;
+  final String text;
+  final riwayat = <String>{};
 }
 
 /// The usul a reading applies, by its description: the key's wording.
@@ -919,9 +995,10 @@ List<HameshEntry> _entriesOf(
           .firstOrNull
           ?.text;
       final hafs = shownText ?? ayah.words.sublist(w, end).join(' ');
+      // With its vowels: «زَكَرِيَّآءَ» then «زَكَرِيَّآءُ» are two notes.
       final key = [
-        _bare(hafs),
-        for (final v in starting) '${v.riwayaId}=${_readingKey(v)}',
+        hafs,
+        for (final v in starting) '${v.riwayaId}=${v.text}=${v.description}',
       ].join('|');
       if (!seen.add(key)) continue;
       out.add(HameshEntry(ayah, w, hafs, m.color!, starting));
@@ -956,10 +1033,9 @@ _Naql? _naqlKind(Variant v) => switch (v.description) {
 String _readingKey(Variant v) =>
     v.description.isNotEmpty ? v.description : _bare(v.text);
 
-/// The hamesh's few words on a reading: none when the certified source
-/// states it and it is written out (its wording shows on tap).
-String _brief(Variant v) =>
-    v.certified ? (v.text.isEmpty ? v.bookHow : '') : v.description;
+/// The hamesh's few words on a reading: the riwaya file's explanation
+/// (بفتح النون وتشديد الجيم), else the certified source's wording.
+String _brief(Variant v) => v.shownDescription;
 
 /// Letters only (no vowels, waqf signs or tatweel).
 String _bare(String text) => String.fromCharCodes(
@@ -1029,14 +1105,14 @@ class _PageHeader extends StatelessWidget {
   const _PageHeader({
     required this.surah,
     required this.juz,
-    this.usul = const [],
+    this.onUsul,
   });
 
   final String surah;
   final int juz;
 
-  /// The colours of the usul on the page and what they mean.
-  final List<(Color, String)> usul;
+  /// Shows the usul of the page, told below it; null when it has none.
+  final VoidCallback? onUsul;
 
   static const _juzNames = [
     'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', //
@@ -1062,34 +1138,19 @@ class _PageHeader extends StatelessWidget {
         children: [
           Text('سورة $surah', style: style),
           Expanded(
-            child: usul.isEmpty
+            child: onUsul == null
                 ? const SizedBox()
-                : FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      children: [
-                        for (final (color, meaning) in usul) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            meaning,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: color,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(width: 8),
-                      ],
+                : Center(
+                    child: InkWell(
+                      onTap: onUsul,
+                      child: Text(
+                        'الأصول ↓',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: MushafColors.green,
+                        ),
+                      ),
                     ),
                   ),
           ),
@@ -1165,6 +1226,156 @@ class _NotesLayout extends MultiChildLayoutDelegate {
 }
 
 /// Notes in a box (the continuation below the page), in columns.
+/// A word that differs from Hafs, moving as chosen in «تنبيه الاختلافات».
+class _Alerting extends StatelessWidget {
+  const _Alerting({
+    required this.animation,
+    required this.style,
+    required this.child,
+  });
+
+  final Animation<double> animation;
+  final DiffAlert style;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = CurvedAnimation(parent: animation, curve: Curves.easeInOut);
+    return RepaintBoundary(
+      child: switch (style) {
+        DiffAlert.blink => FadeTransition(
+          opacity: Tween(begin: 1.0, end: 0.15).animate(t),
+          child: child,
+        ),
+        DiffAlert.shake => AnimatedBuilder(
+          animation: t,
+          builder: (_, c) => Transform.translate(
+            offset: Offset((t.value - 0.5) * 5, 0),
+            child: c,
+          ),
+          child: child,
+        ),
+        DiffAlert.pulse => ScaleTransition(
+          scale: Tween(begin: 1.0, end: 1.18).animate(t),
+          child: child,
+        ),
+        DiffAlert.glow => AnimatedBuilder(
+          animation: t,
+          builder: (_, c) => DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: [
+                BoxShadow(
+                  color: MushafColors.gold.withAlpha((170 * t.value).round()),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: c,
+          ),
+          child: child,
+        ),
+      },
+    );
+  }
+}
+
+/// The usul of the page below it: each kind in its colour, then every word
+/// read with it and who reads it so. Tapping a word opens its readings.
+class _UsulBox extends StatelessWidget {
+  const _UsulBox({required this.groups, required this.onTap});
+
+  final List<_UsulGroup> groups;
+  final WordTap onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+      decoration: BoxDecoration(
+        color: MushafColors.goldLight.withAlpha(60),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: MushafColors.gold.withAlpha(160)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'الأصول',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: MushafColors.green,
+            ),
+          ),
+          Divider(height: 8, color: MushafColors.gold.withAlpha(160)),
+          for (final g in groups)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 10,
+                runSpacing: 2,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: g.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${g.label}:',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: g.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                  for (final i in g.items.values)
+                    InkWell(
+                      onTap: () => onTap(i.ayah, i.word),
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: i.text,
+                              style: TextStyle(
+                                fontFamily: 'Hafs',
+                                fontSize: 13,
+                                color: g.color,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  ' (${readersAr(i.riwayat.toList(), const [])})',
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                color: MushafColors.ink,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _HameshBox extends StatelessWidget {
   const _HameshBox({
     required this.title,
@@ -1241,7 +1452,10 @@ class _EntryView extends StatelessWidget {
       height: 1.3,
       color: MushafColors.ink,
     );
+    // The Hafs word of the note, and the riwaya's reading larger, to read
+    // at a glance.
     final quran = compact ? 10.5 : 13.0;
+    final reading = compact ? 14.0 : 17.0;
     return InkWell(
       onTap: () => onTap(e.ayah, e.word),
       child: Column(
@@ -1296,7 +1510,7 @@ class _EntryView extends StatelessWidget {
                           : '(بحذفها)',
                       style: TextStyle(
                         fontFamily: g.font,
-                        fontSize: quran,
+                        fontSize: reading,
                         color: g.imala
                             ? MushafColors.green
                             : g.names.length == 1

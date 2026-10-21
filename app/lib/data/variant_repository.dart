@@ -155,6 +155,7 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       p[3] as int,
     );
     final how = p[5] as String;
+    final wujuh = p.length > 7 ? p[7] as String : '';
     final keys = [
       for (var w = word; w < word + count; w++)
         VariantRepository.key(surah, ayah, w),
@@ -168,7 +169,7 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
         found = true;
         if (v.certified) continue;
         // The same reading is listed at every word it covers.
-        final certified = v.withCertified(how);
+        final certified = v.withCertified(how, p[6] == 'farsh', wujuh);
         for (var w = v.word; w < v.word + v.count; w++) {
           final at = index[VariantRepository.key(v.surah, v.ayah, w)]!;
           final i = at.indexOf(v);
@@ -190,6 +191,8 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
         rule: 'kharouf',
         certified: true,
         bookHow: how,
+        bookFarsh: true,
+        bookWujuh: wujuh,
       );
       for (final k in keys) {
         (index[k] ??= []).add(variant);

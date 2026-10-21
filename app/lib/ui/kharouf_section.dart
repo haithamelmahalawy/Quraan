@@ -121,12 +121,16 @@ class KharoufSection extends StatelessWidget {
               ),
             if (r.how.isNotEmpty)
               TextSpan(text: '${r.how} ', style: theme.textTheme.bodyMedium),
+            // The book's word on the riwayat shown, not on the others.
+            for (final (note, ids) in r.notes)
+              if (ids.any(riwayat.contains))
+                TextSpan(text: '، $note ', style: theme.textTheme.bodyMedium),
             if (r.taqlil) TextSpan(text: 'بالتقليل ', style: theme.textTheme.bodyMedium),
             TextSpan(
               text: all,
               style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-            if (r.stopOnly)
+            if (r.stopOnly && !r.how.startsWith('وقفاً'))
               TextSpan(text: ' (وقفاً)', style: theme.textTheme.bodySmall),
           ],
         ),

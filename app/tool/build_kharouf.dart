@@ -16,7 +16,8 @@
 //
 // Output: assets/data/kharouf.json
 //   {"source": ..., "entries": [[surah, ayah, word, count, section,
-//     [[text, [riwaya ids], [disputed ids], how, stopOnly], ...], [verses]], ...]}
+//     [[text, [riwaya ids], [disputed ids], how, stopOnly, taqlil,
+//       [[note on other readers, [riwaya ids]], ...]], ...], [verses]], ...]}
 //   tools/source/books/kharouf_report.md — the disagreements to review.
 import 'dart:convert';
 import 'dart:io';
@@ -170,6 +171,54 @@ Readers parseReaders(Iterable<String> raw) {
   return r;
 }
 
+/// Riwayat named in [s] («ووقف حمزة بالتسهيل» → Khalaf, Khallad).
+Set<String> namedIn(String s) {
+  var left = ' ${plain(s).replaceAll(RegExp(r'[\[\]():،,.«»]'), ' ')} ';
+  final keys = names.keys.toList()..sort((a, b) => b.length - a.length);
+  final ids = <String>{};
+  for (final k in keys) {
+    // «للبزي», «وللكسائي»: لِ before ال.
+    final li = k.startsWith('ال') ? k.substring(1) : k;
+    for (final form in [' $k ', ' و$k ', ' ل$li ', ' ول$li ', ' فل$li ']) {
+      while (left.contains(form)) {
+        ids.addAll(names[k]!);
+        left = left.replaceFirst(form, ' ');
+      }
+    }
+  }
+  return ids;
+}
+
+/// The book's wording of a reading split in two: what it says of the
+/// reading itself, and its clauses on other readers («ووقف حمزة بالتسهيل»,
+/// «ولورش ثلاثة البدل»), each with the riwayat it names, to be told only
+/// where they are read.
+(String, List<List<Object>>) splitHow(String how) {
+  final own = <String>[];
+  final notes = <List<Object>>[];
+  // The book's own sentences; not what it quotes of other books (قال صاحب
+  // التيسير..., وأهمل الشاطبي...).
+  final sentences = how
+      .split('.')
+      .where((s) => !RegExp(r'قال |أهمل|كما نقلت').hasMatch(s))
+      .join('،');
+  for (final clause in sentences.split('،')) {
+    final c = clause.trim();
+    if (c.isEmpty) continue;
+    final ids = namedIn(c);
+    if (ids.isEmpty) {
+      own.add(c);
+    } else {
+      notes.add([
+        c.replaceFirst(RegExp('^و'), ''),
+        [for (final id in all) if (ids.contains(id)) id],
+      ]);
+    }
+  }
+  final text = own.join('، ').replaceFirst(RegExp('^و(?=[ابتم])'), '');
+  return (text, notes);
+}
+
 int _distance(String a, String b) {
   var prev = List<int>.generate(b.length + 1, (i) => i);
   for (var i = 1; i <= a.length; i++) {
@@ -252,6 +301,12 @@ void main(List<String> args) {
   final spans = <String, int>{};
   // Words the book speaks of (any riwaya).
   final covered = <String>{};
+  // The farsh notes so far by the letters of their word, for the book's
+  // references back to them; and how many references were told again.
+  final refs = <String, (List<List<Object?>>, List<String>)>{};
+  var referred = 0;
+  // The readings of the note before, for «الحكم السابق».
+  var previous = <List<Object?>>[];
 
   final files =
       dir
@@ -290,7 +345,26 @@ void main(List<String> args) {
         }
         listed.addAll(p.ids);
         listed.addAll(p.disputed);
+        // «وقفاً لهما الحكم السابق»: on stopping, read as the note before.
+        if (p.ids.isEmpty &&
+            p.disputed.isEmpty &&
+            RegExp('الحكم السابق|كالسابق').hasMatch(how)) {
+          for (final g in previous) {
+            if ((g[1] as List).contains('hafs')) continue;
+            groups.add([
+              g[0],
+              g[1],
+              g[2],
+              ['وقفاً', if ((g[3] as String).isNotEmpty) g[3]].join(': '),
+              true,
+              g[5],
+              g[6],
+            ]);
+          }
+          continue;
+        }
         if (p.ids.isEmpty && p.disputed.isEmpty) continue;
+        final (own, notes) = splitHow(how);
         groups.add([
           text,
           [
@@ -301,7 +375,7 @@ void main(List<String> args) {
             for (final id in all)
               if (p.disputed.contains(id)) id,
           ],
-          how.length > 60 ? '' : how,
+          own,
           // «فمن قرأ بالجمع وقف بالتاء» tells of the stop of a reading
           // quoted, not of a reading on stopping only.
           p.stopOnly ||
@@ -309,9 +383,11 @@ void main(List<String> args) {
                   (text.isEmpty ||
                       RegExp(r'^[وف]?(عند )?(ال)?وقف').hasMatch(how.trim()))),
           p.taqlil,
+          notes,
         ]);
       }
       if (rest != null) {
+        final (own, notes) = splitHow(restHow);
         groups.add([
           restText,
           [
@@ -319,13 +395,34 @@ void main(List<String> args) {
               if (!listed.contains(id)) id,
           ],
           const <String>[],
-          restHow.length > 60 ? '' : restHow,
+          own,
           rest.stopOnly,
           false,
+          notes,
         ]);
       }
+      var verses = (e['verses'] as List? ?? []).cast<String>();
+      // «هزؤا» انظر ص ١٠، «شيء» تقدم في ص٤، مثل «أأنذرتهم» ص٣: the note
+      // referred to, told again here.
+      final raw = e['raw'] as String? ?? '';
+      if (groups.isEmpty && RegExp('انظر|تقدم|مثل').hasMatch(raw)) {
+        final quoted = RegExp(r'(?:تقدم في|مثل|انظر)\s*«([^»]+)»')
+            .firstMatch(raw)?[1];
+        final earlier = refs[_letters(quoted ?? word)] ??
+            refs[_letters(word)];
+        if (earlier != null) {
+          groups.addAll(earlier.$1);
+          if (verses.isEmpty) verses = earlier.$2;
+          referred++;
+        }
+      }
       if (groups.isEmpty) continue;
-      final verses = (e['verses'] as List? ?? []).cast<String>();
+      if (!groups.any((g) => g[4] == true)) previous = groups;
+      if (section == 'farsh') {
+        for (final piece in word.split('،')) {
+          refs[_letters(piece.trim())] = (groups, verses);
+        }
+      }
       var placed = false;
       final pieces = word.contains('،')
           ? word.split('،').map((p) => p.trim()).where((p) => p.isNotEmpty)
@@ -343,13 +440,35 @@ void main(List<String> args) {
             // Per riwaya: where it reads differently, and how.
             if (section != 'mudgham' &&
                 groups.any((g) => (g[1] as List).contains('hafs'))) {
+              final ids = <String>{};
               for (final g in groups) {
                 if ((g[1] as List).contains('hafs') || g[4] == true) continue;
-                for (final id in [...(g[1] as List), ...(g[2] as List)]) {
-                  (byRiwaya[id as String] ??= []).add(
-                    [surah, a, w, c, g[0], g[3], section],
-                  );
-                }
+                ids.addAll([...(g[1] as List), ...(g[2] as List)].cast());
+              }
+              for (final id in ids) {
+                // Its readings other than Hafs's, and whether it also reads
+                // as Hafs (بخلف عنه).
+                final mine = [
+                  for (final g in groups)
+                    if (!(g[1] as List).contains('hafs') &&
+                        g[4] != true &&
+                        ((g[1] as List).contains(id) ||
+                            (g[2] as List).contains(id)))
+                      g,
+                ];
+                final first = mine.first;
+                String say(List<Object?> g) => [
+                  if ((g[0] as String).isNotEmpty) '«${g[0]}»',
+                  if ((g[3] as String).isNotEmpty) g[3] as String,
+                ].join(' ');
+                final wujuh = mine.length > 1
+                    ? 'بوجهين: ${mine.map(say).join('، والثاني: ')}'
+                    : (first[2] as List).contains(id)
+                    ? 'بوجهين: الأول كحفص، والثاني: ${say(first)}'
+                    : '';
+                (byRiwaya[id] ??= []).add(
+                  [surah, a, w, c, first[0], first[3], section, wujuh],
+                );
               }
             }
             final key = '$surah:$a:$w';
@@ -461,7 +580,8 @@ void main(List<String> args) {
       .writeAsStringSync(report.toString());
   stdout.writeln(
     'kharouf.json: ${out.length} entries, ${unplaced.length} not placed, '
-    '${unknownNames.length} unknown names; '
+    '${unknownNames.length} unknown names, $referred references told '
+    'again; '
     'missing ${missing.values.fold(0, (n, l) => n + l.length)}, '
     'extra ${extra.values.fold(0, (n, l) => n + l.length)}',
   );

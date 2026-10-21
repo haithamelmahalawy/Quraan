@@ -449,7 +449,7 @@ String describe(String hafs, String other) {
     if (i < n && j < m && ua[i].letter == ub[j].letter) {
       flushEdits();
       // A madd on a letter whose vowel changes goes with it (إِنِّيٓ → إِنِّيَ).
-      if (_compareUnit(ua[i], ub[j], i, phrases)) mutedMadd += _madd(ua[i]);
+      if (_compareUnit(ua[i], ub[j], i, phrases, i > 0 ? ua[i - 1] : null)) mutedMadd += _madd(ua[i]);
       i++;
       j++;
     } else if (j < m && (i == n || dp[i][j + 1] >= dp[i + 1][j])) {
@@ -475,12 +475,19 @@ int _madd(Unit u) => u.marks.where((k) => k == 0x0653 || k == 0x06E4).length;
 
 /// Adds the differences between two aligned letters; returns true when the
 /// vowel changed.
-bool _compareUnit(Unit a, Unit b, int index, List<String> out) {
+bool _compareUnit(Unit a, Unit b, int index, List<String> out, [Unit? before]) {
   final name = _name(a);
   if (index == 0 && b.shadda && !a.shadda) out.add('الإدغام');
   if (index > 0 && a.shadda && !b.shadda && b.vowel == null) {
     out.add('إسكان $name مخففة');
     return true;
+  }
+  // A sakin letter merged into this one (ٱتَّخَذۡتُمُ ↔ ٱتَّخَذتُّمُ): idgham.
+  if (index > 0 && b.shadda && !a.shadda && before != null &&
+      before.vowel == null && before.letter != a.letter &&
+      'ذثدتطظضبلنرقك'.contains(before.letter)) {
+    out.add('إدغام ${_name(before)} في $name');
+    return false;
   }
   if (index > 0 && b.shadda != a.shadda) {
     out.add(b.shadda ? 'تشديد $name' : 'تخفيف $name');
@@ -551,7 +558,14 @@ String? classify(String hafs, String other) {
   }
   final vowelA = ea.contains(RegExp('[َُِ]'));
   final vowelB = eb.contains(RegExp('[َُِ]'));
-  if (vowelA && eb.isEmpty) return ('u', 'بالإدغام فيما بعدها');
+  if (vowelA && eb.isEmpty) {
+    // Ya' al-idafa read with sukun (بَيۡتِيَ ↔ بَيۡتِيۡ, مَعِيَ ↔ مَعِيۡ): farsh,
+    // not a vowel dropped into the next word.
+    if (ea.startsWith('َ') && a.substring(0, a.length - ea.length).endsWith('ي')) {
+      return ('f', 'بإسكان الياء');
+    }
+    return ('u', 'بالإدغام فيما بعدها');
+  }
   if (!vowelA && vowelB && i + 1 < h.length && j + 1 < r.length) {
     final hamzaInHafs = RegExp('^[وف]?[أإآء]').hasMatch(h[i + 1].text);
     if (hamzaInHafs && norm(r[j + 1]).letters == norm(r[j + 1]).noHamza) {

@@ -5,8 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-/// The KFGQPC QCF V2 page fonts: the calligraphy of the printed Madinah
-/// mushaf, one font per page in which every word is a single glyph.
+/// The KFGQPC QCF V1 page fonts: the calligraphy of the printed Madinah
+/// mushaf (1405H, the print of assets/data/layout.json and qcf.json), one font per page in which every word is a single glyph.
 ///
 /// A page's font is downloaded once (from the quran.com CDN, ~300–600 KB),
 /// kept on the device and registered as `QCF_P<page>`. Pages whose font is
@@ -17,6 +17,9 @@ class QcfFonts extends ChangeNotifier {
   static final instance = QcfFonts._();
 
   static String family(int page) => 'QCF_P$page';
+
+  /// The print of the glyph codes in assets/data/qcf.json.
+  static const version = 'v1';
 
   final _ready = <int>{};
   final _pending = <int, Future<void>>{};
@@ -38,12 +41,12 @@ class QcfFonts extends ChangeNotifier {
   Future<void> _load(int page) async {
     try {
       _dir ??= Directory(
-          '${(await getApplicationSupportDirectory()).path}/qcf_v2');
+          '${(await getApplicationSupportDirectory()).path}/qcf_$version');
       final file = File('${_dir!.path}/p$page.ttf');
       if (!await file.exists()) {
         final response = await http
             .get(Uri.parse(
-                'https://static.qurancdn.com/fonts/quran/hafs/v2/ttf/p$page.ttf'))
+                'https://static.qurancdn.com/fonts/quran/hafs/$version/ttf/p$page.ttf'))
             .timeout(const Duration(seconds: 30));
         if (response.statusCode != 200) return;
         await file.parent.create(recursive: true);

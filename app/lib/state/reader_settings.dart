@@ -99,6 +99,12 @@ class ReaderSettings extends ChangeNotifier {
   bool get compareHafs => _get('compareHafs') as bool? ?? false;
   set compareHafs(bool on) => _set('compareHafs', on);
 
+  /// «تنبيه الاختلافات»: how the words that differ from Hafs (farsh or
+  /// usul) move to catch the eye; off when null.
+  DiffAlert? get diffAlert =>
+      DiffAlert.values.asNameMap()[_get('diffAlert') as String? ?? ''];
+  set diffAlert(DiffAlert? style) => _set('diffAlert', style?.name ?? '');
+
   /// The riwaya last listened to.
   String? get listenRiwaya => _get('listenRiwaya') as String?;
   set listenRiwaya(String? id) => _set('listenRiwaya', id ?? 'hafs');
@@ -237,4 +243,16 @@ class ReaderSettings extends ChangeNotifier {
     this.page = page;
     notifyListeners();
   }
+}
+
+/// The ways the words that differ from Hafs can move («تنبيه الاختلافات»).
+enum DiffAlert {
+  blink('وميض: يضيء ويخفت'),
+  shake('اهتزاز يميناً ويساراً'),
+  pulse('نبض: يكبر ويصغر'),
+  glow('توهج حول الكلمة');
+
+  const DiffAlert(this.labelAr);
+
+  final String labelAr;
 }

@@ -51,6 +51,8 @@ class Variant {
     this.rule = '',
     this.certified = false,
     this.bookHow = '',
+    this.bookFarsh = false,
+    this.bookWujuh = '',
   });
 
   final String riwayaId;
@@ -84,15 +86,32 @@ class Variant {
   /// told in place of [description] once [certified]; may be empty.
   final String bookHow;
 
+  /// Stated in the farsh of the certified source (ya' al-idafa, عليهُم, ...),
+  /// not only among its imala or idgham.
+  final bool bookFarsh;
+
+  /// The riwaya's two ways, as the certified source states them
+  /// (بوجهين: الأول كحفص، والثاني: «بَيْئَسٍ»); empty when it has one.
+  final String bookWujuh;
+
   /// Told in the hamesh: the riwaya's farsh, and what the certified source
-  /// states of its other readings. Usul are told by their colour only.
-  bool get inHamesh => !isUsul && (certified || kind == VariantKind.farsh);
+  /// states in its farsh. Usul are told by their colour, in the page's key.
+  bool get inHamesh =>
+      !(rule.isNotEmpty && rule != 'kharouf') &&
+      (bookFarsh || (!isUsul && (certified || kind == VariantKind.farsh)));
 
-  /// The description to show: the certified source's when it states the
-  /// reading, else the riwaya file's.
-  String get shownDescription => certified ? bookHow : description;
+  /// The short explanation to show: the riwaya file's (بفتح النون وتشديد
+  /// الجيم), else the certified source's wording.
+  String get shownDescription => [
+    description.isNotEmpty ? description : bookHow,
+    bookWujuh,
+  ].where((s) => s.isNotEmpty).join('، ');
 
-  Variant withCertified([String how = '']) => Variant(
+  Variant withCertified([
+    String how = '',
+    bool farsh = false,
+    String wujuh = '',
+  ]) => Variant(
     riwayaId: riwayaId,
     surah: surah,
     ayah: ayah,
@@ -104,6 +123,8 @@ class Variant {
     rule: rule,
     certified: true,
     bookHow: how,
+    bookFarsh: farsh,
+    bookWujuh: wujuh,
   );
 
   /// A reading with imala (or taqlil, the lesser imala).
