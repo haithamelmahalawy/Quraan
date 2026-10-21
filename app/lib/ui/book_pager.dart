@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/scheduler.dart' show TickerCanceled;
 import 'package:flutter/services.dart';
 
 /// Pages that turn like the paper of a printed mushaf: dragging lifts the
@@ -41,6 +40,7 @@ class BookPagerState extends State<BookPager>
 
   /// -1..1: positive while turning forward, negative while turning back.
   double _progress = 0;
+  bool _dragCancelled = false;
   late final AnimationController _settle = AnimationController(
     vsync: this,
     value: 0,
@@ -149,6 +149,7 @@ class BookPagerState extends State<BookPager>
   }
 
   Future<void> _onDragEnd(DragEndDetails d) async {
+    if (_dragCancelled) return;
     final v = d.primaryVelocity ?? 0;
     final direction = _progress == 0 ? 0 : _progress.sign.toInt();
     final complete =
@@ -253,16 +254,42 @@ class BookPagerState extends State<BookPager>
           ];
         }
 
-        return GestureDetector(
+        return RawGestureDetector(
           behavior: HitTestBehavior.translucent,
-          dragStartBehavior: DragStartBehavior.down,
-          onHorizontalDragStart: widget.enabled ? (_) => _settle.stop() : null,
-          onHorizontalDragUpdate: widget.enabled
-              ? (d) => _onDragUpdate(d, width)
-              : null,
-          onHorizontalDragEnd: widget.enabled ? _onDragEnd : null,
-          onHorizontalDragCancel: widget.enabled ? _onDragCancel : null,
-          child: Stack(fit: StackFit.expand, children: layers),
+          gestures: {
+            if (widget.enabled)
+              HorizontalDragGestureRecognizer:
+                  GestureRecognizerFactoryWithHandlers<
+                    HorizontalDragGestureRecognizer
+                  >(
+                    HorizontalDragGestureRecognizer.new,
+                    (recognizer) => recognizer
+                      ..gestureSettings = const DeviceGestureSettings(
+                        touchSlop: 10,
+                      )
+                      ..minFlingDistance = 8
+                      ..dragStartBehavior = DragStartBehavior.down
+                      ..onStart = (_) {
+                        _dragCancelled = false;
+                        _settle.stop();
+                      }
+                      ..onUpdate = (d) {
+                        _onDragUpdate(d, width);
+                      }
+                      ..onEnd = _onDragEnd
+                      ..onCancel = _onDragCancel,
+                  ),
+          },
+          child: Listener(
+            onPointerCancel: widget.enabled
+                ? (_) {
+                    // A recognized drag can receive onEnd on cancellation.
+                    _dragCancelled = true;
+                    _onDragCancel();
+                  }
+                : null,
+            child: Stack(fit: StackFit.expand, children: layers),
+          ),
         );
       },
     );
