@@ -114,6 +114,8 @@ class _MushafPageState extends State<MushafPage> {
   @override
   Widget build(BuildContext context) {
     _disposeRecognizers();
+    // The riwayat or their data may have changed since the last build.
+    _readingsMemo.clear();
     final ayahs = widget.quran.page(widget.page);
     final s = widget.settings;
     final narrow = MediaQuery.sizeOf(context).width < 600;
@@ -744,8 +746,33 @@ Color? _colorOf(List<Variant> readings) {
 /// no reading). Readings of the kinds shown, their qiraat's colours, and the
 /// word's colour: theirs, or else the shown riwaya's own where it differs
 /// from Hafs.
-({List<Variant> all, List<Variant> shown, List<Color> colors, Color? color})
-_readingsAt(VariantRepository variants, ReaderSettings s, Ayah ayah, int w) {
+_Readings _readingsAt(
+  VariantRepository variants,
+  ReaderSettings s,
+  Ayah ayah,
+  int w,
+) => _readingsMemo.putIfAbsent(
+  (variants, s, ayah, w),
+  () => _readingsOf(variants, s, ayah, w),
+);
+
+typedef _Readings = ({
+  List<Variant> all,
+  List<Variant> shown,
+  List<Color> colors,
+  Color? color,
+});
+
+/// The readings of each word, worked out once per build of the pages: a
+/// word asks for them for its colour, its letters, the key and the hamesh.
+final _readingsMemo = <(Object, Object, Ayah, int), _Readings>{};
+
+_Readings _readingsOf(
+  VariantRepository variants,
+  ReaderSettings s,
+  Ayah ayah,
+  int w,
+) {
   final base = _baseAt(variants, s, ayah, w);
   final same = {for (final v in base) _readingKey(v)};
   final all = variants

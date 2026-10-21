@@ -60,6 +60,16 @@ class BookPagerState extends State<BookPager>
 
   GlobalKey _keyOf(int i) => _keys.putIfAbsent(i, GlobalKey.new);
 
+  /// The pages as built, kept while the sheet turns: the turn repaints
+  /// every frame, and the same widget is not built again.
+  final _built = <int, Widget>{};
+
+  @override
+  void didUpdateWidget(BookPager oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _built.clear();
+  }
+
   /// A picture of page [i] as displayed (it must be the current page or a
   /// neighbour). The caller owns the image.
   ui.Image? capture(int i) {
@@ -167,11 +177,12 @@ class BookPagerState extends State<BookPager>
               key: _keyOf(i),
               child: KeyedSubtree(
                 key: ValueKey(i),
-                child: widget.itemBuilder(context, i),
+                child: _built[i] ??= widget.itemBuilder(context, i),
               ),
             ),
           );
 
+      _built.removeWhere((i, _) => (i - _index).abs() > 1);
       final prev = _index > 0 ? _index - 1 : null;
       final next = _index < widget.itemCount - 1 ? _index + 1 : null;
       final sheet = _sheet;
