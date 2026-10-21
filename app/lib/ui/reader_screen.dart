@@ -23,7 +23,7 @@ import 'raised.dart';
 import 'riwayat_menu.dart';
 import 'search_screen.dart';
 import 'surah_index.dart';
-import 'surah_slider.dart';
+import 'page_slider.dart';
 import 'theme.dart';
 import 'variant_sheet.dart';
 
@@ -98,8 +98,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     return _twoPages ? i ~/ 2 : i;
   }
 
-  int _pageAt(int index) =>
-      _quran.firstPage + (_twoPages ? 2 * index : index);
+  int _pageAt(int index) => _quran.firstPage + (_twoPages ? 2 * index : index);
 
   /// Switches the mushaf, at the place read.
   void _setEdition(MushafEdition edition) {
@@ -510,8 +509,9 @@ class _ReaderScreenState extends State<ReaderScreen>
                               ),
                               // Madinah or Shamarly, at the place read.
                               Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 3,
+                                ),
                                 child: Raised(
                                   radius: 19,
                                   depth: 0.6,
@@ -522,7 +522,9 @@ class _ReaderScreenState extends State<ReaderScreen>
                                         : MushafEdition.madani,
                                   ),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 8),
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
                                   child: Text(
                                     _edition == MushafEdition.madani
                                         ? 'المدينة'
@@ -680,7 +682,7 @@ class _ReaderScreenState extends State<ReaderScreen>
               ),
             ),
             Expanded(child: pages),
-            SurahSlider(quran: _quran, page: _page, onGo: _goToPage),
+            PageSlider(quran: _quran, page: _page, onGo: _goToPage),
           ],
         ),
       ),
@@ -844,10 +846,8 @@ class _EyeIndicator extends StatelessWidget {
               key: ValueKey(count),
               tween: Tween(begin: count == 0 ? 1 : 1.35, end: 1),
               duration: const Duration(milliseconds: 250),
-              builder: (context, beat, child) => Transform.scale(
-                scale: flash ? 1.5 : beat,
-                child: child,
-              ),
+              builder: (context, beat, child) =>
+                  Transform.scale(scale: flash ? 1.5 : beat, child: child),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Icon(icon, size: 22, color: color),

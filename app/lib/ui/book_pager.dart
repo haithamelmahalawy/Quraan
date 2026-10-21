@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart' show TickerCanceled;
 import 'package:flutter/services.dart';
 
 /// Pages that turn like the paper of a printed mushaf: dragging lifts the
@@ -39,8 +41,12 @@ class BookPagerState extends State<BookPager>
 
   /// -1..1: positive while turning forward, negative while turning back.
   double _progress = 0;
-  late final AnimationController _settle = AnimationController(vsync: this)
-    ..addListener(() => setState(() => _progress = _settle.value));
+  late final AnimationController _settle = AnimationController(
+    vsync: this,
+    value: 0,
+    lowerBound: -1,
+    upperBound: 1,
+  )..addListener(() => setState(() => _progress = _settle.value));
 
   /// The current page and its neighbours, painted so they can be pictured.
   final _keys = <int, GlobalKey>{};
@@ -72,11 +78,13 @@ class BookPagerState extends State<BookPager>
 
   /// A picture of page [i] as displayed (it must be the current page or a
   /// neighbour). The caller owns the image.
-  ui.Image? capture(int i) {
+  ui.Image? capture(int i, {double? pixelRatio}) {
     final box = _keys[i]?.currentContext?.findRenderObject();
     if (box is! RenderRepaintBoundary || !box.hasSize) return null;
     try {
-      return box.toImageSync(pixelRatio: View.of(context).devicePixelRatio);
+      return box.toImageSync(
+        pixelRatio: pixelRatio ?? View.of(context).devicePixelRatio,
+      );
     } catch (_) {
       return null;
     }
@@ -99,9 +107,12 @@ class BookPagerState extends State<BookPager>
     if (!_canTurn(direction) || _settle.isAnimating) return;
     _takeSheet(direction);
     _settle.value = _progress;
-    await _animateTo(direction.toDouble(), const Duration(milliseconds: 650),
-        Curves.easeInOutCubic);
-    if (mounted) _commit(direction);
+    final completed = await _animateTo(
+      direction.toDouble(),
+      const Duration(milliseconds: 260),
+      Curves.easeOutCubic,
+    );
+    if (mounted && completed) _commit(direction);
   }
 
   bool _canTurn(int direction) =>
@@ -113,7 +124,11 @@ class BookPagerState extends State<BookPager>
     final page = direction > 0 ? _index : _index - 1;
     if (_sheetOf == page && _sheet != null) return;
     _dropSheet();
-    _sheet = capture(page);
+    // A transient turning sheet needs fewer pixels than the resting page.
+    _sheet = capture(
+      page,
+      pixelRatio: math.min(View.of(context).devicePixelRatio, 1.5),
+    );
     _sheetOf = page;
   }
 
@@ -125,7 +140,7 @@ class BookPagerState extends State<BookPager>
 
   void _onDragUpdate(DragUpdateDetails d, double width) {
     _settle.stop();
-    var p = _progress + d.primaryDelta! / width;
+    var p = _progress + 1.5 * d.primaryDelta! / width;
     if (!_canTurn(1)) p = math.min(p, 0);
     if (!_canTurn(-1)) p = math.max(p, 0);
     p = p.clamp(-1.0, 1.0);
@@ -136,24 +151,46 @@ class BookPagerState extends State<BookPager>
   Future<void> _onDragEnd(DragEndDetails d) async {
     final v = d.primaryVelocity ?? 0;
     final direction = _progress == 0 ? 0 : _progress.sign.toInt();
-    final complete = direction != 0 &&
-        (_progress.abs() > 0.3 || v * direction > 600);
+    final complete =
+        direction != 0 &&
+        (v * direction >= 300 ||
+            (_progress.abs() >= 0.16 && v * direction > -300));
     _settle.value = _progress;
     if (complete) {
-      await _animateTo(direction.toDouble(),
-          const Duration(milliseconds: 420), Curves.easeOutCubic);
-      if (mounted) _commit(direction);
+      final completed = await _animateTo(
+        direction.toDouble(),
+        Duration(
+          milliseconds: (220 * (1 - _progress.abs())).round().clamp(70, 220),
+        ),
+        Curves.easeOutCubic,
+      );
+      if (mounted && completed) _commit(direction);
     } else {
-      await _animateTo(0, const Duration(milliseconds: 320), Curves.easeOutBack);
-      if (mounted) setState(_dropSheet);
+      await _onDragCancel();
     }
   }
 
-  Future<void> _animateTo(double target, Duration duration, Curve curve) =>
-      _settle
+  Future<void> _onDragCancel() async {
+    _settle.value = _progress;
+    final completed = await _animateTo(
+      0,
+      const Duration(milliseconds: 140),
+      Curves.easeOutCubic,
+    );
+    if (mounted && completed) setState(_dropSheet);
+  }
+
+  Future<bool> _animateTo(double target, Duration duration, Curve curve) async {
+    try {
+      await _settle
           .animateTo(target, duration: duration, curve: curve)
-          .orCancel
-          .catchError((_) {});
+          .orCancel;
+      return true;
+    } on TickerCanceled {
+      // A new gesture or jump owns the page now; do not commit the old turn.
+      return false;
+    }
+  }
 
   void _commit(int direction) {
     HapticFeedback.lightImpact();
@@ -168,61 +205,67 @@ class BookPagerState extends State<BookPager>
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final width = constraints.maxWidth;
-      // Each page keeps its state (and its picture key) while it is near.
-      Widget page(int i, {bool show = true}) => Offstage(
-            offstage: !show,
-            child: RepaintBoundary(
-              key: _keyOf(i),
-              child: KeyedSubtree(
-                key: ValueKey(i),
-                child: _built[i] ??= widget.itemBuilder(context, i),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        // Each page keeps its state (and its picture key) while it is near.
+        Widget page(int i, {bool show = true}) => Offstage(
+          offstage: !show,
+          child: RepaintBoundary(
+            key: _keyOf(i),
+            child: KeyedSubtree(
+              key: ValueKey(i),
+              child: _built[i] ??= widget.itemBuilder(context, i),
             ),
-          );
+          ),
+        );
 
-      _built.removeWhere((i, _) => (i - _index).abs() > 1);
-      final prev = _index > 0 ? _index - 1 : null;
-      final next = _index < widget.itemCount - 1 ? _index + 1 : null;
-      final sheet = _sheet;
-      final List<Widget> layers;
-      if (_progress > 0) {
-        // The current page turns away, the next one lies beneath.
-        layers = [
-          if (next != null) page(next),
-          if (prev != null) page(prev, show: false),
-          page(_index, show: sheet == null),
-          if (sheet != null)
-            _Curl(image: sheet, progress: _progress)
-          else
-            _SpineShadow(strength: 1 - _progress),
-        ];
-      } else if (_progress < 0) {
-        // The previous page comes back down over the current one.
-        layers = [
-          page(_index),
-          if (next != null) page(next, show: false),
-          if (prev != null) page(prev, show: sheet == null),
-          if (sheet != null) _Curl(image: sheet, progress: 1 + _progress),
-        ];
-      } else {
-        // At rest the neighbours lie beneath, painted, ready to be pictured.
-        layers = [
-          if (prev != null) page(prev),
-          if (next != null) page(next),
-          page(_index),
-        ];
-      }
+        _built.removeWhere((i, _) => (i - _index).abs() > 1);
+        final prev = _index > 0 ? _index - 1 : null;
+        final next = _index < widget.itemCount - 1 ? _index + 1 : null;
+        final sheet = _sheet;
+        final List<Widget> layers;
+        if (_progress > 0) {
+          // The current page turns away, the next one lies beneath.
+          layers = [
+            if (next != null) page(next),
+            if (prev != null) page(prev, show: false),
+            page(_index, show: sheet == null),
+            if (sheet != null)
+              _Curl(image: sheet, progress: _progress)
+            else
+              _SpineShadow(strength: 1 - _progress),
+          ];
+        } else if (_progress < 0) {
+          // The previous page comes back down over the current one.
+          layers = [
+            page(_index),
+            if (next != null) page(next, show: false),
+            if (prev != null) page(prev, show: sheet == null),
+            if (sheet != null) _Curl(image: sheet, progress: 1 + _progress),
+          ];
+        } else {
+          // At rest the neighbours lie beneath, painted, ready to be pictured.
+          layers = [
+            if (prev != null) page(prev),
+            if (next != null) page(next),
+            page(_index),
+          ];
+        }
 
-      return GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onHorizontalDragUpdate:
-            widget.enabled ? (d) => _onDragUpdate(d, width) : null,
-        onHorizontalDragEnd: widget.enabled ? _onDragEnd : null,
-        child: Stack(fit: StackFit.expand, children: layers),
-      );
-    });
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          dragStartBehavior: DragStartBehavior.down,
+          onHorizontalDragStart: widget.enabled ? (_) => _settle.stop() : null,
+          onHorizontalDragUpdate: widget.enabled
+              ? (d) => _onDragUpdate(d, width)
+              : null,
+          onHorizontalDragEnd: widget.enabled ? _onDragEnd : null,
+          onHorizontalDragCancel: widget.enabled ? _onDragCancel : null,
+          child: Stack(fit: StackFit.expand, children: layers),
+        );
+      },
+    );
   }
 }
 
@@ -239,11 +282,11 @@ class _Curl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-        child: CustomPaint(
-          painter: _CurlPainter(image, progress, Theme.of(context).brightness),
-          size: Size.infinite,
-        ),
-      );
+    child: CustomPaint(
+      painter: _CurlPainter(image, progress, Theme.of(context).brightness),
+      size: Size.infinite,
+    ),
+  );
 }
 
 class _CurlPainter extends CustomPainter {
@@ -307,8 +350,10 @@ class _CurlPainter extends CustomPainter {
         : const Color(0xFFF1E9D6);
     for (var i = 0; i < _strips; i++) {
       final a = angles[i];
-      final p0t = project(xs[i], 0, zs[i]), p1t = project(xs[i + 1], 0, zs[i + 1]);
-      final p0b = project(xs[i], h, zs[i]), p1b = project(xs[i + 1], h, zs[i + 1]);
+      final p0t = project(xs[i], 0, zs[i]),
+          p1t = project(xs[i + 1], 0, zs[i + 1]);
+      final p0b = project(xs[i], h, zs[i]),
+          p1b = project(xs[i + 1], h, zs[i + 1]);
       final quad = [p0t, p1t, p1b, p0t, p1b, p0b];
       // Light falls from the front: darker as the strip turns away.
       final light = (0.55 + 0.45 * math.cos(a).abs()).clamp(0.0, 1.0);
@@ -317,27 +362,45 @@ class _CurlPainter extends CustomPainter {
         final vh = h * scale;
         frontPos.addAll(quad);
         frontTex.addAll([
-          Offset(u0, 0), Offset(u1, 0), Offset(u1, vh),
-          Offset(u0, 0), Offset(u1, vh), Offset(u0, vh),
+          Offset(u0, 0),
+          Offset(u1, 0),
+          Offset(u1, vh),
+          Offset(u0, 0),
+          Offset(u1, vh),
+          Offset(u0, vh),
         ]);
-        final c = Color.fromARGB(255, (255 * light).round(),
-            (255 * light).round(), (255 * light).round());
+        final c = Color.fromARGB(
+          255,
+          (255 * light).round(),
+          (255 * light).round(),
+          (255 * light).round(),
+        );
         frontColors.addAll(List.filled(6, c));
       } else {
         // The back of the sheet (its paper), past upright.
         backPos.addAll(quad);
-        backColors.addAll(List.filled(6, Color.lerp(Colors.black, paper, light)!));
+        backColors.addAll(
+          List.filled(6, Color.lerp(Colors.black, paper, light)!),
+        );
       }
     }
 
     if (frontPos.isNotEmpty) {
       canvas.drawVertices(
-        ui.Vertices(VertexMode.triangles, frontPos,
-            textureCoordinates: frontTex, colors: frontColors),
+        ui.Vertices(
+          VertexMode.triangles,
+          frontPos,
+          textureCoordinates: frontTex,
+          colors: frontColors,
+        ),
         BlendMode.modulate,
         Paint()
           ..shader = ImageShader(
-              image, TileMode.clamp, TileMode.clamp, Matrix4.identity().storage)
+            image,
+            TileMode.clamp,
+            TileMode.clamp,
+            Matrix4.identity().storage,
+          )
           ..filterQuality = FilterQuality.medium,
       );
     }
