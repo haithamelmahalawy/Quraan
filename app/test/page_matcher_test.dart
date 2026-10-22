@@ -13,9 +13,9 @@ String noisyOcr(QuranRepository quran, int page, Random rnd) {
   for (final a in quran.page(page)) {
     for (final w in a.words) {
       if (rnd.nextDouble() < 0.3) continue; // missed
-      var plain = String.fromCharCodes(w.runes.where(
-              (c) => (c >= 0x0621 && c <= 0x064A) || c == 0x0671))
-          .replaceAll('ٱ', 'ا');
+      var plain = String.fromCharCodes(
+        w.runes.where((c) => (c >= 0x0621 && c <= 0x064A) || c == 0x0671),
+      ).replaceAll('ٱ', 'ا');
       if (plain.isEmpty) continue;
       if (rnd.nextDouble() < 0.35) {
         final i = rnd.nextInt(plain.length);
@@ -36,7 +36,13 @@ String noisyOcr(QuranRepository quran, int page, Random rnd) {
     }
   }
   if (rnd.nextBool()) {
-    out.add(page.toString().split('').map((d) => String.fromCharCode(0x0660 + int.parse(d))).join());
+    out.add(
+      page
+          .toString()
+          .split('')
+          .map((d) => String.fromCharCode(0x0660 + int.parse(d)))
+          .join(),
+    );
   }
   // About ten words a line, as on a printed page.
   return [
@@ -48,7 +54,8 @@ String noisyOcr(QuranRepository quran, int page, Random rnd) {
 void main() {
   test('a page is recognised from noisy OCR text', () {
     final quran = QuranRepository.parse(
-        File('assets/data/quran.json').readAsStringSync());
+      File('assets/data/quran.json').readAsStringSync(),
+    );
     final matcher = PageMatcher(quran);
     final rnd = Random(7);
     var right = 0, wrong = 0, unsure = 0;
@@ -74,14 +81,45 @@ void main() {
 
   test('random Arabic text is not taken for a page', () {
     final quran = QuranRepository.parse(
-        File('assets/data/quran.json').readAsStringSync());
+      File('assets/data/quran.json').readAsStringSync(),
+    );
     final matcher = PageMatcher(quran);
     expect(matcher.match('مرحبا بكم في تطبيق القراءات اليوم جميل جدا'), isNull);
   });
 
+  test(
+    'a short central band identifies pages without requiring the whole text',
+    () {
+      final quran = QuranRepository.parse(
+        File('assets/data/quran.json').readAsStringSync(),
+      );
+      final matcher = PageMatcher(quran);
+      var right = 0;
+      for (var page = 1; page <= quran.pageCount; page++) {
+        final words = quran.page(page).expand((a) => a.words).toList();
+        final start = max(0, (words.length - 40) ~/ 2);
+        final band = words.sublist(start, min(start + 40, words.length));
+        final text = [
+          for (var i = 0; i < band.length; i += 8)
+            band.sublist(i, min(i + 8, band.length)).join(' '),
+        ].join('\n');
+        final match = matcher.match(text);
+        if (match == null) {
+          continue; // the full-frame fallback handles ambiguity
+        }
+        expect(match.page, page, reason: 'central band on page $page');
+        right++;
+      }
+      expect(right, greaterThanOrEqualTo(590));
+      // ignore: avoid_print
+      print('Central bands: $right/${quran.pageCount}, no wrong pages');
+    },
+  );
+
   test('Tesseract output of a photographed page', () {
     final quran = QuranRepository.parse(
-        File('assets/data/quran.json').readAsStringSync());
+      File('assets/data/quran.json').readAsStringSync(),
+    );
     final matcher = PageMatcher(quran);
     // Al-A'raf 188-195, read from a phone photo (binarized, psm 6).
     final read = File('test/fixtures/ocr_page175.txt').readAsStringSync();

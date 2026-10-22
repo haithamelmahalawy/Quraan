@@ -46,7 +46,7 @@ class ScanScreen extends StatefulWidget {
 }
 
 class _ScanScreenState extends State<ScanScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   CameraController? _camera;
   late final _scanner = PageScanner(PageMatcher(widget.quran));
   late final _sweep = AnimationController(
@@ -57,7 +57,9 @@ class _ScanScreenState extends State<ScanScreen>
 
   /// The camera reads frames while this screen is in front.
   bool _running = true;
-  Completer<Frame>? _wantFrame;
+  Completer<Frame?>? _wantFrame;
+  int _cameraGeneration = 0;
+  Future<void> _cameraTasks = Future<void>.value();
   int? _lastPage;
   int _attempts = 0;
 
@@ -69,18 +71,35 @@ class _ScanScreenState extends State<ScanScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.settings.addListener(_onSettings);
     _onSettings();
+    unawaited(
+      _scanner.warmUp().catchError((Object e) {
+        debugPrint('scan warmup: $e');
+      }),
+    );
     _startCamera();
   }
 
   @override
   void dispose() {
     _running = false;
+    WidgetsBinding.instance.removeObserver(this);
     widget.settings.removeListener(_onSettings);
     _sweep.dispose();
     _stopCamera();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (!_running) return; // the mushaf is open over this screen
+      _startCamera();
+    } else {
+      _stopCamera();
+    }
   }
 
   /// The readings of newly chosen riwayat are loaded, then shown.
@@ -90,16 +109,31 @@ class _ScanScreenState extends State<ScanScreen>
     if (mounted) setState(() {});
   }
 
-  Future<void> _stopCamera() async {
+  Future<void> _stopCamera() {
+    _cameraGeneration++;
     final camera = _camera;
     _camera = null;
+    final pending = _wantFrame;
     _wantFrame = null;
-    if (camera == null) return;
-    await camera.stopImageStream().catchError((_) {});
-    await camera.dispose();
+    if (pending != null && !pending.isCompleted) pending.complete(null);
+    return _cameraTasks = _cameraTasks.then((_) async {
+      if (camera == null) return;
+      await camera.stopImageStream().catchError((_) {});
+      await camera.dispose().catchError((_) {});
+    });
   }
 
-  Future<void> _startCamera() async {
+  Future<void> _startCamera() {
+    if (_camera != null) return Future<void>.value();
+    final generation = ++_cameraGeneration;
+    return _cameraTasks = _cameraTasks.then(
+      (_) => _initializeCamera(generation),
+    );
+  }
+
+  Future<void> _initializeCamera(int generation) async {
+    if (!mounted || !_running || generation != _cameraGeneration) return;
+    CameraController? opening;
     try {
       final cameras = await availableCameras();
       final back = cameras.firstWhere(
@@ -114,25 +148,38 @@ class _ScanScreenState extends State<ScanScreen>
             ? ImageFormatGroup.bgra8888
             : ImageFormatGroup.yuv420,
       );
+      opening = camera;
       await camera.initialize();
-      if (!mounted || !_running) {
+      if (!mounted || !_running || generation != _cameraGeneration) {
         await camera.dispose();
         return;
       }
       await camera.setFocusMode(FocusMode.auto).catchError((_) {});
-      final rotation = Platform.isIOS ? 0 : back.sensorOrientation;
       // Keep only a frame that the reading loop asked for.
       await camera.startImageStream((image) {
         final want = _wantFrame;
         if (want != null && !want.isCompleted) {
           _wantFrame = null;
+          final rotation = Platform.isIOS
+              ? 0
+              : scanFrameRotation(
+                  back.sensorOrientation,
+                  camera.value.deviceOrientation,
+                );
           want.complete(Frame.copy(image, rotation));
         }
       });
+      if (!mounted || !_running || generation != _cameraGeneration) {
+        await camera.dispose();
+        return;
+      }
       setState(() => _camera = camera);
       _loop(camera);
     } catch (e) {
-      if (mounted) setState(() => _error = 'تعذر تشغيل الكاميرا: $e');
+      await opening?.dispose().catchError((_) {});
+      if (mounted && generation == _cameraGeneration) {
+        setState(() => _error = 'تعذر تشغيل الكاميرا: $e');
+      }
     }
   }
 
@@ -146,11 +193,14 @@ class _ScanScreenState extends State<ScanScreen>
         continue;
       }
       try {
-        final want = _wantFrame = Completer<Frame>();
+        await _scanner.idle;
+        if (!mounted || !identical(_camera, camera)) return;
+        final want = _wantFrame = Completer<Frame?>();
         final frame = await want.future.timeout(const Duration(seconds: 3));
+        if (frame == null || !mounted || !identical(_camera, camera)) return;
         final found = await _scanner.scan(frame);
         if (!mounted || !identical(_camera, camera)) return;
-        setState(() => _attempts++);
+        _attempts++;
         // Confident at once (photographed pages read as noise score up to
         // ~20), or the same page twice in a row.
         if (found != null &&
@@ -158,6 +208,8 @@ class _ScanScreenState extends State<ScanScreen>
             (found.score >= 34 || found.page == _lastPage)) {
           HapticFeedback.heavyImpact();
           setState(() => _found = found.page);
+        } else if (_found == null) {
+          setState(() {});
         }
         _lastPage = found?.page;
       } catch (e) {
@@ -292,8 +344,8 @@ class _ScanScreenState extends State<ScanScreen>
             !_ready
                 ? 'اختر رواية واحدة على الأقل من الأعلى لبدء التعرف على الصفحة.'
                 : _attempts == 0
-                ? 'جارٍ قراءة الصفحة… اجعلها كاملة داخل الإطار.'
-                : 'جارٍ البحث عن الصفحة… قرّب الكاميرا وثبّتها (محاولة $_attempts).',
+                ? 'وجّه الكاميرا للصفحة داخل الإطار وثبّتها لحظة.'
+                : 'جارٍ التعرف… اجعل سطور منتصف الصفحة واضحة (محاولة $_attempts).',
             style: const TextStyle(color: Colors.white),
           ),
         ),

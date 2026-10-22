@@ -27,6 +27,13 @@ and lib/data/page_matcher.dart finds the page from the words it reads (bare
 letters, rare words and adjacent word pairs weighing more, plus the page
 number). Tested: noisy simulated OCR of 80 random pages, and rendered pages
 269 and 601 through the full OCR pipeline on Android.
+The scanner first reads a central band (under 40% of the full guide's pixels,
+at the same text width), falling back to the full guide if it is inconclusive.
+Android sends grayscale bytes directly to a serial OCR worker, preloads Arabic
+while the camera opens, and reuses the model without PNG/disk round trips.
+Tests cover partial-text matching across all 604 pages, noisy photo OCR,
+fallback, camera rotation, concurrent reads and the native-channel contract.
+These checks do not measure capture latency on a physical phone.
 
 The home page's people icon opens **القراء العشرة ورواتهم**, an offline
 biographical guide. Browse the ten readers or their twenty transmissions,
@@ -111,6 +118,12 @@ to retain the reviewed descriptions of **نِعْمَةً** (31:20), Shu'bah's l
 reference to the alif rule on page 419, and scopes a named reader's stopping
 note separately from the other readers sharing a reading. Regression tests
 in `test/reading_corrections_test.dart` cover the readings and their margins.
+The reviewed corrections also cover Shu'bah's **لؤلؤًا، مرقدنا، ادخلوا،
+المنشآت، إنا** on pages 438, 443, 472, 532 and 536. Optional row metadata
+`wujuh` preserves the reviewed wording of multiple faces during source
+certification. The book builder retains a reader explicitly named alongside
+«الباقون», including Shu'bah's second face in **المنشآت**, and gives priority
+to the source's preferred face.
 
 ### Sources
 

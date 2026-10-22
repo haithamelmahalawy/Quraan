@@ -109,6 +109,7 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
       kind: VariantKind.fromCode(v[5] as String),
       description: v.length > 6 ? v[6] as String : '',
       rule: v.length > 7 ? v[7] as String : '',
+      bookWujuh: v.length > 8 ? (v[8] as Map)['wujuh'] as String? ?? '' : '',
       stopOnly: v.length > 8 && (v[8] as Map)['stopOnly'] == true,
       usulText: v.length > 8 ? (v[8] as Map)['context'] as String? ?? '' : '',
       usulWays: v.length > 8

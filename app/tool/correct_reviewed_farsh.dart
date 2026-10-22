@@ -1,5 +1,5 @@
 // Apply the reviewed readings while preserving unrelated riwaya/rule rows.
-// Source: al-Tasheel, mushaf pages 413, 419, 425 and the reference on 427.
+// Source: al-Tasheel, reviewed farsh notes on mushaf pages 413–536.
 // Run from app/: dart run tool/correct_reviewed_farsh.dart
 import 'dart:convert';
 import 'dart:io';
@@ -45,6 +45,37 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
         .replaceAll(RegExp('[۠۟]'), '');
     put([33, ayah, word, 1, text, 'f', 'بإثبات الألف وصلاً ووقفاً']);
   }
+  put([
+    35,
+    33,
+    9,
+    1,
+    'وَلُولُؤٗاۖ',
+    'f',
+    'بإبدال الهمزة الأولى واوًا ساكنة مدية',
+  ]);
+  put([36, 52, 5, 1, 'مَّرۡقَدِنَاۗ', 'f', 'بدون سكت']);
+  put([
+    40,
+    46,
+    8,
+    1,
+    'ٱدۡخُلُوٓاْ',
+    'f',
+    'فعل أمر بهمزة وصل وضم الخاء، ويُبدأ بها بهمزة مضمومة',
+  ]);
+  put([
+    55,
+    24,
+    2,
+    1,
+    'ٱلۡمُنشِـَٔاتُ',
+    'f',
+    '',
+    '',
+    {'wujuh': 'بوجهين: الأول بكسر الشين وهو المقدم، والثاني بفتح الشين'},
+  ]);
+  put([56, 66, 0, 1, 'أَءِنَّا', 'f', 'بزيادة همزة استفهام']);
 }
 
 void main() {

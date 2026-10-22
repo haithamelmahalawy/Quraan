@@ -143,7 +143,8 @@ class Variant {
     certified: true,
     bookHow: how,
     bookFarsh: farsh,
-    bookWujuh: wujuh,
+    // Retain an explicitly reviewed ordering/wording of the book's faces.
+    bookWujuh: bookWujuh.isNotEmpty ? bookWujuh : wujuh,
     stopOnly: stopOnly,
     usulText: usulText,
     usulWays: usulWays,

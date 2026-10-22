@@ -107,6 +107,8 @@ void main() {
       }
       expect(variants.at(['bazzi', 'qunbul'], 25, 69, 6), isEmpty);
     },
+    // Loading every riwaya from disk can exceed the default on slower hosts.
+    timeout: const Timeout(Duration(minutes: 2)),
   );
 
   test(
@@ -223,31 +225,129 @@ void main() {
     },
   );
 
-  test('reviewed data correction is repeatable and preserves the existing first three fixes', () {
-    final base =
-        jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
-    final file = jsonDecode(
-      File('assets/data/qiraat/shubah.json').readAsStringSync(),
-    ) as Map;
-    final rows = file['variants'] as List;
-    final before = jsonEncode(rows);
-    correctReviewedFarsh('shubah', base, rows);
-    expect(jsonEncode(rows), before);
-    for (final (s, a, w) in [
-      (25, 69, 6),
-      (29, 25, 7),
-      (29, 28, 4),
-      (31, 20, 14),
-      (33, 51, 0),
-      (33, 66, 10),
-      (33, 67, 7),
-    ]) {
-      expect(
-        rows.where((r) => r[0] == s && r[1] == a && r[2] == w),
-        hasLength(1),
-      );
-    }
+  test('lulua replaces the first hamza with a madd waw as farsh', () {
+    final v = shubah.at(['shubah'], 35, 33, 9).single;
+    expect(quran.pageOf(35, 33), 438);
+    expect(v.text, 'وَلُولُؤٗاۖ');
+    expect(v.shownDescription, 'بإبدال الهمزة الأولى واوًا ساكنة مدية');
+    expect(v.kind, VariantKind.farsh);
+    expect(v.certified, isTrue);
+    expect(v.isUsul, isFalse);
+    expect(v.inHamesh, isTrue);
   });
+
+  test('marqadina states no sakt and removes the sakt mark', () {
+    final v = shubah.at(['shubah'], 36, 52, 5).single;
+    expect(quran.pageOf(36, 52), 443);
+    expect(v.text, 'مَّرۡقَدِنَاۗ');
+    expect(v.text, isNot(contains('\u06dc')));
+    expect(v.shownDescription, 'بدون سكت');
+    expect(v.certified, isTrue);
+    expect(v.inHamesh, isTrue);
+  });
+
+  test('udkhulu is an imperative with wasl and a damma on the kha', () {
+    final v = shubah.at(['shubah'], 40, 46, 8).single;
+    expect(quran.pageOf(40, 46), 472);
+    expect(v.text, 'ٱدۡخُلُوٓاْ');
+    expect(
+      v.shownDescription,
+      'فعل أمر بهمزة وصل وضم الخاء، ويُبدأ بها بهمزة مضمومة',
+    );
+    expect(v.shownDescription, isNot(contains('تخفيف')));
+    expect(v.certified, isTrue);
+    expect(v.inHamesh, isTrue);
+  });
+
+  test('munshaat retains both source faces and puts kasr first', () async {
+    final v = shubah.at(['shubah'], 55, 24, 2).single;
+    expect(quran.pageOf(55, 24), 532);
+    expect(v.text, 'ٱلۡمُنشِـَٔاتُ');
+    const faces = 'بوجهين: الأول بكسر الشين وهو المقدم، والثاني بفتح الشين';
+    expect(v.shownDescription, faces);
+    expect(v.certified, isTrue);
+    expect(v.kind, VariantKind.farsh);
+    expect(v.isUsul, isFalse);
+    expect(v.inHamesh, isTrue);
+    // Certification must preserve the explicit reviewed wording and order.
+    expect(v.withCertified('', true, 'الأول كحفص').shownDescription, faces);
+    final source = (await Kharouf.load())
+        .at(55, 24, 2)
+        .singleWhere((e) => e.section == 'farsh');
+    final readings = source.readings.where((r) => r.riwayat.contains('shubah'));
+    expect(readings, hasLength(2));
+    expect(readings.first.text, 'المنشِئات');
+    expect(readings.last.text, 'المنشَآت');
+    final rawBook =
+        jsonDecode(File('assets/data/kharouf.json').readAsStringSync()) as Map;
+    final row = (rawBook['riwayat']['shubah'] as List).singleWhere(
+      (r) => r[0] == 55 && r[1] == 24 && r[2] == 2,
+    );
+    expect(row[7], contains('الأول: «المنشِئات»'));
+    expect(row[7], contains('وهو المقدم'));
+    expect(row[7], contains('الثاني كحفص'));
+  });
+
+  test('inna lamughramun describes only the added interrogative hamza', () {
+    final v = shubah.at(['shubah'], 56, 66, 0).single;
+    expect(quran.pageOf(56, 66), 536);
+    expect(v.text, 'أَءِنَّا');
+    expect(v.shownDescription, 'بزيادة همزة استفهام');
+    expect(v.kind, VariantKind.farsh);
+    expect(v.certified, isTrue);
+    expect(v.isUsul, isFalse);
+    expect(v.inHamesh, isTrue);
+  });
+
+  test(
+    'retaining a second face does not turn a named stop into a wasl face',
+    () async {
+      final source = (await Kharouf.load())
+          .at(90, 20, 2)
+          .singleWhere((e) => e.section == 'farsh');
+      final reading = source.readings.singleWhere((r) => r.text == 'موصدة');
+      expect(reading.riwayat, isNot(contains('khalaf_hamzah')));
+      expect(reading.riwayat, isNot(contains('khallad')));
+      expect(
+        reading.notes.expand((n) => n.$2),
+        containsAll(['khalaf_hamzah', 'khallad']),
+      );
+    },
+  );
+
+  test(
+    'reviewed data correction is repeatable and preserves earlier fixes',
+    () {
+      final base =
+          jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
+      final file = jsonDecode(
+        File('assets/data/qiraat/shubah.json').readAsStringSync(),
+      ) as Map;
+      final rows = file['variants'] as List;
+      final before = jsonEncode(rows);
+      correctReviewedFarsh('shubah', base, rows);
+      expect(jsonEncode(rows), before);
+      for (final (s, a, w) in [
+        (25, 69, 6),
+        (29, 25, 7),
+        (29, 28, 4),
+        (31, 20, 14),
+        (33, 51, 0),
+        (33, 66, 10),
+        (33, 67, 7),
+        (35, 33, 9),
+        (36, 52, 5),
+        (40, 46, 8),
+        (55, 24, 2),
+        (56, 66, 0),
+      ]) {
+        expect(
+          rows.where((r) => r[0] == s && r[1] == a && r[2] == w),
+          hasLength(1),
+        );
+      }
+    },
+  );
 
   testWidgets('reviewed Shubah readings appear in the actual page margin', (
     t,
@@ -260,6 +360,11 @@ void main() {
       (413, 'بإسكان العين وإبدال الهاء تاء مربوطة منونة بالفتح', 1),
       (425, 'بإبدال الياء همزة مضمومة', 1),
       (427, 'بإثبات الألف وصلاً ووقفاً', 2),
+      (438, 'بإبدال الهمزة الأولى واوًا ساكنة مدية', 1),
+      (443, 'بدون سكت', 1),
+      (472, 'فعل أمر بهمزة وصل وضم الخاء، ويُبدأ بها بهمزة مضمومة', 1),
+      (532, 'بوجهين: الأول بكسر الشين وهو المقدم، والثاني بفتح الشين', 1),
+      (536, 'بزيادة همزة استفهام', 1),
     ]) {
       await t.pumpWidget(
         MaterialApp(

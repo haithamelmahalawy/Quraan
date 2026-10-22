@@ -1,8 +1,8 @@
 // part of flutter_tesseract_ocr;
+// ignore_for_file: constant_identifier_names
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -11,8 +11,36 @@ import 'package:path/path.dart';
 class FlutterTesseractOcr {
   static const String TESS_DATA_CONFIG = 'assets/tessdata_config.json';
   static const String TESS_DATA_PATH = 'assets/tessdata';
-  static const MethodChannel _channel =
-      const MethodChannel('flutter_tesseract_ocr');
+  static const MethodChannel _channel = MethodChannel('flutter_tesseract_ocr');
+  static Future<String>? _data;
+
+  /// Load the model on the native worker before the first camera frame arrives.
+  static Future<void> prepare({required String language}) async {
+    await _channel.invokeMethod<void>('prepare', {
+      'tessData': await _loadTessData(),
+      'language': language,
+    });
+  }
+
+  /// Android: one byte of luminance per pixel, passed without an image file.
+  static Future<String> extractPixels(Uint8List pixels,
+      {required int width,
+      required int height,
+      String? language,
+      Map? args}) async {
+    if (width <= 0 || height <= 0 || pixels.length != width * height) {
+      throw ArgumentError('Expected tightly packed luminance pixels');
+    }
+    return await _channel.invokeMethod<String>('extractPixels', {
+          'pixels': pixels,
+          'width': width,
+          'height': height,
+          'tessData': await _loadTessData(),
+          'language': language,
+          'args': args,
+        }) ??
+        '';
+  }
 
   /// image to  text
   ///```
@@ -62,7 +90,13 @@ class FlutterTesseractOcr {
     return tessdataDirectory;
   }
 
-  static Future<String> _loadTessData() async {
+  static Future<String> _loadTessData() =>
+      _data ??= _installTessData().catchError((Object error) {
+        _data = null;
+        throw error;
+      });
+
+  static Future<String> _installTessData() async {
     final Directory appDirectory = await getApplicationDocumentsDirectory();
     final String tessdataDirectory = join(appDirectory.path, 'tessdata');
 

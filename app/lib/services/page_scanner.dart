@@ -1,14 +1,30 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
 import '../data/page_matcher.dart';
+
+typedef ScanImage = ({int width, int height, Uint8List pixels});
+typedef PageMatch = ({int page, double score});
+
+/// CameraX delivers sensor-oriented YUV even when the phone is turned.
+int scanFrameRotation(int sensor, DeviceOrientation orientation) {
+  final device = switch (orientation) {
+    DeviceOrientation.portraitUp => 0,
+    DeviceOrientation.landscapeLeft => 90,
+    DeviceOrientation.portraitDown => 180,
+    DeviceOrientation.landscapeRight => 270,
+  };
+  return (sensor - device + 360) % 360;
+}
 
 /// A camera frame copied out of the image stream: luminance (YUV, Android)
 /// or BGRA (iOS) bytes.
@@ -37,42 +53,78 @@ class Frame {
 
 /// Reads frames of a printed mushaf page and finds the page they show.
 ///
-/// Each frame is turned into a black and white image (cropped to the guide
-/// frame, 1100 px wide) on a background isolate, then read on the device by
-/// Tesseract (Arabic, tessdata_fast) as one block of text. The recognition
-/// is imperfect for Uthmani script, so the page is found by [PageMatcher]
-/// from the words it does read.
+/// Read a short central band first; a few distinctive lines are enough to
+/// identify a page. Fall back to the full guide when the band is inconclusive.
+/// Android sends luminance directly to the reusable OCR engine, without PNG
+/// encoding, disk writes or image decoding. Preprocessing runs off the UI thread.
 class PageScanner {
-  PageScanner(this.matcher);
+  PageScanner(this.matcher, {this.read});
 
   final PageMatcher matcher;
+  final Future<String> Function(ScanImage)? read;
   String? _path;
+  Completer<void>? _busy;
 
-  Future<({int page, double score})?> scan(Frame frame) async {
-    _path ??= '${(await getTemporaryDirectory()).path}/scan_frame.png';
-    final png = await compute(_toPng, frame);
+  Future<void> get idle => _busy?.future ?? Future<void>.value();
+
+  /// Start loading Arabic while the camera opens, rather than on its first frame.
+  Future<void> warmUp() async {
+    if (read == null && Platform.isAndroid) {
+      await FlutterTesseractOcr.prepare(language: 'ara');
+    }
+  }
+
+  Future<PageMatch?> scan(Frame frame) async {
+    // Never queue stale frames when a camera session is reopened during a read.
+    if (_busy != null) return null;
+    final busy = _busy = Completer<void>();
+    try {
+      for (final quick in [true, false]) {
+        final image = await compute(_prepare, (frame, quick));
+        final text = await (read ?? _recognize)(image);
+        final found = matcher.match(text);
+        if (found != null) return found;
+      }
+      return null;
+    } finally {
+      _busy = null;
+      busy.complete();
+    }
+  }
+
+  Future<String> _recognize(ScanImage image) async {
+    const args = {
+      'psm': '6',
+      'preserve_interword_spaces': '1',
+      'tessedit_do_invert': '0',
+    };
+    if (Platform.isAndroid) {
+      return FlutterTesseractOcr.extractPixels(
+        image.pixels,
+        width: image.width,
+        height: image.height,
+        language: 'ara',
+        args: args,
+      );
+    }
+    // The iOS plugin accepts file images. Keep the same partial-page strategy.
+    _path ??=
+        '${(await getTemporaryDirectory()).path}/scan_${identityHashCode(this)}.png';
+    final png = await compute(_toPng, image);
     await File(_path!).writeAsBytes(png);
-    final text = await FlutterTesseractOcr.extractText(
-      _path!,
-      language: 'ara',
-      args: {
-        // One uniform block of text: the column mode (4) loses most lines
-        // of a photographed mushaf page to its border and ornaments.
-        'psm': '6',
-        'preserve_interword_spaces': '1',
-        // A printed page has no light-on-dark text: skip reading every
-        // unsure line a second time inverted.
-        'tessedit_do_invert': '0',
-      },
-    );
-    return matcher.match(text);
+    return FlutterTesseractOcr.extractText(_path!, language: 'ara', args: args);
   }
 }
 
-/// Black and white, upright, cropped to the guide frame, 1100 px wide.
-Uint8List _toPng(Frame f) {
-  final (:width, :height, :pixels) = prepareFrame(f);
+ScanImage _prepare((Frame, bool) input) {
+  final image = prepareFrame(input.$1, quick: input.$2);
+  final (:width, :height, :pixels) = image;
   binarize(pixels, width, height);
+  return image;
+}
+
+Uint8List _toPng(ScanImage image) {
+  final (:width, :height, :pixels) = image;
   return img.encodePng(
     img.Image.fromBytes(
       width: width,
@@ -88,10 +140,10 @@ Uint8List _toPng(Frame f) {
 /// cropped to the guide frame (the middle 90% × 72%) and scaled to 1100 px
 /// wide, in one pass: each pixel is sampled from the camera's bytes.
 @visibleForTesting
-({int width, int height, Uint8List pixels}) prepareFrame(Frame f) {
+ScanImage prepareFrame(Frame f, {bool quick = false}) {
   final turned = f.rotation == 90 || f.rotation == 270;
   final rw = turned ? f.height : f.width, rh = turned ? f.width : f.height;
-  final cw = rw * 0.9, ch = rh * 0.72;
+  final cw = rw * 0.9, ch = rh * (quick ? 0.28 : 0.72);
   final cx = (rw - cw) / 2, cy = (rh - ch) / 2;
   const width = 1100;
   final scale = cw / width;

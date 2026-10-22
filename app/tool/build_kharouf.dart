@@ -438,7 +438,16 @@ void main(List<String> args) {
           restText,
           [
             for (final id in all)
-              if (!listed.contains(id)) id,
+              // A reader named alongside الباقون also has this face,
+              // even if another face of his was already listed above.
+              if (!listed.contains(id) ||
+                  (rest.ids.contains(id) &&
+                      !notes.any(
+                        (n) =>
+                            (n[1] as List).contains(id) &&
+                            stopOnly(n[0] as String),
+                      )))
+                id,
           ],
           const <String>[],
           own,
@@ -519,14 +528,27 @@ void main(List<String> args) {
                       g,
                 ];
                 final first = mine.first;
+                final alsoAsHafs = placedGroups.any(
+                  (g) =>
+                      (g[1] as List).contains('hafs') &&
+                      ((g[1] as List).contains(id) ||
+                          (g[2] as List).contains(id)),
+                );
+                final preferredFirst = (first[6] as List).any(
+                  (n) =>
+                      (n[1] as List).contains(id) &&
+                      RegExp('الراجح|المقدم').hasMatch(n[0] as String),
+                );
                 String say(List<Object?> g) => [
                   if ((g[0] as String).isNotEmpty) '«${g[0]}»',
                   if ((g[3] as String).isNotEmpty) g[3] as String,
                 ].join(' ');
                 final wujuh = mine.length > 1
                     ? 'بوجهين: ${mine.map(say).join('، والثاني: ')}'
-                    : (first[2] as List).contains(id)
-                    ? 'بوجهين: الأول كحفص، والثاني: ${say(first)}'
+                    : (first[2] as List).contains(id) || alsoAsHafs
+                    ? preferredFirst
+                          ? 'بوجهين: الأول: ${say(first)} (وهو المقدم)، والثاني كحفص'
+                          : 'بوجهين: الأول كحفص، والثاني: ${say(first)}'
                     : '';
                 (byRiwaya[id] ??= []).add([
                   surah,
