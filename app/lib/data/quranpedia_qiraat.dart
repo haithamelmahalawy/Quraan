@@ -236,6 +236,11 @@ class QuranpediaQiraat {
   static VariantKind kindOf(String text, String description, String hafs) {
     if (text.isNotEmpty && skeleton(text) != hafs) return VariantKind.farsh;
     final d = description.isEmpty ? text : description;
+    // Tanween remains farsh alongside iqlab or silat mim al-jam'. An
+    // added interrogative hamza is also a change to the word itself.
+    if (RegExp(r'تنوين|همزة استفهام|بالاستفهام|زيادة الهمزة').hasMatch(d)) {
+      return VariantKind.farsh;
+    }
     // Ya' al-idafa (إسكان الياء، فتح الياء), and the present tense ya'
     // (بفتح الياء وإسكان الباء): farsh, whatever madd goes with it.
     if (RegExp(r'(إسكان|اسكان|فتح) (ال)?ياء|ياء الإضافة').hasMatch(d)) {

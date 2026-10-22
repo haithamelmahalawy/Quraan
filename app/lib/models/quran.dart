@@ -53,6 +53,9 @@ class Variant {
     this.bookHow = '',
     this.bookFarsh = false,
     this.bookWujuh = '',
+    this.stopOnly = false,
+    this.usulText = '',
+    this.usulWays = const [],
   });
 
   final String riwayaId;
@@ -94,9 +97,25 @@ class Variant {
   /// (بوجهين: الأول كحفص، والثاني: «بَيْئَسٍ»); empty when it has one.
   final String bookWujuh;
 
+  /// This rule applies on stopping, rather than in continuous recitation.
+  final bool stopOnly;
+
+  /// Both Hafs words of a rule at a word boundary (also across ayahs).
+  final String usulText;
+
+  /// The accepted ways of this general rule, shown once in its margin key.
+  final List<String> usulWays;
+
+  String? get hamzaReplacement => switch (rule) {
+    'ibdal_waw' => 'و',
+    'ibdal_ya' => 'ي',
+    _ => null,
+  };
+
   /// Told in the hamesh: the riwaya's farsh, and what the certified source
   /// states in its farsh. Usul are told by their colour, in the page's key.
   bool get inHamesh =>
+      !isUsul &&
       !(rule.isNotEmpty && rule != 'kharouf') &&
       (bookFarsh || (!isUsul && (certified || kind == VariantKind.farsh)));
 
@@ -125,13 +144,24 @@ class Variant {
     bookHow: how,
     bookFarsh: farsh,
     bookWujuh: wujuh,
+    stopOnly: stopOnly,
+    usulText: usulText,
+    usulWays: usulWays,
   );
 
   /// A reading with imala (or taqlil, the lesser imala).
   bool get isImala =>
-      text.contains('۪') ||
-      RegExp(r'إمالة|الإمالة|تقليل|التقليل|بين بين|بين اللفظين')
-          .hasMatch(description);
+      (text.contains('۪') &&
+          !const {
+            'tasheel_word',
+            'tasheel_pair',
+            'hamza_wasl',
+            'ha_antum',
+          }.contains(rule)) ||
+      RegExp(r'إمالة|الإمالة|تقليل|التقليل|بين اللفظين')
+          .hasMatch(description) ||
+      (description.contains('بين بين') &&
+          !RegExp('همز|تسهيل').hasMatch(description));
 
   /// Shown in green, like imala: madd al-badal.
   bool get isBadal => rule == 'badal';
@@ -156,7 +186,8 @@ class Variant {
       (rule.isNotEmpty && rule != 'kharouf') ||
       (kind == VariantKind.usul && rule != 'kharouf') ||
       isQasr ||
-      (isImala && (description.isEmpty || _imalaOnly.hasMatch(description)));
+      (isImala && (description.isEmpty || _imalaOnly.hasMatch(description))) ||
+      _onlyGeneralRules(description);
 
   /// Qasr of the separated madd (Qalun, Ibn Kathir, al-Susi): بِمَا أُنزِلَ.
   bool get isQasr => description == 'بالقصر';
@@ -164,6 +195,25 @@ class Variant {
   static final _imalaOnly = RegExp(
     r'^(ب?ال|ب)?(إمالة|تقليل)( الألف| الراء والألف)?'
     r'( و?مدها \d حركات| ومد المتصل \d حركات| والقصر)?$',
+  );
+
+  // A source may combine silah, hamza handling and madd in a row tagged
+  // farsh. A remaining lexical/vowel change keeps it a farsh reading.
+  static bool _onlyGeneralRules(String description) {
+    if (description.isEmpty) return false;
+    final plain = description.replaceAll(RegExp('[ً-ٰٟ]'), '');
+    final rest = plain
+        .replaceAll(_generalRules, '')
+        .replaceAll(RegExp(r'[بو،\s]'), '');
+    return rest.isEmpty;
+  }
+
+  static final _generalRules = RegExp(
+    r'صلة (ميم الجمع|الميم|هاء الضمير|الهاء)|ترك صلة الهاء|'
+    r'تخفيف الهمزة|تسهيل الهمزة( الثانية| الأولى)?( بين بين)?|'
+    r'إبدال الهمزة( الثانية| الأولى)? (ألفا|واوا|ياء)( خالصة| خالصا| مكسورة| مفتوحة)?( وصلا)?|حذف الهمزة|'
+    r'نقل حركة الهمزة (إلى اللام|إليها)|'
+    r'ثلاثة البدل|مد البدل|الإمالة|التقليل|الإدغام|المد|القصر',
   );
 }
 

@@ -1,6 +1,6 @@
 # Kharouf vs app data
 
-Entries placed: 8093. Not placed: 43.
+Entries placed: 8094. Not placed: 42.
 
 ## The book: differs from Hafs, our data: reads as Hafs
 
@@ -3642,7 +3642,6 @@ Entries placed: 8093. Not placed: 43.
 - p394 27:[36] «آتاني»
 - p401 28:[20] «جاء»
 - p410 29:[1, 2] «الم أحسب»
-- p413 29:[28, 29] «إنكم لتأتون... أئِنكم لتأتون الرجال»
 - p416 29:[50] «آية»
 - p460 37:[16] «إذا . . أئِنَّا»
 - p462 37:[53] «أئِذا . . أئِنَّا»
@@ -3674,7 +3673,6 @@ Entries placed: 8093. Not placed: 43.
 - وعن نفسه (1)
 - القراء العشرة (1)
 - غيره (5)
-- هشاما (1)
 - ابو عمرو (1)
 - العشرة (1)
 - الباقين (2)

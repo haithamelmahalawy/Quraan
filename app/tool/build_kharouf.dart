@@ -577,7 +577,9 @@ void main(List<String> args) {
   report.writeln('\n## Reader names not understood');
   unknownNames.forEach((k, v) => report.writeln('- $k ($v)'));
   File('../tools/source/books/kharouf_report.md')
-      .writeAsStringSync(report.toString());
+      .writeAsStringSync(
+        report.toString().replaceAll(RegExp(r'[ \t]+$', multiLine: true), ''),
+      );
   stdout.writeln(
     'kharouf.json: ${out.length} entries, ${unplaced.length} not placed, '
     '${unknownNames.length} unknown names, $referred references told '

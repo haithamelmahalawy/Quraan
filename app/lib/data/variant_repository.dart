@@ -109,6 +109,11 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
       kind: VariantKind.fromCode(v[5] as String),
       description: v.length > 6 ? v[6] as String : '',
       rule: v.length > 7 ? v[7] as String : '',
+      stopOnly: v.length > 8 && (v[8] as Map)['stopOnly'] == true,
+      usulText: v.length > 8 ? (v[8] as Map)['context'] as String? ?? '' : '',
+      usulWays: v.length > 8
+          ? ((v[8] as Map)['ways'] as List? ?? const []).cast<String>()
+          : const [],
     );
     for (var w = variant.word; w < variant.word + variant.count; w++) {
       index
@@ -165,7 +170,11 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       final list = index[k];
       if (list == null) continue;
       for (final v in [...list]) {
-        if (v.rule.isNotEmpty) continue;
+        if (v.rule.isNotEmpty) {
+          // Do not duplicate an existing rule as a lexical book variant.
+          if ((p[4] as String).isEmpty && _matchesUsul(v, how)) found = true;
+          continue;
+        }
         found = true;
         if (v.certified) continue;
         // The same reading is listed at every word it covers.
@@ -176,6 +185,14 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
           if (i >= 0) at[i] = certified;
         }
       }
+    }
+    // The book often anchors a two-hamza note at the first word (جاء,
+    // السماء), whereas the generated rule belongs to the second hamza.
+    // The same convention occurs before ءآمنتم. Do not backfill that
+    // general-rule explanation as an independent lexical variant.
+    if (!found && (p[4] as String).isEmpty) {
+      final next = index[VariantRepository.key(surah, ayah, word + 1)];
+      found = next?.any((v) => v.isUsul && _matchesUsul(v, how)) ?? false;
     }
     // A farsh reading the book states and the riwaya file lacks.
     if (!found && p[6] == 'farsh') {
@@ -199,6 +216,29 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       }
     }
   }
+}
+
+/// Whether a generated rule already covers the book's general-rule note.
+bool _matchesUsul(Variant v, String how) {
+  if (v.isBadal && how.contains('البدل')) return true;
+  if ((v.rule == 'naql' || v.rule == 'naql_source') && how.contains('نقل')) {
+    return true;
+  }
+  if (const {'ibdal_waw', 'ibdal_ya', 'ibdal_single'}.contains(v.rule) &&
+      RegExp('إبدال|ابدال').hasMatch(how)) {
+    return true;
+  }
+  if (const {
+        'tasheel_pair',
+        'tasheel_word',
+        'ha_antum',
+        'hamza_wasl',
+      }.contains(v.rule) &&
+      RegExp('تسهيل|إبدالها').hasMatch(how)) {
+    return true;
+  }
+  if (v.isImala && RegExp('تقليل|إمالة').hasMatch(how)) return true;
+  return false;
 }
 
 /// Text without a vowel that tells of a reading rather than writes it.

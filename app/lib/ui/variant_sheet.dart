@@ -6,6 +6,7 @@ import '../models/quran.dart';
 import '../state/reader_settings.dart';
 import 'kharouf_section.dart';
 import 'reference_sheet.dart';
+import 'reading_colors.dart';
 
 /// How each riwaya reads one Hafs word: the selected riwayat first, then
 /// every other riwaya that has data.
@@ -178,7 +179,7 @@ class VariantSheet extends StatelessWidget {
     final before = ayah.words.sublist(from, v.word).join(' ');
     final after = ayah.words.sublist(v.word + v.count, to).join(' ');
     return _ReadingTile(
-      color: qiraa.color,
+      color: ReadingColors.of(v),
       title: title,
       text: v.text.isEmpty && v.description.isNotEmpty
           ? ayah.words.sublist(from, to).join(' ')
@@ -258,7 +259,11 @@ class _ReadingTile extends StatelessWidget {
                   padding: const EdgeInsetsDirectional.only(start: 6),
                   child: Tooltip(
                     message: 'الدليل من الشاطبية أو الدرة',
-                    child: Icon(Icons.menu_book_rounded, size: 18, color: color),
+                    child: Icon(
+                      Icons.menu_book_rounded,
+                      size: 18,
+                      color: color,
+                    ),
                   ),
                 ),
             ],
@@ -276,7 +281,9 @@ class _ReadingTile extends StatelessWidget {
           if (uncertified)
             Text(
               'غير مذكور في التسهيل لقراءات التنزيل',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.hintColor,
+              ),
             ),
         ],
       ),

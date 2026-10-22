@@ -14,7 +14,9 @@ import 'mushaf_decor.dart';
 import '../services/qcf_fonts.dart';
 import 'kharouf_section.dart' show readersAr;
 import 'mushaf_lines.dart';
+import 'hamza_replacement_mark.dart';
 import 'reference_sheet.dart';
+import 'reading_colors.dart';
 import 'theme.dart';
 
 typedef WordTap = void Function(Ayah ayah, int word);
@@ -205,6 +207,17 @@ class _MushafPageState extends State<MushafPage>
     // The hamesh takes room beside the page only when it has notes; the
     // page otherwise has the whole width, and its text the largest size.
     final withHamesh = entries.isNotEmpty;
+    final sides = widget.showHamesh;
+    final usul = sides
+        ? _usulNotes(
+            [
+              for (final l in lines)
+                if (l is TextLine) ...l.words,
+            ],
+            widget.variants,
+            widget.settings,
+          )
+        : const <_UsulGroup>[];
     final signature = [
       widget.page,
       size.width,
@@ -220,12 +233,29 @@ class _MushafPageState extends State<MushafPage>
     final overflow = split < entries.length;
 
     const outer = 4.0, header = 22.0;
-    final pageHeight = size.height * (overflow ? 0.9 : 1.0);
-    final pageWidth = withHamesh
-        ? size.width * (narrow ? 0.81 : 0.84)
-        : size.width;
+    final spanCount = lines.fold(0, (n, l) => n + l.span);
+    final normalLine =
+        (size.height -
+            2 * outer -
+            header -
+            2 * OrnamentFrame.inset -
+            _PageFrame.numberHeight) /
+        spanCount;
+    // Less than two printed lines, without a second
+    // height reduction when a margin overflows.
+    final reserve = sides && (withHamesh || usul.isNotEmpty)
+        ? math.min(size.height * 0.095, math.max(0.0, normalLine * 1.6))
+        : 0.0;
+    final pageHeight = size.height - reserve;
+    final bothSides = withHamesh && size.width >= 400;
+    final rightWidth = !withHamesh
+        ? 0.0
+        : bothSides
+        ? (size.width * 0.13).clamp(52.0, 90.0)
+        : size.width * (narrow ? 0.19 : 0.16);
+    final leftWidth = bothSides ? rightWidth : 0.0;
+    final pageWidth = size.width - rightWidth - leftWidth;
     // Full screen: no bands at the sides, the text has the whole width.
-    final sides = widget.showHamesh;
     final textWidth =
         pageWidth - 2 * outer - 2 * OrnamentFrame.sideInset(sides);
     final textHeight =
@@ -244,16 +274,6 @@ class _MushafPageState extends State<MushafPage>
       height: textHeight,
     );
     final first = ayahs.first;
-    final usul = sides
-        ? _usulNotes(
-            [
-              for (final l in lines)
-                if (l is TextLine) ...l.words,
-            ],
-            widget.variants,
-            widget.settings,
-          )
-        : const <_UsulGroup>[];
     final page = Padding(
       padding: EdgeInsets.symmetric(
         vertical: outer,
@@ -284,7 +304,7 @@ class _MushafPageState extends State<MushafPage>
     final usulBox = usul.isEmpty
         ? null
         : Padding(
-            padding: const EdgeInsets.fromLTRB(6, 2, 6, 24),
+            padding: const EdgeInsets.fromLTRB(4, 1, 4, 6),
             child: _UsulBox(groups: usul, onTap: _openReference),
           );
     if (!withHamesh) {
@@ -294,7 +314,14 @@ class _MushafPageState extends State<MushafPage>
         physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [SizedBox(height: size.height, child: page), usulBox],
+          children: [
+            SizedBox(
+              key: const ValueKey('mushaf-print'),
+              height: pageHeight,
+              child: page,
+            ),
+            usulBox,
+          ],
         ),
       );
     }
@@ -316,14 +343,18 @@ class _MushafPageState extends State<MushafPage>
     final shown = entries.sublist(0, split);
     final tops = [
       for (final e in shown)
-        top +
-            (lineOf[VariantRepository.key(
-                      e.ayah.surah,
-                      e.ayah.number,
-                      e.word,
-                    )] ??
-                    0) *
-                lineHeight,
+        math.max(
+          0.0,
+          top -
+              lineHeight * 0.45 +
+              (lineOf[VariantRepository.key(
+                        e.ayah.surah,
+                        e.ayah.number,
+                        e.word,
+                      )] ??
+                      0) *
+                  lineHeight,
+        ),
     ];
 
     return SingleChildScrollView(
@@ -334,29 +365,32 @@ class _MushafPageState extends State<MushafPage>
         children: [
           SizedBox(
             height: pageHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(width: pageWidth, child: page),
-                Expanded(
-                  child: _SideHamesh(
-                    entries: shown,
-                    tops: tops,
-                    onTap: _openReference,
-                    onFit: (fit) => _setSplit(signature, fit),
-                  ),
-                ),
-              ],
+            child: _MarginPage(
+              page: SizedBox(
+                key: const ValueKey('mushaf-print'),
+                width: pageWidth,
+                height: pageHeight,
+                child: page,
+              ),
+              rightWidth: rightWidth,
+              leftWidth: leftWidth,
+              entries: shown,
+              tops: tops,
+              onTap: _openReference,
+              onFit: (fit) => _setSplit(signature, fit),
             ),
           ),
           if (overflow)
             Padding(
-              padding: const EdgeInsets.fromLTRB(6, 2, 6, 24),
-              child: _HameshBox(
-                title: 'تتمة الهامش',
-                entries: entries.sublist(split),
-                onTap: _openReference,
-                columns: narrow ? 3 : 4,
+              padding: const EdgeInsets.fromLTRB(4, 1, 4, 4),
+              child: KeyedSubtree(
+                key: const ValueKey('bottom-notes'),
+                child: _HameshBox(
+                  title: 'تتمة الهامش',
+                  entries: entries.sublist(split),
+                  onTap: _openReference,
+                  columns: narrow ? 3 : 4,
+                ),
               ),
             ),
           ?usulBox,
@@ -459,9 +493,9 @@ class _MushafPageState extends State<MushafPage>
               recognizer: tap,
               style: TextStyle(
                 fontFamily: riwayaById(v.riwayaId).fontFamily ?? 'Hafs',
-                color: shownHere ? qiraaOf(v.riwayaId).color : null,
+                color: shownHere ? ReadingColors.of(v) : null,
                 backgroundColor: shownHere
-                    ? qiraaOf(v.riwayaId).color.withAlpha(24)
+                    ? ReadingColors.of(v).withAlpha(24)
                     : null,
               ),
             ),
@@ -473,7 +507,11 @@ class _MushafPageState extends State<MushafPage>
       if (m.shown.isEmpty) {
         out
           ..add(
-            TextSpan(text: ayah.words[w], recognizer: tap, style: underline),
+            TextSpan(
+              text: ayah.words[w],
+              recognizer: tap,
+              style: (underline ?? const TextStyle()).copyWith(color: m.color),
+            ),
           )
           ..add(const TextSpan(text: ' '));
         continue;
@@ -510,7 +548,7 @@ class _MushafPageState extends State<MushafPage>
               style: TextStyle(
                 fontFamily: riwayaById(v.riwayaId).fontFamily ?? 'Hafs',
                 fontSize: s.fontSize * 0.62,
-                color: qiraaOf(v.riwayaId).color,
+                color: ReadingColors.of(v),
               ),
             ),
           );
@@ -581,6 +619,9 @@ class _MushafPageState extends State<MushafPage>
     if (imala != null) {
       return (text: withImalaSign(ayah.words[w], imala.text), font: 'Hafs');
     }
+    if (_replacementAt(ayah, w) != null) {
+      return (text: ayah.words[w], font: 'Hafs');
+    }
     // Nor letters coloured apart.
     if (_letterReadings(ayah, w) != null) {
       return (text: ayah.words[w], font: 'Hafs');
@@ -589,33 +630,63 @@ class _MushafPageState extends State<MushafPage>
     return (text: ayah.words[w], font: 'Hafs');
   }
 
-  /// The readings of a word when they are only naql and madd al-badal (with
-  /// tarqiq or taghliz), which colour single letters rather than the word:
-  /// the letter that takes the hamza's vowel, the madd, the ra or the lam.
+  /// General rules with a specific letter to colour. Compound hamza and
+  /// silah readings keep both colours instead of a comparison rawi's colour.
   List<Variant>? _letterReadings(Ayah ayah, int w) {
     final s = widget.settings;
     final readings = [
       ..._baseAt(widget.variants, s, ayah, w),
       ..._readingsAt(widget.variants, s, ayah, w).shown,
     ].where((v) => v.word == w && s.kinds.contains(v.kind)).toList();
-    bool naqlOrBadal(Variant v) => v.isBadal || _naqlKind(v) != null;
-    if (!readings.any(naqlOrBadal) ||
-        !readings.every((v) => naqlOrBadal(v) || v.isTarqiqOrTaghliz)) {
+    bool targeted(Variant v) =>
+        v.isUsul &&
+        (v.isBadal ||
+            v.isImala ||
+            v.isTarqiqOrTaghliz ||
+            _naqlKind(v) != null ||
+            RegExp('همز|صلة|إدغام|ادغام').hasMatch(v.description));
+    if (readings.isEmpty || !readings.every(targeted)) {
+      return null;
+    }
+    if (readings.every((v) => v.isTarqiqOrTaghliz) ||
+        (readings.any((v) => v.isImala) &&
+            readings.every(
+              (v) =>
+                  (v.isImala || v.isBadal) &&
+                  !RegExp('همز|نقل|صلة|إدغام|ادغام').hasMatch(v.description),
+            ))) {
       return null;
     }
     return readings;
   }
 
-  /// [text] of a word in parts, its naql and madd letters coloured.
+  Variant? _replacementAt(Ayah ayah, int w) =>
+      [
+            ..._baseAt(widget.variants, widget.settings, ayah, w),
+            ..._readingsAt(widget.variants, widget.settings, ayah, w).shown,
+          ]
+          .where(
+            (v) =>
+                v.word == w &&
+                v.hamzaReplacement != null &&
+                widget.settings.kinds.contains(v.kind),
+          )
+          .firstOrNull;
+
+  /// [text] in parts, each affected letter in the colour of its rule.
   List<(String, Color?)>? _letterParts(Ayah ayah, int w, String text) {
     final readings = _letterReadings(ayah, w);
     if (readings == null) return null;
     final letters = lettersOf(text);
     final colors = <int, Color>{};
+    void mark(int? i, Color color) {
+      if (i != null && i >= 0 && i < letters.length) colors[i] = color;
+    }
+
     for (final v in readings) {
       if (v.isTarqiqOrTaghliz) {
         final i = v.rule == 'tarqiq' ? raLetter(letters) : lamLetter(letters);
-        if (i != null) colors[i] = MushafColors.rule;
+        mark(i, MushafColors.rule);
         continue;
       }
       final kind = v.isBadal ? null : _naqlKind(v);
@@ -626,10 +697,50 @@ class _MushafPageState extends State<MushafPage>
           : kind == _Naql.dropped
           ? null
           : naqlLetter(letters, last: kind == _Naql.last);
-      if (i != null) {
-        colors[i] = v.isBadal ? MushafColors.green : qiraaOf(v.riwayaId).color;
+      if (v.isBadal || kind != null) {
+        mark(i, v.isBadal ? MushafColors.green : ReadingColors.naql);
+      }
+      final d = v.description;
+      if (v.rule == 'hamza_wasl' && d.contains('نقل')) {
+        final lam = letters.indexWhere((l) => l.startsWith('ل'));
+        mark(lam < 0 ? null : lam, ReadingColors.naql);
+      }
+      if (v.isImala) {
+        final at = letters.indexWhere((l) => l.contains(imalaSign));
+        mark(at < 0 ? null : at, MushafColors.green);
+      }
+      if (RegExp('إبدال|ابدال|تسهيل|تخفيف الهمزة').hasMatch(d)) {
+        final hafs = lettersOf(ayah.words[w]);
+        final hamzas = [
+          for (final (i, l) in hafs.indexed)
+            if (_hamzaCluster(l)) i,
+        ];
+        final variant = lettersOf(v.text);
+        final target =
+            v.rule == 'ibdal_waw' ||
+                v.rule == 'ibdal_ya' ||
+                v.rule == 'tasheel_pair'
+            ? 0
+            : v.rule == 'tasheel_word' || v.rule == 'hamza_wasl'
+            ? 1
+            : hamzas
+                      .where(
+                        (i) => i < variant.length && !_hamzaCluster(variant[i]),
+                      )
+                      .firstOrNull ??
+                  hamzas.lastOrNull;
+        mark(target, ReadingColors.hamza);
+      }
+      if (d.contains('صلة')) {
+        final base = d.contains('ميم') || d.contains('الميم') ? 'م' : 'ه';
+        final at = letters.lastIndexWhere((l) => l.startsWith(base));
+        mark(at < 0 ? null : at, ReadingColors.silah);
+      }
+      if (RegExp('إدغام|ادغام').hasMatch(d) && letters.first.contains('ّ')) {
+        mark(0, ReadingColors.idgham);
       }
     }
+    if (colors.isEmpty) return null;
     return [for (final (i, l) in letters.indexed) (l, colors[i])];
   }
 
@@ -645,7 +756,8 @@ class _MushafPageState extends State<MushafPage>
         : [for (final (l, _) in parts) l];
     final drawn = withKashida(letters, kashida);
     return [
-      for (final (i, l) in drawn.indexed) (l, parts == null ? null : parts[i].$2),
+      for (final (i, l) in drawn.indexed)
+        (l, parts == null ? null : parts[i].$2),
     ];
   }
 
@@ -662,11 +774,10 @@ class _MushafPageState extends State<MushafPage>
     // Not the page glyphs of the Madinah print: letters to colour and draw out.
     final hafsFont = !shown.font.startsWith('QCF_');
     final coloured = hafsFont ? _letterParts(ayah, w, shown.text) : null;
-    final parts = hafsFont
-        ? _stretched(shown.text, coloured, kashida)
-        : null;
+    final parts = hafsFont ? _stretched(shown.text, coloured, kashida) : null;
     Widget word = InkText(
       shown.text,
+      key: ValueKey('word:${ayah.surah}:${ayah.number}:$w'),
       parts: parts,
       style: TextStyle(
         fontFamily: shown.font,
@@ -678,6 +789,17 @@ class _MushafPageState extends State<MushafPage>
         // Coloured text only, as the coloured prints (no box behind it).
       ),
     );
+    final replacement = _replacementAt(ayah, w);
+    if (replacement != null) {
+      final text = parts?.map((p) => p.$1).join() ?? shown.text;
+      word = HamzaReplacementMark(
+        text: text,
+        letter: replacement.hamzaReplacement!,
+        color: ReadingColors.of(replacement),
+        style: TextStyle(fontFamily: 'Hafs', fontSize: fontSize, height: 1),
+        child: word,
+      );
+    }
     if (m.mutashabih) {
       // A soft highlight over the word and its marks, without taking room.
       word = Stack(
@@ -790,15 +912,9 @@ List<Variant> _baseAt(
       .toList();
 }
 
-/// The colour of readings: green for imala and madd al-badal (in every
-/// riwaya), orange for tarqiq of the ra and taghliz of the lam, otherwise
-/// the qiraa's colour, or [MushafColors.multi] when several qiraat differ.
+/// Fixed colours for general rules; narrator colours for farsh readings.
 Color? _colorOf(List<Variant> readings) {
-  if (readings.isEmpty) return null;
-  if (readings.every((v) => v.isImala || v.isBadal)) return MushafColors.green;
-  if (readings.every((v) => v.isTarqiqOrTaghliz)) return MushafColors.rule;
-  final qiraat = {for (final v in readings) qiraaOf(v.riwayaId)};
-  return qiraat.length == 1 ? qiraat.single.color : MushafColors.multi;
+  return ReadingColors.ofReadings(readings);
 }
 
 /// How the other selected riwayat read a word, compared with the riwaya the
@@ -812,10 +928,12 @@ _Readings _readingsAt(
   ReaderSettings s,
   Ayah ayah,
   int w,
-) => _readingsMemo.putIfAbsent(
-  (variants, s, ayah, w),
-  () => _readingsOf(variants, s, ayah, w),
-);
+) => _readingsMemo.putIfAbsent((
+  variants,
+  s,
+  ayah,
+  w,
+), () => _readingsOf(variants, s, ayah, w));
 
 typedef _Readings = ({
   List<Variant> all,
@@ -848,7 +966,8 @@ _Readings _readingsOf(
   // Hafs, where the riwaya shown differs from it (not by its usul alone).
   if (s.compareHafs) {
     for (final v in base) {
-      if (v.isUsul || all.any((h) => h.riwayaId == hafsId && h.word == v.word)) {
+      if (v.isUsul ||
+          all.any((h) => h.riwayaId == hafsId && h.word == v.word)) {
         continue;
       }
       all.add(
@@ -866,7 +985,8 @@ _Readings _readingsOf(
   }
   final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
   final colors = [
-    for (final q in {for (final v in shown) qiraaOf(v.riwayaId)}) q.color,
+    for (final id in shown.map((v) => v.riwayaId).toSet())
+      ReadingColors.ofReadings(shown.where((v) => v.riwayaId == id).toList())!,
   ];
   return (
     all: all,
@@ -893,8 +1013,14 @@ List<_UsulGroup> _usulNotes(
       ...m.shown,
       ..._baseAt(variants, s, ayah, w).where((v) => s.kinds.contains(v.kind)),
     ]) {
-      if (v.word != w || v.inHamesh || v.riwayaId == hafsId) continue;
-      final own = qiraaOf(v.riwayaId).color;
+      if (v.word != w ||
+          v.inHamesh ||
+          v.riwayaId == hafsId ||
+          v.rule == 'naql_source' ||
+          v.rule == 'hamza_source') {
+        continue;
+      }
+      final own = ReadingColors.of(v);
       final kinds = v.isBadal
           ? [('مد البدل', MushafColors.green)]
           : v.rule == 'tarqiq'
@@ -916,14 +1042,30 @@ List<_UsulGroup> _usulNotes(
                 if (!v.isImala || l != 'المدود') (l, own),
               if (!v.isImala && _usulOf(v).isEmpty) ('أصول أخرى', own),
             ];
-      final word = v.isImala
+      final word = v.usulText.isNotEmpty
+          ? v.usulText
+          : v.isImala
           ? withImalaSign(ayah.words[w], v.text)
           : ayah.words.sublist(w, w + v.count).join(' ');
-      for (final (label, color) in kinds) {
-        final g = groups.putIfAbsent(label, () => _UsulGroup(label, color));
+      for (final (label, _) in kinds) {
+        final ways =
+            label.contains('همز') &&
+                (v.usulWays.length > 1 ||
+                    v.rule == 'tasheel_pair' ||
+                    v.rule == 'tasheel_word')
+            ? v.usulWays
+            : const <String>[];
+        // Equal labels need separate groups when their permitted faces
+        // differ (qasr / ishba', arid movement, or changed badal).
+        final groupKey = '$label:${ways.join('|')}';
+        final g = groups.putIfAbsent(
+          groupKey,
+          () => _UsulGroup(label, ReadingColors.forLabel(label)),
+        );
+        g.ways.addAll(ways);
         final item = g.items.putIfAbsent(
-          '${ayah.surah}:${ayah.number}:$w',
-          () => _UsulItem(ayah, w, word),
+          '${ayah.surah}:${ayah.number}:$w:${v.stopOnly}',
+          () => _UsulItem(ayah, w, word, v.stopOnly, v.hamzaReplacement),
         );
         item.riwayat.add(v.riwayaId);
       }
@@ -938,29 +1080,57 @@ class _UsulGroup {
   final String label;
   final Color color;
   final items = <String, _UsulItem>{};
+  final ways = <String>{};
 }
 
 class _UsulItem {
-  _UsulItem(this.ayah, this.word, this.text);
+  _UsulItem(this.ayah, this.word, this.text, this.stopOnly, this.replacement);
 
   final Ayah ayah;
   final int word;
   final String text;
+  final bool stopOnly;
+  final String? replacement;
   final riwayat = <String>{};
 }
 
 /// The usul a reading applies, by its description: the key's wording.
 List<String> _usulOf(Variant v) {
   final d = v.description;
+  if (v.rule == 'tasheel_word') {
+    return [
+      v.usulWays.length > 1
+          ? 'الهمزتان المفتوحتان في كلمة'
+          : 'تسهيل الهمزتين في كلمة',
+      if (d.contains('صلة ميم الجمع')) 'صلة ميم الجمع',
+    ];
+  }
+  if (v.rule == 'tasheel_pair' ||
+      (v.rule == 'ibdal_waw' && v.usulWays.length > 1)) {
+    return [
+      'الهمزتان من كلمتين',
+      if (d.contains('صلة ميم الجمع')) 'صلة ميم الجمع',
+    ];
+  }
+  if (v.rule == 'ha_antum') return ['همزة هأنتم'];
+  if (v.rule == 'hamza_wasl') {
+    return ['همزة الاستفهام مع همزة الوصل', if (d.contains('نقل')) 'النقل'];
+  }
   return [
-    if (RegExp('صلة (ال)?ميم|وصلة الميم|صلة الميم').hasMatch(d)) 'صلة ميم الجمع',
+    if (RegExp('صلة (ال)?ميم|وصلة الميم|صلة الميم').hasMatch(d))
+      'صلة ميم الجمع',
     if (RegExp('صلة (ال)?هاء|بصلة الهاء|ترك صلة').hasMatch(d)) 'صلة هاء الضمير',
     if (RegExp('إدغام|ادغام|الإدغام').hasMatch(d)) 'الإدغام',
     if (RegExp(r'نقل').hasMatch(d)) 'النقل',
     if (RegExp('إبدال|ابدال').hasMatch(d)) 'إبدال الهمز',
-    if (RegExp('تخفيف الهمز|تسهيل|حذف الهمزة').hasMatch(d)) 'تخفيف الهمز',
+    if (RegExp('تسهيل').hasMatch(d)) 'تسهيل الهمز',
+    if (RegExp('تخفيف الهمز|حذف الهمزة').hasMatch(d) && !d.contains('تسهيل'))
+      'تخفيف الهمز',
     if (RegExp('تحقيق الهمز').hasMatch(d)) 'تحقيق الهمز',
-    if (RegExp(r'(^|\s)(ب|و)?(ال)?مد|ومدها|القصر').hasMatch(d) && !v.isQasr)
+    if (d.contains('البدل')) 'مد البدل',
+    if (RegExp(r'(^|\s)(ب|و)?(ال)?مد|ومدها|القصر').hasMatch(d) &&
+        !v.isQasr &&
+        !d.contains('البدل'))
       'المدود',
     if (RegExp('إشمام|الإشمام').hasMatch(d)) 'الإشمام',
     if (RegExp('سكت').hasMatch(d) && !d.contains('دون سكت')) 'السكت',
@@ -982,18 +1152,18 @@ List<HameshEntry> _entriesOf(
       final m = _readingsAt(variants, settings, ayah, w);
       // Usul are told once by their colour, in the page's key; beside the
       // farsh, only what the certified source states.
-      final starting = m.shown
-          .where((v) => v.word == w && v.inHamesh)
-          .toList();
+      final starting = m.shown.where((v) => v.word == w && v.inHamesh).toList();
       if (starting.isEmpty) continue;
       final end = starting
           .map((v) => v.word + v.count)
           .reduce((a, b) => a > b ? a : b);
       // The word as shown on the page: Hafs, or the riwaya shown.
-      final shownText = _baseAt(variants, settings, ayah, w)
-          .where((v) => v.word == w && v.text.isNotEmpty)
-          .firstOrNull
-          ?.text;
+      final shownText = _baseAt(
+        variants,
+        settings,
+        ayah,
+        w,
+      ).where((v) => v.word == w && v.text.isNotEmpty).firstOrNull?.text;
       final hafs = shownText ?? ayah.words.sublist(w, end).join(' ');
       // With its vowels: «زَكَرِيَّآءَ» then «زَكَرِيَّآءُ» are two notes.
       final key = [
@@ -1009,21 +1179,25 @@ List<HameshEntry> _entriesOf(
 
 enum _Naql { lam, last, dropped, alef }
 
+bool _hamzaCluster(String letter) =>
+    letter.isNotEmpty && ('ءأإؤئآ'.contains(letter[0]) || letter.contains('ٔ'));
+
 /// How a reading is naql: the hamza's vowel given to the lam of al, or to
 /// the last letter of the word, or the hamza dropped after it; null when
 /// it is something else.
 _Naql? _naqlKind(Variant v) => switch (v.description) {
   'بنقل حركة الهمزة إليها' => _Naql.last,
   'بحذف الهمزة' => _Naql.dropped,
-  // The alef left of a hamza whose vowel went to the word before (اُخَرَ).
-  'بتخفيف الهمزة' when RegExp(r'^ا[َ-ِ]?[ء-ي]').hasMatch(
-    v.text,
-  ) =>
-    _Naql.alef,
+  'بنقل حركة الهمزة إلى الساكن قبلها وصلاً' => _Naql.alef,
   final d
-      when RegExp(
-        r'^(بفتح اللام و)?ب?نقل حركة الهمزة إلى اللام( والقصر)?$',
-      ).hasMatch(d) =>
+      when v.rule == 'naql' &&
+          d.startsWith('بنقل حركة الهمزة إلى الساكن قبلها') =>
+    _Naql.alef,
+  // The alef left of a hamza whose vowel went to the word before (اُخَرَ).
+  'بتخفيف الهمزة' when RegExp(r'^ا[َ-ِ]?[ء-ي]').hasMatch(v.text) => _Naql.alef,
+  final d
+      when RegExp(r'^(بفتح اللام و)?ب?نقل حركة الهمزة إلى اللام( والقصر)?$')
+          .hasMatch(d) =>
     _Naql.lam,
   _ => null,
 };
@@ -1102,11 +1276,7 @@ class _PageFrame extends StatelessWidget {
 /// The line above the frame, as printed: surah name on the right, juz on
 /// the left.
 class _PageHeader extends StatelessWidget {
-  const _PageHeader({
-    required this.surah,
-    required this.juz,
-    this.onUsul,
-  });
+  const _PageHeader({required this.surah, required this.juz, this.onUsul});
 
   final String surah;
   final int juz;
@@ -1146,7 +1316,7 @@ class _PageHeader extends StatelessWidget {
                       child: Text(
                         'الأصول ↓',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 8,
                           fontWeight: FontWeight.w600,
                           color: MushafColors.green,
                         ),
@@ -1164,8 +1334,11 @@ class _PageHeader extends StatelessWidget {
 /// The hamesh beside the page: each note at the height of its word's line,
 /// pushed down only when the note above needs the room. Reports how many
 /// notes fit beside the page.
-class _SideHamesh extends StatelessWidget {
-  const _SideHamesh({
+class _MarginPage extends StatelessWidget {
+  const _MarginPage({
+    required this.page,
+    required this.rightWidth,
+    required this.leftWidth,
     required this.entries,
     required this.tops,
     required this.onTap,
@@ -1173,50 +1346,88 @@ class _SideHamesh extends StatelessWidget {
   });
 
   final List<HameshEntry> entries;
+  final Widget page;
+  final double rightWidth, leftWidth;
   final List<double> tops;
   final WordTap onTap;
   final ValueChanged<int> onFit;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: BorderDirectional(
-          start: BorderSide(color: MushafColors.gold.withAlpha(120)),
-        ),
-      ),
-      child: ClipRect(
-        child: CustomMultiChildLayout(
-          delegate: _NotesLayout(tops, onFit),
-          children: [
-            for (final (i, e) in entries.indexed)
-              LayoutId(
-                id: i,
+    return ClipRect(
+      child: CustomMultiChildLayout(
+        delegate: _NotesLayout(tops, onFit, rightWidth, leftWidth),
+        children: [
+          LayoutId(id: 'page', child: page),
+          for (final (i, e) in entries.indexed)
+            LayoutId(
+              id: i,
+              child: KeyedSubtree(
+                key: ValueKey('side-note-$i'),
                 child: _EntryView(entry: e, onTap: onTap, compact: true),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
 }
 
 class _NotesLayout extends MultiChildLayoutDelegate {
-  _NotesLayout(this.tops, this.onFit);
+  _NotesLayout(this.tops, this.onFit, this.rightWidth, this.leftWidth);
 
   final List<double> tops;
   final ValueChanged<int> onFit;
+  final double rightWidth, leftWidth;
 
   @override
   void performLayout(Size size) {
-    var bottom = 0.0;
+    layoutChild(
+      'page',
+      BoxConstraints.tightFor(
+        width: size.width - rightWidth - leftWidth,
+        height: size.height,
+      ),
+    );
+    positionChild('page', Offset(leftWidth, 0));
+    final heights = [
+      for (var i = 0; i < tops.length; i++)
+        layoutChild(
+          i,
+          BoxConstraints(maxWidth: math.max(rightWidth, leftWidth) - 4),
+        ).height,
+    ];
+    final columns = [<int>[], <int>[]]; // right, then left
+    final used = [0.0, 0.0];
     var fit = tops.length;
     for (var i = 0; i < tops.length; i++) {
-      final child = layoutChild(i, BoxConstraints(maxWidth: size.width - 4));
-      final top = math.max(tops[i], bottom);
-      if (fit == tops.length && top + child.height > size.height) fit = i;
-      positionChild(i, Offset(2, i >= fit ? size.height + child.height : top));
-      bottom = top + child.height + 3;
+      final rightFits = used[0] + heights[i] <= size.height;
+      final leftFits = leftWidth > 0 && used[1] + heights[i] <= size.height;
+      if (!rightFits && !leftFits) {
+        fit = i;
+        break;
+      }
+      final c = rightFits && (!leftFits || used[0] <= used[1]) ? 0 : 1;
+      columns[c].add(i);
+      used[c] += heights[i] + 3;
+    }
+    for (var c = 0; c < columns.length; c++) {
+      final positions = <int, double>{};
+      var bottom = 0.0;
+      for (final i in columns[c]) {
+        positions[i] = math.max(tops[i], bottom);
+        bottom = positions[i]! + heights[i] + 3;
+      }
+      // Float late notes upwards when there is free space in the margin.
+      var limit = size.height;
+      for (final i in columns[c].reversed) {
+        final y = math.min(positions[i]!, limit - heights[i]);
+        positionChild(i, Offset(c == 0 ? size.width - rightWidth + 2 : 2, y));
+        limit = y - 3;
+      }
+    }
+    for (var i = fit; i < tops.length; i++) {
+      positionChild(i, Offset(0, size.height + heights[i]));
     }
     onFit(fit);
   }
@@ -1292,6 +1503,7 @@ class _UsulBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: const ValueKey('usul-notes'),
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
       decoration: BoxDecoration(
         color: MushafColors.goldLight.withAlpha(60),
@@ -1301,69 +1513,91 @@ class _UsulBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'الأصول',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: MushafColors.green,
-            ),
-          ),
-          Divider(height: 8, color: MushafColors.gold.withAlpha(160)),
-          for (final g in groups)
+          for (final (n, g) in groups.indexed)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 10,
-                runSpacing: 2,
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 2,
                     children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: g.color,
-                          shape: BoxShape.circle,
+                      if (n == 0)
+                        Text(
+                          'الأصول',
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: MushafColors.green,
+                          ),
                         ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: g.color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${g.label}:',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: g.color,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${g.label}:',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: g.color,
+                      for (final i in g.items.values)
+                        InkWell(
+                          onTap: () => onTap(i.ayah, i.word),
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _usulWord(i, g.color),
+                              if (i.stopOnly)
+                                Text(
+                                  ' (وقفًا)',
+                                  style: TextStyle(fontSize: 9, color: g.color),
+                                ),
+                              Text(
+                                ' (${readersAr(i.riwayat.toList(), const [])})',
+                                style: TextStyle(
+                                  fontSize: 8.5,
+                                  color: MushafColors.ink,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                     ],
                   ),
-                  for (final i in g.items.values)
-                    InkWell(
-                      onTap: () => onTap(i.ayah, i.word),
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: i.text,
-                              style: TextStyle(
-                                fontFamily: 'Hafs',
-                                fontSize: 13,
-                                color: g.color,
-                              ),
-                            ),
-                            TextSpan(
-                              text:
-                                  ' (${readersAr(i.riwayat.toList(), const [])})',
-                              style: TextStyle(
-                                fontSize: 8.5,
-                                color: MushafColors.ink,
-                              ),
-                            ),
-                          ],
+                  if (g.ways.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1, bottom: 1),
+                      child: Text(
+                        g.ways
+                            .toList()
+                            .asMap()
+                            .entries
+                            .map((e) => '${e.key + 1}- ${e.value}')
+                            .join('؛ '),
+                        key: ValueKey(
+                          g.label.contains('في كلمة')
+                              ? 'hamza-word-ways'
+                              : 'hamza-ways:${g.label}:${g.ways.join('|')}',
+                        ),
+                        style: TextStyle(
+                          fontSize: 9,
+                          height: 1.3,
+                          color: g.color,
                         ),
                       ),
                     ),
@@ -1372,6 +1606,24 @@ class _UsulBox extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _usulWord(_UsulItem item, Color color) {
+    final style = TextStyle(fontFamily: 'Hafs', fontSize: 12, color: color);
+    final text = Text(
+      item.text,
+      textDirection: TextDirection.rtl,
+      style: style,
+    );
+    if (item.replacement == null) return text;
+    return HamzaReplacementMark(
+      text: item.text,
+      offset: item.text.lastIndexOf(' ') + 1,
+      letter: item.replacement!,
+      style: style,
+      color: color,
+      child: text,
     );
   }
 }

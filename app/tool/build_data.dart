@@ -203,6 +203,7 @@ class Unit {
   /// Written as alef maqsura (ى, ے), read as a ya.
   bool maqsura = false;
   String? tanween;
+  bool iqlab = false;
 
   /// Madd, imala / taqlil, tasheel / ishmam, saktah.
   final marks = <int>[];
@@ -314,6 +315,8 @@ List<Unit> _units(String word) {
       u.vowel = null;
       u.marks.remove(0x06ED);
     }
+    u.iqlab = u.tanween != null &&
+        (raw.contains(0x06E2) || raw.contains(0x06ED));
     out.add(u);
     if (ms.contains(_dagger)) out.add(Unit('ا'));
   }
@@ -422,7 +425,7 @@ String describe(String hafs, String other) {
     // A ha read with sukun (يُؤَدِّهۡ) is told by the letters below
     // (إسكان الهاء), not as a silah left out.
     final sukun = !_hasSilah(b) && which == 'الهاء' &&
-        units(_dropSilah(b)).last.vowel == null;
+        units(_stripWaqf(b)).last.vowel == null;
     phrases.add(
       sukun
           ? 'إسكان الهاء'
@@ -500,6 +503,11 @@ String describe(String hafs, String other) {
   if (maddB < maddA) phrases.add('القصر');
   if (maddB > maddA) phrases.add('المد');
 
+  if (_addsInterrogative(hafs, other)) {
+    phrases.remove('فتح الهمزة');
+    phrases.remove('زيادة الهمزة');
+    phrases.insert(0, 'زيادة همزة استفهام');
+  }
   final unique = phrases.toSet().toList();
   if (unique.isEmpty || unique.length > 4) return '';
   return 'ب${unique.join(' و')}';
@@ -541,6 +549,7 @@ bool _compareUnit(Unit a, Unit b, int index, List<String> out, [Unit? before]) {
         _ => 'ترك تنوين $name',
       },
     });
+    if (b.iqlab) out.add('الإقلاب');
   } else if (a.letter == 'ء' && a.seat != b.seat && a.vowel == b.vowel) {
     // Same hamza on another seat: spelling only.
   } else if (a.vowel != b.vowel && !(a.letter == 'ا' && b.vowel == null)) {
@@ -582,6 +591,11 @@ String? classify(String hafs, String other) {
   if (a.letters == b.letters && a.vowels == b.vowels) {
     return a.marks == b.marks ? null : 'u';
   }
+  // An interrogative hamza changes the word: farsh, rather than the
+  // handling of a hamza already present (tasheel, ibdal, ...).
+  if (_addsInterrogative(hafs, other) || _addsInterrogative(other, hafs)) {
+    return 'f';
+  }
   if (a.letters != b.letters && a.noHamza == b.noHamza) return 'h';
   // Silat mim al-jam' / ha' al-kinaya (لَهُمۡ ↔ لَهُمُۥ) is an usul rule.
   if (_hasSilah(hafs) != _hasSilah(other)) {
@@ -589,6 +603,17 @@ String? classify(String hafs, String other) {
     if (x.letters == y.letters && x.vowels == y.vowels) return 'u';
   }
   return 'f';
+}
+
+bool _addsInterrogative(String original, String reading) {
+  final a = units(original), b = units(reading);
+  return a.isNotEmpty &&
+      b.length == a.length + 1 &&
+      a.first.letter == 'ء' &&
+      b.first.letter == 'ء' &&
+      b[1].letter == 'ء' &&
+      a.map((u) => u.letter).join() ==
+          b.skip(1).map((u) => u.letter).join();
 }
 
 /// [classify] and [describe] plus two cross-word rules that only show at the

@@ -27,6 +27,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'build_warsh_usul.dart' show correctWarshUsul;
+
 /// A letter and its marks.
 typedef Cluster = ({int base, List<int> marks});
 
@@ -217,7 +219,8 @@ void main() {
   ];
   final words = {for (final a in ayahs) '${a.surah}:${a.ayah}': a.words};
 
-  for (final file in Directory('assets/data/qiraat').listSync().whereType<File>()) {
+  for (final file in Directory('assets/data/qiraat').listSync().whereType<File>()
+      .where((f) => f.path.endsWith('.json'))) {
     final id = file.uri.pathSegments.last.replaceAll('.json', '');
     final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
     final variants = [
@@ -330,6 +333,10 @@ void main() {
       return 0;
     });
     json['variants'] = variants;
+    if (id == 'warsh') {
+      final book = jsonDecode(File('assets/data/kharouf.json').readAsStringSync()) as Map;
+      correctWarshUsul(quran, book, variants);
+    }
     file.writeAsStringSync(jsonEncode(json));
     stdout.writeln('$id: dropped $dropped written as Hafs'
         '${added.isEmpty ? '' : ', added ${added.entries.map((e) => '${e.value} ${e.key}').join(', ')}'}');
