@@ -92,6 +92,7 @@ class _MushafPageState extends State<MushafPage>
 
   /// The page with its hamesh and usul below it.
   final _scroll = ScrollController();
+  final _landscapeScroll = ScrollController();
 
   /// Moves the words that differ from Hafs («تنبيه الاختلافات»).
   late final _alert = AnimationController(
@@ -124,6 +125,7 @@ class _MushafPageState extends State<MushafPage>
     _disposeRecognizers();
     _zoom.dispose();
     _scroll.dispose();
+    _landscapeScroll.dispose();
     _alert.dispose();
     super.dispose();
   }
@@ -154,7 +156,9 @@ class _MushafPageState extends State<MushafPage>
     return LayoutBuilder(
       builder: (context, viewport) {
         final content = printed
-            ? _printedPage(ayahs, lines, viewport.biggest, narrow)
+            ? MediaQuery.orientationOf(context) == Orientation.landscape
+                  ? _landscapePage(ayahs, lines, viewport.biggest)
+                  : _printedPage(ayahs, lines, viewport.biggest, narrow)
             : SingleChildScrollView(
                 physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
                 padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
@@ -187,6 +191,190 @@ class _MushafPageState extends State<MushafPage>
           ],
         );
       },
+    );
+  }
+
+  /// A large, continuously scrolling print. Fixed side margins follow
+  /// only the lines currently in view; their own scroll keeps dense
+  /// readings accessible without reducing the font or dropping notes.
+  Widget _landscapePage(List<Ayah> ayahs, List<MushafLine> lines, Size size) {
+    final scroll = _landscapeScroll;
+    final sides = widget.showHamesh;
+    final entries = sides && widget.settings.mode == DisplayMode.hamesh
+        ? _hameshEntries(ayahs)
+        : const <HameshEntry>[];
+    final words = [
+      for (final l in lines)
+        if (l is TextLine) ...l.words,
+    ];
+    final hasUsul =
+        sides && _usulNotes(words, widget.variants, widget.settings).isNotEmpty;
+    final hasFarsh = entries.isNotEmpty;
+    final both = hasUsul && hasFarsh;
+    final rail = (size.width * (both ? 0.19 : 0.30)).clamp(96.0, 280.0);
+    final pageWidth = size.width - (hasUsul ? rail : 0) - (hasFarsh ? rail : 0);
+    const outer = 4.0, header = 22.0;
+    const contentTop = outer + header + OrnamentFrame.inset;
+    final textWidth =
+        pageWidth - 2 * outer - 2 * OrnamentFrame.sideInset(sides);
+    final spans = lines.fold(0, (n, l) => n + l.span);
+    final natural = MushafLines(
+      lines: lines,
+      centered: widget.quran.isCentered(widget.page),
+      quran: widget.quran,
+      wordBuilder: _word,
+      display: _display,
+      marker: _marker,
+    ).metrics(textWidth);
+    // Size by width, with a little less vertical expansion. The glyphs
+    // keep their shapes, the print's word order and its inter-word spaces.
+    final textHeight = math.max(
+      natural.fontSize * 1.8 * spans,
+      size.height * 1.65 -
+          contentTop -
+          OrnamentFrame.inset -
+          _PageFrame.numberHeight -
+          outer,
+    );
+    final lineHeight = textHeight / spans;
+    final pageHeight =
+        textHeight +
+        contentTop +
+        OrnamentFrame.inset +
+        _PageFrame.numberHeight +
+        outer;
+    final first = ayahs.first;
+    final print = SizedBox(
+      key: const ValueKey('mushaf-print'),
+      width: pageWidth,
+      height: pageHeight,
+      child: Padding(
+        padding: const EdgeInsets.all(outer),
+        child: Column(
+          children: [
+            SizedBox(
+              height: header,
+              child: _PageHeader(
+                surah: widget.quran.surah(first.surah).nameAr,
+                juz: first.juz,
+              ),
+            ),
+            Expanded(
+              child: _PageFrame(
+                page: widget.page,
+                sides: sides,
+                onNumberTap: widget.onPageNumberTap,
+                child: MushafLines(
+                  lines: lines,
+                  centered: widget.quran.isCentered(widget.page),
+                  quran: widget.quran,
+                  wordBuilder: _word,
+                  display: _display,
+                  marker: _marker,
+                  height: textHeight,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    Widget margin(bool farsh) => SizedBox(
+      width: rail,
+      child: ListenableBuilder(
+        listenable: scroll,
+        builder: (context, _) {
+          final offset = scroll.hasClients ? scroll.offset : 0.0;
+          final visible = <(Ayah, int)>[];
+          var span = 0;
+          for (final l in lines) {
+            final top = contentTop + span * lineHeight;
+            final bottom = top + l.span * lineHeight;
+            if (l is TextLine &&
+                bottom > offset &&
+                top < offset + size.height) {
+              visible.addAll(l.words);
+            }
+            span += l.span;
+          }
+          final keys = {
+            for (final (a, w) in visible)
+              VariantRepository.key(a.surah, a.number, w),
+          };
+          final section = visible.isEmpty
+              ? 'empty'
+              : '${keys.first}:${keys.last}';
+          final notes = entries
+              .where(
+                (e) => keys.contains(
+                  VariantRepository.key(e.ayah.surah, e.ayah.number, e.word),
+                ),
+              )
+              .toList();
+          final groups = farsh
+              ? const <_UsulGroup>[]
+              : _usulNotes(visible, widget.variants, widget.settings);
+          return _LandscapeMargin(
+            key: ValueKey('landscape-${farsh ? 'farsh' : 'usul'}-$section'),
+            farsh: farsh,
+            child: farsh
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'الفرش',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: MushafColors.green,
+                        ),
+                      ),
+                      for (final e in notes)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: KeyedSubtree(
+                            key: ValueKey(
+                              'landscape-note:${e.ayah.surah}:${e.ayah.number}:${e.word}',
+                            ),
+                            child: _EntryView(
+                              entry: e,
+                              onTap: _openReference,
+                              compact: false,
+                              scale: 1.1,
+                            ),
+                          ),
+                        ),
+                    ],
+                  )
+                : groups.isEmpty
+                ? const SizedBox()
+                : _UsulBox(groups: groups, onTap: _openReference, scale: 1.5),
+          );
+        },
+      ),
+    );
+
+    return Row(
+      key: const ValueKey('landscape-reader'),
+      textDirection: TextDirection.rtl,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (hasFarsh) margin(true),
+        Expanded(
+          child: Scrollbar(
+            controller: scroll,
+            child: SingleChildScrollView(
+              key: const ValueKey('landscape-page-scroll'),
+              controller: scroll,
+              physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
+              child: print,
+            ),
+          ),
+        ),
+        if (hasUsul) margin(false),
+      ],
     );
   }
 
@@ -1331,9 +1519,48 @@ class _PageHeader extends StatelessWidget {
   }
 }
 
-/// The hamesh beside the page: each note at the height of its word's line,
-/// pushed down only when the note above needs the room. Reports how many
-/// notes fit beside the page.
+/// A fixed, readable margin for the visible section of a landscape page.
+class _LandscapeMargin extends StatefulWidget {
+  const _LandscapeMargin({super.key, required this.child, required this.farsh});
+
+  final Widget child;
+  final bool farsh;
+
+  @override
+  State<_LandscapeMargin> createState() => _LandscapeMarginState();
+}
+
+class _LandscapeMarginState extends State<_LandscapeMargin> {
+  final _scroll = ScrollController(keepScrollOffset: false);
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    key: ValueKey(
+      widget.farsh ? 'landscape-farsh-margin' : 'landscape-usul-margin',
+    ),
+    color: MushafColors.goldLight.withAlpha(35),
+    child: Scrollbar(
+      controller: _scroll,
+      child: SingleChildScrollView(
+        key: ValueKey(
+          widget.farsh ? 'landscape-farsh-scroll' : 'landscape-usul-scroll',
+        ),
+        controller: _scroll,
+        primary: false,
+        padding: const EdgeInsets.all(5),
+        child: widget.child,
+      ),
+    ),
+  );
+}
+
+/// Portrait notes follow their printed lines and report how many fit.
 class _MarginPage extends StatelessWidget {
   const _MarginPage({
     required this.page,
@@ -1495,10 +1722,11 @@ class _Alerting extends StatelessWidget {
 /// The usul of the page below it: each kind in its colour, then every word
 /// read with it and who reads it so. Tapping a word opens its readings.
 class _UsulBox extends StatelessWidget {
-  const _UsulBox({required this.groups, required this.onTap});
+  const _UsulBox({required this.groups, required this.onTap, this.scale = 1});
 
   final List<_UsulGroup> groups;
   final WordTap onTap;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
@@ -1528,7 +1756,7 @@ class _UsulBox extends StatelessWidget {
                         Text(
                           'الأصول',
                           style: TextStyle(
-                            fontSize: 8,
+                            fontSize: 8 * scale,
                             fontWeight: FontWeight.bold,
                             color: MushafColors.green,
                           ),
@@ -1545,12 +1773,14 @@ class _UsulBox extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            '${g.label}:',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: g.color,
+                          Flexible(
+                            child: Text(
+                              '${g.label}:',
+                              style: TextStyle(
+                                fontSize: 9 * scale,
+                                fontWeight: FontWeight.bold,
+                                color: g.color,
+                              ),
                             ),
                           ),
                         ],
@@ -1565,12 +1795,15 @@ class _UsulBox extends StatelessWidget {
                               if (i.stopOnly)
                                 Text(
                                   ' (وقفًا)',
-                                  style: TextStyle(fontSize: 9, color: g.color),
+                                  style: TextStyle(
+                                    fontSize: 9 * scale,
+                                    color: g.color,
+                                  ),
                                 ),
                               Text(
                                 ' (${readersAr(i.riwayat.toList(), const [])})',
                                 style: TextStyle(
-                                  fontSize: 8.5,
+                                  fontSize: 8.5 * scale,
                                   color: MushafColors.ink,
                                 ),
                               ),
@@ -1595,7 +1828,7 @@ class _UsulBox extends StatelessWidget {
                               : 'hamza-ways:${g.label}:${g.ways.join('|')}',
                         ),
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 9 * scale,
                           height: 1.3,
                           color: g.color,
                         ),
@@ -1610,7 +1843,11 @@ class _UsulBox extends StatelessWidget {
   }
 
   Widget _usulWord(_UsulItem item, Color color) {
-    final style = TextStyle(fontFamily: 'Hafs', fontSize: 12, color: color);
+    final style = TextStyle(
+      fontFamily: 'Hafs',
+      fontSize: 12 * scale,
+      color: color,
+    );
     final text = Text(
       item.text,
       textDirection: TextDirection.rtl,
@@ -1690,24 +1927,26 @@ class _EntryView extends StatelessWidget {
     required this.entry,
     required this.onTap,
     required this.compact,
+    this.scale = 1,
   });
 
   final HameshEntry entry;
   final WordTap onTap;
   final bool compact;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
     final e = entry;
     final label = TextStyle(
-      fontSize: compact ? 7.5 : 10,
+      fontSize: (compact ? 7.5 : 10) * scale,
       height: 1.3,
       color: MushafColors.ink,
     );
     // The Hafs word of the note, and the riwaya's reading larger, to read
     // at a glance.
-    final quran = compact ? 10.5 : 13.0;
-    final reading = compact ? 14.0 : 17.0;
+    final quran = (compact ? 10.5 : 13.0) * scale;
+    final reading = (compact ? 14.0 : 17.0) * scale;
     return InkWell(
       onTap: () => onTap(e.ayah, e.word),
       child: Column(

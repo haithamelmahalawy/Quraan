@@ -85,7 +85,21 @@ class _ReaderScreenState extends State<ReaderScreen>
   bool _turning = false;
   Timer? _settle;
 
-  bool get _twoPages => widget.settings.twoPages;
+  bool _landscape = false;
+  bool get _twoPages => widget.settings.twoPages && !_landscape;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    if (landscape == _landscape) return;
+    _landscape = landscape;
+    // Landscape reads a single enlarged page in sections. Keep the saved
+    // spread preference for portrait and retain the current page number.
+    _pager = GlobalKey<BookPagerState>();
+    _zoomed = false;
+  }
 
   /// The mushaf shown, and the one the pager was built for.
   QuranRepository get _quran => widget.mushafs.of(widget.settings.edition);
@@ -568,21 +582,22 @@ class _ReaderScreenState extends State<ReaderScreen>
                                   if (page != null) _goToPage(page);
                                 },
                               ),
-                              RaisedIcon(
-                                icon: two
-                                    ? Icons.crop_portrait_rounded
-                                    : Icons.auto_stories_rounded,
-                                tooltip: two
-                                    ? 'صفحة واحدة'
-                                    : 'صفحتان متقابلتان',
-                                onTap: () {
-                                  setState(() {
-                                    _pager = GlobalKey<BookPagerState>();
-                                    _zoomed = false;
-                                  });
-                                  widget.settings.twoPages = !two;
-                                },
-                              ),
+                              if (!_landscape)
+                                RaisedIcon(
+                                  icon: two
+                                      ? Icons.crop_portrait_rounded
+                                      : Icons.auto_stories_rounded,
+                                  tooltip: two
+                                      ? 'صفحة واحدة'
+                                      : 'صفحتان متقابلتان',
+                                  onTap: () {
+                                    setState(() {
+                                      _pager = GlobalKey<BookPagerState>();
+                                      _zoomed = false;
+                                    });
+                                    widget.settings.twoPages = !two;
+                                  },
+                                ),
                               RaisedIcon(
                                 icon: widget.settings.showMutashabihat
                                     ? Icons.highlight_rounded
