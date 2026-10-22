@@ -28,6 +28,14 @@ letters, rare words and adjacent word pairs weighing more, plus the page
 number). Tested: noisy simulated OCR of 80 random pages, and rendered pages
 269 and 601 through the full OCR pipeline on Android.
 
+The home page's people icon opens **القراء العشرة ورواتهم**, an offline
+biographical guide. Browse the ten readers or their twenty transmissions,
+filter by the reader's or narrator's city and by the seven / complementary
+three, and search names. Each reader includes a short biography and expandable
+narrator biographies. The guide distinguishes al-Duri's two transmissions
+and Khalaf's roles as narrator and tenth reader; its sources are available
+from the information button (`lib/data/qurra_biographies.dart`).
+
 Right or left: when a page opens, an open mushaf briefly shows whether it is
 the right (odd) or left (even) page, then shrinks into the small icon by the
 page number. Two-page view shows facing pages (odd on the right) and turns a

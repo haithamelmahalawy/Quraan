@@ -8,6 +8,7 @@ import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../state/reader_settings.dart';
 import 'qiraat_sheet.dart';
+import 'qurra_guide_screen.dart';
 import 'reader_screen.dart';
 import 'scan_screen.dart';
 import 'search_screen.dart';
@@ -89,6 +90,9 @@ class HomeScreen extends StatelessWidget {
   void _search(BuildContext context) =>
       _pick(context, SearchScreen(quran: quran));
 
+  void _openQurraGuide(BuildContext context) => Navigator.of(context)
+      .push<void>(MaterialPageRoute(builder: (_) => const QurraGuideScreen()));
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,8 +125,16 @@ class HomeScreen extends StatelessWidget {
               child: _BottomBar(
                 items: [
                   (Icons.home_rounded, 'الرئيسية', null),
-                  (Icons.menu_book_rounded, 'المصحف', () => _openMushaf(context)),
-                  (Icons.document_scanner_rounded, 'الكاميرا', () => _openScan(context)),
+                  (
+                    Icons.menu_book_rounded,
+                    'المصحف',
+                    () => _openMushaf(context),
+                  ),
+                  (
+                    Icons.document_scanner_rounded,
+                    'الكاميرا',
+                    () => _openScan(context),
+                  ),
                   (Icons.search_rounded, 'البحث', () => _search(context)),
                   (Icons.tune_rounded, 'الإعدادات', () => _settings(context)),
                 ],
@@ -144,13 +156,21 @@ class HomeScreen extends StatelessWidget {
     ];
     return ListView(
       padding: EdgeInsets.fromLTRB(
-          16, 10, 16, MediaQuery.paddingOf(context).bottom + 100),
+        16,
+        10,
+        16,
+        MediaQuery.paddingOf(context).bottom + 100,
+      ),
       children: [
         // The app's icon, and the quick buttons.
         Row(
           children: [
             ClipOval(
-              child: Image.asset('assets/images/logo.png', width: 46, height: 46),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 46,
+                height: 46,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -163,6 +183,12 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
+            _RoundButton(
+              icon: Icons.groups_outlined,
+              tooltip: 'القراء العشرة ورواتهم',
+              onTap: () => _openQurraGuide(context),
+            ),
+            const SizedBox(width: 10),
             _RoundButton(
               icon: Icons.search_rounded,
               tooltip: 'البحث',
@@ -207,18 +233,27 @@ class HomeScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: MushafColors.green,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Icon(Icons.auto_stories_rounded,
-                      size: 15, color: Colors.white),
+                  child: const Icon(
+                    Icons.auto_stories_rounded,
+                    size: 15,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   settings.edition.nameAr,
-                  style: TextStyle(color: _Look.text, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: _Look.text,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Icon(Icons.swap_horiz_rounded, color: _Look.muted, size: 20),
               ],
@@ -280,6 +315,13 @@ class HomeScreen extends StatelessWidget {
                 onTap: () => _search(context),
               ),
               _Row(
+                icon: Icons.groups_outlined,
+                color: const Color(0xFF26A69A),
+                title: 'القراء العشرة ورواتهم',
+                subtitle: 'نبذات وتصنيف بحسب المدن والقراءات',
+                onTap: () => _openQurraGuide(context),
+              ),
+              _Row(
                 icon: Icons.tune_rounded,
                 color: const Color(0xFFE56BA8),
                 title: 'الإعدادات',
@@ -299,10 +341,12 @@ class HomeScreen extends StatelessWidget {
 abstract final class _Look {
   static bool get dark => MushafColors.isDark;
   static Color get base => dark ? const Color(0xFF0E0F12) : MushafColors.paper;
-  static Color get glow =>
-      dark ? const Color(0xFF8A3B12).withAlpha(200) : MushafColors.gold.withAlpha(110);
+  static Color get glow => dark
+      ? const Color(0xFF8A3B12).withAlpha(200)
+      : MushafColors.gold.withAlpha(110);
   static Color get text => dark ? Colors.white : MushafColors.ink;
-  static Color get muted => dark ? Colors.white.withAlpha(150) : MushafColors.frame;
+  static Color get muted =>
+      dark ? Colors.white.withAlpha(150) : MushafColors.frame;
   static Color get glass =>
       dark ? Colors.white.withAlpha(20) : Colors.white.withAlpha(150);
   static Color get edge =>
@@ -486,8 +530,11 @@ class _Banner extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.document_scanner_rounded,
-                    color: Colors.white, size: 38),
+                child: const Icon(
+                  Icons.document_scanner_rounded,
+                  color: Colors.white,
+                  size: 38,
+                ),
               ),
             ],
           ),
@@ -612,8 +659,9 @@ class _BottomBar extends StatelessWidget {
                         label,
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight:
-                              onTap == null ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: onTap == null
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                           color: onTap == null ? _Look.text : _Look.muted,
                         ),
                       ),
