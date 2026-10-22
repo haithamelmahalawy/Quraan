@@ -35,6 +35,10 @@ three, and search names. Each reader includes a short biography and expandable
 narrator biographies. The guide distinguishes al-Duri's two transmissions
 and Khalaf's roles as narrator and tenth reader; its sources are available
 from the information button (`lib/data/qurra_biographies.dart`).
+Perspective cards, raised seals, and a book illustration give the guide depth.
+A graphical filter panel shows cities and result counts before applying a
+selection; dismissing it preserves the current filters. Interactive card motion
+respects the device's reduced-animation setting.
 
 Right or left: when a page opens, an open mushaf briefly shows whether it is
 the right (odd) or left (even) page, then shrinks into the small icon by the

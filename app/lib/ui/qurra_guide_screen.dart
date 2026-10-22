@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/qurra_biographies.dart';
+import 'guide_depth.dart';
 
 /// An offline guide, separate from choosing which riwaya to read.
 class QurraGuideScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class QurraGuideScreen extends StatefulWidget {
 
 class _QurraGuideScreenState extends State<QurraGuideScreen> {
   final _search = TextEditingController();
+  final _scroll = ScrollController();
   bool _narrators = false;
   RecitationCity? _city;
   RecitationGroup? _group;
@@ -19,6 +21,7 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
   @override
   void dispose() {
     _search.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -52,12 +55,6 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
               ),
         )
         .toList();
-    final availableCities = {
-      if (_narrators)
-        ...transmissions.map((t) => t.narrator.city)
-      else
-        ...readers.map((b) => b.city),
-    };
     final count = _narrators ? visibleNarrators.length : visibleReaders.length;
     return Scaffold(
       appBar: AppBar(
@@ -66,6 +63,14 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
           style: TextStyle(fontSize: 19),
         ),
         actions: [
+          IconButton(
+            tooltip: 'تصفية الدليل',
+            onPressed: _openFilters,
+            icon: Badge(
+              isLabelVisible: _city != null || _group != null,
+              child: const Icon(Icons.tune_rounded),
+            ),
+          ),
           IconButton(
             tooltip: 'عن الدليل ومصادره',
             onPressed: () => _sources(context),
@@ -77,20 +82,12 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
         top: false,
         child: ListView(
           key: const ValueKey('qurra-guide-list'),
+          controller: _scroll,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            Text(
-              '١٠ قراء • ٢٠ رواية',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'نبذة عن كل إمام وراوٍ، مع التصنيف بحسب بلد الإقراء أو الاشتهار. يمكنك تصفح القراء أو الرواة والبحث بأسمائهم.',
-            ),
-            const SizedBox(height: 14),
+            const _GuideHero(),
+            const SizedBox(height: 4),
             SegmentedButton<bool>(
               segments: const [
                 ButtonSegment(
@@ -127,56 +124,35 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
                         icon: const Icon(Icons.clear),
                         onPressed: () => setState(_search.clear),
                       ),
-                border: const OutlineInputBorder(),
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerHighest.withAlpha(
+                  90,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
               ),
             ),
             const SizedBox(height: 12),
-            Text('التصنيف', style: theme.textTheme.titleSmall),
             Wrap(
-              spacing: 6,
-              runSpacing: 2,
+              spacing: 8,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                ChoiceChip(
-                  label: const Text('العشرة جميعًا'),
-                  selected: _group == null,
-                  onSelected: (_) => setState(() {
-                    _group = null;
-                    _city = null;
-                  }),
+                FilledButton.tonalIcon(
+                  onPressed: _openFilters,
+                  icon: const Icon(Icons.tune_rounded),
+                  label: const Text('تصفية'),
                 ),
-                for (final g in RecitationGroup.values)
-                  ChoiceChip(
-                    label: Text(g.nameAr),
-                    selected: _group == g,
-                    onSelected: (_) => setState(() {
-                      _group = g;
-                      _city = null;
-                    }),
+                if (_city != null)
+                  InputChip(
+                    label: Text(_city!.nameAr),
+                    onDeleted: () => setState(() => _city = null),
                   ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _narrators ? 'بلد الراوي' : 'بلد القارئ',
-              style: theme.textTheme.titleSmall,
-            ),
-            Wrap(
-              spacing: 6,
-              runSpacing: 2,
-              children: [
-                ChoiceChip(
-                  label: const Text('كل البلدان'),
-                  selected: _city == null,
-                  onSelected: (_) => setState(() => _city = null),
-                ),
-                for (final c in RecitationCity.values.where(
-                  availableCities.contains,
-                ))
-                  ChoiceChip(
-                    key: ValueKey('city-${c.name}'),
-                    label: Text(c.nameAr),
-                    selected: _city == c,
-                    onSelected: (_) => setState(() => _city = c),
+                if (_group != null)
+                  InputChip(
+                    label: Text(_group!.nameAr),
+                    onDeleted: () => setState(() => _group = null),
                   ),
               ],
             ),
@@ -229,7 +205,8 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
                   for (final t in visibleNarrators.where(
                     (t) => t.narrator.city == c,
                   ))
-                    Card(
+                    GuideDepthSurface(
+                      accent: t.narrator.qiraa.color,
                       key: ValueKey('narrator-${t.narrator.riwayaId}'),
                       child: Padding(
                         padding: const EdgeInsets.all(14),
@@ -271,6 +248,35 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openFilters() async {
+    FocusScope.of(context).unfocus();
+    final selected =
+        await showModalBottomSheet<
+          ({RecitationCity? city, RecitationGroup? group})
+        >(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          showDragHandle: true,
+          builder: (_) => FractionallySizedBox(
+            heightFactor: .88,
+            child: _GuideFilterSheet(
+              narrators: _narrators,
+              city: _city,
+              group: _group,
+              query: _search.text,
+            ),
+          ),
+        );
+    if (selected != null && mounted) {
+      setState(() {
+        _city = selected.city;
+        _group = selected.group;
+      });
+      if (_scroll.hasClients) _scroll.jumpTo(0);
+    }
   }
 
   void _sources(BuildContext context) => showDialog<void>(
@@ -315,6 +321,317 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
   );
 }
 
+class _GuideHero extends StatelessWidget {
+  const _GuideHero();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GuideDepthSurface(
+      accent: theme.colorScheme.primary,
+      depth: 6,
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'أئمة القراءة',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '١٠ قراء • ٢٠ رواية',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'تعرّف إلى القراء ورواتهم، واستكشف مدارس الإقراء بحسب المدن.',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(height: 1.6),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          const SizedBox(
+            width: 90,
+            height: 126,
+            child: FittedBox(child: GuideBookSculpture()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuideFilterSheet extends StatefulWidget {
+  const _GuideFilterSheet({
+    required this.narrators,
+    required this.city,
+    required this.group,
+    required this.query,
+  });
+  final bool narrators;
+  final RecitationCity? city;
+  final RecitationGroup? group;
+  final String query;
+  @override
+  State<_GuideFilterSheet> createState() => _GuideFilterSheetState();
+}
+
+class _GuideFilterSheetState extends State<_GuideFilterSheet> {
+  late RecitationCity? _city = widget.city;
+  late RecitationGroup? _group = widget.group;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final readers = readerBiographies
+        .where((b) => _group == null || b.group == _group)
+        .toList();
+    final narrators = [
+      for (final b in readers)
+        for (final n in b.narrators) (reader: b, narrator: n),
+    ];
+    final available = {
+      if (widget.narrators)
+        ...narrators.map((t) => t.narrator.city)
+      else
+        ...readers.map((b) => b.city),
+    };
+    final matches = widget.narrators
+        ? [
+            for (final t in narrators)
+              if (biographyMatches(
+                widget.query,
+                '${narratorSearchText(t.narrator)} ${t.reader.fullName} ${t.reader.group.nameAr}',
+              ))
+                t.narrator.city,
+          ]
+        : [
+            for (final b in readers)
+              if (b.matches(widget.query)) b.city,
+          ];
+    final count = matches.where((c) => _city == null || c == _city).length;
+    return SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'تصفية الدليل',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => setState(() {
+                    _city = null;
+                    _group = null;
+                  }),
+                  child: const Text('مسح التصفية'),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              key: const ValueKey('guide-filter-scroll'),
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('التصنيف', style: theme.textTheme.titleSmall),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('العشرة جميعًا'),
+                        selected: _group == null,
+                        onSelected: (_) => setState(() {
+                          _group = null;
+                          _city = null;
+                        }),
+                      ),
+                      for (final g in RecitationGroup.values)
+                        ChoiceChip(
+                          label: Text(g.nameAr),
+                          selected: _group == g,
+                          onSelected: (_) => setState(() {
+                            _group = g;
+                            _city = null;
+                          }),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    widget.narrators ? 'بلد الراوي' : 'بلد القارئ',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 10),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = constraints.maxWidth >= 600 ? 3 : 2;
+                      final width =
+                          (constraints.maxWidth - 12 * (columns - 1)) / columns;
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 2,
+                        children: [
+                          SizedBox(
+                            width: width,
+                            child: _CityFilterTile(
+                              key: const ValueKey('city-all'),
+                              city: null,
+                              count: matches.length,
+                              selected: _city == null,
+                              onTap: () => setState(() => _city = null),
+                            ),
+                          ),
+                          for (final c in RecitationCity.values.where(
+                            available.contains,
+                          ))
+                            SizedBox(
+                              width: width,
+                              child: _CityFilterTile(
+                                key: ValueKey('city-${c.name}'),
+                                city: c,
+                                count: matches.where((m) => m == c).length,
+                                selected: _city == c,
+                                onTap: () => setState(() => _city = c),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              border: Border(
+                top: BorderSide(color: theme.dividerColor.withAlpha(40)),
+              ),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                key: const ValueKey('apply-guide-filters'),
+                onPressed: () =>
+                    Navigator.pop(context, (city: _city, group: _group)),
+                icon: const Icon(Icons.check_rounded),
+                label: Text('عرض النتائج (${_digits(count)})'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CityFilterTile extends StatelessWidget {
+  const _CityFilterTile({
+    super.key,
+    required this.city,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
+  final RecitationCity? city;
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = switch (city) {
+      RecitationCity.madinah => const Color(0xFF2E7D60),
+      RecitationCity.makkah => const Color(0xFF9C752A),
+      RecitationCity.kufa => const Color(0xFF805CB0),
+      RecitationCity.basra => const Color(0xFF23848E),
+      RecitationCity.damascus => const Color(0xFF477EB0),
+      RecitationCity.baghdad => const Color(0xFFB66D45),
+      RecitationCity.egypt => const Color(0xFFA86D30),
+      RecitationCity.raqqa => const Color(0xFF5C8492),
+      null => scheme.primary,
+    };
+    final icon = switch (city) {
+      RecitationCity.madinah => Icons.mosque_outlined,
+      RecitationCity.makkah => Icons.place_outlined,
+      RecitationCity.kufa => Icons.account_balance_outlined,
+      RecitationCity.basra => Icons.water_outlined,
+      RecitationCity.damascus => Icons.fort_outlined,
+      RecitationCity.baghdad => Icons.location_city_outlined,
+      RecitationCity.egypt => Icons.landscape_outlined,
+      RecitationCity.raqqa => Icons.waves_outlined,
+      null => Icons.public,
+    };
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: GuideDepthSurface(
+        accent: selected ? scheme.primary : accent,
+        depth: selected ? 3 : 6,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GuideSeal(color: accent, icon: icon, size: 36),
+                    Icon(
+                      selected
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: selected ? scheme.primary : scheme.outline,
+                      size: 20,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  city?.nameAr ?? 'كل البلدان',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${_digits(count)} نتيجة',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ReaderCard extends StatelessWidget {
   const _ReaderCard({super.key, required this.biography, required this.query});
   final ReaderBiography biography;
@@ -324,8 +641,8 @@ class _ReaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final b = biography;
     final theme = Theme.of(context);
-    return Card(
-      clipBehavior: Clip.antiAlias,
+    return GuideDepthSurface(
+      accent: b.qiraa.color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -336,9 +653,9 @@ class _ReaderCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: b.qiraa.color.withAlpha(28),
-                      child: Icon(Icons.person_outline, color: b.qiraa.color),
+                    GuideSeal(
+                      color: b.qiraa.color,
+                      icon: Icons.menu_book_rounded,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -398,12 +715,24 @@ class _NarratorInfo extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Text(
-        showReader ? narrator.title : narrator.riwaya.nameAr,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: narrator.qiraa.color,
-        ),
+      Row(
+        children: [
+          GuideSeal(
+            color: narrator.qiraa.color,
+            icon: Icons.account_tree_outlined,
+            size: 38,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              showReader ? narrator.title : narrator.riwaya.nameAr,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: narrator.qiraa.color,
+              ),
+            ),
+          ),
+        ],
       ),
       const SizedBox(height: 5),
       Text(

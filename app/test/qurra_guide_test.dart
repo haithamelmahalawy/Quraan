@@ -100,6 +100,7 @@ void main() {
     );
     await t.pumpWidget(
       MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme: theme.copyWith(
           textTheme: actualFont
               ? theme.textTheme.apply(fontFamily: 'Hafs')
@@ -142,6 +143,21 @@ void main() {
     await t.pumpAndSettle();
   }
 
+  Future<void> applyFilters(
+    WidgetTester t, {
+    RecitationCity? city,
+    RecitationGroup? group,
+    bool allCities = false,
+  }) async {
+    await tap(t, find.byTooltip('تصفية الدليل'));
+    if (group != null) {
+      await tap(t, find.widgetWithText(ChoiceChip, group.nameAr));
+    }
+    if (city != null) await tap(t, find.byKey(ValueKey('city-${city.name}')));
+    if (allCities) await tap(t, find.byKey(const ValueKey('city-all')));
+    await tap(t, find.byKey(const ValueKey('apply-guide-filters')));
+  }
+
   Future<void> search(WidgetTester t, String text) async {
     await top(t);
     await t.enterText(find.byKey(const ValueKey('biography-search')), text);
@@ -176,11 +192,11 @@ void main() {
     t,
   ) async {
     await show(t);
-    await tap(t, find.byKey(const ValueKey('city-basra')));
+    await applyFilters(t, city: RecitationCity.basra);
     expect(count(t), 'النتائج: ٢ من القراء');
-    await tap(t, find.widgetWithText(ChoiceChip, RecitationGroup.three.nameAr));
+    await applyFilters(t, group: RecitationGroup.three);
     expect(count(t), 'النتائج: ٣ من القراء');
-    await tap(t, find.byKey(const ValueKey('city-basra')));
+    await applyFilters(t, city: RecitationCity.basra);
     expect(count(t), 'النتائج: ١ من القراء');
     expect(find.byKey(const ValueKey('reader-yaqub')), findsOneWidget);
     await search(t, 'اسم غير موجود');
@@ -198,10 +214,10 @@ void main() {
       await show(t);
       await tap(t, find.text('الرواة'));
       expect(count(t), 'النتائج: ٢٠ رواية');
-      await tap(t, find.byKey(const ValueKey('city-egypt')));
+      await applyFilters(t, city: RecitationCity.egypt);
       expect(count(t), 'النتائج: ١ رواية');
       expect(find.text('ورش عن نافع'), findsOneWidget);
-      await tap(t, find.widgetWithText(ChoiceChip, 'كل البلدان'));
+      await applyFilters(t, allCities: true);
       await search(t, 'الدُّوري');
       expect(count(t), 'النتائج: ٢ رواية');
       await t.scrollUntilVisible(
@@ -239,6 +255,29 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('filter drafts can be cancelled and combined before applying', (
+    t,
+  ) async {
+    await show(t);
+    await tap(t, find.byTooltip('تصفية الدليل'));
+    await tap(t, find.byKey(const ValueKey('city-basra')));
+    Navigator.of(t.element(find.byKey(const ValueKey('guide-filter-scroll'))))
+        .pop();
+    await t.pumpAndSettle();
+    expect(count(t), 'النتائج: ١٠ من القراء');
+    await applyFilters(
+      t,
+      group: RecitationGroup.three,
+      city: RecitationCity.basra,
+    );
+    expect(count(t), 'النتائج: ١ من القراء');
+    expect(find.text('البصرة'), findsWidgets);
+    await tap(t, find.byTooltip('تصفية الدليل'));
+    await tap(t, find.text('مسح التصفية'));
+    await tap(t, find.byKey(const ValueKey('apply-guide-filters')));
+    expect(count(t), 'النتائج: ١٠ من القراء');
+  });
+
   testWidgets('compact dark landscape and large Arabic text remain usable', (
     t,
   ) async {
@@ -248,6 +287,7 @@ void main() {
       brightness: Brightness.dark,
       scale: 1.4,
     );
+    await applyFilters(t, city: RecitationCity.basra);
     await tap(t, find.byTooltip('عن الدليل ومصادره'));
     expect(find.text(biographySources.first.title), findsOneWidget);
     await tap(t, find.text('إغلاق'));
@@ -256,6 +296,12 @@ void main() {
       size: const Size(320, 640),
       brightness: Brightness.dark,
       scale: 1.4,
+    );
+    await top(t);
+    await t.scrollUntilVisible(
+      find.byType(TextField),
+      140,
+      scrollable: guideScroll(),
     );
     expect(find.byType(TextField), findsOneWidget);
     expect(t.takeException(), isNull);
@@ -289,10 +335,19 @@ void main() {
   testWidgets('narrator city and brief preview', tags: 'golden', (t) async {
     await show(t, actualFont: true, size: const Size(390, 1000));
     await tap(t, find.text('الرواة'));
-    await tap(t, find.byKey(const ValueKey('city-egypt')));
+    await applyFilters(t, city: RecitationCity.egypt);
     await expectLater(
       find.byType(QurraGuideScreen),
       matchesGoldenFile('goldens/qurra_guide_warsh.png'),
+    );
+  });
+
+  testWidgets('graphical city filtering preview', tags: 'golden', (t) async {
+    await show(t, actualFont: true, size: const Size(390, 844));
+    await tap(t, find.byTooltip('تصفية الدليل'));
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('goldens/qurra_guide_filters_3d.png'),
     );
   });
 }
