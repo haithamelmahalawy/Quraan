@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../data/qurra_biographies.dart';
+import '../data/qurra_graph.dart';
 import 'guide_depth.dart';
+import 'qurra_graph_view.dart';
 
 /// An offline guide, separate from choosing which riwaya to read.
 class QurraGuideScreen extends StatefulWidget {
@@ -14,6 +16,10 @@ class QurraGuideScreen extends StatefulWidget {
 class _QurraGuideScreenState extends State<QurraGuideScreen> {
   final _search = TextEditingController();
   final _scroll = ScrollController();
+  final _camera = QurraGraphCamera();
+  bool _graphMode = true;
+  bool _fullGraph = false;
+  String? _selectedNode;
   bool _narrators = false;
   RecitationCity? _city;
   RecitationGroup? _group;
@@ -22,6 +28,7 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
   void dispose() {
     _search.dispose();
     _scroll.dispose();
+    _camera.dispose();
     super.dispose();
   }
 
@@ -64,6 +71,22 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: _graphMode ? 'عرض القائمة' : 'عرض الشبكة ثلاثية الأبعاد',
+            onPressed: () {
+              _camera.setRotating(false);
+              setState(() => _graphMode = !_graphMode);
+            },
+            icon: Icon(
+              _graphMode ? Icons.view_list_outlined : Icons.hub_outlined,
+            ),
+          ),
+          if (_graphMode)
+            IconButton(
+              tooltip: _fullGraph ? 'إظهار أدوات البحث' : 'ملء الشاشة بالشبكة',
+              onPressed: () => setState(() => _fullGraph = !_fullGraph),
+              icon: Icon(_fullGraph ? Icons.fullscreen_exit : Icons.fullscreen),
+            ),
+          IconButton(
             tooltip: 'تصفية الدليل',
             onPressed: _openFilters,
             icon: Badge(
@@ -80,177 +103,399 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
       ),
       body: SafeArea(
         top: false,
-        child: ListView(
-          key: const ValueKey('qurra-guide-list'),
-          controller: _scroll,
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          children: [
-            const _GuideHero(),
-            const SizedBox(height: 4),
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: false,
-                  icon: Icon(Icons.groups_outlined),
-                  label: Text('القراء'),
-                ),
-                ButtonSegment(
-                  value: true,
-                  icon: Icon(Icons.account_tree_outlined),
-                  label: Text('الرواة'),
-                ),
-              ],
-              selected: {_narrators},
-              onSelectionChanged: (selected) => setState(() {
-                _narrators = selected.single;
-                _city = null;
-              }),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const ValueKey('biography-search'),
-              controller: _search,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => FocusScope.of(context).unfocus(),
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: 'ابحث عن قارئ أو راوٍ أو مدينة',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: query.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'مسح البحث',
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => setState(_search.clear),
+        child: _graphMode
+            ? _graphBody(context)
+            : ListView(
+                key: const ValueKey('qurra-guide-list'),
+                controller: _scroll,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                children: [
+                  const _GuideHero(),
+                  const SizedBox(height: 4),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        icon: Icon(Icons.groups_outlined),
+                        label: Text('القراء'),
                       ),
-                filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHighest.withAlpha(
-                  90,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: _openFilters,
-                  icon: const Icon(Icons.tune_rounded),
-                  label: const Text('تصفية'),
-                ),
-                if (_city != null)
-                  InputChip(
-                    label: Text(_city!.nameAr),
-                    onDeleted: () => setState(() => _city = null),
-                  ),
-                if (_group != null)
-                  InputChip(
-                    label: Text(_group!.nameAr),
-                    onDeleted: () => setState(() => _group = null),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'النتائج: ${_digits(count)} ${_narrators ? 'رواية' : 'من القراء'}',
-              style: theme.textTheme.labelLarge,
-              key: const ValueKey('biography-count'),
-            ),
-            if (count == 0)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 28),
-                child: Column(
-                  children: [
-                    const Text('لا توجد نتائج مطابقة للبحث والتصنيف الحالي.'),
-                    TextButton(
-                      onPressed: _reset,
-                      child: const Text('إظهار الجميع'),
-                    ),
-                  ],
-                ),
-              ),
-            for (final c in RecitationCity.values) ...[
-              if ((_city == null || _city == c) &&
-                  (_narrators
-                      ? visibleNarrators.any((t) => t.narrator.city == c)
-                      : visibleReaders.any((b) => b.city == c))) ...[
-                Padding(
-                  padding: const EdgeInsets.only(top: 14, bottom: 4),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 20,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(
-                          c.nameAr,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      ButtonSegment(
+                        value: true,
+                        icon: Icon(Icons.account_tree_outlined),
+                        label: Text('الرواة'),
                       ),
                     ],
+                    selected: {_narrators},
+                    onSelectionChanged: (selected) => setState(() {
+                      _narrators = selected.single;
+                      _city = null;
+                    }),
                   ),
-                ),
-                if (_narrators)
-                  for (final t in visibleNarrators.where(
-                    (t) => t.narrator.city == c,
-                  ))
-                    GuideDepthSurface(
-                      accent: t.narrator.qiraa.color,
-                      key: ValueKey('narrator-${t.narrator.riwayaId}'),
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _NarratorInfo(
-                              narrator: t.narrator,
-                              showReader: true,
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const ValueKey('biography-search'),
+                    controller: _search,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: 'ابحث عن قارئ أو راوٍ أو مدينة',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: query.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'مسح البحث',
+                              icon: const Icon(Icons.clear),
+                              onPressed: () => setState(_search.clear),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              t.reader.group.nameAr,
-                              style: theme.textTheme.labelMedium,
+                      filled: true,
+                      fillColor: theme.colorScheme.surfaceContainerHighest
+                          .withAlpha(90),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      FilledButton.tonalIcon(
+                        onPressed: _openFilters,
+                        icon: const Icon(Icons.tune_rounded),
+                        label: const Text('تصفية'),
+                      ),
+                      if (_city != null)
+                        InputChip(
+                          label: Text(_city!.nameAr),
+                          onDeleted: () => setState(() => _city = null),
+                        ),
+                      if (_group != null)
+                        InputChip(
+                          label: Text(_group!.nameAr),
+                          onDeleted: () => setState(() => _group = null),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'النتائج: ${_digits(count)} ${_narrators ? 'رواية' : 'من القراء'}',
+                    style: theme.textTheme.labelLarge,
+                    key: const ValueKey('biography-count'),
+                  ),
+                  if (count == 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 28),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'لا توجد نتائج مطابقة للبحث والتصنيف الحالي.',
+                          ),
+                          TextButton(
+                            onPressed: _reset,
+                            child: const Text('إظهار الجميع'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  for (final c in RecitationCity.values) ...[
+                    if ((_city == null || _city == c) &&
+                        (_narrators
+                            ? visibleNarrators.any((t) => t.narrator.city == c)
+                            : visibleReaders.any((b) => b.city == c))) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 14, bottom: 4),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.location_on_outlined,
+                              size: 20,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                c.nameAr,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    )
-                else
-                  for (final b in visibleReaders.where((b) => b.city == c))
-                    _ReaderCard(
-                      key: ValueKey('reader-${b.qiraaId}'),
-                      biography: b,
-                      query: query,
+                      if (_narrators)
+                        for (final t in visibleNarrators.where(
+                          (t) => t.narrator.city == c,
+                        ))
+                          GuideDepthSurface(
+                            accent: t.narrator.qiraa.color,
+                            key: ValueKey('narrator-${t.narrator.riwayaId}'),
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _NarratorInfo(
+                                    narrator: t.narrator,
+                                    showReader: true,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    t.reader.group.nameAr,
+                                    style: theme.textTheme.labelMedium,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                      else
+                        for (final b in visibleReaders.where(
+                          (b) => b.city == c,
+                        ))
+                          _ReaderCard(
+                            key: ValueKey('reader-${b.qiraaId}'),
+                            biography: b,
+                            query: query,
+                          ),
+                    ],
+                  ],
+                  const SizedBox(height: 18),
+                  const Text(
+                    'الدوري راوٍ عن أبي عمرو والكسائي، وخلف راوٍ عن حمزة وإمام القراءة العاشرة. لذا يُعرض كل دور ضمن الإمام الذي تتبعه روايته.',
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _sources(context),
+                    icon: const Icon(Icons.library_books_outlined),
+                    label: const Text('مصادر النبذات ومعنى القراءة والرواية'),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _graphBody(BuildContext context) {
+    final graph = QurraGraph.build(
+      query: _search.text,
+      city: _city,
+      group: _group,
+      narratorCity: _narrators,
+    );
+    final header = Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            key: const ValueKey('biography-search'),
+            controller: _search,
+            textInputAction: TextInputAction.search,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => FocusScope.of(context).unfocus(),
+            decoration: InputDecoration(
+              isDense: true,
+              labelText: 'ابحث عن قارئ أو راوٍ أو مدينة',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _search.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'مسح البحث',
+                      onPressed: () => setState(_search.clear),
+                      icon: const Icon(Icons.clear),
                     ),
-              ],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: _openFilters,
+                icon: const Icon(Icons.tune, size: 18),
+                label: const Text('تصفية'),
+              ),
+              if (_city != null)
+                InputChip(
+                  label: Text(_city!.nameAr),
+                  onDeleted: () => setState(() => _city = null),
+                ),
+              if (_group != null)
+                InputChip(
+                  label: Text(_group!.nameAr),
+                  onDeleted: () => setState(() => _group = null),
+                ),
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  _narrators = !_narrators;
+                  _city = null;
+                }),
+                icon: const Icon(Icons.location_on_outlined, size: 17),
+                label: Text(
+                  _narrators ? 'التصفية ببلد الراوي' : 'التصفية ببلد القارئ',
+                ),
+              ),
             ],
-            const SizedBox(height: 18),
-            const Text(
-              'الدوري راوٍ عن أبي عمرو والكسائي، وخلف راوٍ عن حمزة وإمام القراءة العاشرة. لذا يُعرض كل دور ضمن الإمام الذي تتبعه روايته.',
-            ),
-            TextButton.icon(
-              onPressed: () => _sources(context),
-              icon: const Icon(Icons.library_books_outlined),
-              label: const Text('مصادر النبذات ومعنى القراءة والرواية'),
-            ),
+          ),
+          Text(
+            '${_digits(graph.readerCount)} قراء • ${_digits(graph.narratorCount)} رواية',
+            key: const ValueKey('biography-count'),
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ],
+      ),
+    );
+    final network = Column(
+      children: [
+        Expanded(
+          child: graph.nodes.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('لا توجد نتائج مطابقة للبحث والتصنيف الحالي.'),
+                      TextButton(
+                        onPressed: _reset,
+                        child: const Text('إظهار الجميع'),
+                      ),
+                    ],
+                  ),
+                )
+              : QurraGraphView(
+                  key: const ValueKey('qurra-3d-view'),
+                  graph: graph,
+                  camera: _camera,
+                  selected: _selectedNode,
+                  onSelect: _showGraphNode,
+                ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          child: Text(
+            _fullGraph ? 'اسحب للتدوير • قرّب بإصبعين • اضغط على الاسم' : '◆ مدينة   ● قارئ   • راوٍ   ◉ الثلاثة المتممون\nاسحب للتدوير • قرّب بإصبعين • اضغط على الاسم',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(fontSize: 11),
+          ),
+        ),
+      ],
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (_fullGraph) return network;
+        if (constraints.maxWidth > constraints.maxHeight * 1.3) {
+          return Row(
+            children: [
+              SizedBox(width: 220, child: SingleChildScrollView(child: header)),
+              Expanded(child: network),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            header,
+            Expanded(child: network),
           ],
+        );
+      },
+    );
+  }
+
+  void _showGraphNode(QurraGraphNode node) {
+    _camera.setRotating(false);
+    setState(() => _selectedNode = node.id);
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .8,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (node.kind == QurraNodeKind.reader)
+                  _ReaderCard(biography: node.reader!, query: '')
+                else if (node.kind == QurraNodeKind.narrator) ...[
+                  _NarratorInfo(narrator: node.narrator!, showReader: true),
+                  const SizedBox(height: 12),
+                  Text(
+                    'عن القارئ ${node.reader!.qiraa.nameAr} • ${node.reader!.group.nameAr}',
+                  ),
+                ] else if (node.kind == QurraNodeKind.city) ...[
+                  Text(
+                    node.label,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'بلد الإقراء أو الاشتهار، كما تذكره النبذات. قد يختلف بلد الراوي عن بلد القارئ الذي يروي عنه.',
+                  ),
+                  for (final narrators in [false, true])
+                    TextButton.icon(
+                      icon: const Icon(Icons.filter_alt_outlined),
+                      label: Text(
+                        narrators
+                            ? 'عرض رواة هذه المدينة وروابطهم'
+                            : 'عرض قراء هذه المدينة ورواتهم',
+                      ),
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        setState(() {
+                          _city = node.city;
+                          _narrators = narrators;
+                        });
+                      },
+                    ),
+                ] else ...[
+                  Text(
+                    'القراء العشرة ورواتهم',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'تربط الشبكة المدن بالقراء والرواة المنتسبين إليها، وتربط كل قارئ براوييه المشهورين. لون العقدة يبيّن مدينتها، والحلقة الذهبية تميّز القراء الثلاثة المتممين للعشرة.',
+                  ),
+                ],
+                if (node.kind == QurraNodeKind.root ||
+                    node.narrator?.personId == 'duri' ||
+                    node.narrator?.personId == 'khalaf' ||
+                    node.reader?.qiraaId == 'khalaf') ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    'الخط الذهبي المتقطع يصل أدوار الشخص نفسه: الدوري يروي عن أبي عمرو والكسائي، وخلف راوٍ عن حمزة وهو أيضًا إمام القراءة العاشرة.',
+                  ),
+                ],
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => Navigator.pop(sheetContext),
+                  child: const Text('العودة إلى الشبكة'),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
   Future<void> _openFilters() async {
+    _camera.setRotating(false);
     FocusScope.of(context).unfocus();
     final selected =
         await showModalBottomSheet<

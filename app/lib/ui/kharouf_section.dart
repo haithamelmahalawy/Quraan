@@ -76,7 +76,8 @@ class KharoufSection extends StatelessWidget {
                       style: theme.textTheme.labelMedium,
                     ),
                   ),
-                for (final r in _mine(e)) _reading(theme, r),
+                for (final r in _mine(e))
+                  KharoufReadingText(reading: r, riwayat: riwayat),
                 for (final v in showVerses ? e.verses : <String>[])
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
@@ -112,8 +113,23 @@ class KharoufSection extends StatelessWidget {
       if (r.riwayat.any(riwayat.contains) || r.disputed.any(riwayat.contains))
         r,
   ];
+}
 
-  Widget _reading(ThemeData theme, KharoufReading r) {
+/// One source reading, with attribution restricted to the selected narrators.
+class KharoufReadingText extends StatelessWidget {
+  const KharoufReadingText({
+    super.key,
+    required this.reading,
+    required this.riwayat,
+  });
+
+  final KharoufReading reading;
+  final Set<String> riwayat;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final r = reading;
     final all = readersAr(
       r.riwayat.where(riwayat.contains).toList(),
       r.disputed.where(riwayat.contains).toList(),

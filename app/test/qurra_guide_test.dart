@@ -118,6 +118,11 @@ void main() {
       ),
     );
     await t.pumpAndSettle();
+    // The graph is the default; these existing tests exercise the optional list.
+    if (home == null && find.byTooltip('عرض القائمة').evaluate().isNotEmpty) {
+      await t.tap(find.byTooltip('عرض القائمة'));
+      await t.pumpAndSettle();
+    }
   }
 
   Finder guideScroll() => find

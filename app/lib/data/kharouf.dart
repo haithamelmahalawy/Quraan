@@ -69,17 +69,23 @@ class KharoufEntry {
 /// التنزيل من الشاطبية والدرة», reviewed by Sheikh Karim Rajih
 /// (assets/data/kharouf.json, built by tool/build_kharouf.dart).
 class Kharouf {
-  Kharouf._(this.source, this._index);
+  Kharouf._(this.source, this.entries, this._index);
 
   final String source;
+
+  /// Each transcribed note once, in Quran order, for browsing the source.
+  final List<KharoufEntry> entries;
   final Map<int, List<KharoufEntry>> _index;
 
   static Future<Kharouf>? _loading;
 
   static Future<Kharouf> load([AssetBundle? bundle]) => _loading ??= () async {
-    final raw = await (bundle ?? rootBundle).loadString('assets/data/kharouf.json');
+    final raw = await (bundle ?? rootBundle).loadString(
+      'assets/data/kharouf.json',
+    );
     final json = jsonDecode(raw) as Map<String, dynamic>;
     final index = <int, List<KharoufEntry>>{};
+    final entries = <KharoufEntry>[];
     for (final e in json['entries'] as List) {
       final entry = KharoufEntry(
         surah: e[0] as int,
@@ -105,11 +111,24 @@ class Kharouf {
         ],
         verses: (e[6] as List).cast<String>(),
       );
+      entries.add(entry);
       for (var w = entry.word; w < entry.word + entry.count; w++) {
         (index[_key(entry.surah, entry.ayah, w)] ??= []).add(entry);
       }
     }
-    return Kharouf._(json['source'] as String, index);
+    entries.sort((a, b) {
+      final location = _key(
+        a.surah,
+        a.ayah,
+        a.word,
+      ).compareTo(_key(b.surah, b.ayah, b.word));
+      return location != 0 ? location : a.section.compareTo(b.section);
+    });
+    return Kharouf._(
+      json['source'] as String,
+      List.unmodifiable(entries),
+      index,
+    );
   }();
 
   static int _key(int surah, int ayah, int word) =>

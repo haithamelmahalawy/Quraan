@@ -211,12 +211,59 @@ Set<String> namedIn(String s) {
     } else {
       notes.add([
         c.replaceFirst(RegExp('^و'), ''),
-        [for (final id in all) if (ids.contains(id)) id],
+        [
+          for (final id in all)
+            if (ids.contains(id)) id,
+        ],
       ]);
     }
   }
   final text = own.join('، ').replaceFirst(RegExp('^و(?=[ابتم])'), '');
   return (text, notes);
+}
+
+/// Resolve the alif rule cited from الظنونا using the current word's text.
+List<List<Object?>> expandFinalAlifReference(
+  List<List<Object?>> groups,
+  String hafs,
+) {
+  final withAlif = hafs.replaceAll(RegExp('[۠۟]'), '');
+  final withoutAlif = withAlif.replaceFirst(RegExp(r'ا$'), '');
+  return [
+    for (final g in groups)
+      [
+        (g[3] as String).startsWith('بإثبات الألف')
+            ? withAlif
+            : (g[3] as String).startsWith('بحذف الألف')
+            ? withoutAlif
+            : '',
+        ...g.skip(1),
+      ],
+  ];
+}
+
+/// A waqf clause on a named reader does not restrict the other readers
+/// sharing a quoted reading. A clause covering the whole group still does.
+bool readingStopOnly(
+  Readers readers,
+  String text,
+  String how,
+  String own,
+  List<List<Object>> notes,
+) {
+  if (readers.stopOnly) return true;
+  if (!stopOnly(how) ||
+      (text.isNotEmpty &&
+          !RegExp(r'^[وف]?(عند )?(ال)?وقف').hasMatch(how.trim()))) {
+    return false;
+  }
+  if (stopOnly(own)) return true;
+  final stopped = <String>{
+    for (final n in notes)
+      if (stopOnly(n[0] as String) || (n[0] as String).startsWith('قف '))
+        ...(n[1] as List).cast<String>(),
+  };
+  return {...readers.ids, ...readers.disputed}.every(stopped.contains);
 }
 
 int _distance(String a, String b) {
@@ -263,12 +310,14 @@ List<(int, int)> locate(List<String> ayah, String word) {
   if (best.isEmpty) return const [];
   // Ties broken by the full letters, alef and hamza included (حسنا is not
   // إحسانا).
-  String full(String x) => plain(x)
-      .replaceAll(RegExp('[^ء-يٱ]'), '')
-      .replaceAll(RegExp('[أإآٱ]'), 'ا');
+  String full(String x) =>
+      plain(x)
+          .replaceAll(RegExp('[^ء-يٱ]'), '')
+          .replaceAll(RegExp('[أإآٱ]'), 'ا');
   final whole = full(word);
   double score((int, int, double) b) =>
-      b.$3 + _distance(full(ayah.sublist(b.$1, b.$1 + b.$2).join()), whole) / 1000;
+      b.$3 +
+      _distance(full(ayah.sublist(b.$1, b.$1 + b.$2).join()), whole) / 1000;
   final min = best.map((b) => b.$3).reduce((x, y) => x < y ? x : y);
   final ranked = best.where((b) => b.$3 == min).toList()
     ..sort((x, y) => score(x).compareTo(score(y)));
@@ -378,10 +427,7 @@ void main(List<String> args) {
           own,
           // «فمن قرأ بالجمع وقف بالتاء» tells of the stop of a reading
           // quoted, not of a reading on stopping only.
-          p.stopOnly ||
-              (stopOnly(how) &&
-                  (text.isEmpty ||
-                      RegExp(r'^[وف]?(عند )?(ال)?وقف').hasMatch(how.trim()))),
+          readingStopOnly(p, text, how, own, notes),
           p.taqlil,
           notes,
         ]);
@@ -405,11 +451,24 @@ void main(List<String> args) {
       // «هزؤا» انظر ص ١٠، «شيء» تقدم في ص٤، مثل «أأنذرتهم» ص٣: the note
       // referred to, told again here.
       final raw = e['raw'] as String? ?? '';
+      // The explicit cross-reference on page 427 carries the three alif
+      // readings from الظنونا (page 419) over to الرسولا and السبيلا.
+      final alifReference =
+          surah == 33 &&
+          word == 'الرسولا، السبيلا' &&
+          raw.contains('حكمه كما في «الظنونا»');
+      if (groups.isEmpty && alifReference) {
+        final earlier = refs[_letters('الظنونا')];
+        if (earlier != null) {
+          groups.addAll(earlier.$1);
+          if (verses.isEmpty) verses = earlier.$2;
+          referred++;
+        }
+      }
       if (groups.isEmpty && RegExp('انظر|تقدم|مثل').hasMatch(raw)) {
         final quoted = RegExp(r'(?:تقدم في|مثل|انظر)\s*«([^»]+)»')
             .firstMatch(raw)?[1];
-        final earlier = refs[_letters(quoted ?? word)] ??
-            refs[_letters(word)];
+        final earlier = refs[_letters(quoted ?? word)] ?? refs[_letters(word)];
         if (earlier != null) {
           groups.addAll(earlier.$1);
           if (verses.isEmpty) verses = earlier.$2;
@@ -436,12 +495,15 @@ void main(List<String> args) {
           placed = true;
           final both = (e['raw'] as String? ?? '').contains('معاً');
           for (final (w, c) in both ? at : at.take(1)) {
-            out.add([surah, a, w, c, section, groups, verses]);
+            final placedGroups = alifReference
+                ? expandFinalAlifReference(groups, words[w])
+                : groups;
+            out.add([surah, a, w, c, section, placedGroups, verses]);
             // Per riwaya: where it reads differently, and how.
             if (section != 'mudgham' &&
-                groups.any((g) => (g[1] as List).contains('hafs'))) {
+                placedGroups.any((g) => (g[1] as List).contains('hafs'))) {
               final ids = <String>{};
-              for (final g in groups) {
+              for (final g in placedGroups) {
                 if ((g[1] as List).contains('hafs') || g[4] == true) continue;
                 ids.addAll([...(g[1] as List), ...(g[2] as List)].cast());
               }
@@ -449,7 +511,7 @@ void main(List<String> args) {
                 // Its readings other than Hafs's, and whether it also reads
                 // as Hafs (بخلف عنه).
                 final mine = [
-                  for (final g in groups)
+                  for (final g in placedGroups)
                     if (!(g[1] as List).contains('hafs') &&
                         g[4] != true &&
                         ((g[1] as List).contains(id) ||
@@ -466,22 +528,29 @@ void main(List<String> args) {
                     : (first[2] as List).contains(id)
                     ? 'بوجهين: الأول كحفص، والثاني: ${say(first)}'
                     : '';
-                (byRiwaya[id] ??= []).add(
-                  [surah, a, w, c, first[0], first[3], section, wujuh],
-                );
+                (byRiwaya[id] ??= []).add([
+                  surah,
+                  a,
+                  w,
+                  c,
+                  first[0],
+                  first[3],
+                  section,
+                  wujuh,
+                ]);
               }
             }
             final key = '$surah:$a:$w';
             covered.add(key);
             // Who differs from Hafs: everyone outside Hafs's group.
-            final hafsGroup = groups.firstWhere(
+            final hafsGroup = placedGroups.firstWhere(
               (g) => (g[1] as List).contains('hafs'),
               orElse: () => const [],
             );
             spans[key] = c;
             if (section == 'farsh' && hafsGroup.isNotEmpty) {
               differs[key] = {
-                for (final g in groups)
+                for (final g in placedGroups)
                   // Stopping only (وقفاً) is not a reading in continuous
                   // recitation, which is what the riwayat data records.
                   if (!identical(g, hafsGroup) && g[4] != true)
@@ -528,7 +597,9 @@ void main(List<String> args) {
       for (var w = v[2] as int; w < (v[2] as int) + (v[3] as int); w++) {
         final k = '${v[0]}:${v[1]}:$w';
         any.add(k);
-        if (v.length < 8 && v[5] == 'f') ours[k] = '${v[4]} ${v.length > 6 ? v[6] : ''}';
+        if (v.length < 8 && v[5] == 'f') {
+          ours[k] = '${v[4]} ${v.length > 6 ? v[6] : ''}';
+        }
       }
     }
     differs.forEach((key, ids) {
@@ -576,10 +647,9 @@ void main(List<String> args) {
   }
   report.writeln('\n## Reader names not understood');
   unknownNames.forEach((k, v) => report.writeln('- $k ($v)'));
-  File('../tools/source/books/kharouf_report.md')
-      .writeAsStringSync(
-        report.toString().replaceAll(RegExp(r'[ \t]+$', multiLine: true), ''),
-      );
+  File('../tools/source/books/kharouf_report.md').writeAsStringSync(
+    report.toString().replaceAll(RegExp(r'[ \t]+$', multiLine: true), ''),
+  );
   stdout.writeln(
     'kharouf.json: ${out.length} entries, ${unplaced.length} not placed, '
     '${unknownNames.length} unknown names, $referred references told '

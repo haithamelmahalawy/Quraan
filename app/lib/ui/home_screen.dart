@@ -9,6 +9,7 @@ import '../models/qiraat_catalog.dart';
 import '../state/reader_settings.dart';
 import 'qiraat_sheet.dart';
 import 'qurra_guide_screen.dart';
+import 'reading_library_screen.dart';
 import 'reader_screen.dart';
 import 'scan_screen.dart';
 import 'search_screen.dart';
@@ -93,6 +94,12 @@ class HomeScreen extends StatelessWidget {
   void _openQurraGuide(BuildContext context) => Navigator.of(context)
       .push<void>(MaterialPageRoute(builder: (_) => const QurraGuideScreen()));
 
+  void _openLibrary(BuildContext context) => Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      builder: (_) => ReadingLibraryScreen(quran: mushafs.madani),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -163,44 +170,69 @@ class HomeScreen extends StatelessWidget {
       ),
       children: [
         // The app's icon, and the quick buttons.
-        Row(
-          children: [
-            ClipOval(
-              child: Image.asset(
-                'assets/images/logo.png',
-                width: 46,
-                height: 46,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final buttons = <Widget>[
+              _RoundButton(
+                icon: Icons.local_library_outlined,
+                tooltip: 'المتون ومصادر القراءات',
+                onTap: () => _openLibrary(context),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'مصحف القراءات',
-                style: TextStyle(
-                  color: _Look.text,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
+              const SizedBox(width: 10),
+              _RoundButton(
+                icon: Icons.groups_outlined,
+                tooltip: 'القراء العشرة ورواتهم',
+                onTap: () => _openQurraGuide(context),
+              ),
+              const SizedBox(width: 10),
+              _RoundButton(
+                icon: Icons.search_rounded,
+                tooltip: 'البحث',
+                onTap: () => _search(context),
+              ),
+              const SizedBox(width: 10),
+              _RoundButton(
+                icon: Icons.tune_rounded,
+                tooltip: 'الإعدادات',
+                onTap: () => _settings(context),
+              ),
+            ];
+            final wide = constraints.maxWidth >= 440;
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    ClipOval(
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 46,
+                        height: 46,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'مصحف القراءات',
+                        style: TextStyle(
+                          color: _Look.text,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                        ),
+                      ),
+                    ),
+                    if (wide) ...buttons,
+                  ],
                 ),
-              ),
-            ),
-            _RoundButton(
-              icon: Icons.groups_outlined,
-              tooltip: 'القراء العشرة ورواتهم',
-              onTap: () => _openQurraGuide(context),
-            ),
-            const SizedBox(width: 10),
-            _RoundButton(
-              icon: Icons.search_rounded,
-              tooltip: 'البحث',
-              onTap: () => _search(context),
-            ),
-            const SizedBox(width: 10),
-            _RoundButton(
-              icon: Icons.tune_rounded,
-              tooltip: 'الإعدادات',
-              onTap: () => _settings(context),
-            ),
-          ],
+                if (!wide) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: buttons,
+                  ),
+                ],
+              ],
+            );
+          },
         ),
         const SizedBox(height: 34),
         // Where the reader is.
@@ -320,6 +352,13 @@ class HomeScreen extends StatelessWidget {
                 title: 'القراء العشرة ورواتهم',
                 subtitle: 'نبذات وتصنيف بحسب المدن والقراءات',
                 onTap: () => _openQurraGuide(context),
+              ),
+              _Row(
+                icon: Icons.local_library_outlined,
+                color: const Color(0xFFC9A54E),
+                title: 'المتون ومصادر القراءات',
+                subtitle: 'الشاطبية، الدرة، التسهيل لقراءات التنزيل',
+                onTap: () => _openLibrary(context),
               ),
               _Row(
                 icon: Icons.tune_rounded,
@@ -445,12 +484,14 @@ class _ActionButton extends StatelessWidget {
           child: Icon(icon, size: 16, color: _Look.text),
         ),
         const SizedBox(width: 10),
-        Text(
-          label,
-          style: TextStyle(
-            color: _Look.text,
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
+        Flexible(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: _Look.text,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
           ),
         ),
       ],

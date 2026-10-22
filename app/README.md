@@ -35,10 +35,24 @@ three, and search names. Each reader includes a short biography and expandable
 narrator biographies. The guide distinguishes al-Duri's two transmissions
 and Khalaf's roles as narrator and tenth reader; its sources are available
 from the information button (`lib/data/qurra_biographies.dart`).
-Perspective cards, raised seals, and a book illustration give the guide depth.
-A graphical filter panel shows cities and result counts before applying a
-selection; dismissing it preserves the current filters. Interactive card motion
-respects the device's reduced-animation setting.
+The default view is a rotatable 3D relationship graph: eight city nodes,
+ten reader nodes, and twenty transmission roles. City links use each person's
+own affiliation; stronger links connect readers to their narrators. Dashed
+gold links identify al-Duri's and Khalaf's shared identities across roles.
+Drag to orbit, pinch to zoom/pan, or use the rotation, zoom, reset and optional
+automatic-rotation controls. Tap a node for its biography or city filters.
+The graph supports full-screen exploration, search, city and seven/three
+filters; a list view remains available. Automatic motion respects the device's
+reduced-animation setting.
+
+The home library icon opens **المتون ومصادر القراءات**: the complete Shatibiyya
+(1,173 couplets), Durrah (240 couplets), and the transcribed readings and proofs
+from *التسهيل لقراءات التنزيل*. Poems support chapter selection, Arabic text /
+verse-number search, adjustable text size, and the existing per-verse
+explanations. Tasheel exposes each indexed note once, with surah, narrator,
+section, and text filters; this is a text browser of the transcribed material,
+not a PDF viewer. All three sources work offline and leave reader settings
+unchanged.
 
 Right or left: when a page opens, an open mushaf briefly shows whether it is
 the right (odd) or left (even) page, then shrinks into the small icon by the
@@ -89,6 +103,14 @@ dart run tool/build_data.dart
 dart run tool/build_layout.dart
 dart run tool/build_mutashabihat.dart
 ```
+
+After regenerating riwaya files, run `dart run tool/correct_reviewed_farsh.dart`
+to retain the reviewed descriptions of **نِعْمَةً** (31:20), Shu'bah's lexical
+**تُرْجِئُ** (33:51), and his retained alifs in **الظنونا، الرسولا، السبيلا**
+(33:10, 66–67). `tool/build_kharouf.dart` resolves the book's page-427
+reference to the alif rule on page 419, and scopes a named reader's stopping
+note separately from the other readers sharing a reading. Regression tests
+in `test/reading_corrections_test.dart` cover the readings and their margins.
 
 ### Sources
 

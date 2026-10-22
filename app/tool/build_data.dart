@@ -69,12 +69,14 @@ void main(List<String> args) {
     }
     File('assets/data/qiraat/$id.json')
       ..createSync(recursive: true)
-      ..writeAsStringSync(jsonEncode({
-        'riwaya': id,
-        'font': fontOf[id],
-        'source': 'KFGQPC $file',
-        'variants': variants,
-      }));
+      ..writeAsStringSync(
+        jsonEncode({
+          'riwaya': id,
+          'font': fontOf[id],
+          'source': 'KFGQPC $file',
+          'variants': variants,
+        }),
+      );
     stdout.writeln('$id: ${variants.length} variants $counts');
   }
 }
@@ -91,11 +93,9 @@ final _ayahNumber = RegExp(r'^[٠-٩]+$');
 List<String> _words(String text) => text
     .split(RegExp(r'[  ]+'))
     .map((w) => w.trim())
-    .where((w) =>
-        w.isNotEmpty &&
-        !_ayahNumber.hasMatch(w) &&
-        w != '۞' &&
-        w != '۩')
+    .where(
+      (w) => w.isNotEmpty && !_ayahNumber.hasMatch(w) && w != '۞' && w != '۩',
+    )
     .toList();
 
 // ---------------------------------------------------------------------------
@@ -115,13 +115,13 @@ class Base {
   List<HafsWord> surahWords(int s) => _words[s]!;
 
   Map<String, Object> toJson() => {
-        'source': 'KFGQPC Hafs v18 (Madinah mushaf, 604 pages)',
-        'surahs': surahs,
-        // [surah, ayah, page, juz, "word word ..."]
-        'ayahs': ayahs
-            .map((a) => [a['s']!, a['a']!, a['p']!, a['j']!, a['t']!])
-            .toList(),
-      };
+    'source': 'KFGQPC Hafs v18 (Madinah mushaf, 604 pages)',
+    'surahs': surahs,
+    // [surah, ayah, page, juz, "word word ..."]
+    'ayahs': ayahs
+        .map((a) => [a['s']!, a['a']!, a['p']!, a['j']!, a['t']!])
+        .toList(),
+  };
 }
 
 Base _buildBase(List<Map<String, dynamic>> rows) {
@@ -213,7 +213,8 @@ class Unit {
 
 /// Splits [word] into normalised letter units, ignoring spelling
 /// conventions that do not change the reading.
-List<Unit> units(String word) => _unitCache.putIfAbsent(word, () => _units(word));
+List<Unit> units(String word) =>
+    _unitCache.putIfAbsent(word, () => _units(word));
 
 final _unitCache = <String, List<Unit>>{};
 
@@ -251,12 +252,17 @@ List<Unit> _units(String word) {
     // starting vowel and a marker) in the Maghribi-style texts.
     // A word-initial alef with a vowel but no marker is a hamza dropped
     // after naql (اِلَّا), not a wasl.
-    final isWasl = ch == 'ٱ' ||
+    final isWasl =
+        ch == 'ٱ' ||
         (ch == 'ا' &&
             ((i == prefix &&
                     (i > 0 ||
-                        !ms.any((m) => m == _fatha || m == _damma || m == _kasra))) ||
-                groups[i].$2.any((m) => m == 0x06EC || m == 0x06DF || m == 0x06EA)));
+                        !ms.any(
+                          (m) => m == _fatha || m == _damma || m == _kasra,
+                        ))) ||
+                groups[i].$2.any(
+                  (m) => m == 0x06EC || m == 0x06DF || m == 0x06EA,
+                )));
     if (isWasl) {
       ch = 'ا';
       ms = [];
@@ -315,16 +321,15 @@ List<Unit> _units(String word) {
       u.vowel = null;
       u.marks.remove(0x06ED);
     }
-    u.iqlab = u.tanween != null &&
-        (raw.contains(0x06E2) || raw.contains(0x06ED));
+    u.iqlab =
+        u.tanween != null && (raw.contains(0x06E2) || raw.contains(0x06ED));
     out.add(u);
     if (ms.contains(_dagger)) out.add(Unit('ا'));
   }
   // The tanween of fath written on the alef (or final alef maqsura) after
   // the letter (اِثْماٗ، سِوىٗ), as in Hafs on the letter (إِثۡمٗا، سُوٗى).
   for (var k = 1; k < out.length; k++) {
-    if ((out[k].letter == 'ا' ||
-            (out[k].maqsura && k == out.length - 1)) &&
+    if ((out[k].letter == 'ا' || (out[k].maqsura && k == out.length - 1)) &&
         out[k].tanween != null &&
         out[k - 1].tanween == null) {
       out[k - 1].tanween = out[k].tanween;
@@ -380,20 +385,49 @@ Norm _norm(String word) {
   marks.sort();
   final nh = noHamza.toString();
   final loose = nh.replaceAll('ا', '');
-  return Norm(loose, letters.toString(), nh, '$vowels|${tanween.join()}',
-      String.fromCharCodes(marks));
+  return Norm(
+    loose,
+    letters.toString(),
+    nh,
+    '$vowels|${tanween.join()}',
+    String.fromCharCodes(marks),
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Arabic description of a difference ("بالتاء", "بضم الهاء", ...)
 
 const _letterNames = {
-  'ا': 'الألف', 'ب': 'الباء', 'ت': 'التاء', 'ث': 'الثاء', 'ج': 'الجيم',
-  'ح': 'الحاء', 'خ': 'الخاء', 'د': 'الدال', 'ذ': 'الذال', 'ر': 'الراء',
-  'ز': 'الزاي', 'س': 'السين', 'ش': 'الشين', 'ص': 'الصاد', 'ض': 'الضاد',
-  'ط': 'الطاء', 'ظ': 'الظاء', 'ع': 'العين', 'غ': 'الغين', 'ف': 'الفاء',
-  'ق': 'القاف', 'ك': 'الكاف', 'ل': 'اللام', 'م': 'الميم', 'ن': 'النون',
-  'ه': 'الهاء', 'و': 'الواو', 'ي': 'الياء', 'ة': 'التاء', 'ء': 'الهمزة',
+  'ا': 'الألف',
+  'ب': 'الباء',
+  'ت': 'التاء',
+  'ث': 'الثاء',
+  'ج': 'الجيم',
+  'ح': 'الحاء',
+  'خ': 'الخاء',
+  'د': 'الدال',
+  'ذ': 'الذال',
+  'ر': 'الراء',
+  'ز': 'الزاي',
+  'س': 'السين',
+  'ش': 'الشين',
+  'ص': 'الصاد',
+  'ض': 'الضاد',
+  'ط': 'الطاء',
+  'ظ': 'الظاء',
+  'ع': 'العين',
+  'غ': 'الغين',
+  'ف': 'الفاء',
+  'ق': 'القاف',
+  'ك': 'الكاف',
+  'ل': 'اللام',
+  'م': 'الميم',
+  'ن': 'النون',
+  'ه': 'الهاء',
+  'و': 'الواو',
+  'ي': 'الياء',
+  'ة': 'التاء',
+  'ء': 'الهمزة',
 };
 
 String _name(Unit u) => _letterNames[u.letter] ?? u.letter;
@@ -402,11 +436,10 @@ String _name(Unit u) => _letterNames[u.letter] ?? u.letter;
 var currentRiwaya = '';
 
 String _imalaName(int mark) => switch (mark) {
-      0x06ED => 'التقليل',
-      0x06EA when currentRiwaya == 'warsh' || currentRiwaya == 'qalun' =>
-        'التقليل',
-      _ => 'الإمالة',
-    };
+  0x06ED => 'التقليل',
+  0x06EA when currentRiwaya == 'warsh' || currentRiwaya == 'qalun' => 'التقليل',
+  _ => 'الإمالة',
+};
 
 /// Describes how [other] differs from the Hafs word [hafs], e.g. "بالتاء",
 /// "بحذف الألف", "بضم الهاء وصلة الميم". Empty when it cannot be put
@@ -414,7 +447,9 @@ String _imalaName(int mark) => switch (mark) {
 String describe(String hafs, String other) {
   if (other.isEmpty) return '';
   if (_muqattaat.hasMatch(hafs)) {
-    final m = other.runes.where((c) => c == 0x06EA || c == 0x06ED || c == 0x065C);
+    final m = other.runes.where(
+      (c) => c == 0x06EA || c == 0x06ED || c == 0x065C,
+    );
     return m.isEmpty ? '' : 'ب${_imalaName(m.first)}';
   }
   final phrases = <String>[];
@@ -424,15 +459,21 @@ String describe(String hafs, String other) {
     final which = last.letter == 'م' ? 'ميم الجمع' : 'الهاء';
     // A ha read with sukun (يُؤَدِّهۡ) is told by the letters below
     // (إسكان الهاء), not as a silah left out.
-    final sukun = !_hasSilah(b) && which == 'الهاء' &&
+    final sukun =
+        !_hasSilah(b) &&
+        which == 'الهاء' &&
         units(_stripWaqf(b)).last.vowel == null;
-    phrases.add(
-      sukun
-          ? 'إسكان الهاء'
-          : _hasSilah(b)
-          ? 'صلة $which'
-          : 'ترك صلة $which',
-    );
+    // Replacing the pronoun in نِعَمَهُۥ → نِعْمَةً is not a sakin ha
+    // or simply an omitted silah; the lexical replacement is described below.
+    if (units(_dropSilah(a)).last.letter == units(_dropSilah(b)).last.letter) {
+      phrases.add(
+        sukun
+            ? 'إسكان الهاء'
+            : _hasSilah(b)
+            ? 'صلة $which'
+            : 'ترك صلة $which',
+      );
+    }
     a = _dropSilah(a);
     b = _dropSilah(b);
   }
@@ -457,14 +498,27 @@ String describe(String hafs, String other) {
       final y = k < added.length ? added[k] : null;
       if (x != null && y != null) {
         if (x.letter == 'ء' && 'اوي'.contains(y.letter)) {
-          final afterArticle = removedAt + k >= 2 &&
+          final afterArticle =
+              removedAt + k >= 2 &&
               ua[removedAt + k - 1].letter == 'ل' &&
               ua[removedAt + k - 2].letter == 'ا';
-          phrases.add(afterArticle
-              ? 'نقل حركة الهمزة إلى اللام'
-              : y.letter == 'ا' && removedAt + k <= 3
-              ? 'تخفيف الهمزة'
-              : 'إبدال الهمزة ${const {'ا': 'ألفًا', 'و': 'واوًا', 'ي': 'ياءً'}[y.letter]}');
+          phrases.add(
+            afterArticle
+                ? 'نقل حركة الهمزة إلى اللام'
+                : y.letter == 'ا' && removedAt + k <= 3
+                ? 'تخفيف الهمزة'
+                : 'إبدال الهمزة ${const {'ا': 'ألفًا', 'و': 'واوًا', 'ي': 'ياءً'}[y.letter]}',
+          );
+        } else if (x.letter == 'ه' && y.letter == 'ة') {
+          final ending = switch (y.tanween) {
+            'an' => ' منونة بالفتح',
+            'un' => ' منونة بالضم',
+            'in' => ' منونة بالكسر',
+            _ => '',
+          };
+          phrases.add('إبدال الهاء تاء مربوطة$ending');
+        } else if (x.letter == 'ي' && y.letter == 'ء' && y.vowel == _damma) {
+          phrases.add('إبدال الياء همزة مضمومة');
         } else if (y.letter == 'ء') {
           phrases.add('الهمز');
         } else {
@@ -486,7 +540,9 @@ String describe(String hafs, String other) {
     if (i < n && j < m && ua[i].letter == ub[j].letter) {
       flushEdits();
       // A madd on a letter whose vowel changes goes with it (إِنِّيٓ → إِنِّيَ).
-      if (_compareUnit(ua[i], ub[j], i, phrases, i > 0 ? ua[i - 1] : null)) mutedMadd += _madd(ua[i]);
+      if (_compareUnit(ua[i], ub[j], i, phrases, i > 0 ? ua[i - 1] : null)) {
+        mutedMadd += _madd(ua[i]);
+      }
       i++;
       j++;
     } else if (j < m && (i == n || dp[i][j + 1] >= dp[i + 1][j])) {
@@ -525,8 +581,12 @@ bool _compareUnit(Unit a, Unit b, int index, List<String> out, [Unit? before]) {
     return true;
   }
   // A sakin letter merged into this one (ٱتَّخَذۡتُمُ ↔ ٱتَّخَذتُّمُ): idgham.
-  if (index > 0 && b.shadda && !a.shadda && before != null &&
-      before.vowel == null && before.letter != a.letter &&
+  if (index > 0 &&
+      b.shadda &&
+      !a.shadda &&
+      before != null &&
+      before.vowel == null &&
+      before.letter != a.letter &&
       'ذثدتطظضبلنرقك'.contains(before.letter)) {
     out.add('إدغام ${_name(before)} في $name');
     return false;
@@ -596,6 +656,11 @@ String? classify(String hafs, String other) {
   if (_addsInterrogative(hafs, other) || _addsInterrogative(other, hafs)) {
     return 'f';
   }
+  // تُرْجِي → تُرْجِئُ is lexical farsh, rather than applying a general
+  // rule to a hamza already present in the Hafs word.
+  if (a.noHamza == 'ترجي' && b.noHamza == 'ترجي' && a.letters != b.letters) {
+    return 'f';
+  }
   if (a.letters != b.letters && a.noHamza == b.noHamza) return 'h';
   // Silat mim al-jam' / ha' al-kinaya (لَهُمۡ ↔ لَهُمُۥ) is an usul rule.
   if (_hasSilah(hafs) != _hasSilah(other)) {
@@ -612,22 +677,27 @@ bool _addsInterrogative(String original, String reading) {
       a.first.letter == 'ء' &&
       b.first.letter == 'ء' &&
       b[1].letter == 'ء' &&
-      a.map((u) => u.letter).join() ==
-          b.skip(1).map((u) => u.letter).join();
+      a.map((u) => u.letter).join() == b.skip(1).map((u) => u.letter).join();
 }
 
 /// [classify] and [describe] plus two cross-word rules that only show at the
 /// word's end: naql (the vowel of a dropped hamza moves onto this word) and
 /// idgham kabir (this word's last vowel is dropped into the next word).
 (String, String)? _classifyInContext(
-    List<HafsWord> h, List<String> r, int i, int j) {
+  List<HafsWord> h,
+  List<String> r,
+  int i,
+  int j,
+) {
   final c = _plain(h[i].text, r[j]);
   if (c?.$1 != 'f') return c;
   final a = _stripWaqf(h[i].text), b = _stripWaqf(r[j]);
   final ea = _finalVowel.firstMatch(a)?[0] ?? '';
   final eb = _finalVowel.firstMatch(b)?[0] ?? '';
-  if (classify(a.substring(0, a.length - ea.length),
-          b.substring(0, b.length - eb.length)) !=
+  if (classify(
+        a.substring(0, a.length - ea.length),
+        b.substring(0, b.length - eb.length),
+      ) !=
       null) {
     return c;
   }
@@ -636,7 +706,8 @@ bool _addsInterrogative(String original, String reading) {
   if (vowelA && eb.isEmpty) {
     // Ya' al-idafa read with sukun (بَيۡتِيَ ↔ بَيۡتِيۡ, مَعِيَ ↔ مَعِيۡ): farsh,
     // not a vowel dropped into the next word.
-    if (ea.startsWith('َ') && a.substring(0, a.length - ea.length).endsWith('ي')) {
+    if (ea.startsWith('َ') &&
+        a.substring(0, a.length - ea.length).endsWith('ي')) {
       return ('f', 'بإسكان الياء');
     }
     return ('u', 'بالإدغام فيما بعدها');
@@ -656,8 +727,7 @@ bool _addsInterrogative(String original, String reading) {
 }
 
 /// A word of letter names: maddah but no vowel at all (الٓمٓ, حمٓ, كٓهيعٓصٓ).
-final _muqattaat = RegExp(
-    '^(?=.*ٓ)[^ً-ِْٖٗٞۡ]+\$');
+final _muqattaat = RegExp('^(?=.*ٓ)[^ً-ِْٖٗٞۡ]+\$');
 
 final _silah = RegExp('[ۥۦۧ][ٓۤ]?\$');
 final _finalVowel = RegExp('[َُِْۡ]+\$');
@@ -667,8 +737,7 @@ bool _hasSilah(String w) => _silah.hasMatch(_stripWaqf(w));
 String _dropSilah(String w) =>
     _stripWaqf(w).replaceFirst(_silah, '').replaceFirst(_finalVowel, '');
 
-String _stripWaqf(String w) =>
-    w.replaceAll(RegExp('[ۖ-ۜٓ]+\$'), '');
+String _stripWaqf(String w) => w.replaceAll(RegExp('[ۖ-ۜٓ]+\$'), '');
 
 // ---------------------------------------------------------------------------
 // Alignment
@@ -696,8 +765,10 @@ List<List<Object>> _diffSurah(int surah, List<HafsWord> h, List<String> r) {
     if (hi < hj &&
         ri < rj &&
         h[hi].ayah == h[hj - 1].ayah &&
-        classify(h.sublist(hi, hj).map((w) => w.text).join(),
-                r.sublist(ri, rj).join()) ==
+        classify(
+              h.sublist(hi, hj).map((w) => w.text).join(),
+              r.sublist(ri, rj).join(),
+            ) ==
             null) {
       return;
     }
@@ -709,14 +780,14 @@ List<List<Object>> _diffSurah(int surah, List<HafsWord> h, List<String> r) {
         out.add([
           w.surah, w.ayah, w.index, 1, //
           [r[ri - 1], ...r.sublist(ri, rj)].join(' '), 'f',
-          'بزيادة ${r.sublist(ri, rj).join(' ')}'
+          'بزيادة ${r.sublist(ri, rj).join(' ')}',
         ]);
       } else {
         final w = h[0];
         out.add([
           w.surah, w.ayah, 0, 1, //
           [...r.sublist(ri, rj), r[rj]].join(' '), 'f',
-          'بزيادة ${r.sublist(ri, rj).join(' ')}'
+          'بزيادة ${r.sublist(ri, rj).join(' ')}',
         ]);
       }
       return;
