@@ -7,6 +7,7 @@ import '../data/arabic.dart';
 import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
+import '../data/usul_text.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../state/reader_settings.dart';
@@ -14,6 +15,7 @@ import 'mushaf_decor.dart';
 import '../services/qcf_fonts.dart';
 import 'kharouf_section.dart' show readersAr;
 import 'mushaf_lines.dart';
+import 'mushaf_zoom.dart';
 import 'hamza_replacement_mark.dart';
 import 'reference_sheet.dart';
 import 'reading_colors.dart';
@@ -89,6 +91,7 @@ class _MushafPageState extends State<MushafPage>
   /// Pinch zoom of the page.
   final _zoom = TransformationController();
   bool _zoomed = false;
+  bool _pinching = false;
 
   /// The page with its hamesh and usul below it.
   final _scroll = ScrollController();
@@ -112,12 +115,14 @@ class _MushafPageState extends State<MushafPage>
   @override
   void initState() {
     super.initState();
-    _zoom.addListener(() {
-      final zoomed = _zoom.value.getMaxScaleOnAxis() > 1.01;
-      if (zoomed == _zoomed) return;
-      setState(() => _zoomed = zoomed);
-      widget.onZoomChanged?.call(zoomed);
-    });
+    _zoom.addListener(_syncZoom);
+  }
+
+  void _syncZoom() {
+    final zoomed = _pinching || _zoom.value.getMaxScaleOnAxis() > 1.001;
+    if (zoomed == _zoomed) return;
+    setState(() => _zoomed = zoomed);
+    widget.onZoomChanged?.call(zoomed);
   }
 
   @override
@@ -171,11 +176,12 @@ class _MushafPageState extends State<MushafPage>
         // Pinch zooms the whole page image: frame, text and hamesh together.
         return Stack(
           children: [
-            InteractiveViewer(
-              transformationController: _zoom,
-              minScale: 1,
-              maxScale: 4,
-              panEnabled: _zoomed,
+            MushafZoom(
+              controller: _zoom,
+              onPinchChanged: (active) {
+                _pinching = active;
+                _syncZoom();
+              },
               child: SizedBox.fromSize(size: viewport.biggest, child: content),
             ),
             if (_zoomed)
@@ -208,7 +214,13 @@ class _MushafPageState extends State<MushafPage>
         if (l is TextLine) ...l.words,
     ];
     final hasUsul =
-        sides && _usulNotes(words, widget.variants, widget.settings).isNotEmpty;
+        sides &&
+        _usulNotes(
+          words,
+          widget.variants,
+          widget.settings,
+          widget.quran,
+        ).isNotEmpty;
     final hasFarsh = entries.isNotEmpty;
     final both = hasUsul && hasFarsh;
     final rail = (size.width * (both ? 0.19 : 0.30)).clamp(96.0, 280.0);
@@ -314,7 +326,12 @@ class _MushafPageState extends State<MushafPage>
               .toList();
           final groups = farsh
               ? const <_UsulGroup>[]
-              : _usulNotes(visible, widget.variants, widget.settings);
+              : _usulNotes(
+                  visible,
+                  widget.variants,
+                  widget.settings,
+                  widget.quran,
+                );
           return _LandscapeMargin(
             key: ValueKey('landscape-${farsh ? 'farsh' : 'usul'}-$section'),
             farsh: farsh,
@@ -404,10 +421,12 @@ class _MushafPageState extends State<MushafPage>
             ],
             widget.variants,
             widget.settings,
+            widget.quran,
           )
         : const <_UsulGroup>[];
     final signature = [
       widget.page,
+      widget.quran.edition,
       size.width,
       size.height,
       for (final e in entries)
@@ -435,13 +454,14 @@ class _MushafPageState extends State<MushafPage>
         ? math.min(size.height * 0.095, math.max(0.0, normalLine * 1.6))
         : 0.0;
     final pageHeight = size.height - reserve;
-    final bothSides = withHamesh && size.width >= 400;
-    final rightWidth = !withHamesh
-        ? 0.0
-        : bothSides
-        ? (size.width * 0.13).clamp(52.0, 90.0)
-        : size.width * (narrow ? 0.19 : 0.16);
-    final leftWidth = bothSides ? rightWidth : 0.0;
+    // One outer margin, following the side of the printed page. The rest
+    // of the width belongs to the mushaf, including on narrow phones.
+    final marginWidth = withHamesh
+        ? (size.width * 0.16).clamp(52.0, 104.0)
+        : 0.0;
+    final rightPage = widget.quran.isRightPage(widget.page);
+    final rightWidth = rightPage ? marginWidth : 0.0;
+    final leftWidth = rightPage ? 0.0 : marginWidth;
     final pageWidth = size.width - rightWidth - leftWidth;
     // Full screen: no bands at the sides, the text has the whole width.
     final textWidth =
@@ -1193,15 +1213,21 @@ List<_UsulGroup> _usulNotes(
   Iterable<(Ayah, int)> words,
   VariantRepository variants,
   ReaderSettings s,
+  QuranRepository quran,
 ) {
   final groups = <String, _UsulGroup>{};
   for (final (ayah, w) in words) {
-    final m = _readingsAt(variants, s, ayah, w);
-    for (final v in [
-      ...m.shown,
-      ..._baseAt(variants, s, ayah, w).where((v) => s.kinds.contains(v.kind)),
-    ]) {
-      if (v.word != w ||
+    // Equal rule descriptions can still have different written examples
+    // (e.g. Warsh's extended mim silah versus Ibn Kathir's). Do not use
+    // the main text's comparison filter to choose the margin examples.
+    for (final v in variants.at(
+      {...s.selected, ?s.displayed},
+      ayah.surah,
+      ayah.number,
+      w,
+    )) {
+      if (!s.kinds.contains(v.kind) ||
+          v.word != w ||
           v.inHamesh ||
           v.riwayaId == hafsId ||
           v.rule == 'naql_source' ||
@@ -1230,11 +1256,14 @@ List<_UsulGroup> _usulNotes(
                 if (!v.isImala || l != 'المدود') (l, own),
               if (!v.isImala && _usulOf(v).isEmpty) ('أصول أخرى', own),
             ];
-      final word = v.usulText.isNotEmpty
-          ? v.usulText
-          : v.isImala
-          ? withImalaSign(ayah.words[w], v.text)
-          : ayah.words.sublist(w, w + v.count).join(' ');
+      final word = usulReadingText(
+        v,
+        ayah,
+        variants,
+        previousAyah: v.word == 0 && ayah.number > 1
+            ? quran.ayah(ayah.surah, ayah.number - 1)
+            : null,
+      );
       for (final (label, _) in kinds) {
         final ways =
             label.contains('همز') &&
@@ -1252,7 +1281,7 @@ List<_UsulGroup> _usulNotes(
         );
         g.ways.addAll(ways);
         final item = g.items.putIfAbsent(
-          '${ayah.surah}:${ayah.number}:$w:${v.stopOnly}',
+          '${ayah.surah}:${ayah.number}:$w:${v.stopOnly}:$word:${v.hamzaReplacement}',
           () => _UsulItem(ayah, w, word, v.stopOnly, v.hamzaReplacement),
         );
         item.riwayat.add(v.riwayaId);
@@ -1628,7 +1657,7 @@ class _NotesLayout extends MultiChildLayoutDelegate {
     final used = [0.0, 0.0];
     var fit = tops.length;
     for (var i = 0; i < tops.length; i++) {
-      final rightFits = used[0] + heights[i] <= size.height;
+      final rightFits = rightWidth > 0 && used[0] + heights[i] <= size.height;
       final leftFits = leftWidth > 0 && used[1] + heights[i] <= size.height;
       if (!rightFits && !leftFits) {
         fit = i;

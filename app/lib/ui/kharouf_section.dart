@@ -15,10 +15,14 @@ class KharoufSection extends StatelessWidget {
     required this.ayah,
     required this.word,
     required this.riwayat,
+    this.showVerses = true,
   });
 
   final int surah, ayah, word;
   final Set<String> riwayat;
+
+  /// ReferenceSheet renders filtered, numbered, expandable verses itself.
+  final bool showVerses;
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +50,11 @@ class KharoufSection extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(Icons.verified_rounded, size: 18, color: MushafColors.green),
+                  Icon(
+                    Icons.verified_rounded,
+                    size: 18,
+                    color: MushafColors.green,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -63,10 +71,13 @@ class KharoufSection extends StatelessWidget {
                 if (e.section != 'farsh')
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
-                    child: Text(e.sectionAr, style: theme.textTheme.labelMedium),
+                    child: Text(
+                      e.sectionAr,
+                      style: theme.textTheme.labelMedium,
+                    ),
                   ),
                 for (final r in _mine(e)) _reading(theme, r),
-                for (final v in e.verses)
+                for (final v in showVerses ? e.verses : <String>[])
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
@@ -84,7 +95,9 @@ class KharoufSection extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 book.source,
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.hintColor,
+                ),
               ),
             ],
           ),
@@ -125,13 +138,19 @@ class KharoufSection extends StatelessWidget {
             for (final (note, ids) in r.notes)
               if (ids.any(riwayat.contains))
                 TextSpan(text: '، $note ', style: theme.textTheme.bodyMedium),
-            if (r.taqlil) TextSpan(text: 'بالتقليل ', style: theme.textTheme.bodyMedium),
+            if (r.taqlil)
+              TextSpan(text: 'بالتقليل ', style: theme.textTheme.bodyMedium),
             TextSpan(
               text: all,
-              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             if (r.stopOnly && !r.how.startsWith('وقفاً'))
-              TextSpan(text: ' (وقفاً لا وصلاً)', style: theme.textTheme.bodySmall),
+              TextSpan(
+                text: ' (وقفاً لا وصلاً)',
+                style: theme.textTheme.bodySmall,
+              ),
           ],
         ),
         textDirection: TextDirection.rtl,

@@ -41,6 +41,7 @@ class BookPagerState extends State<BookPager>
   /// -1..1: positive while turning forward, negative while turning back.
   double _progress = 0;
   bool _dragCancelled = false;
+  final _pointers = <int>{};
   late final AnimationController _settle = AnimationController(
     vsync: this,
     value: 0,
@@ -139,6 +140,7 @@ class BookPagerState extends State<BookPager>
   }
 
   void _onDragUpdate(DragUpdateDetails d, double width) {
+    if (_dragCancelled || _pointers.length > 1) return;
     _settle.stop();
     var p = _progress + 1.5 * d.primaryDelta! / width;
     if (!_canTurn(1)) p = math.min(p, 0);
@@ -210,16 +212,20 @@ class BookPagerState extends State<BookPager>
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         // Each page keeps its state (and its picture key) while it is near.
-        Widget page(int i, {bool show = true}) => Offstage(
-          offstage: !show,
-          child: RepaintBoundary(
-            key: _keyOf(i),
-            child: KeyedSubtree(
-              key: ValueKey(i),
-              child: _built[i] ??= widget.itemBuilder(context, i),
-            ),
-          ),
-        );
+        Widget page(int i, {bool show = true, bool preserveHitTest = false}) =>
+            Offstage(
+              offstage: !show && !preserveHitTest,
+              child: Opacity(
+                opacity: show ? 1 : 0,
+                child: RepaintBoundary(
+                  key: _keyOf(i),
+                  child: KeyedSubtree(
+                    key: ValueKey(i),
+                    child: _built[i] ??= widget.itemBuilder(context, i),
+                  ),
+                ),
+              ),
+            );
 
         _built.removeWhere((i, _) => (i - _index).abs() > 1);
         final prev = _index > 0 ? _index - 1 : null;
@@ -231,7 +237,9 @@ class BookPagerState extends State<BookPager>
           layers = [
             if (next != null) page(next),
             if (prev != null) page(prev, show: false),
-            page(_index, show: sheet == null),
+            // Keep the same page under both fingers while its picture
+            // turns. A second finger can cancel the turn and begin zoom.
+            page(_index, show: sheet == null, preserveHitTest: true),
             if (sheet != null)
               _Curl(image: sheet, progress: _progress)
             else
@@ -270,7 +278,7 @@ class BookPagerState extends State<BookPager>
                       ..minFlingDistance = 8
                       ..dragStartBehavior = DragStartBehavior.down
                       ..onStart = (_) {
-                        _dragCancelled = false;
+                        _dragCancelled = _pointers.length > 1;
                         _settle.stop();
                       }
                       ..onUpdate = (d) {
@@ -281,13 +289,26 @@ class BookPagerState extends State<BookPager>
                   ),
           },
           child: Listener(
-            onPointerCancel: widget.enabled
-                ? (_) {
-                    // A recognized drag can receive onEnd on cancellation.
-                    _dragCancelled = true;
-                    _onDragCancel();
-                  }
-                : null,
+            onPointerDown: (event) {
+              _pointers.add(event.pointer);
+              if (_pointers.length < 2) return;
+              // A second finger owns zoom even when the first finger had
+              // already lifted the turning sheet. Never commit that turn.
+              _dragCancelled = true;
+              _settle.stop();
+              setState(() {
+                _progress = 0;
+                _dropSheet();
+              });
+            },
+            onPointerUp: (event) => _pointers.remove(event.pointer),
+            onPointerCancel: (event) {
+              _pointers.remove(event.pointer);
+              if (!widget.enabled) return;
+              // A recognized drag can receive onEnd on cancellation.
+              _dragCancelled = true;
+              _onDragCancel();
+            },
             child: Stack(fit: StackFit.expand, children: layers),
           ),
         );

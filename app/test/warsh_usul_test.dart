@@ -12,6 +12,7 @@ import 'package:qiraat_mushaf/models/qiraat_catalog.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
 import 'package:qiraat_mushaf/ui/hamza_replacement_mark.dart';
 import 'package:qiraat_mushaf/ui/mushaf_page.dart';
+import 'package:qiraat_mushaf/ui/mushaf_lines.dart';
 import 'package:qiraat_mushaf/ui/reading_colors.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
@@ -19,7 +20,7 @@ import '../tool/build_warsh_usul.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  late QuranRepository quran;
+  late QuranRepository quran, shamarly;
   late VariantRepository variants;
   late MutashabihatRepository mutashabihat;
 
@@ -28,8 +29,9 @@ void main() {
       'Hafs',
     )..addFont(rootBundle.load('assets/fonts/hafs.18.ttf'))).load();
     quran = await QuranRepository.load();
+    shamarly = await QuranRepository.load(null, MushafEdition.shamarly);
     variants = await VariantRepository.discover();
-    await variants.ensureLoaded(['warsh']);
+    await variants.ensureLoaded(['warsh', 'qunbul']);
     mutashabihat = await MutashabihatRepository.load();
   });
 
@@ -118,6 +120,7 @@ void main() {
     int number, {
     ReaderSettings? settings,
     VariantRepository? repository,
+    QuranRepository? mushaf,
     Size? viewport,
   }) async {
     t.view.physicalSize = viewport ?? const Size(1080, 2000);
@@ -134,7 +137,7 @@ void main() {
           child: Scaffold(
             body: MushafPage(
               page: number,
-              quran: quran,
+              quran: mushaf ?? quran,
               variants: repository ?? variants,
               mutashabihat: mutashabihat,
               settings: settings ?? ReaderSettings.memory(selected: {'warsh'}),
@@ -187,40 +190,85 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('side margins use both rails before continuing below', (t) async {
-    await page(t, 3, repository: _DenseVariants());
-    await t.pumpAndSettle();
-    final print = t.getRect(find.byKey(const ValueKey('mushaf-print')));
-    final left = <Rect>[], right = <Rect>[];
-    for (
-      var i = 0;
-      find.byKey(ValueKey('side-note-$i')).evaluate().isNotEmpty;
-      i++
-    ) {
-      final rect = t.getRect(find.byKey(ValueKey('side-note-$i')));
-      expect(rect.top, greaterThanOrEqualTo(-0.1));
-      expect(rect.bottom, lessThanOrEqualTo(print.bottom + 0.1));
-      if (rect.right <= print.left) {
-        left.add(rect);
+  testWidgets(
+    'portrait uses one outer margin and a wider print on either page',
+    (t) async {
+      for (final width in [432.0, 360.0]) {
+        for (final number in [3, 4]) {
+          await page(
+            t,
+            number,
+            repository: _DenseVariants(),
+            viewport: Size(width, 800),
+          );
+          await t.pumpAndSettle();
+          final print = t.getRect(find.byKey(const ValueKey('mushaf-print')));
+          final right = quran.isRightPage(number);
+          expect(print.width, greaterThanOrEqualTo(width * .83));
+          expect(right ? print.left : print.right, right ? 0 : width);
+          final notes = <Rect>[];
+          for (
+            var i = 0;
+            find.byKey(ValueKey('side-note-$i')).evaluate().isNotEmpty;
+            i++
+          ) {
+            final rect = t.getRect(find.byKey(ValueKey('side-note-$i')));
+            expect(rect.top, greaterThanOrEqualTo(-0.1));
+            expect(rect.bottom, lessThanOrEqualTo(print.bottom + 0.1));
+            if (right) {
+              expect(rect.left, greaterThanOrEqualTo(print.right));
+            } else {
+              expect(rect.right, lessThanOrEqualTo(print.left));
+            }
+            notes.add(rect);
+          }
+          expect(notes, isNotEmpty);
+          notes.sort((a, b) => a.top.compareTo(b.top));
+          for (var i = 1; i < notes.length; i++) {
+            expect(notes[i].top, greaterThanOrEqualTo(notes[i - 1].bottom));
+          }
+          expect(find.byKey(const ValueKey('bottom-notes')), findsOneWidget);
+          expect(
+            t.getTopLeft(find.byKey(const ValueKey('bottom-notes'))).dy,
+            lessThan(800),
+          );
+          expect(t.takeException(), isNull);
+        }
+      }
+    },
+  );
+
+  testWidgets(
+    'extra portrait width enlarges letters without changing printed lines',
+    (t) async {
+      await page(t, 3, repository: _DenseVariants());
+      await t.pumpAndSettle();
+      final print = t.getRect(find.byKey(const ValueKey('mushaf-print')));
+      final lines = t.widget<MushafLines>(find.byType(MushafLines));
+      expect(lines.lines, quran.lines(3));
+      // Previously the two margins left 74% of the viewport to the print.
+      final oldSize = lines.metrics(432 * .74 - 48).fontSize;
+      expect(
+        lines.metrics(print.width - 48).fontSize,
+        greaterThan(oldSize * 1.1),
+      );
+      expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets('portrait margin follows the Shamarly page side too', (t) async {
+    for (final number in [3, 4]) {
+      await page(t, number, repository: _DenseVariants(), mushaf: shamarly);
+      await t.pumpAndSettle();
+      final print = t.getRect(find.byKey(const ValueKey('mushaf-print')));
+      final note = t.getRect(find.byKey(const ValueKey('side-note-0')));
+      if (shamarly.isRightPage(number)) {
+        expect(note.left, greaterThanOrEqualTo(print.right));
       } else {
-        expect(rect.left, greaterThanOrEqualTo(print.right));
-        right.add(rect);
+        expect(note.right, lessThanOrEqualTo(print.left));
       }
+      expect(t.takeException(), isNull);
     }
-    expect(left, isNotEmpty);
-    expect(right, isNotEmpty);
-    for (final column in [left, right]) {
-      column.sort((a, b) => a.top.compareTo(b.top));
-      for (var i = 1; i < column.length; i++) {
-        expect(column[i].top, greaterThanOrEqualTo(column[i - 1].bottom));
-      }
-    }
-    expect(find.byKey(const ValueKey('bottom-notes')), findsOneWidget);
-    expect(
-      t.getTopLeft(find.byKey(const ValueKey('bottom-notes'))).dy,
-      lessThan(800),
-    );
-    expect(t.takeException(), isNull);
   });
 
   testWidgets('two-word faces stay with their own contexts in the footer', (
@@ -338,8 +386,8 @@ void main() {
   ) async {
     await page(t, 3);
     expect(find.text('النقل:'), findsOneWidget);
-    expect(find.text('عَذَابٌ أَلِيمُۢ'), findsOneWidget);
-    expect(find.text('خَلَوۡاْ إِلَىٰ'), findsOneWidget);
+    expect(find.text('عَذَابٌ اَلِيمُۢ'), findsOneWidget);
+    expect(find.text('خَلَوِاْ اِلَىٰ'), findsOneWidget);
     final marks = t.widgetList<HamzaReplacementMark>(
       find.byType(HamzaReplacementMark),
     );
@@ -348,6 +396,26 @@ void main() {
       hasLength(2),
     ); // page and footer
     expect(t.takeException(), isNull);
+  });
+
+  testWidgets('usul examples use their own riwaya when the main text changes', (
+    t,
+  ) async {
+    for (final displayed in [null, 'warsh', 'qunbul']) {
+      final settings = ReaderSettings.memory(selected: {'warsh', 'qunbul'})
+        ..displayed = displayed;
+      await page(t, 3, settings: settings);
+      final notes = find.byKey(const ValueKey('usul-notes'));
+      Finder example(String text) =>
+          find.descendant(of: notes, matching: find.text(text));
+      expect(example('عَلَيْهِمُۥٓ'), findsOneWidget);
+      expect(example('عَلَيۡهِمُۥ'), findsOneWidget);
+      expect(example('عَذَابٌ اَلِيمُۢ'), findsOneWidget);
+      expect(example('خَلَوِاْ اِلَىٰ'), findsOneWidget);
+      expect(example('يُومِنُونَۖ'), findsOneWidget);
+      expect(example('عَذَابٌ أَلِيمُۢ'), findsNothing);
+      expect(t.takeException(), isNull);
+    }
   });
 
   testWidgets(
@@ -418,6 +486,22 @@ void main() {
     await expectLater(
       find.byType(MushafPage),
       matchesGoldenFile('goldens/p3_warsh_usul_footer.png'),
+    );
+  });
+
+  testWidgets('portrait left page has its margin on the left', tags: 'golden', (
+    t,
+  ) async {
+    await page(t, 20);
+    await t.pumpAndSettle();
+    final print = t.getRect(find.byKey(const ValueKey('mushaf-print')));
+    expect(
+      t.getRect(find.byKey(const ValueKey('side-note-0'))).right,
+      lessThanOrEqualTo(print.left),
+    );
+    await expectLater(
+      find.byType(MushafPage),
+      matchesGoldenFile('goldens/p20_warsh_left_margin.png'),
     );
   });
 

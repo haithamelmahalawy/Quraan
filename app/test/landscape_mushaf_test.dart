@@ -9,6 +9,7 @@ import 'package:qiraat_mushaf/state/reader_settings.dart';
 import 'package:qiraat_mushaf/ui/book_pager.dart';
 import 'package:qiraat_mushaf/ui/mushaf_lines.dart';
 import 'package:qiraat_mushaf/ui/mushaf_page.dart';
+import 'package:qiraat_mushaf/ui/mushaf_zoom.dart';
 import 'package:qiraat_mushaf/ui/reader_screen.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
@@ -253,6 +254,153 @@ void main() {
       controller(t).jumpTo(controller(t).position.maxScrollExtent);
       await t.pumpAndSettle();
       expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'small pinches zoom in and out in both orientations without turning',
+    (t) async {
+      for (final size in [const Size(432, 800), const Size(800, 432)]) {
+        final settings = ReaderSettings.memory(selected: {'warsh'})
+          ..page = 3
+          ..qcfFont = false;
+        await show(t, size, settings: settings, reader: true);
+        final current = find.byType(MushafPage).last;
+        final zoom = t.widget<MushafZoom>(
+          find.descendant(of: current, matching: find.byType(MushafZoom)),
+        );
+        final center = t.getCenter(current);
+        final first = await t.startGesture(
+          center - const Offset(60, 0),
+          pointer: 1,
+        );
+        final second = await t.startGesture(
+          center + const Offset(60, 0),
+          pointer: 2,
+        );
+        await t.pump();
+        await first.moveBy(const Offset(-4, 0));
+        await second.moveBy(const Offset(4, 0));
+        await first.up();
+        await second.up();
+        await t.pumpAndSettle();
+        final scale = zoom.controller.value.getMaxScaleOnAxis();
+        expect(scale, greaterThan(1.08));
+        expect(settings.page, 3);
+        expect(t.widget<BookPager>(find.byType(BookPager)).enabled, isFalse);
+        final before = zoom.controller.value.getTranslation().x;
+        await t.drag(current, const Offset(-28, 0));
+        await t.pumpAndSettle();
+        expect(zoom.controller.value.getTranslation().x, lessThan(before));
+        expect(zoom.controller.value.getMaxScaleOnAxis(), scale);
+        expect(settings.page, 3);
+        final a = await t.startGesture(
+          center - const Offset(60, 0),
+          pointer: 3,
+        );
+        final b = await t.startGesture(
+          center + const Offset(60, 0),
+          pointer: 4,
+        );
+        await t.pump();
+        await a.moveBy(const Offset(5, 0));
+        await b.moveBy(const Offset(-5, 0));
+        await a.up();
+        await b.up();
+        await t.pumpAndSettle();
+        expect(zoom.controller.value.getMaxScaleOnAxis(), 1);
+        expect(t.widget<BookPager>(find.byType(BookPager)).enabled, isTrue);
+        await t.fling(current, const Offset(80, 0), 600);
+        await t.pumpAndSettle();
+        expect(settings.page, 4);
+        expect(t.takeException(), isNull);
+        await t.pumpWidget(const SizedBox());
+        await t.pumpAndSettle();
+      }
+    },
+  );
+
+  testWidgets(
+    'adding a second finger during a scroll immediately starts zoom',
+    (t) async {
+      await show(t, const Size(800, 432));
+      final center = t.getCenter(central());
+      final first = await t.startGesture(
+        center - const Offset(60, 0),
+        pointer: 1,
+      );
+      await first.moveBy(const Offset(0, -20));
+      await t.pump();
+      await first.moveBy(const Offset(0, -45));
+      await t.pump();
+      expect(controller(t).offset, greaterThan(0));
+      final offset = controller(t).offset;
+      final second = await t.startGesture(
+        center + const Offset(60, -65),
+        pointer: 2,
+      );
+      await t.pump();
+      await first.moveBy(const Offset(-5, 0));
+      await second.moveBy(const Offset(5, 0));
+      await t.pump();
+      expect(
+        t
+            .widget<MushafZoom>(find.byType(MushafZoom))
+            .controller
+            .value
+            .getMaxScaleOnAxis(),
+        greaterThan(1.1),
+      );
+      expect(controller(t).offset, closeTo(offset, .01));
+      await first.up();
+      await second.up();
+      await t.pumpAndSettle();
+      await t.tap(find.text('حجم الصفحة'));
+      await t.pumpAndSettle();
+      expect(
+        t.widget<MushafZoom>(find.byType(MushafZoom)).controller.value,
+        Matrix4.identity(),
+      );
+      await t.drag(central(), const Offset(0, -100));
+      await t.pumpAndSettle();
+      expect(controller(t).offset, greaterThan(offset + 30));
+      expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'a second finger cancels an initial page turn and zooms the current page',
+    (t) async {
+      final settings = ReaderSettings.memory(selected: {'warsh'})
+        ..page = 3
+        ..qcfFont = false;
+      await show(t, const Size(432, 800), settings: settings, reader: true);
+      final current = find.byType(MushafPage).last;
+      final zoom = t.widget<MushafZoom>(
+        find.descendant(of: current, matching: find.byType(MushafZoom)),
+      );
+      final center = t.getCenter(current);
+      final first = await t.startGesture(
+        center - const Offset(60, 0),
+        pointer: 1,
+      );
+      await first.moveBy(const Offset(45, 0));
+      await t.pump();
+      final second = await t.startGesture(
+        center + const Offset(105, 0),
+        pointer: 2,
+      );
+      await t.pump();
+      await first.moveBy(const Offset(-5, 0));
+      await second.moveBy(const Offset(5, 0));
+      await first.up();
+      await second.up();
+      await t.pumpAndSettle();
+      expect(settings.page, 3);
+      expect(zoom.controller.value.getMaxScaleOnAxis(), greaterThan(1.1));
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox());
+      await t.pumpAndSettle();
     },
   );
 
