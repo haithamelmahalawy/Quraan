@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../models/quran.dart';
 import 'arabic.dart';
+import 'book_readings.dart';
 
 /// Loads the per-riwaya difference files from `assets/data/qiraat/` and
 /// answers "which selected riwayat read this Hafs word differently?".
@@ -135,14 +136,14 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
   // readings there are not shown (the book is the certified source).
   for (final e in json['entries'] as List) {
     if (e[4] != 'farsh') continue;
-    final readings = e[5] as List;
+    final readings = (e[5] as List).cast<List>();
     bool reads(List g) =>
         (g[1] as List).contains(id) || (g[2] as List).contains(id);
     final asHafs = readings.any(
-      (g) => (g[1] as List).contains('hafs') && (g[1] as List).contains(id),
+      (g) => bookReadingAsHafs(g, readings) && (g[1] as List).contains(id),
     );
     final other = readings.any(
-      (g) => !(g[1] as List).contains('hafs') && reads(g as List),
+      (g) => !bookReadingAsHafs(g, readings) && reads(g),
     );
     if (!asHafs || other) continue;
     for (var w = e[2] as int; w < (e[2] as int) + (e[3] as int); w++) {

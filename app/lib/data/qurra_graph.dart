@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'qurra_biographies.dart';
 
 enum QurraNodeKind { root, city, reader, narrator }
@@ -85,26 +83,13 @@ class QurraGraph {
         id: 'root',
         label: 'القراءات\nالعشر',
         kind: QurraNodeKind.root,
-        position: GraphPoint3(0, 0, 0),
+        position: GraphPoint3(0, -3.5, 0),
       ),
     ];
     final edges = <QurraGraphEdge>[];
-    GraphPoint3 position(
-      RecitationCity c,
-      double radius,
-      int index,
-      int count,
-    ) {
-      final angle =
-          -math.pi / 2 +
-          c.index * math.pi / 4 +
-          (index - (count - 1) / 2) * .19;
-      return GraphPoint3(
-        math.cos(angle) * radius,
-        math.sin(angle) * radius,
-        math.sin(c.index * 1.7) * .65 + (index - (count - 1) / 2) * .16,
-      );
-    }
+    // Layout follows transmission, not a narrator's city: his own city stays
+    // metadata, without pulling him across the graph away from his reader.
+    double readerX(ReaderBiography b) => readerBiographies.indexOf(b) * 4.8;
 
     for (final c in RecitationCity.values.where(cities.contains)) {
       nodes.add(
@@ -113,7 +98,7 @@ class QurraGraph {
           label: c.nameAr,
           kind: QurraNodeKind.city,
           city: c,
-          position: position(c, 1.15, 0, 1),
+          position: GraphPoint3(c.index * 4.8, -2.5, 0),
         ),
       );
       edges.add((
@@ -123,9 +108,7 @@ class QurraGraph {
       ));
     }
     // Stable positions across filters make it possible to retain orientation.
-    final allNarrators = [for (final b in readerBiographies) ...b.narrators];
     for (final (b, ns) in selected) {
-      final peers = readerBiographies.where((r) => r.city == b.city).toList();
       final id = 'reader-${b.qiraaId}';
       nodes.add(
         QurraGraphNode(
@@ -134,7 +117,7 @@ class QurraGraph {
           kind: QurraNodeKind.reader,
           city: b.city,
           reader: b,
-          position: position(b.city, 2, peers.indexOf(b), peers.length),
+          position: GraphPoint3(readerX(b), -.85, .35),
         ),
       );
       edges.add((
@@ -143,7 +126,6 @@ class QurraGraph {
         kind: QurraEdgeKind.classification,
       ));
       for (final n in ns) {
-        final peers = allNarrators.where((r) => r.city == n.city).toList();
         final nid = 'narrator-${n.riwayaId}';
         final ambiguous = n.personId == 'duri' || n.personId == 'khalaf';
         nodes.add(
@@ -156,7 +138,11 @@ class QurraGraph {
             city: n.city,
             reader: b,
             narrator: n,
-            position: position(n.city, 2.9, peers.indexOf(n), peers.length),
+            position: GraphPoint3(
+              readerX(b) + (b.narrators.indexOf(n) == 0 ? 1.25 : -1.25),
+              .95,
+              -.2,
+            ),
           ),
         );
         edges.add((from: id, to: nid, kind: QurraEdgeKind.transmission));

@@ -23,6 +23,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:qiraat_mushaf/data/arabic.dart';
+import 'package:qiraat_mushaf/data/book_readings.dart';
 
 /// Every riwaya, in the order of the ten qiraat.
 const all = [
@@ -434,6 +435,12 @@ void main(List<String> args) {
       }
       if (rest != null) {
         final (own, notes) = splitHow(restHow);
+        // A second face can be named in the explanation instead of readers.
+        final secondFace = <String>{
+          for (final n in notes)
+            if ((n[0] as String).contains('الوجه الثاني'))
+              ...(n[1] as List).cast<String>(),
+        };
         groups.add([
           restText,
           [
@@ -441,7 +448,7 @@ void main(List<String> args) {
               // A reader named alongside الباقون also has this face,
               // even if another face of his was already listed above.
               if (!listed.contains(id) ||
-                  (rest.ids.contains(id) &&
+                  ((rest.ids.contains(id) || secondFace.contains(id)) &&
                       !notes.any(
                         (n) =>
                             (n[1] as List).contains(id) &&
@@ -513,7 +520,9 @@ void main(List<String> args) {
                 placedGroups.any((g) => (g[1] as List).contains('hafs'))) {
               final ids = <String>{};
               for (final g in placedGroups) {
-                if ((g[1] as List).contains('hafs') || g[4] == true) continue;
+                if (bookReadingAsHafs(g, placedGroups) || g[4] == true) {
+                  continue;
+                }
                 ids.addAll([...(g[1] as List), ...(g[2] as List)].cast());
               }
               for (final id in ids) {
@@ -521,7 +530,7 @@ void main(List<String> args) {
                 // as Hafs (بخلف عنه).
                 final mine = [
                   for (final g in placedGroups)
-                    if (!(g[1] as List).contains('hafs') &&
+                    if (!bookReadingAsHafs(g, placedGroups) &&
                         g[4] != true &&
                         ((g[1] as List).contains(id) ||
                             (g[2] as List).contains(id)))
@@ -530,7 +539,7 @@ void main(List<String> args) {
                 final first = mine.first;
                 final alsoAsHafs = placedGroups.any(
                   (g) =>
-                      (g[1] as List).contains('hafs') &&
+                      bookReadingAsHafs(g, placedGroups) &&
                       ((g[1] as List).contains(id) ||
                           (g[2] as List).contains(id)),
                 );

@@ -382,7 +382,7 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           child: Text(
-            _fullGraph ? 'اسحب للتدوير • قرّب بإصبعين • اضغط على الاسم' : '◆ مدينة   ● قارئ   • راوٍ   ◉ الثلاثة المتممون\nاسحب للتدوير • قرّب بإصبعين • اضغط على الاسم',
+            'مرّر لاستعراض الفروع • إصبعان للتكبير\nزر التدوير لتحريك المنظور • اضغط الاسم للنبذة',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(fontSize: 11),
@@ -469,7 +469,7 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'تربط الشبكة المدن بالقراء والرواة المنتسبين إليها، وتربط كل قارئ براوييه المشهورين. لون العقدة يبيّن مدينتها، والحلقة الذهبية تميّز القراء الثلاثة المتممين للعشرة.',
+                    'تُرتّب الفروع حسب بلد القارئ، ويظهر كل قارئ فوق راوييه بخطين واضحين. بلد كل راوٍ مكتوب تحت اسمه، والإطار الذهبي يميّز القراء الثلاثة المتممين للعشرة.',
                   ),
                 ],
                 if (node.kind == QurraNodeKind.root ||
@@ -478,7 +478,7 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
                     node.reader?.qiraaId == 'khalaf') ...[
                   const SizedBox(height: 12),
                   const Text(
-                    'الخط الذهبي المتقطع يصل أدوار الشخص نفسه: الدوري يروي عن أبي عمرو والكسائي، وخلف راوٍ عن حمزة وهو أيضًا إمام القراءة العاشرة.',
+                    'للدوري روايتان عن أبي عمرو والكسائي، وخلف راوٍ عن حمزة وهو أيضًا إمام القراءة العاشرة. يظهر كل دور في الفرع الذي ينتمي إليه.',
                   ),
                 ],
                 const SizedBox(height: 8),

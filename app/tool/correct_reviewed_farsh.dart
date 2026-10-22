@@ -1,5 +1,5 @@
 // Apply the reviewed readings while preserving unrelated riwaya/rule rows.
-// Source: al-Tasheel, reviewed farsh notes on mushaf pages 413–536.
+// Source: al-Tasheel, reviewed notes on mushaf pages 413–601.
 // Run from app/: dart run tool/correct_reviewed_farsh.dart
 import 'dart:convert';
 import 'dart:io';
@@ -76,6 +76,66 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
     {'wujuh': 'بوجهين: الأول بكسر الشين وهو المقدم، والثاني بفتح الشين'},
   ]);
   put([56, 66, 0, 1, 'أَءِنَّا', 'f', 'بزيادة همزة استفهام']);
+  for (final (word, text) in [(15, 'ٱنشِزُواْ'), (16, 'فَٱنشِزُواْ')]) {
+    put([
+      58,
+      11,
+      word,
+      1,
+      text,
+      'f',
+      '',
+      '',
+      {'wujuh': 'بوجهين: الأول بكسر الشين وهو المقدم، والثاني بضم الشين'},
+    ]);
+  }
+  put([61, 8, 7, 1, 'نُّورَهُۥ', 'f', 'بالإدغام وفتح الراء وضم الهاء']);
+  put([65, 3, 14, 1, 'أَمۡرَهُۥۚ', 'f', 'بفتح الراء وضم الهاء']);
+  put([
+    66,
+    4,
+    14,
+    1,
+    'وَجَبۡرَئِلُ',
+    'f',
+    'بفتح الجيم والراء وهمزة مكسورة بدل الياء',
+  ]);
+  rows.removeWhere((r) => r[0] == 69 && r[1] == 41 && r[2] == 6);
+  put([75, 27, 1, 2, 'مَن رَّاقٖ', 'f', 'بلا سكت وإدغام النون في الراء']);
+  put([
+    75,
+    36,
+    4,
+    1,
+    'سُدَ۪ى',
+    'u',
+    'بإمالة الألف وقفًا',
+    '',
+    {'stopOnly': true},
+  ]);
+  for (final (ayah, word) in [(15, 7), (16, 0)]) {
+    put([
+      76,
+      ayah,
+      word,
+      1,
+      'قَوَارِيرٗا',
+      'f',
+      'بتنوين الراء بالفتح وصلًا، وإبدال التنوين ألفًا وقفًا',
+    ]);
+  }
+  // One phrase replaces both old one-word usul rows, retaining the imala.
+  rows.removeWhere((r) => r[0] == 83 && r[1] == 14 && r[2] == 2);
+  put([
+    83,
+    14,
+    1,
+    2,
+    'بَل رَّ۪انَ',
+    'f',
+    'بترك السكت على اللام وإدغامها في الراء وإمالة فتحة الراء والألف',
+  ]);
+  put([104, 8, 2, 1, 'مُّوصَدَةٞ', 'f', 'بإبدال الهمزة واوًا مدية']);
 }
 
 void main() {

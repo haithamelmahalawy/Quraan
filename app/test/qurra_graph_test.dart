@@ -50,6 +50,18 @@ void main() {
         kind: QurraEdgeKind.classification,
       )),
     );
+    for (final narrator in graph.nodes.where(
+      (n) => n.kind == QurraNodeKind.narrator,
+    )) {
+      final parent = graph.nodes.singleWhere(
+        (n) => n.id == 'reader-${narrator.reader!.qiraaId}',
+      );
+      expect(
+        (narrator.position.x - parent.position.x).abs(),
+        lessThanOrEqualTo(1.25),
+      );
+      expect(narrator.position.y, greaterThan(parent.position.y));
+    }
     expect(
       graph.edges,
       contains((
@@ -162,6 +174,100 @@ void main() {
       t.widget<QurraGraphView>(find.byType(QurraGraphView)).camera;
 
   testWidgets(
+    'browsing scrolls through separate city branches without rotating',
+    (t) async {
+      await show(t);
+      final initial = camera(t).yaw;
+      final list = t.widget<ListView>(
+        find.byKey(const PageStorageKey('qurra-organized-forest')),
+      );
+      await t.drag(
+        find.byKey(const ValueKey('qurra-3d-canvas')),
+        const Offset(0, -280),
+      );
+      await t.pumpAndSettle();
+      expect(list.controller!.offset, greaterThan(150));
+      expect(camera(t).yaw, initial);
+      expect(find.byTooltip('تدوير بالسحب'), findsOneWidget);
+      expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'reader and narrator labels remain separated throughout 3D rotation',
+    (t) async {
+      final c = QurraGraphCamera();
+      addTearDown(c.dispose);
+      await show(
+        t,
+        size: const Size(360, 700),
+        scale: 1.4,
+        child: Scaffold(
+          body: QurraGraphView(
+            graph: QurraGraph.build(query: 'عاصم'),
+            camera: c,
+            onSelect: (_) {},
+          ),
+        ),
+      );
+      final parent = find.byKey(const ValueKey('graph-node-reader-asim'));
+      final shubah = find.byKey(const ValueKey('graph-node-narrator-shubah'));
+      final hafs = find.byKey(const ValueKey('graph-node-narrator-hafs'));
+      for (final yaw in [0.0, math.pi / 2, math.pi, math.pi * 1.5]) {
+        for (final pitch in [-1.2, 1.2]) {
+          c.orbit(yaw - c.yaw, pitch - c.pitch);
+          await t.pumpAndSettle();
+          final p = t.getRect(parent),
+              a = t.getRect(shubah),
+              b = t.getRect(hafs);
+          expect(a.overlaps(b), isFalse);
+          expect(p.bottom, lessThan(math.min(a.top, b.top)));
+          expect(a.left, greaterThanOrEqualTo(0));
+          expect(b.right, lessThanOrEqualTo(360));
+          expect(t.takeException(), isNull);
+        }
+      }
+    },
+  );
+
+  testWidgets('a small pinch over a name zooms without opening a biography', (
+    t,
+  ) async {
+    final c = QurraGraphCamera();
+    addTearDown(c.dispose);
+    final selected = <String>[];
+    await show(
+      t,
+      child: Scaffold(
+        body: QurraGraphView(
+          graph: QurraGraph.build(query: 'ورش'),
+          camera: c,
+          onSelect: (node) => selected.add(node.id),
+        ),
+      ),
+    );
+    final name = find.byKey(const ValueKey('graph-node-narrator-warsh'));
+    final center = t.getCenter(name);
+    final first = await t.startGesture(center - const Offset(5, 0), pointer: 1);
+    final second = await t.startGesture(
+      center + const Offset(5, 0),
+      pointer: 2,
+    );
+    await t.pump();
+    await first.moveTo(center - const Offset(8, 0));
+    await second.moveTo(center + const Offset(8, 0));
+    await t.pump();
+    await first.up();
+    await second.up();
+    await t.pumpAndSettle();
+    expect(c.zoom, greaterThan(1.3));
+    expect(selected, isEmpty);
+    await t.tap(name);
+    await t.pumpAndSettle();
+    expect(selected, ['narrator-warsh']);
+  });
+
+  testWidgets(
     'the home guide starts as a graph and tapping a searched narrator opens his biography',
     (t) async {
       await show(t);
@@ -177,7 +283,13 @@ void main() {
         (n) => n.riwayaId == 'warsh',
       );
       expect(find.text(warsh.fullName), findsOneWidget);
-      expect(find.text(warsh.city.nameAr), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text(warsh.city.nameAr),
+        ),
+        findsOneWidget,
+      );
       expect(find.text(warsh.title), findsOneWidget);
       await t.tap(find.text('العودة إلى الشبكة'));
       await t.pumpAndSettle();
@@ -187,7 +299,7 @@ void main() {
   );
 
   testWidgets(
-    'one finger rotates, two fingers zoom and pan, and reset restores the camera',
+    'rotation mode orbits, two fingers zoom and pan, and reset restores browsing',
     (t) async {
       final c = QurraGraphCamera();
       addTearDown(c.dispose);
@@ -202,6 +314,8 @@ void main() {
         ),
       );
       final start = c.yaw;
+      await t.tap(find.byTooltip('تدوير بالسحب'));
+      await t.pumpAndSettle();
       await t.drag(
         find.byKey(const ValueKey('qurra-3d-canvas')),
         const Offset(80, 25),
@@ -343,4 +457,14 @@ void main() {
       );
     },
   );
+
+  testWidgets('organized city branches portrait preview', tags: 'golden', (
+    t,
+  ) async {
+    await show(t, size: const Size(390, 844), preview: true);
+    await expectLater(
+      find.byType(QurraGuideScreen),
+      matchesGoldenFile('goldens/qurra_graph_portrait.png'),
+    );
+  });
 }

@@ -42,12 +42,16 @@ three, and search names. Each reader includes a short biography and expandable
 narrator biographies. The guide distinguishes al-Duri's two transmissions
 and Khalaf's roles as narrator and tenth reader; its sources are available
 from the information button (`lib/data/qurra_biographies.dart`).
-The default view is a rotatable 3D relationship graph: eight city nodes,
-ten reader nodes, and twenty transmission roles. City links use each person's
-own affiliation; stronger links connect readers to their narrators. Dashed
-gold links identify al-Duri's and Khalaf's shared identities across roles.
-Drag to orbit, pinch to zoom/pan, or use the rotation, zoom, reset and optional
-automatic-rotation controls. Tap a node for its biography or city filters.
+The default graph is an organized forest of small 3D trees, grouped by the
+reader's city. Each reader sits above his two narrators with local branch
+lines. Narrators remain beside their own reader even when their cities differ;
+each narrator's city appears below his name. Names stay in separate lanes
+during rotation, and shared identities are explained in the biographies.
+Scroll to browse all ten readers. Enable the drag-rotation control to orbit,
+or use pinch, rotation, zoom, reset and optional automatic-motion controls.
+Wide screens balance city groups across columns. Tap a name for its biography
+or a city label for its classification. Gold outlines identify the three
+complementary readers.
 The graph supports full-screen exploration, search, city and seven/three
 filters; a list view remains available. Automatic motion respects the device's
 reduced-animation setting.
@@ -124,6 +128,14 @@ The reviewed corrections also cover Shu'bah's **لؤلؤًا، مرقدنا، ا
 certification. The book builder retains a reader explicitly named alongside
 «الباقون», including Shu'bah's second face in **المنشآت**, and gives priority
 to the source's preferred face.
+Further reviewed Shu'bah notes on pages 543–601 retain both **انشزوا**
+faces (kasr first), remove the extra waw description at **نوره، أمره**,
+classify **جبريل، من راق، بل ران، مؤصدة** in farsh, mark **سدى** imala
+as stopping only and clarify wasl tanween in both **قواريرا** occurrences.
+Identical source groups are compared with their vowels and pronunciation
+notes intact so **تؤمنون** (69:41), which agrees with Hafs, is not backfilled
+as a false difference. `test/shubah_late_pages_test.dart` checks the actual
+margins as well as the data and regeneration.
 
 ### Sources
 
