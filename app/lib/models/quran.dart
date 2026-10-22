@@ -70,6 +70,12 @@ class Variant {
 
   /// The words as read in this riwaya (empty when the words are dropped).
   final String text;
+
+  /// Only an explicit raw farsh omission may erase a word. A blank book note
+  /// or a rule without written text is an annotation, never a Quran deletion.
+  bool get canReplaceText =>
+      text.isNotEmpty ||
+      (kind == VariantKind.farsh && rule.isEmpty && description.isEmpty);
   final VariantKind kind;
 
   /// How the reading differs, in Arabic: "بالتاء", "بضم الهاء", ...

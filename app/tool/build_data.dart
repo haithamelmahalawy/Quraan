@@ -101,6 +101,9 @@ List<String> _words(String text) => text
 // ---------------------------------------------------------------------------
 // Base text
 
+/// The source's words without verse-number and standalone ornament tokens.
+List<String> sourceWords(String text) => _words(text);
+
 class HafsWord {
   HafsWord(this.surah, this.ayah, this.index, this.text);
   final int surah, ayah, index;
@@ -741,6 +744,56 @@ String _stripWaqf(String w) => w.replaceAll(RegExp('[ۖ-ۜٓ]+\$'), '');
 
 // ---------------------------------------------------------------------------
 // Alignment
+
+/// Maps the COMPLETE reading onto Hafs word anchors without discarding equal
+/// words, vowels or spellings. Empty slots are source omissions/continuations,
+/// never annotation-only notes. The joined slots must reproduce the source.
+List<String> alignSourceWords(List<HafsWord> hafs, List<String> reading) {
+  final slots = List.filled(hafs.length, '');
+  var hi = 0, ri = 0;
+  final prefix = <String>[];
+  void gap(int endH, int endR) {
+    final text = reading.sublist(ri, endR);
+    if (endH == hi) {
+      if (text.isNotEmpty) {
+        if (hi > 0) {
+          slots[hi - 1] = [
+            slots[hi - 1],
+            ...text,
+          ].where((w) => w.isNotEmpty).join(' ');
+        } else {
+          prefix.addAll(text);
+        }
+      }
+    } else if (endH - hi == endR - ri) {
+      for (var k = 0; k < text.length; k++) {
+        slots[hi + k] = text[k];
+      }
+    } else {
+      slots[hi] = text.join(' ');
+    }
+  }
+
+  for (final (h, r) in _lcs(
+    // Silah letters change pronunciation, not the word anchor. Including them
+    // in the key can shift repeated words (أحسنتم أحسنتم at 17:7).
+    hafs
+        .map((w) => norm(w.text.replaceAll(RegExp('[ۥۦۧۨ]'), '')).loose)
+        .toList(),
+    reading.map((w) => norm(w.replaceAll(RegExp('[ۥۦۧۨ]'), '')).loose).toList(),
+  )) {
+    gap(h, r);
+    slots[h] = [...prefix, reading[r]].join(' ');
+    prefix.clear();
+    hi = h + 1;
+    ri = r + 1;
+  }
+  gap(hafs.length, reading.length);
+  if (prefix.isNotEmpty && slots.isNotEmpty) {
+    slots[0] = [...prefix, slots[0]].where((w) => w.isNotEmpty).join(' ');
+  }
+  return slots;
+}
 
 /// Returns variants as
 /// [surah, ayah, wordIndex, wordCount, text, category, description].

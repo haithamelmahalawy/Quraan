@@ -29,6 +29,7 @@ class VariantRepository {
   final AssetBundle _bundle;
   final _loaded = <String, Map<int, List<Variant>>>{};
   final _loading = <String, Future<void>>{};
+  final _sourceTexts = <String, Map<int, String>>{};
 
   /// Whether [riwayaId] can be selected.
   bool isAvailable(String riwayaId) => available.contains(riwayaId);
@@ -55,6 +56,16 @@ class VariantRepository {
 
   Future<void> _load(String id) async {
     final raw = await _bundle.loadString('$_dir$id.json');
+    if (id == 'warsh') {
+      // A missing asset is allowed in isolated data fixtures. Production ships
+      // the complete source; malformed text data must fail instead of hiding it.
+      final source = await _bundle
+          .loadString('assets/data/reading_texts/$id.json')
+          .then<String?>((s) => s, onError: (_) => null);
+      if (source != null) {
+        _sourceTexts[id] = await compute(_indexSourceText, source);
+      }
+    }
     final book = await (_book ??= _bundle
         .loadString('assets/data/kharouf.json')
         .then<String?>((s) => s, onError: (_) => null));
@@ -63,6 +74,11 @@ class VariantRepository {
 
   /// The certified source (assets/data/kharouf.json), read once.
   Future<String?>? _book;
+
+  /// Complete Quran text, independent of annotations. Empty means an actual
+  /// source omission/joined continuation; null means no complete source loaded.
+  String? sourceTextAt(String? riwaya, int surah, int ayah, int word) =>
+      _sourceTexts[riwaya]?[key(surah, ayah, word)];
 
   /// Variants of [riwayaIds] that start at, or cover, the given Hafs word.
   Iterable<Variant> at(
@@ -80,6 +96,17 @@ class VariantRepository {
 
   static int key(int surah, int ayah, int word) =>
       surah * 1000000 + ayah * 1000 + word;
+}
+
+Map<int, String> _indexSourceText(String raw) {
+  final json = jsonDecode(raw) as Map;
+  return {
+    for (final a in json['ayahs'] as List)
+      for (final (w, text) in (a[2] as List).indexed)
+        VariantRepository.key(a[0] as int, a[1] as int, w): madinahScript(
+          text as String,
+        ),
+  };
 }
 
 /// Indexes a riwaya file by every Hafs word each variant covers, with
@@ -163,6 +190,9 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
     );
     final how = p[5] as String;
     final wujuh = p.length > 7 ? p[7] as String : '';
+    // A note without written text or an explanation cannot establish a lexical
+    // omission. E.g. a margin reminder of Warsh's badal on رؤوف at 24:20.
+    if ((p[4] as String).isEmpty && how.isEmpty && wujuh.isEmpty) continue;
     final keys = [
       for (var w = word; w < word + count; w++)
         VariantRepository.key(surah, ayah, w),

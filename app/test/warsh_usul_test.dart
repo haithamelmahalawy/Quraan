@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
@@ -418,6 +419,116 @@ void main() {
     }
   });
 
+  test('a replacement circle removes only the target hamza from its seat', () {
+    for (final target in ['أَ', 'إِ', 'أَ', 'إِ', 'ٱ', 'اَ۬', 'اِ۪']) {
+      final text = 'ٱلسُّفَهَآءُ $targetلَا';
+      final offset = text.lastIndexOf(' ') + 1;
+      final shown = HamzaReplacementMark.seatText(text, offset);
+      expect(shown.substring(0, offset), text.substring(0, offset));
+      expect(shown.substring(offset), startsWith('ا'));
+      expect(shown.substring(offset), isNot(matches('[أإٱٕ۪ٔ۬]')));
+      expect(shown.endsWith('لَا'), isTrue);
+    }
+  });
+
+  test(
+    'a standalone hamza keeps its width, vowel and neighbouring colours',
+    () {
+      const before = 'هَٰٓؤُلَآءِ ';
+      final parts = HamzaReplacementMark.hideHamza([
+        (before, Colors.green),
+        ('ءَالِهَةً', Colors.red),
+      ], before.length);
+      expect(parts.map((p) => p.$1).join(), 'هَٰٓؤُلَآءِ ءَالِهَةً');
+      expect(parts.where((p) => p.$2 == Colors.transparent).single.$1, 'ء');
+      expect(parts.first, (before, Colors.green));
+      expect(parts.last, ('َالِهَةً', Colors.red));
+    },
+  );
+
+  testWidgets(
+    'circles stay on the target seat at different scales and widths',
+    (t) async {
+      addTearDown(t.view.reset);
+      for (final size in [const Size(430, 860), const Size(860, 430)]) {
+        t.view.physicalSize = size;
+        t.view.devicePixelRatio = 1;
+        for (final scale in [1.0, 1.8]) {
+          for (final fontSize in [12.0, 32.0]) {
+            for (final letter in ['و', 'ي']) {
+              const original = 'ٱلسُّفَهَآءُ أَلَآ';
+              final offset = original.lastIndexOf(' ') + 1;
+              final style = TextStyle(
+                fontFamily: 'Hafs',
+                fontSize: fontSize,
+                height: 1.4,
+              );
+              await t.pumpWidget(
+                MaterialApp(
+                  home: MediaQuery(
+                    data: MediaQueryData(
+                      size: size,
+                      textScaler: TextScaler.linear(scale),
+                    ),
+                    child: Center(
+                      child: HamzaReplacementMark(
+                        text: original,
+                        offset: offset,
+                        letter: letter,
+                        style: style,
+                        color: ReadingColors.hamza,
+                        builder: (shown, _) => Text(
+                          shown,
+                          textDirection: TextDirection.rtl,
+                          style: style,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+              final text = find.descendant(
+                of: find.byType(HamzaReplacementMark),
+                matching: find.byType(Text),
+              );
+              final paragraph = t.renderObject<RenderParagraph>(text);
+              final box = paragraph
+                  .getBoxesForSelection(
+                    TextSelection(baseOffset: offset, extentOffset: offset + 2),
+                  )
+                  .single;
+              final paint = find
+                  .descendant(
+                    of: find.byType(HamzaReplacementMark),
+                    matching: find.byType(CustomPaint),
+                  )
+                  .first;
+              final painter = t.widget<CustomPaint>(paint).foregroundPainter!;
+              late Offset center;
+              expect(
+                (Canvas canvas) => painter.paint(canvas, t.getSize(paint)),
+                paints..something((method, args) {
+                  if (method != #drawCircle) return false;
+                  center = args[0] as Offset;
+                  return true;
+                }),
+              );
+              expect(center.dx, closeTo((box.left + box.right) / 2, 0.1));
+              expect(center.dy, inInclusiveRange(box.top, box.bottom));
+              expect(
+                letter == 'و'
+                    ? center.dy < (box.top + box.bottom) / 2
+                    : center.dy > (box.top + box.bottom) / 2,
+                isTrue,
+              );
+              expect(t.takeException(), isNull);
+            }
+          }
+        }
+      }
+    },
+  );
+
   testWidgets(
     'circled waw above and ya below the second hamza',
     tags: 'golden',
@@ -430,7 +541,7 @@ void main() {
                 key: const ValueKey('marks'),
                 child: Container(
                   width: 640,
-                  height: 300,
+                  height: 460,
                   color: Colors.white,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -438,6 +549,8 @@ void main() {
                       for (final (text, letter) in [
                         ('ٱلسُّفَهَآءُ أَلَآ', 'و'),
                         ('ٱلنِّسَآءِ أَوۡ', 'ي'),
+                        ('يَشَآءُ إِلَىٰ', 'و'),
+                        ('هَٰٓؤُلَآءِ ءَالِهَةً', 'ي'),
                       ])
                         HamzaReplacementMark(
                           text: text,
@@ -449,8 +562,19 @@ void main() {
                             height: 1,
                           ),
                           color: ReadingColors.hamza,
-                          child: Text(
-                            text,
+                          builder: (shown, hidden) => Text.rich(
+                            TextSpan(
+                              children: [
+                                for (final (part, color)
+                                    in HamzaReplacementMark.hideHamza([
+                                      (shown, Colors.black),
+                                    ], hidden))
+                                  TextSpan(
+                                    text: part,
+                                    style: TextStyle(color: color),
+                                  ),
+                              ],
+                            ),
                             textDirection: TextDirection.rtl,
                             style: const TextStyle(
                               fontFamily: 'Hafs',

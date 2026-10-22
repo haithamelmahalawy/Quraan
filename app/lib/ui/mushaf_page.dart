@@ -686,12 +686,18 @@ class _MushafPageState extends State<MushafPage>
       final m = _mark(ayah, w);
       final tap = m.all.isEmpty && !m.mutashabih ? null : _recognizer(ayah, w);
       final underline = m.mutashabih ? _mutashabihStyle : null;
+      final source = widget.variants.sourceTextAt(
+        s.displayed,
+        ayah.surah,
+        ayah.number,
+        w,
+      );
+      if (source == '') continue;
+      final baseWord = source ?? ayah.words[w];
 
       // A reading given only as a description cannot replace the word.
-      final replaceable = m.all.where(
-        (v) => v.text.isNotEmpty || v.description.isEmpty,
-      );
-      if (replace && replaceable.isNotEmpty) {
+      final replaceable = m.all.where((v) => v.canReplaceText);
+      if (source == null && replace && replaceable.isNotEmpty) {
         final v = replaceable.first;
         if (v.word == w && v.text.isNotEmpty) {
           final shownHere = s.kinds.contains(v.kind);
@@ -716,7 +722,7 @@ class _MushafPageState extends State<MushafPage>
         out
           ..add(
             TextSpan(
-              text: ayah.words[w],
+              text: baseWord,
               recognizer: tap,
               style: (underline ?? const TextStyle()).copyWith(color: m.color),
             ),
@@ -728,7 +734,7 @@ class _MushafPageState extends State<MushafPage>
       final color = m.color!;
       out.add(
         TextSpan(
-          text: ayah.words[w],
+          text: baseWord,
           recognizer: tap,
           style: (underline ?? const TextStyle()).copyWith(
             color: color,
@@ -805,12 +811,19 @@ class _MushafPageState extends State<MushafPage>
   /// under its letter when read with imala.
   ({String text, String font})? _display(Ayah ayah, int w) {
     final s = widget.settings;
+    final source = widget.variants.sourceTextAt(
+      s.displayed,
+      ayah.surah,
+      ayah.number,
+      w,
+    );
+    if (source != null) {
+      return source.isEmpty ? null : (text: source, font: 'Hafs');
+    }
     final base = _baseAt(widget.variants, s, ayah, w);
     // The riwaya shown in place of Hafs: its reading takes the place of the
     // Hafs word(s).
-    final v = base
-        .where((v) => v.text.isNotEmpty || v.description.isEmpty)
-        .firstOrNull;
+    final v = base.where((v) => v.canReplaceText).firstOrNull;
     if (v != null) {
       if (v.word != w || v.text.isEmpty) return null;
       return (text: withNaqlVowel(v.text, ayah.words[w]), font: 'Hafs');
@@ -983,10 +996,21 @@ class _MushafPageState extends State<MushafPage>
     final hafsFont = !shown.font.startsWith('QCF_');
     final coloured = hafsFont ? _letterParts(ayah, w, shown.text) : null;
     final parts = hafsFont ? _stretched(shown.text, coloured, kashida) : null;
-    Widget word = InkText(
+    final replacement = _replacementAt(ayah, w);
+    Widget ink(String drawn, [int? hiddenHamza]) => InkText(
       shown.text,
       key: ValueKey('word:${ayah.surah}:${ayah.number}:$w'),
-      parts: parts,
+      parts: hiddenHamza != null
+          ? HamzaReplacementMark.hideHamza(
+              parts ?? [(drawn, null)],
+              hiddenHamza,
+            )
+          : drawn == (parts?.map((p) => p.$1).join() ?? shown.text)
+          ? parts
+          : [
+              for (final (i, l) in lettersOf(drawn).indexed)
+                (l, parts == null ? null : parts[i].$2),
+            ],
       style: TextStyle(
         fontFamily: shown.font,
         fontSize: fontSize,
@@ -997,15 +1021,15 @@ class _MushafPageState extends State<MushafPage>
         // Coloured text only, as the coloured prints (no box behind it).
       ),
     );
-    final replacement = _replacementAt(ayah, w);
+    final drawn = parts?.map((p) => p.$1).join() ?? shown.text;
+    Widget word = ink(drawn);
     if (replacement != null) {
-      final text = parts?.map((p) => p.$1).join() ?? shown.text;
       word = HamzaReplacementMark(
-        text: text,
+        text: drawn,
         letter: replacement.hamzaReplacement!,
         color: ReadingColors.of(replacement),
         style: TextStyle(fontFamily: 'Hafs', fontSize: fontSize, height: 1),
-        child: word,
+        builder: ink,
       );
     }
     if (m.mutashabih) {
@@ -1455,28 +1479,42 @@ class _PageFrame extends StatelessWidget {
   final Widget child;
   final VoidCallback? onNumberTap;
 
-  /// Height taken by the page number under the lines.
-  static const numberHeight = 22.0;
+  /// Space outside the border, including a visible gap above the number.
+  static const numberHeight = 30.0;
+  static const numberGap = 6.0;
 
   @override
   Widget build(BuildContext context) {
-    return OrnamentFrame(
-      sides: sides,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(child: child),
-          SizedBox(
-            height: numberHeight,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: OrnamentFrame(
+            key: ValueKey('mushaf-ornament-$page'),
+            sides: sides,
+            child: child,
+          ),
+        ),
+        SizedBox(
+          height: numberHeight,
+          child: Padding(
+            padding: const EdgeInsets.only(top: numberGap),
             child: Center(
               child: GestureDetector(
                 onTap: onNumberTap,
-                // Not the Hafs font: it draws digits as ayah-end ornaments.
                 child: Text(
                   arabicDigits(page),
+                  key: ValueKey('page-number-$page'),
                   style: TextStyle(
-                    fontSize: 14,
+                    fontFamily: 'Hafs',
+                    // Hafs otherwise combines digits into ayah ornaments.
+                    fontFeatures: const [
+                      FontFeature.disable('liga'),
+                      FontFeature.disable('rlig'),
+                      FontFeature.disable('calt'),
+                    ],
+                    fontSize: 18,
                     height: 1.2,
                     color: MushafColors.ink,
                   ),
@@ -1484,8 +1522,8 @@ class _PageFrame extends StatelessWidget {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1877,19 +1915,31 @@ class _UsulBox extends StatelessWidget {
       fontSize: 12 * scale,
       color: color,
     );
-    final text = Text(
-      item.text,
-      textDirection: TextDirection.rtl,
-      style: style,
-    );
-    if (item.replacement == null) return text;
+    Widget text(String shown, [int? hiddenHamza]) => hiddenHamza == null
+        ? Text(shown, textDirection: TextDirection.rtl, style: style)
+        : Text.rich(
+            TextSpan(
+              children: [
+                for (final (part, color) in HamzaReplacementMark.hideHamza([
+                  (shown, null),
+                ], hiddenHamza))
+                  TextSpan(
+                    text: part,
+                    style: TextStyle(color: color),
+                  ),
+              ],
+            ),
+            textDirection: TextDirection.rtl,
+            style: style,
+          );
+    if (item.replacement == null) return text(item.text);
     return HamzaReplacementMark(
       text: item.text,
       offset: item.text.lastIndexOf(' ') + 1,
       letter: item.replacement!,
       style: style,
       color: color,
-      child: text,
+      builder: text,
     );
   }
 }

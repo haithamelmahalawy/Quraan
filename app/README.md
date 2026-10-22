@@ -18,6 +18,19 @@ Differences are split into three layers that can be switched on and off:
 letters & vowels (farsh), hamza (ibdal / tasheel / naql), and madd, imala,
 silah & idgham marks.
 
+Warsh's main Quran text is loaded in full from KFGQPC's `warshData_v10.json`,
+independently of margin annotations. `dart run tool/build_warsh_text.dart`
+aligns it to all 604 Hafs pages and validates every surah without losing,
+duplicating or rearranging source letters/vowels. It fixes one joined-word
+boundary in the export at 41:51 and ignores silah for anchoring repeated
+words. Blank book notes cannot erase a Quran word. Tests verify the actual
+word-display callback over all 604 pages, including Maryam and 24:20.
+Circled waw/ya signs take the target hamza's place in the page and margin,
+anchored to its seat and text baseline at the current text scale. The original
+hamza ink is suppressed without removing its seat, vowel or word spacing.
+The page number is below the ornament, outside its bottom border, in both
+portrait and landscape.
+
 Home screen: open the mushaf, or "قراءة الروايات من المصحف": point the
 camera at a page of a printed Madinah mushaf, choose the riwayat, and the page
 is recognised and opened with them. Recognition runs on the device: Tesseract

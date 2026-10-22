@@ -502,18 +502,47 @@ void main(List<String> args) {
       final pieces = word.contains('،')
           ? word.split('،').map((p) => p.trim()).where((p) => p.isNotEmpty)
           : [word];
-      for (final piece in pieces) {
+      for (final (pieceIndex, piece) in pieces.indexed) {
+        bool exact(List<String> words, (int, int) span) =>
+            _letters(words.sublist(span.$1, span.$1 + span.$2).join()) ==
+            _letters(piece);
+        // A list across several ayahs is not a Cartesian product. When a
+        // quoted word occurs exactly in one of them, do not invent a fuzzy
+        // occurrence in another (صليا must not attach to على at 19:69).
+        final exactAnywhere =
+            pieces.length > 1 &&
+            (e['ayahs'] as List).cast<int>().any((a) {
+              final words = ayahs['$surah:$a'];
+              return words != null &&
+                  locate(words, piece).any((at) => exact(words, at));
+            });
         for (final a in (e['ayahs'] as List? ?? []).cast<int>()) {
           final words = ayahs['$surah:$a'];
           if (words == null) continue;
-          final at = locate(words, piece);
+          final at = locate(
+            words,
+            piece,
+          ).where((at) => !exactAnywhere || exact(words, at)).toList();
           if (at.isEmpty) continue;
           placed = true;
           final both = (e['raw'] as String? ?? '').contains('معاً');
           for (final (w, c) in both ? at : at.take(1)) {
             final placedGroups = alifReference
                 ? expandFinalAlifReference(groups, words[w])
-                : groups;
+                : [
+                    for (final g in groups)
+                      [
+                        // Parallel reading lists describe this word's face,
+                        // not several Quran words to insert at every anchor.
+                        if ((g[0] as String).split('،').length ==
+                                pieces.length &&
+                            pieces.length > 1)
+                          (g[0] as String).split('،')[pieceIndex].trim()
+                        else
+                          g[0],
+                        ...g.skip(1),
+                      ],
+                  ];
             out.add([surah, a, w, c, section, placedGroups, verses]);
             // Per riwaya: where it reads differently, and how.
             if (section != 'mudgham' &&

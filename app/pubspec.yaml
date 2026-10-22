@@ -36,6 +36,8 @@ flutter:
     - assets/data/
     # One file per riwaya; dropping a new <riwaya-id>.json here enables it.
     - assets/data/qiraat/
+    # Complete Quran text, separate from marginal reading annotations.
+    - assets/data/reading_texts/
     # Offline tafsir books (tool/build_tafsir.dart).
     - assets/data/tafsir/
     # Tesseract Arabic model (tessdata_fast), to recognise a printed page.
