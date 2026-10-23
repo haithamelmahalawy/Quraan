@@ -7,6 +7,7 @@ import '../state/reader_settings.dart';
 import 'kharouf_section.dart';
 import 'reference_sheet.dart';
 import 'reading_colors.dart';
+import 'quran_word_text.dart';
 
 /// How each riwaya reads one Hafs word: the selected riwayat first, then
 /// every other riwaya that has data.
@@ -18,9 +19,9 @@ class VariantSheet extends StatelessWidget {
     required this.surahName,
     required this.settings,
     required this.variants,
+    required this.surahNames,
     this.onMutashabihat,
     this.onAyah,
-    this.surahNames,
   });
 
   final Ayah ayah;
@@ -37,7 +38,7 @@ class VariantSheet extends StatelessWidget {
 
   /// The surah names of the mushaf: with them, a reading opens its place
   /// in the Shatibiyya or the Durrah.
-  final List<String>? surahNames;
+  final List<String> surahNames;
 
   static Future<void> show(BuildContext context, VariantSheet sheet) =>
       showModalBottomSheet(
@@ -67,7 +68,19 @@ class VariantSheet extends StatelessWidget {
       future: variants.ensureLoaded([...settings.selected, ...others]),
       builder: (context, snapshot) {
         final theme = Theme.of(context);
-        final ready = snapshot.connectionState == ConnectionState.done;
+        final ready =
+            snapshot.connectionState == ConnectionState.done ||
+            [...settings.selected, ...others].every(variants.isLoaded);
+        final selectedReadings = ready
+            ? variants
+                  .at(
+                    _ordered(settings.selected),
+                    ayah.surah,
+                    ayah.number,
+                    word,
+                  )
+                  .toList()
+            : const <Variant>[];
         // The Hafs span covered by any reading of this word.
         var from = word, to = word + 1;
         if (ready) {
@@ -127,6 +140,7 @@ class VariantSheet extends StatelessWidget {
                 if (settings.displayed != null) settings.displayed!,
                 if (settings.displayed == null || settings.compareHafs) 'hafs',
               },
+              showVerses: false,
             ),
             if (!ready)
               const Padding(
@@ -134,6 +148,18 @@ class VariantSheet extends StatelessWidget {
                 child: Center(child: CircularProgressIndicator()),
               )
             else ...[
+              if (selectedReadings.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: ReadingReferences(
+                    key: const ValueKey('word-reading-evidence'),
+                    readings: selectedReadings,
+                    word: ayah.words.sublist(from, to).join(' '),
+                    surah: ayah.surah,
+                    surahNames: surahNames,
+                    showBook: false,
+                  ),
+                ),
               if (settings.selected.isNotEmpty) ...[
                 _header(context, 'القراءات المختارة'),
                 for (final id in _ordered(settings.selected))
@@ -193,15 +219,13 @@ class VariantSheet extends StatelessWidget {
       description: v.shownDescription,
       // Beside the farsh, readings the certified source does not state.
       uncertified: !v.certified && !v.isUsul,
-      onTap: surahNames == null
-          ? null
-          : () => ReferenceSheet.show(
-              context,
-              readings: [v],
-              word: ayah.words.sublist(from, to).join(' '),
-              surah: ayah.surah,
-              surahNames: surahNames!,
-            ),
+      onTap: () => ReferenceSheet.show(
+        context,
+        readings: [v],
+        word: ayah.words.sublist(from, to).join(' '),
+        surah: ayah.surah,
+        surahNames: surahNames,
+      ),
     );
   }
 }
@@ -269,12 +293,19 @@ class _ReadingTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Text(
+          QuranWordText(
             text,
-            textDirection: TextDirection.rtl,
-            style: font == null
-                ? theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor)
-                : TextStyle(fontFamily: font, fontSize: 26, color: color),
+            style:
+                (font == null
+                    ? theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.hintColor,
+                      )
+                    : TextStyle(
+                        fontFamily: font,
+                        fontSize: 26,
+                        color: color,
+                      )) ??
+                const TextStyle(),
           ),
           if (description.isNotEmpty)
             Text(description, style: theme.textTheme.bodyMedium),

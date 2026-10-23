@@ -7,11 +7,12 @@ import '../models/quran.dart';
 import 'kharouf_section.dart';
 import 'poem_verse.dart';
 import 'theme.dart';
+import 'quran_word_text.dart';
 
 /// Where the readings of a word are stated: for each, the verses of the
 /// Shatibiyya (the seven) or the Durrah (the three) that name the word, in
 /// the chapter of its surah or of its rule, and the whole chapter on demand.
-class ReferenceSheet extends StatefulWidget {
+class ReferenceSheet extends StatelessWidget {
   const ReferenceSheet({
     super.key,
     required this.readings,
@@ -55,10 +56,53 @@ class ReferenceSheet extends StatefulWidget {
   );
 
   @override
-  State<ReferenceSheet> createState() => _ReferenceSheetState();
+  Widget build(BuildContext context) => ListView(
+    controller: PrimaryScrollController.of(context),
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+    children: [
+      QuranWordText(
+        word,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: 'Hafs',
+          fontSize: 26,
+          color: MushafColors.ink,
+        ),
+      ),
+      const SizedBox(height: 4),
+      ReadingReferences(
+        readings: readings,
+        word: word,
+        surah: surah,
+        surahNames: surahNames,
+      ),
+    ],
+  );
 }
 
-class _ReferenceSheetState extends State<ReferenceSheet> {
+/// Shared evidence for the word-details sheet and the margin's reference
+/// sheet. It joins the parent's scroll view rather than creating another one.
+class ReadingReferences extends StatefulWidget {
+  const ReadingReferences({
+    super.key,
+    required this.readings,
+    required this.word,
+    required this.surah,
+    required this.surahNames,
+    this.showBook = true,
+  });
+
+  final List<Variant> readings;
+  final String word;
+  final int surah;
+  final List<String> surahNames;
+  final bool showBook;
+
+  @override
+  State<ReadingReferences> createState() => _ReadingReferencesState();
+}
+
+class _ReadingReferencesState extends State<ReadingReferences> {
   final Future<(Manzumat, Kharouf)> _sources = _loadSources();
 
   @override
@@ -74,28 +118,16 @@ class _ReferenceSheetState extends State<ReferenceSheet> {
           return const Center(child: CircularProgressIndicator());
         }
         final (manzumat, book) = data;
-        return ListView(
-          controller: PrimaryScrollController.of(context),
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              widget.word,
-              textAlign: TextAlign.center,
-              textDirection: TextDirection.rtl,
-              style: TextStyle(
-                fontFamily: 'Hafs',
-                fontSize: 26,
-                color: MushafColors.ink,
-              ),
-            ),
-            const SizedBox(height: 4),
             Text(
               'الدليل من الشاطبية والدرة',
               textAlign: TextAlign.center,
               style: TextStyle(color: MushafColors.frame),
             ),
             // The certified source first: the verses it cites for the word.
-            if (widget.readings.isNotEmpty)
+            if (widget.showBook && widget.readings.isNotEmpty)
               KharoufSection(
                 surah: widget.readings.first.surah,
                 ayah: widget.readings.first.ayah,
@@ -163,7 +195,7 @@ class _ReadingReferenceState extends State<_ReadingReference> {
       for (final b in r.verses)
         if (r.mention.contains(b.n)) b,
     ];
-    final shown = _whole ? r.verses : named;
+    final shown = _whole || named.isEmpty ? r.verses : named;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -179,9 +211,8 @@ class _ReadingReferenceState extends State<_ReadingReference> {
             style: TextStyle(color: q.color, fontWeight: FontWeight.bold),
           ),
           if (v.text.isNotEmpty)
-            Text(
+            QuranWordText(
               v.text,
-              textDirection: TextDirection.rtl,
               style: TextStyle(
                 fontFamily: 'Hafs',
                 fontSize: 20,
@@ -207,11 +238,8 @@ class _ReadingReferenceState extends State<_ReadingReference> {
               'الدليل المقتبس في التسهيل لقراءات التنزيل',
               style: TextStyle(color: MushafColors.green, fontSize: 12),
             ),
-          if (named.isEmpty && !_whole)
-            const Text(
-              'لم يُحدد بيت مطابق لهذا الموضع. يمكنك عرض بقية الباب للمراجعة.',
-            ),
-          if (_whole && named.length < r.verses.length)
+          if (named.isEmpty) const Text('أبيات الباب كاملة'),
+          if (_whole && named.isNotEmpty && named.length < r.verses.length)
             TextButton.icon(
               onPressed: () => setState(() => _whole = false),
               icon: const Icon(Icons.unfold_less),
@@ -225,7 +253,7 @@ class _ReadingReferenceState extends State<_ReadingReference> {
               explanation: widget.manzumat.explanation(r.poem, b.n),
               bookExplanation: r.bookExplanation[b.n] ?? '',
             ),
-          if (named.length < r.verses.length)
+          if (named.isNotEmpty && named.length < r.verses.length)
             TextButton.icon(
               onPressed: () => setState(() => _whole = !_whole),
               icon: Icon(_whole ? Icons.unfold_less : Icons.unfold_more),

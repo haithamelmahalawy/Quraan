@@ -2,6 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/arabic.dart';
 
 void main() {
+  test('nun sukun is omitted only at a marked boundary idgham', () {
+    expect(madinahScript('أَنْ يُّومِنُواْ'), 'أَن يُّومِنُواْ');
+    expect(madinahScript('أَنْ', followingWord: 'يُّومِنُواْ'), 'أَن');
+    expect(madinahScript('مِنْ رَّبِّهِمْ'), 'مِن رَّبِّهِمْ');
+    expect(madinahScript('مِنْ أَهْلِهِ'), 'مِنْ أَهْلِهِ');
+    expect(madinahScript('مِنْ', followingWord: 'أَهْلِهِ'), 'مِنْ');
+    expect(madinahScript('الدُّنْيَا'), 'الدُّنْيَا');
+  });
   test('riwaya text in the script of the Madinah page', () {
     // Warsh's أَرَىٰكُمۡ (Hud 29): ya before the dagger alef is ى, as in Hafs.
     expect(madinahScript('أَر۪يٰكُمْ'), 'أَر۪ىٰكُمْ');
@@ -23,6 +31,9 @@ void main() {
     // وَبِالَاخِرَةِ: the lam (4th letter) takes it, the alef after is the madd.
     final akhira = lettersOf('وَبِالَاخِرَةِ');
     expect(naqlLetter(akhira), 3);
+    expect(naqlLetter(lettersOf('فَٱلۡـَٰٔنَ')), 2);
+    expect(naqlLetter(lettersOf('فَالَٰنَ')), 2);
+    expect(badalLetter(lettersOf('فَالَٰنَ')), 2);
     expect(badalLetter(akhira), 4);
     // Hafs text: ءَامَنُواْ, أُوتُواْ, ٱلۡأٓخِرَةِ.
     expect(badalLetter(lettersOf('ءَامَنُواْ')), 1);

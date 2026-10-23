@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
@@ -18,6 +19,7 @@ import 'package:qiraat_mushaf/ui/reading_colors.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
 import '../tool/build_warsh_usul.dart';
+import '../tool/build_usul.dart' as usul_builder;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -32,12 +34,103 @@ void main() {
     quran = await QuranRepository.load();
     shamarly = await QuranRepository.load(null, MushafEdition.shamarly);
     variants = await VariantRepository.discover();
-    await variants.ensureLoaded(['warsh', 'qunbul']);
+    await variants.ensureLoaded(['warsh', 'qunbul', 'susi']);
     mutashabihat = await MutashabihatRepository.load();
   });
 
   Variant rule(int s, int a, int w, String id) =>
       variants.at(['warsh'], s, a, w).singleWhere((v) => v.rule == id);
+
+  test('falan on page 29 has naql as well as badal', () {
+    expect(quran.pageOf(2, 187), 29);
+    final naql = rule(2, 187, 23, 'naql');
+    expect(naql.description, contains('نقل حركة الهمزة إلى اللام'));
+    expect(naql.text, 'فَالَٰنَ');
+    expect(naql.isUsul, isTrue);
+    expect(rule(2, 187, 23, 'badal').isBadal, isTrue);
+  });
+
+  test('extra ya is an independent usul with wasl and waqf faces', () {
+    for (final w in [8, 10]) {
+      final readings = variants.at(['warsh'], 2, 186, w).toList();
+      final ya = readings.singleWhere((v) => v.rule == 'ya_zaida');
+      expect(ya.isUsul, isTrue);
+      expect(ya.description, 'بإثبات الياء الزائدة وصلاً وحذفها وقفًا');
+      expect(readings.any((v) => v.description.contains('هاء')), isFalse);
+      expect(readings.any((v) => v.inHamesh), isFalse);
+    }
+  });
+
+  test('shared nun idgham is not a Warsh difference alongside ibdal', () {
+    for (var p = 1; p <= 604; p++) {
+      for (final a in quran.page(p)) {
+        for (var w = 1; w < a.words.length; w++) {
+          for (final v in variants.at(['warsh'], a.surah, a.number, w)) {
+            if (v.rule == 'ibdal_single' &&
+                RegExp(r'ن[ْۡ]?[ۖ-ۭ]*$').hasMatch(a.words[w - 1]) &&
+                RegExp(r'^[يرملون][َُِ]*ّ').hasMatch(v.text)) {
+              expect(
+                v.description,
+                isNot(contains('الإدغام')),
+                reason: '${a.surah}:${a.number}:$w',
+              );
+            }
+          }
+        }
+      }
+    }
+    expect(rule(2, 75, 2, 'ibdal_single').description, 'بإبدال الهمزة واوًا');
+    expect(variants.sourceTextAt('warsh', 2, 75, 1), 'أَن');
+  });
+
+  test('badal follows lexical additions and deletions throughout Warsh', () {
+    for (final (s, a, w) in [(2, 81, 6), (37, 130, 2), (43, 38, 2)]) {
+      expect(
+        variants.at(['warsh'], s, a, w).any((v) => v.isBadal),
+        isTrue,
+        reason: '$s:$a:$w',
+      );
+      expect(variants.at(['warsh'], s, a, w).any((v) => v.inHamesh), isTrue);
+    }
+    expect(variants.at(['warsh'], 41, 51, 5).any((v) => v.isBadal), isTrue);
+    for (final (s, a, w) in [
+      (2, 62, 6),
+      (5, 69, 5),
+      (22, 17, 5),
+      (30, 50, 2),
+      (33, 14, 8),
+    ]) {
+      expect(
+        variants.at(['warsh'], s, a, w).any((v) => v.isBadal),
+        isFalse,
+        reason: '$s:$a:$w',
+      );
+    }
+  });
+
+  test('Warsh Sabiin and Sabiun are farsh without madd al-badal', () {
+    for (final (s, a, w) in [(2, 62, 6), (5, 69, 5), (22, 17, 5)]) {
+      final word = quran.ayah(s, a).words[w];
+      expect(usul_builder.hasBadal(word, '$s:$a'), isFalse);
+      final readings = variants.at(['warsh'], s, a, w).toList();
+      expect(readings, hasLength(1));
+      expect(readings.single.kind, VariantKind.farsh);
+      expect(readings.single.inHamesh, isTrue);
+      expect(readings.single.isUsul, isFalse);
+      expect(readings.single.description, 'بلا همز');
+    }
+    expect(usul_builder.hasBadal(quran.ayah(2, 62).words[2], '2:62'), isTrue);
+  });
+
+  test(
+    'faddaratum agrees with Hafs in Warsh while Susi retains its reading',
+    () {
+      expect(variants.at(['warsh'], 2, 72, 3), isEmpty);
+      final susi = variants.at(['susi'], 2, 72, 3).single;
+      expect(susi.text, 'فَاَدَّٰرَٰتُمۡ');
+      expect(susi.description, 'بحذف الهمزة');
+    },
+  );
 
   test('both huda words on page 2 have stopping taqlil in usul', () {
     for (final (a, w) in [(2, 5), (5, 2)]) {
@@ -92,7 +185,17 @@ void main() {
                 as Map)['variants']
             as List;
     final before = jsonEncode(rows);
-    correctWarshUsul(q, b, rows);
+    // Regenerating the generic comparisons must not restore this false
+    // Warsh difference.
+    rows.add([2, 72, 3, 1, 'فَادَّٰرَٰٔتُمْ', 'h', 'بالهمز وحذف الهمزة']);
+    correctWarshUsul(
+      q,
+      b,
+      rows,
+      sourceText: jsonDecode(
+        File('assets/data/reading_texts/warsh.json').readAsStringSync(),
+      ) as Map,
+    );
     final beforeRows = jsonDecode(before) as List;
     final differences = [
       for (var i = 0; i < rows.length && i < beforeRows.length; i++)
@@ -157,6 +260,281 @@ void main() {
     expect(find.text(' (وقفًا)'), findsNWidgets(2));
     expect(t.takeException(), isNull);
   });
+
+  testWidgets(
+    'page 29 lists falan under naql and badal and extra ya separately',
+    (t) async {
+      for (final displayed in [null, 'warsh']) {
+        await page(
+          t,
+          29,
+          settings: ReaderSettings.memory(selected: {'warsh'})
+            ..displayed = displayed,
+        );
+        for (final label in ['النقل', 'مد البدل']) {
+          expect(
+            find.byKey(ValueKey('usul-reference:$label:2:187:23:warsh')),
+            findsOneWidget,
+          );
+        }
+        await page(
+          t,
+          quran.pageOf(2, 186),
+          settings: ReaderSettings.memory(selected: {'warsh'})
+            ..displayed = displayed,
+        );
+        for (final w in [8, 10]) {
+          expect(
+            find.byKey(ValueKey('usul-reference:ياءات الزوائد:2:186:$w:warsh')),
+            findsOneWidget,
+          );
+          expect(
+            find.byKey(
+              ValueKey('usul-reference:صلة هاء الضمير:2:186:$w:warsh'),
+            ),
+            findsNothing,
+          );
+        }
+        expect(t.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets(
+    'page 11 lists yuminun only under ibdal and leaves the preceding nun bare',
+    (t) async {
+      for (final displayed in [null, 'warsh']) {
+        await page(
+          t,
+          11,
+          settings: ReaderSettings.memory(selected: {'warsh'})
+            ..displayed = displayed,
+        );
+        expect(
+          t.widget<InkText>(find.byKey(const ValueKey('word:2:75:1'))).text,
+          'أَن',
+        );
+        expect(
+          find.byKey(const ValueKey('usul-reference:إبدال الهمز:2:75:2:warsh')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('usul-reference:الإدغام:2:75:2:warsh')),
+          findsNothing,
+        );
+        expect(t.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets('page 11 has no Warsh colour, animation or usul for faddaratum', (
+    t,
+  ) async {
+    for (final displayed in [null, 'warsh']) {
+      final settings = ReaderSettings.memory(selected: {'warsh'})
+        ..displayed = displayed
+        ..mode = DisplayMode.highlight
+        ..diffAlert = DiffAlert.glow
+        ..showMutashabihat = false;
+      await page(t, 11, settings: settings);
+      final main = find.byKey(const ValueKey('word:2:72:3'));
+      final word = t.widget<InkText>(main);
+      expect(word.style.color, MushafColors.ink);
+      expect(word.parts, isNull);
+      expect(
+        find.ancestor(
+          of: main,
+          matching: find.byWidgetPredicate(
+            (widget) => widget.runtimeType.toString() == '_Alerting',
+          ),
+        ),
+        findsNothing,
+      );
+      final notes = find.byKey(const ValueKey('usul-notes'));
+      expect(
+        find.descendant(
+          of: notes,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Text &&
+                skeleton(widget.data ?? widget.textSpan?.toPlainText() ?? '')
+                    .contains('فدرتم'),
+          ),
+        ),
+        findsNothing,
+      );
+      expect(t.takeException(), isNull);
+    }
+  });
+
+  testWidgets('page 10 keeps Sabiin in farsh and out of the badal footer', (
+    t,
+  ) async {
+    for (final displayed in [null, 'warsh']) {
+      await page(
+        t,
+        10,
+        settings: ReaderSettings.memory(selected: {'warsh'})
+          ..displayed = displayed,
+      );
+      final notes = find.byKey(const ValueKey('usul-notes'));
+      expect(
+        find.descendant(
+          of: notes,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Text &&
+                skeleton(widget.data ?? widget.textSpan?.toPlainText() ?? '')
+                    .contains('لصبين'),
+          ),
+        ),
+        findsNothing,
+      );
+      if (displayed == null) {
+        expect(
+          find.byKey(const ValueKey('margin-reference:2:62:6')),
+          findsOneWidget,
+        );
+      }
+      expect(find.text('مد البدل:'), findsOneWidget);
+      expect(t.takeException(), isNull);
+    }
+  });
+
+  testWidgets(
+    'naql before badal includes both words without a vague hamza group',
+    (t) async {
+      for (final displayed in [null, 'warsh']) {
+        await page(
+          t,
+          8,
+          settings: ReaderSettings.memory(selected: {'warsh'})
+            ..displayed = displayed,
+        );
+        final notes = find.byKey(const ValueKey('usul-notes'));
+        Finder example(String value) =>
+            find.descendant(of: notes, matching: find.text(value));
+        expect(example('مِّنَ اٰلِ'), findsOneWidget);
+        expect(example('وَإِذَ اٰتَيْنَا'), findsOneWidget);
+        expect(
+          example('اٰلِ'),
+          findsOneWidget,
+        ); // The independent badal example.
+        expect(example('اٰتَيْنَا'), findsOneWidget);
+        expect(example('مِّنَ'), findsNothing);
+        expect(example('وَإِذَ'), findsNothing);
+        expect(example('تخفيف الهمز:'), findsNothing);
+        expect(example('الهمزات:'), findsNothing);
+        expect(t.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets(
+    'Israel notes stay in the margin without colouring a difference',
+    (t) async {
+      final places = <(Ayah, int)>[
+        for (var p = 1; p <= 604; p++)
+          for (final a in quran.page(p))
+            for (final (w, text) in a.words.indexed)
+              if (skeleton(text) == 'سريل') (a, w),
+      ];
+      expect(places, hasLength(42));
+      for (final (a, w) in places) {
+        final readings = variants.at(['warsh'], a.surah, a.number, w).toList();
+        expect(readings.every((v) => v.isMarginNote), isTrue);
+        expect(ReadingColors.ofReadings(readings), isNull);
+      }
+      for (final displayed in [null, 'warsh']) {
+        final settings = ReaderSettings.memory(selected: {'warsh'})
+          ..displayed = displayed
+          ..mode = DisplayMode.hamesh
+          ..compareHafs = true
+          ..showMutashabihat = false;
+        await page(t, 7, settings: settings);
+        final word = t.widget<InkText>(
+          find.byKey(const ValueKey('word:2:40:1')),
+        );
+        expect(word.style.color, MushafColors.ink);
+        expect(word.parts, isNull);
+        final note = find.byKey(const ValueKey('margin-reference:2:40:1'));
+        expect(note, findsOneWidget);
+        expect(
+          find.textContaining('ولا ترقق راؤه لأنه اسم أعجمي'),
+          findsOneWidget,
+        );
+        settings.mode = DisplayMode.highlight;
+        settings.diffAlert = DiffAlert.glow;
+        await page(t, 7, settings: settings);
+        final main = find.byKey(const ValueKey('word:2:40:1'));
+        expect(t.widget<InkText>(main).style.color, MushafColors.ink);
+        expect(
+          find.ancestor(
+            of: main,
+            matching: find.byWidgetPredicate(
+              (widget) => widget.runtimeType.toString() == '_Alerting',
+            ),
+          ),
+          findsNothing,
+        );
+        expect(t.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets('replacement circles belong only to a Warsh base or its margin', (
+    t,
+  ) async {
+    for (final displayed in [null, 'warsh', 'qunbul']) {
+      final settings = ReaderSettings.memory(selected: {'warsh', 'qunbul'})
+        ..displayed = displayed;
+      for (final (number, a, w, letter) in [
+        (3, 13, 12, 'و'),
+        (6, 31, 12, 'ي'),
+        (38, 235, 9, 'ي'),
+      ]) {
+        await page(t, number, settings: settings);
+        final word = find.byKey(ValueKey('word:2:$a:$w'));
+        expect(word, findsOneWidget);
+        final main = find.ancestor(
+          of: word,
+          matching: find.byType(HamzaReplacementMark),
+        );
+        expect(main, displayed == 'warsh' ? findsOneWidget : findsNothing);
+        if (displayed == 'warsh') {
+          expect(t.widget<HamzaReplacementMark>(main).letter, letter);
+        }
+        final notes = find.byKey(const ValueKey('usul-notes'));
+        expect(
+          t
+              .widgetList<HamzaReplacementMark>(
+                find.descendant(
+                  of: notes,
+                  matching: find.byType(HamzaReplacementMark),
+                ),
+              )
+              .any((m) => m.letter == letter),
+          isTrue,
+        );
+        expect(t.takeException(), isNull);
+      }
+    }
+  });
+
+  test(
+    'two broken hamzas show the ya replacement as well as their other ways',
+    () {
+      final v = rule(2, 31, 12, 'tasheel_pair');
+      expect(v.hamzaReplacement, 'ي');
+      expect(v.usulWays.any((w) => w.contains('تسهيل')), isTrue);
+      expect(v.usulWays.any((w) => w.contains('ياءً')), isTrue);
+      const text = 'هَٰٓؤُلَآءِ إِن';
+      expect(
+        HamzaReplacementMark.seatText(text, text.lastIndexOf(' ') + 1),
+        'هَٰٓؤُلَآءِ ان',
+      );
+    },
+  );
 
   test('the two ways of open hamzas belong to usul without insertion', () {
     for (final (s, a, w) in [(2, 6, 5), (3, 20, 13), (36, 10, 2)]) {
@@ -394,8 +772,8 @@ void main() {
     );
     expect(
       marks.where((m) => m.letter == 'و'),
-      hasLength(2),
-    ); // page and footer
+      hasLength(1),
+    ); // Warsh's footer example; the Hafs page keeps its original hamza.
     expect(t.takeException(), isNull);
   });
 
@@ -427,9 +805,45 @@ void main() {
       expect(shown.substring(0, offset), text.substring(0, offset));
       expect(shown.substring(offset), startsWith('ا'));
       expect(shown.substring(offset), isNot(matches('[أإٱٕ۪ٔ۬]')));
+      expect(shown.substring(offset, offset + 1), 'ا');
+      expect(
+        RegExp('[َُِ]')
+            .hasMatch(shown.substring(offset, shown.indexOf('لَا', offset))),
+        isFalse,
+      );
       expect(shown.endsWith('لَا'), isTrue);
     }
   });
+
+  testWidgets(
+    'wasl uses the Hafs sign without a vowel or circle across Warsh',
+    (t) async {
+      for (var p = 1; p <= 604; p++) {
+        for (final a in quran.page(p)) {
+          for (var w = 0; w < a.words.length; w++) {
+            final text = variants.sourceTextAt('warsh', a.surah, a.number, w)!;
+            expect(
+              text,
+              isNot(matches('ا[َُِ]۟')),
+              reason: '${a.surah}:${a.number}:$w',
+            );
+          }
+        }
+      }
+      for (final (p, a, w) in [(4, 21, 2), (6, 34, 3), (6, 35, 2)]) {
+        await page(
+          t,
+          p,
+          settings: ReaderSettings.memory(selected: {'warsh'})
+            ..displayed = 'warsh',
+        );
+        final word = t.widget<InkText>(find.byKey(ValueKey('word:2:$a:$w')));
+        expect(word.text, startsWith('ٱ'));
+        expect(word.text, isNot(contains('۟')));
+      }
+      expect(t.takeException(), isNull);
+    },
+  );
 
   test(
     'a standalone hamza keeps its width, vowel and neighbouring colours',
@@ -494,7 +908,7 @@ void main() {
               final paragraph = t.renderObject<RenderParagraph>(text);
               final box = paragraph
                   .getBoxesForSelection(
-                    TextSelection(baseOffset: offset, extentOffset: offset + 2),
+                    TextSelection(baseOffset: offset, extentOffset: offset + 1),
                   )
                   .single;
               final paint = find
@@ -551,6 +965,7 @@ void main() {
                         ('ٱلنِّسَآءِ أَوۡ', 'ي'),
                         ('يَشَآءُ إِلَىٰ', 'و'),
                         ('هَٰٓؤُلَآءِ ءَالِهَةً', 'ي'),
+                        ('هَٰٓؤُلَآءِ إِن', 'ي'),
                       ])
                         HamzaReplacementMark(
                           text: text,

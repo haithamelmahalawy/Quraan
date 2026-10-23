@@ -23,8 +23,9 @@ void main() {
     String rule = '',
     String text = 'وما يخادعون',
     VariantKind kind = VariantKind.farsh,
+    String riwaya = 'warsh',
   }) => Variant(
-    riwayaId: 'warsh',
+    riwayaId: riwaya,
     surah: 2,
     ayah: ayah,
     word: word,
@@ -123,19 +124,34 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('unmatched evidence requires explicit chapter expansion', (
+  testWidgets('unmatched evidence shows the whole chapter automatically', (
     tester,
   ) async {
-    await show(
-      tester,
-      reading(ayah: 1, word: 0, text: 'كلمةغيرموجودة'),
-      'كلمةغيرموجودة',
-    );
-    expect(find.textContaining('لم يُحدد بيت مطابق'), findsOneWidget);
-    expect(find.byTooltip('شرح البيت 445'), findsNothing);
-    await tester.tap(find.textContaining('عرض المزيد ('));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('شرح البيت 445'), findsOneWidget);
+    for (final (riwaya, poem) in [
+      ('warsh', Poem.shatibiyya),
+      ('ibn_wardan', Poem.durrah),
+    ]) {
+      final v = reading(
+        ayah: 1,
+        word: 0,
+        text: 'كلمةغيرموجودة',
+        riwaya: riwaya,
+      );
+      await show(tester, v, 'كلمةغيرموجودة');
+      final expected = poems.referenceOf(v, 'كلمةغيرموجودة', 2, surahs);
+      expect(expected.mention, isEmpty);
+      expect(find.text('أبيات الباب كاملة'), findsOneWidget);
+      expect(
+        find.byKey(ValueKey('${poem.name}-${expected.verses.first.n}')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(ValueKey('${poem.name}-${expected.verses.last.n}')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('عرض المزيد ('), findsNothing);
+      expect(find.text('إخفاء المزيد'), findsNothing);
+    }
     expect(tester.takeException(), isNull);
   });
 

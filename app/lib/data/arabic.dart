@@ -35,14 +35,32 @@ String skeleton(String word) {
 /// sifr on the alef whose hamza gave its vowel to the word before by naql
 /// (قَرِيبٌ ا۟جِيبُ), and the dot of the alef of wasl (اَ۬لدَّاعِ), written ٱ as
 /// in Hafs.
-String madinahScript(String text) => text
-    .replaceAll('ے', 'ى')
-    .replaceAll('يٰ', 'ىٰ')
-    .replaceAll('ٜ', '۪')
-    .replaceAllMapped(_naqlAlef, (m) => '${m[1]}ا')
-    .replaceAllMapped(_waslAlef, (m) => '${m[1]}ٱ');
+String madinahScript(String text, {String? followingWord}) {
+  var shown = text
+      .replaceAll('ے', 'ى')
+      .replaceAll('يٰ', 'ىٰ')
+      .replaceAll('ٜ', '۪')
+      .replaceAllMapped(_waslSifrAlef, (m) => '${m[1]}ٱ')
+      .replaceAllMapped(_naqlAlef, (m) => '${m[1]}ا')
+      .replaceAllMapped(_waslAlef, (m) => '${m[1]}ٱ')
+      .replaceAllMapped(_nunBeforeIdgham, (m) => 'ن${m[1]}');
+  if (followingWord != null && _idghamStart.hasMatch(followingWord)) {
+    shown = shown.replaceFirstMapped(_nunEnd, (m) => 'ن${m[1]}');
+  }
+  return shown;
+}
+
+// In Madinah notation a nun assimilated into the next word is bare.
+// Require the source's explicit shadda; do not erase sukun at izhar,
+// before an unassimilated letter, or inside words such as الدنيا.
+final _idghamStart = RegExp(r'^[يرملون][َُِ]*ّ');
+final _nunEnd = RegExp(r'ن[ْۡ]([ۖ-ۭ]*)$');
+final _nunBeforeIdgham = RegExp(r'ن[ْۡ]([ۖ-ۭ]*)(?=\s+[يرملون][َُِ]*ّ)');
 
 final _naqlAlef = RegExp(r'(^|\s)ا۟');
+// A vowel + sifr marks a joined hamzat al-wasl in the Maghribi export
+// (اُ۟عْبُدُواْ / اِ۟سْجُدُواْ); a bare ا۟ instead belongs to naql.
+final _waslSifrAlef = RegExp(r'(^|\s|[وفبك]َ|لِ)ا[َُِ]۟');
 // The dot above (after a fatha or damma) or below (after a kasra: اِ۪تَّخَذتُّمُ).
 final _waslAlef = RegExp(r'(^|\s)ا[َُِ]?[۪۬]');
 
@@ -144,7 +162,7 @@ List<String> lettersOf(String word) {
   return out;
 }
 
-const _hamzas = 'ءأإؤئٔ';
+const _hamzas = 'ءأإؤئٕٔ';
 const _alefs = 'اٱ';
 
 /// The letter that receives the vowel of the hamza by naql, among [letters]
@@ -154,9 +172,12 @@ int? naqlLetter(List<String> letters, {bool last = false}) {
   if (last) return letters.isEmpty ? null : letters.length - 1;
   for (var i = 1; i + 1 < letters.length; i++) {
     if (letters[i].startsWith('ل') &&
-        _alefs.contains(letters[i - 1][0]) &&
-        (_alefs.contains(letters[i + 1][0]) ||
-            _hamzas.contains(letters[i + 1][0]))) {
+        (_alefs.contains(letters[i - 1][0]) ||
+            letters[i - 1].startsWith('ل')) &&
+        (letters[i].contains('ٰ') ||
+            _alefs.contains(letters[i + 1][0]) ||
+            _hamzas.contains(letters[i + 1][0]) ||
+            RegExp('[ٕٔ]').hasMatch(letters[i + 1]))) {
       return i;
     }
   }
@@ -171,13 +192,20 @@ int? badalLetter(List<String> letters) {
   bool madd(int i) => i < letters.length && 'اوىي'.contains(letters[i][0]);
   for (var i = 0; i < letters.length; i++) {
     final l = letters[i];
-    if (_hamzas.contains(l[0]) || l.contains('ٔ') || l.startsWith('آ')) {
-      if (l.startsWith('آ') || l.contains('ٓ') || l.contains('ٰ')) return i;
+    if (_hamzas.contains(l[0]) ||
+        RegExp('[ٕٔ]').hasMatch(l) ||
+        l.startsWith('آ')) {
+      if (l.startsWith('آ') ||
+          l.contains('ٓ') ||
+          l.contains('ٰ') ||
+          l.contains('ۧ')) {
+        return i;
+      }
       if (madd(i + 1)) return i + 1;
     }
   }
   final naql = naqlLetter(letters);
-  if (naql != null) return naql + 1;
+  if (naql != null) return letters[naql].contains('ٰ') ? naql : naql + 1;
   if (letters.isNotEmpty && _alefs.contains(letters.first[0])) return 0;
   return null;
 }
@@ -187,7 +215,8 @@ int? badalLetter(List<String> letters) {
 int? raLetter(List<String> letters) {
   for (var i = letters.length - 1; i > 0; i--) {
     final l = letters[i];
-    if (l.startsWith('ر') && RegExp('[\u064B-\u064F\u08F0-\u08F2]').hasMatch(l)) {
+    if (l.startsWith('ر') &&
+        RegExp('[\u064B-\u064F\u08F0-\u08F2]').hasMatch(l)) {
       return i;
     }
   }
@@ -245,9 +274,7 @@ List<String> withKashida(List<String> letters, int count) {
   final out = [...letters];
   for (var k = 0; k < count; k++) {
     final full = k ~/ kashidaPerJoin;
-    final i = full < slots.length
-        ? slots[full]
-        : slots[k % slots.length];
+    final i = full < slots.length ? slots[full] : slots[k % slots.length];
     out[i] = '${out[i]}$tatweel';
   }
   return out;

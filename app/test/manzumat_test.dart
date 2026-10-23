@@ -75,6 +75,10 @@ void main() {
       kind: VariantKind.usul,
     ).chapter;
     expect(skeleton(chapter('warsh', rule: 'badal')), contains('لمد'));
+    expect(
+      skeleton(chapter('warsh', rule: 'ya_zaida')),
+      contains(skeleton('الزوائد')),
+    );
     expect(skeleton(chapter('warsh', rule: 'tarqiq')), contains('لرت'));
     expect(skeleton(chapter('warsh', rule: 'taghliz')), contains('للمت'));
     expect(skeleton(chapter('khalaf_hamzah', rule: 'sakt')), contains('نقل'));

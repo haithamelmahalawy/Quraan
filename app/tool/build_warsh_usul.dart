@@ -6,6 +6,10 @@ import 'dart:io';
 
 import 'package:qiraat_mushaf/data/arabic.dart';
 
+import 'correct_warsh_lin_hamz.dart';
+import 'correct_warsh_lexical_badal.dart';
+import 'correct_ya_zawaid.dart';
+
 typedef _Word = ({int surah, int ayah, int word, String text});
 
 const _rules = {
@@ -30,7 +34,15 @@ void main() {
       jsonDecode(File('assets/data/kharouf.json').readAsStringSync()) as Map;
   final file = File('assets/data/qiraat/warsh.json');
   final data = jsonDecode(file.readAsStringSync()) as Map;
-  final counts = correctWarshUsul(quran, book, data['variants'] as List);
+  final source = jsonDecode(
+    File('assets/data/reading_texts/warsh.json').readAsStringSync(),
+  ) as Map;
+  final counts = correctWarshUsul(
+    quran,
+    book,
+    data['variants'] as List,
+    sourceText: source,
+  );
   file.writeAsStringSync(jsonEncode(data));
   stdout.writeln('Warsh usul: $counts');
 }
@@ -38,13 +50,40 @@ void main() {
 /// Keeps the source's word readings; tags the rules and supplies both words
 /// for the footer. Explicit hamza replacement is represented on the Hafs
 /// word by a circled letter, rather than changing its orthography.
-Map<String, int> correctWarshUsul(Map quran, Map book, List variants) {
+Map<String, int> correctWarshUsul(
+  Map quran,
+  Map book,
+  List variants, {
+  Map? sourceText,
+}) {
   final words = <_Word>[
     for (final a in quran['ayahs'] as List)
       for (final (w, text) in (a[4] as String).split(' ').indexed)
         (surah: a[0] as int, ayah: a[1] as int, word: w, text: text),
   ];
   String key(_Word w) => '${w.surah}:${w.ayah}:${w.word}';
+  final actual = <String, String>{
+    if (sourceText != null)
+      for (final a in sourceText['ayahs'] as List)
+        for (final (w, text) in (a[2] as List).indexed)
+          '${a[0]}:${a[1]}:$w': text as String,
+  };
+  // The generic source comparison mistakes a hamza glyph for omission.
+  // Warsh agrees with Hafs here; al-Susi's separate file keeps its reading.
+  variants.removeWhere((v) => v[0] == 2 && v[1] == 72 && v[2] == 3);
+  // The source's generic hamza comparison must not turn the lexical
+  // الصابين / الصابون reading into madd al-badal.
+  const sabiPlaces = {'2:62:6', '5:69:5', '22:17:5'};
+  bool isSabi(List v) => sabiPlaces.contains('${v[0]}:${v[1]}:${v[2]}');
+  variants.removeWhere(
+    (v) => isSabi(v as List) && v.length > 7 && v[7] == 'badal',
+  );
+  for (final v in variants.cast<List>().where(isSabi)) {
+    if (v.length <= 7 || v[7] == '') {
+      v[5] = 'f';
+      v[6] = 'بلا همز';
+    }
+  }
   final source = {for (final w in words) key(w): w};
   final at = <String, List<List>>{};
   for (final raw in variants) {
@@ -131,7 +170,23 @@ Map<String, int> correctWarshUsul(Map quran, Map book, List variants) {
         ? words[i - 1]
         : null;
     var v = reading(w);
-    final how = v != null && v.length > 6 ? v[6] as String : '';
+    var how = v != null && v.length > 6 ? v[6] as String : '';
+    if (v != null &&
+        previous != null &&
+        how.contains('الإدغام') &&
+        RegExp(r'^[يرملون][َُِ]*ّ').hasMatch(v[4] as String) &&
+        lettersOf(v[4] as String).first[0] == lettersOf(w.text).first[0] &&
+        (RegExp(r'ن[ْۡ]?[ۖ-ۭ]*$').hasMatch(previous.text) ||
+            RegExp(r'[ًٌٍٖٗٞ][اى]?[ۖ-ۭ]*$').hasMatch(previous.text)) &&
+        RegExp('إبدال الهمزة|تخفيف الهمزة|نقل').hasMatch(how)) {
+      // Nun/tanween idgham shared with Hafs is notation, not a Warsh
+      // difference. Keep the independent hamza/silah/lexical description.
+      how = how
+          .replaceAll(RegExp(r'[بو]?الإدغام'), '')
+          .replaceAll(RegExp(r'^[و\s،]+|[\s،]+$'), '');
+      if (!how.startsWith('ب')) how = 'ب$how';
+      v[6] = how;
+    }
     final first = lettersOf(w.text).first;
     final previousText = previous == null ? '' : endingText(previous);
     final last = previous == null ? '' : _ending(previousText);
@@ -303,13 +358,40 @@ Map<String, int> correctWarshUsul(Map quran, Map book, List variants) {
       }
       continue;
     }
+    final ownText = v != null && v[4] != ''
+        ? v[4] as String
+        : actual[key(w)] ?? '';
+    final own = lettersOf(madinahScript(ownText));
+    final lam = naqlLetter(cs);
+    final internalNaql =
+        lam != null &&
+        _hamza(cs[lam + 1]) &&
+        own.length > lam &&
+        (own[lam].contains('ٰ') ||
+            own.length > lam + 1 &&
+                !_hamza(own[lam + 1]) &&
+                own[lam + 1].startsWith('ا')) &&
+        _vowel(own[lam]) != null;
+    if (v == null && internalNaql) {
+      v = add(w);
+      v[4] = ownText;
+    }
     if (v == null) continue;
-    if (how.contains('نقل حركة الهمزة إلى اللام')) {
-      tag(v, 'naql', how, context: w.text);
+    if (how.contains('نقل حركة الهمزة إلى اللام') || internalNaql) {
+      tag(
+        v,
+        'naql',
+        [
+          'بنقل حركة الهمزة إلى اللام',
+          if (how.contains('التقليل')) 'بالتقليل',
+          if (how.contains('الإمالة')) 'بالإمالة',
+        ].join('، '),
+        context: w.text,
+      );
     } else if (previous != null &&
         firstHamza &&
         _sakinEnd(previous.text) &&
-        RegExp(r'^ا[َُِء-ي]').hasMatch(madinahScript(v[4] as String))) {
+        RegExp(r'^ا[َُِٰء-ي]').hasMatch(madinahScript(v[4] as String))) {
       tag(
         v,
         'naql',
@@ -331,7 +413,18 @@ Map<String, int> correctWarshUsul(Map quran, Map book, List variants) {
       }
     } else if (_singleIbdal(w.text, v[4] as String, how)
         case final String refined) {
-      tag(v, 'ibdal_single', refined, context: w.text);
+      tag(
+        v,
+        'ibdal_single',
+        [
+          refined,
+          if (how.contains('صلة ميم الجمع')) 'بصلة ميم الجمع',
+          if (how.contains('الإدغام')) 'بالإدغام',
+          if (how.contains('التقليل')) 'بالتقليل',
+          if (how.contains('الإمالة')) 'بالإمالة',
+        ].join('، '),
+        context: w.text,
+      );
     } else if (how.contains('إبدال الهمزة') && !how.contains('استفهام')) {
       tag(v, 'ibdal_single', how, context: w.text);
     }
@@ -353,6 +446,9 @@ Map<String, int> correctWarshUsul(Map quran, Map book, List variants) {
     final v = reading(w) ?? add(w);
     tag(v, 'taqlil_stop', 'بالتقليل وقفًا', stop: true);
   }
+  correctWarshLexicalBadal(quran, variants, sourceText: sourceText);
+  correctYaZawaid(quran, variants, 'warsh', book);
+  counts.addAll(correctWarshLinHamz(quran, variants));
   variants.sort((a, b) {
     for (var i = 0; i < 3; i++) {
       final c = (a[i] as int).compareTo(b[i] as int);
@@ -416,14 +512,14 @@ List<String> _sameVowelWays(_Word w, String vowel) {
 /// Refine the source's ambiguous "تخفيف" only where the actual single
 /// hamza has been replaced. Derivatives of الإيواء retain their hamza.
 String? _singleIbdal(String hafs, String reading, String how) {
-  if (how != 'بتخفيف الهمزة' &&
+  if (!how.contains('تخفيف الهمزة') &&
       !RegExp(r'^بإبدال الهمزة (الساكنة|المفتوحة) (ألفًا|ياءً|واوًا)$')
           .hasMatch(how)) {
     return null;
   }
   if (reading.isEmpty || reading.contains(' ')) return null;
   final h = lettersOf(hafs), r = lettersOf(madinahScript(reading));
-  if (h.length != r.length || h.where(_hamza).length != 1) return null;
+  if (h.length != r.length) return null;
   for (var i = 1; i < h.length; i++) {
     if (!_hamza(h[i]) || _hamza(r[i])) continue;
     final before = _vowel(h[i - 1]);

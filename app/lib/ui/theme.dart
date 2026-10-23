@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'hafs_font_marks.dart';
+
 /// Colours of one appearance (light or dark) of the mushaf.
 class MushafPalette {
   const MushafPalette({
@@ -127,7 +129,42 @@ class InkText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (style.fontFamily == 'Hafs' &&
+        HafsFontMarks.needsAdjustment(parts?.map((p) => p.$1).join() ?? text)) {
+      return HafsFontMarks(
+        parts: parts ?? [(text, null)],
+        style: style,
+        builder: (placed) => _draw(context, placed),
+      );
+    }
+    return _draw(context, parts);
+  }
+
+  Widget _draw(BuildContext context, List<(String, Color?)>? parts) {
     final color = style.color ?? MushafColors.ink;
+    // QCF glyphs already contain the complete engraved word. A second
+    // stroked pass can corrupt their cached glyph masks on GPU backends.
+    if (style.fontFamily?.startsWith('QCF_') ?? false) {
+      return parts == null
+          ? Text(
+              text,
+              textDirection: TextDirection.rtl,
+              style: style.copyWith(color: color),
+            )
+          : Text.rich(
+              TextSpan(
+                style: style.copyWith(color: color),
+                children: [
+                  for (final (s, c) in parts)
+                    TextSpan(
+                      text: s,
+                      style: TextStyle(color: c ?? color),
+                    ),
+                ],
+              ),
+              textDirection: TextDirection.rtl,
+            );
+    }
     TextStyle outline(Color c) => TextStyle(
       fontFamily: style.fontFamily,
       fontSize: style.fontSize,
@@ -138,7 +175,6 @@ class InkText extends StatelessWidget {
         ..strokeJoin = StrokeJoin.round
         ..color = c,
     );
-    final parts = this.parts;
     if (parts != null) {
       return Stack(
         clipBehavior: Clip.none,
@@ -157,7 +193,10 @@ class InkText extends StatelessWidget {
               style: style.copyWith(color: color),
               children: [
                 for (final (t, c) in parts)
-                  TextSpan(text: t, style: TextStyle(color: c ?? color)),
+                  TextSpan(
+                    text: t,
+                    style: TextStyle(color: c ?? color),
+                  ),
               ],
             ),
             textDirection: TextDirection.rtl,

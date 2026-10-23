@@ -28,6 +28,10 @@ class Ayah {
   final int page;
   final int juz;
 
+  /// Reading-independent quarter boundary (1..240), and juz boundary.
+  int? rubStart;
+  bool juzStart = false;
+
   /// Hafs words (KFGQPC Uthmanic encoding), without the ayah number.
   final List<String> words;
 
@@ -115,6 +119,11 @@ class Variant {
   String? get hamzaReplacement => switch (rule) {
     'ibdal_waw' => 'و',
     'ibdal_ya' => 'ي',
+    'tasheel_pair'
+        when usulText.contains(' ') &&
+            RegExp(r'ءِ[ۖ-ۭ]*$').hasMatch(usulText.split(' ').first) &&
+            usulText.split(' ').last.startsWith('إِ') =>
+      'ي',
     _ => null,
   };
 
@@ -173,8 +182,17 @@ class Variant {
   /// Shown in green, like imala: madd al-badal.
   bool get isBadal => rule == 'badal';
 
+  bool get isLinHamz =>
+      const {'lin_hamz', 'lin_hamz_exception', 'lin_hamz_sawat'}.contains(rule);
+
   /// Shown in orange: tarqiq of the ra, taghliz of the lam.
   bool get isTarqiqOrTaghliz => rule == 'tarqiq' || rule == 'taghliz';
+
+  /// A source reminder of a rule's exception, not a difference from Hafs.
+  bool get isMarginNote =>
+      riwayaId == 'warsh' &&
+      text.isEmpty &&
+      RegExp('لا ترقق راؤه.*أعجمي').hasMatch('$description $bookHow');
 
   /// Written and read as Hafs on the page: Khalaf's idgham without ghunna
   /// in the waw and the ya is all that differs. Told only in the readings

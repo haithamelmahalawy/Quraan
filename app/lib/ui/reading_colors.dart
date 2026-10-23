@@ -15,12 +15,15 @@ abstract final class ReadingColors {
   static Color get other => MushafColors.tone(const Color(0xFF455A64));
 
   static Color of(Variant v) {
+    if (v.rule == 'ya_zaida') return MushafColors.green;
+    if (v.isMarginNote) return MushafColors.ink;
     if (!v.isUsul) return qiraaOf(v.riwayaId).color;
     final d = v.description;
     if (v.rule == 'naql' || v.rule == 'naql_source' || d.contains('نقل')) {
       return naql;
     }
     if (v.isSakt) return sakt;
+    if (v.isLinHamz) return MushafColors.green;
     if (const {
       'ibdal_waw',
       'ibdal_ya',
@@ -42,6 +45,8 @@ abstract final class ReadingColors {
   }
 
   static Color forLabel(String label) {
+    if (label == 'ياءات الزوائد') return MushafColors.green;
+    if (label.contains('مد اللين المهموز')) return MushafColors.green;
     if (label == 'النقل') return naql;
     if (label.contains('السكت')) return sakt;
     if (label.contains('همز') || label == 'الإشمام') return hamza;
@@ -57,6 +62,7 @@ abstract final class ReadingColors {
   }
 
   static Color? ofReadings(List<Variant> readings) {
+    readings = readings.where((v) => !v.isMarginNote).toList();
     if (readings.isEmpty) return null;
     final farsh = readings.where((v) => !v.isUsul).toList();
     final relevant = farsh.isEmpty ? readings : farsh;

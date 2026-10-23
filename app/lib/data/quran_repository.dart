@@ -76,44 +76,70 @@ class QuranRepository {
     Future<String?> optional(String key) =>
         b.loadString(key).then<String?>((s) => s, onError: (_) => null);
     final raw = await b.loadString('assets/data/quran.json');
+    final partitions = await optional('assets/data/partitions.json');
     if (edition == MushafEdition.shamarly) {
       return parseShamarly(
-          raw, (await optional('assets/data/layout_shamarly.json'))!);
+        raw,
+        (await optional('assets/data/layout_shamarly.json'))!,
+        partitions,
+      );
     }
     final (layout, qcf) = await (
       optional('assets/data/layout.json'),
       optional('assets/data/qcf.json'),
     ).wait;
-    return parse(raw, layout, qcf);
+    return parse(raw, layout, qcf, partitions);
   }
 
   static List<Surah> _surahs(Map<String, dynamic> json) => [
-        for (final s in json['surahs'] as List)
-          Surah(
-            number: s['n'] as int,
-            nameAr: s['ar'] as String,
-            nameEn: s['en'] as String,
-            ayahCount: s['ayahs'] as int,
-            startPage: s['page'] as int,
-          ),
-      ];
+    for (final s in json['surahs'] as List)
+      Surah(
+        number: s['n'] as int,
+        nameAr: s['ar'] as String,
+        nameEn: s['en'] as String,
+        ayahCount: s['ayahs'] as int,
+        startPage: s['page'] as int,
+      ),
+  ];
 
-  static List<Ayah> _ayahs(Map<String, dynamic> json) => [
-        for (final a in json['ayahs'] as List)
-          Ayah(
-            surah: a[0] as int,
-            number: a[1] as int,
-            page: a[2] as int,
-            juz: a[3] as int,
-            words: (a[4] as String).split(' '),
-          ),
-      ];
+  static List<Ayah> _ayahs(Map<String, dynamic> json, [String? partitions]) {
+    final starts = <(int, int), int>{};
+    if (partitions != null) {
+      final rows = (jsonDecode(partitions) as Map)['rub'] as List;
+      for (final (i, row) in rows.indexed) {
+        starts[(row[0] as int, row[1] as int)] = i + 1;
+      }
+    }
+    var previousJuz = 0;
+    return [
+      for (final a in json['ayahs'] as List)
+        (() {
+          final ayah =
+              Ayah(
+                  surah: a[0] as int,
+                  number: a[1] as int,
+                  page: a[2] as int,
+                  juz: a[3] as int,
+                  words: (a[4] as String).split(' '),
+                )
+                ..rubStart = starts[(a[0], a[1])]
+                ..juzStart = previousJuz != a[3];
+          previousJuz = a[3] as int;
+          return ayah;
+        })(),
+    ];
+  }
 
   /// The Madinah mushaf: every page ends with an ayah.
-  static QuranRepository parse(String raw, [String? layout, String? qcf]) {
+  static QuranRepository parse(
+    String raw, [
+    String? layout,
+    String? qcf,
+    String? partitions,
+  ]) {
     final json = jsonDecode(raw) as Map<String, dynamic>;
     final surahs = _surahs(json);
-    final ayahs = _ayahs(json);
+    final ayahs = _ayahs(json, partitions);
     final pages = List.generate(604, (_) => <Ayah>[]);
     final glyphs = qcf == null
         ? null
@@ -131,15 +157,25 @@ class QuranRepository {
         ? (null, <int>{})
         : _layout(layout, 1, (p) => pages[p - 1]);
     return QuranRepository._(
-        MushafEdition.madani, surahs, pages, lines, centered, pageOf,
-        firstPage: 1);
+      MushafEdition.madani,
+      surahs,
+      pages,
+      lines,
+      centered,
+      pageOf,
+      firstPage: 1,
+    );
   }
 
   /// The Shamarly mushaf (layout from tool/shamarly): its pages are made of
   /// the words on their lines, and may start or end inside an ayah.
-  static QuranRepository parseShamarly(String raw, String layout) {
+  static QuranRepository parseShamarly(
+    String raw,
+    String layout, [
+    String? partitions,
+  ]) {
     final json = jsonDecode(raw) as Map<String, dynamic>;
-    final ayahs = _ayahs(json);
+    final ayahs = _ayahs(json, partitions);
     final index = {for (final (i, a) in ayahs.indexed) (a.surah, a.number): i};
     final data = jsonDecode(layout) as Map<String, dynamic>;
     final first = data['first'] as int;
@@ -159,7 +195,10 @@ class QuranRepository {
       for (var i = from; i <= to; i++) {
         // The page where the ayah starts: its first word is on it.
         if (i > from || refs.first[2] == 0) {
-          pageOf.putIfAbsent((ayahs[i].surah, ayahs[i].number), () => first + p);
+          pageOf.putIfAbsent((
+            ayahs[i].surah,
+            ayahs[i].number,
+          ), () => first + p);
         }
       }
     }
@@ -175,13 +214,22 @@ class QuranRepository {
     ];
     final (lines, centered) = _layout(layout, first, (p) => pages[p - first]);
     return QuranRepository._(
-        MushafEdition.shamarly, surahs, pages, lines, centered, pageOf,
-        firstPage: first);
+      MushafEdition.shamarly,
+      surahs,
+      pages,
+      lines,
+      centered,
+      pageOf,
+      firstPage: first,
+    );
   }
 
   /// The lines of every page of a layout file (assets/data/layout.json).
   static (List<List<MushafLine>>, Set<int>) _layout(
-      String layout, int first, List<Ayah> Function(int page) ayahsOf) {
+    String layout,
+    int first,
+    List<Ayah> Function(int page) ayahsOf,
+  ) {
     final centered = <int>{};
     final lines = <List<MushafLine>>[];
     final pageList =
@@ -197,15 +245,24 @@ class QuranRepository {
         final l = line as List;
         switch (l[0]) {
           case 's':
-            out.add(SurahNameLine(l[1] as int, span: l.length > 2 ? l[2] as int : 1));
+            out.add(
+              SurahNameLine(l[1] as int, span: l.length > 2 ? l[2] as int : 1),
+            );
           case 'b':
             out.add(BasmalaLine(l[1] as int));
           case 'e':
             out.add(const TextLine([]));
           case 'a':
             final ref = l.skip(1).cast<int>().toList();
-            out.add(TextLine(_words(
-                ayahs, (ref[0], ref[1], ref[2]), (ref[3], ref[4], ref[5]))));
+            out.add(
+              TextLine(
+                _words(
+                  ayahs,
+                  (ref[0], ref[1], ref[2]),
+                  (ref[3], ref[4], ref[5]),
+                ),
+              ),
+            );
         }
       }
       lines.add(out);
@@ -215,7 +272,10 @@ class QuranRepository {
 
   /// Words of [ayahs] from [from] to [to] inclusive, as (ayah, word index).
   static List<(Ayah, int)> _words(
-      List<Ayah> ayahs, (int, int, int) from, (int, int, int) to) {
+    List<Ayah> ayahs,
+    (int, int, int) from,
+    (int, int, int) to,
+  ) {
     final out = <(Ayah, int)>[];
     var inside = false;
     for (final a in ayahs) {

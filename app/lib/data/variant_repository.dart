@@ -100,13 +100,25 @@ class VariantRepository {
 
 Map<int, String> _indexSourceText(String raw) {
   final json = jsonDecode(raw) as Map;
-  return {
+  final words = [
     for (final a in json['ayahs'] as List)
       for (final (w, text) in (a[2] as List).indexed)
-        VariantRepository.key(a[0] as int, a[1] as int, w): madinahScript(
-          text as String,
-        ),
-  };
+        (surah: a[0] as int, ayah: a[1] as int, word: w, text: text as String),
+  ];
+  final index = <int, String>{};
+  String? followingWord;
+  int? followingSurah;
+  for (final w in words.reversed) {
+    index[VariantRepository.key(w.surah, w.ayah, w.word)] = madinahScript(
+      w.text,
+      followingWord: followingSurah == w.surah ? followingWord : null,
+    );
+    if (w.text.isNotEmpty) {
+      followingWord = w.text;
+      followingSurah = w.surah;
+    }
+  }
+  return index;
 }
 
 /// Indexes a riwaya file by every Hafs word each variant covers, with
@@ -203,6 +215,7 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       if (list == null) continue;
       for (final v in [...list]) {
         if (v.rule.isNotEmpty) {
+          if (v.rule == 'ya_zaida' && _matchesUsul(v, how)) found = true;
           // Do not duplicate an existing rule as a lexical book variant.
           if ((p[4] as String).isEmpty && _matchesUsul(v, how)) found = true;
           continue;
@@ -252,6 +265,9 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
 
 /// Whether a generated rule already covers the book's general-rule note.
 bool _matchesUsul(Variant v, String how) {
+  if (v.rule == 'ya_zaida' && RegExp('وصل|وقف|الحالين|الياء').hasMatch(how)) {
+    return true;
+  }
   if (v.isBadal && how.contains('البدل')) return true;
   if ((v.rule == 'naql' || v.rule == 'naql_source') && how.contains('نقل')) {
     return true;

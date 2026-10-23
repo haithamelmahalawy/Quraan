@@ -7,6 +7,7 @@ import '../data/quran_repository.dart';
 import '../models/quran.dart';
 import 'mushaf_decor.dart';
 import 'theme.dart';
+import 'partition_marker.dart';
 
 /// Builds the widget for one word at the given font size, drawn out by
 /// [kashida] tatweels where its letters join.
@@ -212,7 +213,21 @@ class MushafLines extends StatelessWidget {
       firmness: 0.35,
     );
     if (!shown) return marker;
-    final word = wordBuilder(ayah, w, fontSize, kashida);
+    Widget word = wordBuilder(ayah, w, fontSize, kashida);
+    if (w == 0 && (ayah.rubStart != null || ayah.juzStart)) {
+      word = Row(
+        mainAxisSize: MainAxisSize.min,
+        textDirection: TextDirection.rtl,
+        children: [
+          PartitionMarker(
+            key: ValueKey('partition:${ayah.surah}:${ayah.number}'),
+            ayah: ayah,
+            fontSize: fontSize,
+          ),
+          word,
+        ],
+      );
+    }
     if (!closes) return word;
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -254,6 +269,9 @@ class MushafLines extends StatelessWidget {
       final shown = _show(ayah, i);
       if (shown != null) {
         w += _measure(shown.text, shown.font);
+        if (i == 0 && (ayah.rubStart != null || ayah.juzStart)) {
+          w += _measure('۞', 'Hafs') * .8;
+        }
         font ??= shown.font;
         items++;
       }

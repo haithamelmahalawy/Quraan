@@ -33,6 +33,8 @@ void main() {
     expect(text(rule(10, 8, 'naql')), 'عَذَابٌ اَلِيمُۢ');
     expect(text(rule(14, 8, 'naql')), 'خَلَوِاْ اِلَىٰ');
     expect(text(rule(107, 0, 'naql')), 'قَدِيرٌ اَلَمْ');
+    expect(text(rule(49, 3, 'naql')), 'مِّنَ اٰلِ');
+    expect(text(rule(53, 1, 'naql')), 'وَإِذَ اٰتَيْنَا');
   });
 
   test('mim silah keeps each narrator’s written connection and madd', () {

@@ -208,6 +208,9 @@ class Manzumat {
   }
 
   bool _citationFits(Poem poem, Variant v, int n) {
+    if (poem == Poem.shatibiyya && v.riwayaId == 'warsh' && v.isLinHamz) {
+      return v.rule == 'lin_hamz' ? {179, 180}.contains(n) : n == 182;
+    }
     // Naql and Hamzah's sakt share a chapter and often share a book note.
     // The sakt couplets are not evidence of Warsh's naql.
     if (poem == Poem.shatibiyya && v.riwayaId == 'warsh' && v.rule == 'naql') {
@@ -281,6 +284,11 @@ class Manzumat {
           return {226};
         case 'badal':
           return {171, 172};
+        case 'lin_hamz':
+          return {179, 180};
+        case 'lin_hamz_exception':
+        case 'lin_hamz_sawat':
+          return {182};
         case 'tarqiq':
           return {343, 344};
         case 'taghliz':
@@ -306,12 +314,13 @@ class Manzumat {
   String? _usulChapter(Poem poem, Variant v) {
     final d = v.shownDescription;
     final topics = <String>[
+      if (v.rule == 'ya_zaida') 'الزوائد',
       if (v.rule == 'naql') 'نقل',
       if (v.rule == 'tasheel_word' || v.rule == 'hamza_wasl')
         'الهمزتين من كلمة',
       if (const {'tasheel_pair', 'ibdal_waw', 'ibdal_ya'}.contains(v.rule))
         'الهمزتين من كلمتين',
-      if (v.rule == 'badal') 'المد',
+      if (v.rule == 'badal' || v.isLinHamz) 'المد',
       if (v.rule == 'tarqiq') 'الراء',
       if (v.rule == 'taghliz') 'اللام',
       if (v.rule == 'sakt' || d.contains('سكت')) 'نقل',

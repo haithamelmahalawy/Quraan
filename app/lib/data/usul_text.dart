@@ -67,7 +67,7 @@ String usulReadingText(
     }
     prefix.add(text);
   }
-  return [...prefix, target].join(' ');
+  return madinahScript([...prefix, target].join(' '));
 }
 
 /// Description-only sources sometimes write ميم الجمع with a damma alone.

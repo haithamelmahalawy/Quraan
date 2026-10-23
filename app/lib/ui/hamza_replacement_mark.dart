@@ -35,7 +35,7 @@ class HamzaReplacementMark extends StatelessWidget {
         .replaceAll(RegExp('[أإٱ]'), 'ا')
         .replaceAll('ؤ', 'و')
         .replaceAll('ئ', 'ى')
-        .replaceAll(RegExp('[ٕ۪ٔ۬]'), '');
+        .replaceAll(RegExp('[َُِٕ۪ٔ۬]'), '');
     return text.replaceRange(offset, end, seat);
   }
 
@@ -71,7 +71,7 @@ class HamzaReplacementMark extends StatelessWidget {
       excludeSemantics: true,
       child: CustomPaint(
         foregroundPainter: _ReplacementPainter(
-          shown,
+          text,
           letter,
           DefaultTextStyle.of(context).style.merge(style),
           color,
@@ -107,8 +107,9 @@ class _ReplacementPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final shown = HamzaReplacementMark.seatText(text, offset);
     final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
+      text: TextSpan(text: shown, style: style),
       textDirection: TextDirection.rtl,
       textScaler: textScaler,
     )..layout(maxWidth: size.width);
@@ -120,8 +121,13 @@ class _ReplacementPainter extends CustomPainter {
     while (end < text.length && RegExp('[ً-ٰٟۖ-ۭ]').hasMatch(text[end])) {
       end++;
     }
+    var shownEnd = offset + 1;
+    while (shownEnd < shown.length &&
+        RegExp('[ً-ٰٟۖ-ۭ]').hasMatch(shown[shownEnd])) {
+      shownEnd++;
+    }
     final boxes = painter.getBoxesForSelection(
-      TextSelection(baseOffset: offset, extentOffset: end),
+      TextSelection(baseOffset: offset, extentOffset: shownEnd),
     );
     if (boxes.isEmpty) {
       painter.dispose();
@@ -169,6 +175,42 @@ class _ReplacementPainter extends CustomPainter {
     )..layout();
     glyph.paint(canvas, center - Offset(glyph.width / 2, glyph.height / 2));
     glyph.dispose();
+    final vowel = RegExp('[َُِ]')
+        .firstMatch(text.substring(offset, end))
+        ?.group(0);
+    if (vowel != null) {
+      final below = vowel == 'ِ';
+      final markSize = fontSize * 0.64;
+      // Shape on an invisible alif: an isolated combining mark otherwise
+      // acquires a dotted circle in fallback fonts.
+      final mark = TextPainter(
+        text: TextSpan(
+          style: TextStyle(fontFamily: 'Hafs', fontSize: markSize, height: 1),
+          children: [
+            const TextSpan(
+              text: 'ا',
+              style: TextStyle(color: Colors.transparent),
+            ),
+            TextSpan(
+              text: vowel,
+              style: TextStyle(color: color),
+            ),
+          ],
+        ),
+        textDirection: TextDirection.rtl,
+      )..layout();
+      final baseline = mark.computeLineMetrics().single.baseline;
+      final inkY =
+          center.dy + (below ? 1 : -1) * (diameter / 2 + fontSize * .10);
+      mark.paint(
+        canvas,
+        Offset(
+          center.dx - mark.width / 2,
+          inkY + (below ? -.16 : .93) * markSize - baseline,
+        ),
+      );
+      mark.dispose();
+    }
     painter.dispose();
   }
 

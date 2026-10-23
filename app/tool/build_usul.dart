@@ -69,6 +69,8 @@ String bare(String w) => String.fromCharCodes(w.runes.where(
 bool hasBadal(String word, String where) {
   if (const ['10:51', '10:91'].contains(where)) return false; // ءالآن
   final b = bare(word);
+  // Warsh's الصابين / الصابون is a lexical reading without this hamza.
+  if (RegExp(r'^[وف]?لصب(ين|ون)$').hasMatch(b)) return false;
   // إسرائيل; يؤاخذ (its ؤ dropped: يخذ, تخذ, نخذ).
   if (b.contains('سريل') || RegExp('^[وف]?[يتن]خذ').hasMatch(b)) return false;
   final cs = clusters(word);
@@ -335,7 +337,8 @@ void main() {
     json['variants'] = variants;
     if (id == 'warsh') {
       final book = jsonDecode(File('assets/data/kharouf.json').readAsStringSync()) as Map;
-      correctWarshUsul(quran, book, variants);
+      final source = jsonDecode(File('assets/data/reading_texts/warsh.json').readAsStringSync()) as Map;
+      correctWarshUsul(quran, book, variants, sourceText: source);
     }
     file.writeAsStringSync(jsonEncode(json));
     stdout.writeln('$id: dropped $dropped written as Hafs'

@@ -459,7 +459,7 @@ String describe(String hafs, String other) {
   var a = hafs, b = other;
   if (_hasSilah(a) != _hasSilah(b)) {
     final last = units(_dropSilah(_hasSilah(b) ? b : a)).last;
-    final which = last.letter == 'م' ? 'ميم الجمع' : 'الهاء';
+    final which = last.letter == 'م' ? 'ميم الجمع' : last.letter == 'ه' ? 'الهاء' : 'الياء الزائدة';
     // A ha read with sukun (يُؤَدِّهۡ) is told by the letters below
     // (إسكان الهاء), not as a silah left out.
     final sukun =
@@ -470,7 +470,9 @@ String describe(String hafs, String other) {
     // or simply an omitted silah; the lexical replacement is described below.
     if (units(_dropSilah(a)).last.letter == units(_dropSilah(b)).last.letter) {
       phrases.add(
-        sukun
+        which == 'الياء الزائدة'
+            ? (_hasSilah(b) ? 'إثبات الياء الزائدة' : 'حذف الياء الزائدة')
+            : sukun
             ? 'إسكان الهاء'
             : _hasSilah(b)
             ? 'صلة $which'

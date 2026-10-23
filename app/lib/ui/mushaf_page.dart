@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../data/arabic.dart';
+import '../data/lin_hamz.dart';
 import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
@@ -17,6 +18,9 @@ import 'kharouf_section.dart' show readersAr;
 import 'mushaf_lines.dart';
 import 'mushaf_zoom.dart';
 import 'hamza_replacement_mark.dart';
+import 'hafs_font_marks.dart';
+import 'quran_word_text.dart';
+import 'partition_marker.dart';
 import 'reference_sheet.dart';
 import 'reading_colors.dart';
 import 'theme.dart';
@@ -367,7 +371,11 @@ class _MushafPageState extends State<MushafPage>
                   )
                 : groups.isEmpty
                 ? const SizedBox()
-                : _UsulBox(groups: groups, onTap: _openReference, scale: 1.5),
+                : _UsulBox(
+                    groups: groups,
+                    onTap: _openUsulReference,
+                    scale: 1.5,
+                  ),
           );
         },
       ),
@@ -513,7 +521,7 @@ class _MushafPageState extends State<MushafPage>
         ? null
         : Padding(
             padding: const EdgeInsets.fromLTRB(4, 1, 4, 6),
-            child: _UsulBox(groups: usul, onTap: _openReference),
+            child: _UsulBox(groups: usul, onTap: _openUsulReference),
           );
     if (!withHamesh) {
       if (usulBox == null) return page;
@@ -683,6 +691,19 @@ class _MushafPageState extends State<MushafPage>
     final replace = s.mode == DisplayMode.replace && selected.length == 1;
 
     for (var w = 0; w < ayah.words.length; w++) {
+      if (w == 0 && (ayah.rubStart != null || ayah.juzStart)) {
+        out.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: PartitionMarker(
+              key: ValueKey('partition:${ayah.surah}:${ayah.number}'),
+              ayah: ayah,
+              fontSize: s.fontSize,
+            ),
+          ),
+        );
+      }
       final m = _mark(ayah, w);
       final tap = m.all.isEmpty && !m.mutashabih ? null : _recognizer(ayah, w);
       final underline = m.mutashabih ? _mutashabihStyle : null;
@@ -718,7 +739,7 @@ class _MushafPageState extends State<MushafPage>
         continue;
       }
 
-      if (m.shown.isEmpty) {
+      if (m.shown.every((v) => v.isMarginNote)) {
         out
           ..add(
             TextSpan(
@@ -731,7 +752,7 @@ class _MushafPageState extends State<MushafPage>
         continue;
       }
 
-      final color = m.color!;
+      final color = m.color ?? MushafColors.ink;
       out.add(
         TextSpan(
           text: baseWord,
@@ -828,7 +849,10 @@ class _MushafPageState extends State<MushafPage>
       if (v.word != w || v.text.isEmpty) return null;
       return (text: withNaqlVowel(v.text, ayah.words[w]), font: 'Hafs');
     }
-    final glyph = widget.qcf ? (ayah.glyphs?[w]) : null;
+    final glyph =
+        widget.qcf && !(w == 0 && (ayah.rubStart != null || ayah.juzStart))
+        ? (ayah.glyphs?[w])
+        : null;
     // Drawn with the word before.
     if (glyph != null && glyph.isEmpty) return null;
     final imala = [
@@ -855,13 +879,19 @@ class _MushafPageState extends State<MushafPage>
   /// silah readings keep both colours instead of a comparison rawi's colour.
   List<Variant>? _letterReadings(Ayah ayah, int w) {
     final s = widget.settings;
-    final readings = [
-      ..._baseAt(widget.variants, s, ayah, w),
-      ..._readingsAt(widget.variants, s, ayah, w).shown,
-    ].where((v) => v.word == w && s.kinds.contains(v.kind)).toList();
+    final readings =
+        [
+              ..._baseAt(widget.variants, s, ayah, w),
+              ..._readingsAt(widget.variants, s, ayah, w).shown,
+            ]
+            .where(
+              (v) => v.word == w && !v.isMarginNote && s.kinds.contains(v.kind),
+            )
+            .toList();
     bool targeted(Variant v) =>
         v.isUsul &&
         (v.isBadal ||
+            v.isLinHamz ||
             v.isImala ||
             v.isTarqiqOrTaghliz ||
             _naqlKind(v) != null ||
@@ -882,17 +912,20 @@ class _MushafPageState extends State<MushafPage>
   }
 
   Variant? _replacementAt(Ayah ayah, int w) =>
-      [
-            ..._baseAt(widget.variants, widget.settings, ayah, w),
-            ..._readingsAt(widget.variants, widget.settings, ayah, w).shown,
-          ]
-          .where(
-            (v) =>
-                v.word == w &&
-                v.hamzaReplacement != null &&
-                widget.settings.kinds.contains(v.kind),
-          )
-          .firstOrNull;
+      widget.settings.displayed != 'warsh'
+      ? null
+      : [
+              ..._baseAt(widget.variants, widget.settings, ayah, w),
+              ..._readingsAt(widget.variants, widget.settings, ayah, w).shown,
+            ]
+            .where(
+              (v) =>
+                  v.word == w &&
+                  v.riwayaId == 'warsh' &&
+                  v.hamzaReplacement != null &&
+                  widget.settings.kinds.contains(v.kind),
+            )
+            .firstOrNull;
 
   /// [text] in parts, each affected letter in the colour of its rule.
   List<(String, Color?)>? _letterParts(Ayah ayah, int w, String text) {
@@ -905,6 +938,12 @@ class _MushafPageState extends State<MushafPage>
     }
 
     for (final v in readings) {
+      if (v.isLinHamz) {
+        for (final i in linHamzLetters(text)) {
+          mark(i, MushafColors.green);
+        }
+        continue;
+      }
       if (v.isTarqiqOrTaghliz) {
         final i = v.rule == 'tarqiq' ? raLetter(letters) : lamLetter(letters);
         mark(i, MushafColors.rule);
@@ -1001,10 +1040,10 @@ class _MushafPageState extends State<MushafPage>
       shown.text,
       key: ValueKey('word:${ayah.surah}:${ayah.number}:$w'),
       parts: hiddenHamza != null
-          ? HamzaReplacementMark.hideHamza(
-              parts ?? [(drawn, null)],
-              hiddenHamza,
-            )
+          ? HamzaReplacementMark.hideHamza([
+              for (final (i, l) in lettersOf(drawn).indexed)
+                (l, parts == null ? null : parts[i].$2),
+            ], hiddenHamza)
           : drawn == (parts?.map((p) => p.$1).join() ?? shown.text)
           ? parts
           : [
@@ -1095,6 +1134,16 @@ class _MushafPageState extends State<MushafPage>
       readings: readings,
       word: shown,
       surah: ayah.surah,
+      surahNames: [for (final s in widget.quran.surahs) s.nameAr],
+    );
+  }
+
+  void _openUsulReference(_UsulItem item) {
+    ReferenceSheet.show(
+      context,
+      readings: item.readings,
+      word: item.text,
+      surah: item.ayah.surah,
       surahNames: [for (final s in widget.quran.surahs) s.nameAr],
     );
   }
@@ -1195,10 +1244,13 @@ _Readings _readingsOf(
       )
       .where((v) => !v.readsAsHafs && !same.contains(_readingKey(v)))
       .toList();
+  // Source reminders remain visible when their own riwaya is the base.
+  all.addAll(base.where((v) => v.isMarginNote));
   // Hafs, where the riwaya shown differs from it (not by its usul alone).
   if (s.compareHafs) {
     for (final v in base) {
       if (v.isUsul ||
+          v.isMarginNote ||
           all.any((h) => h.riwayaId == hafsId && h.word == v.word)) {
         continue;
       }
@@ -1218,7 +1270,7 @@ _Readings _readingsOf(
   final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
   final colors = [
     for (final id in shown.map((v) => v.riwayaId).toSet())
-      ReadingColors.ofReadings(shown.where((v) => v.riwayaId == id).toList())!,
+      ?ReadingColors.ofReadings(shown.where((v) => v.riwayaId == id).toList()),
   ];
   return (
     all: all,
@@ -1290,10 +1342,12 @@ List<_UsulGroup> _usulNotes(
       );
       for (final (label, _) in kinds) {
         final ways =
-            label.contains('همز') &&
-                (v.usulWays.length > 1 ||
-                    v.rule == 'tasheel_pair' ||
-                    v.rule == 'tasheel_word')
+            v.isLinHamz ||
+                v.rule == 'ya_zaida' ||
+                label.contains('همز') &&
+                    (v.usulWays.length > 1 ||
+                        v.rule == 'tasheel_pair' ||
+                        v.rule == 'tasheel_word')
             ? v.usulWays
             : const <String>[];
         // Equal labels need separate groups when their permitted faces
@@ -1309,6 +1363,7 @@ List<_UsulGroup> _usulNotes(
           () => _UsulItem(ayah, w, word, v.stopOnly, v.hamzaReplacement),
         );
         item.riwayat.add(v.riwayaId);
+        item.readings.add(v);
       }
     }
   }
@@ -1333,11 +1388,16 @@ class _UsulItem {
   final bool stopOnly;
   final String? replacement;
   final riwayat = <String>{};
+  final readings = <Variant>[];
 }
 
 /// The usul a reading applies, by its description: the key's wording.
 List<String> _usulOf(Variant v) {
   final d = v.description;
+  if (v.rule == 'ya_zaida') return ['ياءات الزوائد'];
+  if (v.isLinHamz) {
+    return [LinHamz.values.singleWhere((kind) => kind.rule == v.rule).label];
+  }
   if (v.rule == 'tasheel_word') {
     return [
       v.usulWays.length > 1
@@ -1366,7 +1426,7 @@ List<String> _usulOf(Variant v) {
     if (RegExp('إبدال|ابدال').hasMatch(d)) 'إبدال الهمز',
     if (RegExp('تسهيل').hasMatch(d)) 'تسهيل الهمز',
     if (RegExp('تخفيف الهمز|حذف الهمزة').hasMatch(d) && !d.contains('تسهيل'))
-      'تخفيف الهمز',
+      'الهمزات',
     if (RegExp('تحقيق الهمز').hasMatch(d)) 'تحقيق الهمز',
     if (d.contains('البدل')) 'مد البدل',
     if (RegExp(r'(^|\s)(ب|و)?(ال)?مد|ومدها|القصر').hasMatch(d) &&
@@ -1412,7 +1472,9 @@ List<HameshEntry> _entriesOf(
         for (final v in starting) '${v.riwayaId}=${v.text}=${v.description}',
       ].join('|');
       if (!seen.add(key)) continue;
-      out.add(HameshEntry(ayah, w, hafs, m.color!, starting));
+      out.add(
+        HameshEntry(ayah, w, hafs, m.color ?? MushafColors.ink, starting),
+      );
     }
   }
   return out;
@@ -1792,7 +1854,7 @@ class _UsulBox extends StatelessWidget {
   const _UsulBox({required this.groups, required this.onTap, this.scale = 1});
 
   final List<_UsulGroup> groups;
-  final WordTap onTap;
+  final ValueChanged<_UsulItem> onTap;
   final double scale;
 
   @override
@@ -1854,7 +1916,10 @@ class _UsulBox extends StatelessWidget {
                       ),
                       for (final i in g.items.values)
                         InkWell(
-                          onTap: () => onTap(i.ayah, i.word),
+                          key: ValueKey(
+                            'usul-reference:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.riwayat.join(',')}',
+                          ),
+                          onTap: () => onTap(i),
                           child: Wrap(
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
@@ -1916,7 +1981,7 @@ class _UsulBox extends StatelessWidget {
       color: color,
     );
     Widget text(String shown, [int? hiddenHamza]) => hiddenHamza == null
-        ? Text(shown, textDirection: TextDirection.rtl, style: style)
+        ? QuranWordText(shown, style: style)
         : Text.rich(
             TextSpan(
               children: [
@@ -2027,6 +2092,9 @@ class _EntryView extends StatelessWidget {
     final quran = (compact ? 10.5 : 13.0) * scale;
     final reading = (compact ? 14.0 : 17.0) * scale;
     return InkWell(
+      key: ValueKey(
+        'margin-reference:${e.ayah.surah}:${e.ayah.number}:${e.word}',
+      ),
       onTap: () => onTap(e.ayah, e.word),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2042,7 +2110,9 @@ class _EntryView extends StatelessWidget {
                     fontSize: quran,
                     height: 1.4,
                     color: e.color,
-                    backgroundColor: e.color.withAlpha(28),
+                    backgroundColor: e.readings.every((v) => v.isMarginNote)
+                        ? null
+                        : e.color.withAlpha(28),
                   ),
                 ),
                 // Confirmed by the certified source (التسهيل).
@@ -2072,22 +2142,7 @@ class _EntryView extends StatelessWidget {
                     ),
                   TextSpan(text: ': ', style: label),
                   if (g.text.isNotEmpty || g.description.isEmpty || g.imala)
-                    TextSpan(
-                      text: g.text.isNotEmpty
-                          ? g.text
-                          : g.imala
-                          ? withImalaSign(e.hafs)
-                          : '(بحذفها)',
-                      style: TextStyle(
-                        fontFamily: g.font,
-                        fontSize: reading,
-                        color: g.imala
-                            ? MushafColors.green
-                            : g.names.length == 1
-                            ? g.names.single.$2
-                            : MushafColors.multi,
-                      ),
-                    ),
+                    _wordSpan(g, e, reading),
                   if (g.description.isNotEmpty)
                     TextSpan(
                       text: ' ${g.description}',
@@ -2099,6 +2154,31 @@ class _EntryView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  InlineSpan _wordSpan(_Reading g, HameshEntry e, double size) {
+    final text = g.text.isNotEmpty
+        ? g.text
+        : g.imala
+        ? withImalaSign(e.hafs)
+        : '(بحذفها)';
+    final style = TextStyle(
+      fontFamily: g.font,
+      fontSize: size,
+      color: g.imala
+          ? MushafColors.green
+          : g.names.length == 1
+          ? g.names.single.$2
+          : MushafColors.multi,
+    );
+    if (g.font == 'Hafs' && HafsFontMarks.needsAdjustment(text)) {
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: QuranWordText(text, style: style),
+      );
+    }
+    return TextSpan(text: text, style: style);
   }
 
   /// Who reads what: a qiraa by its name ("نافع") when both its riwayat
