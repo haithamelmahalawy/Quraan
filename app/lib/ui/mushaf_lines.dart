@@ -113,12 +113,9 @@ class MushafLines extends StatelessWidget {
   }
 
   Widget _textLine(List<(Ayah, int)> words, double pageSize, double width) {
-    // A line longer than the others (a riwaya's longer words) is set a
-    // little smaller rather than the whole page.
-    final natural = _naturalWidth(words);
-    final fontSize = centered || natural == 0
-        ? pageSize
-        : math.min(pageSize, _probe * width * 0.995 / natural);
+    // Every word and line shares the page's font size. The longest line
+    // has already constrained that size in _fitFontSize.
+    final fontSize = pageSize;
     final kashida = centered
         ? const <int, int>{}
         : _kashida(words, fontSize, width);
@@ -159,6 +156,9 @@ class MushafLines extends StatelessWidget {
       final shown = _show(ayah, w);
       if (shown != null) {
         natural += _measure(shown.text, shown.font) * scale;
+        if (w == 0 && (ayah.rubStart != null || ayah.juzStart)) {
+          natural += _measure('۞', 'Hafs') * .8 * scale;
+        }
         items++;
         // Letters to draw out, not the page glyphs of the Madinah print.
         if (!shown.font.startsWith('QCF_')) {
@@ -246,15 +246,10 @@ class MushafLines extends StatelessWidget {
         if (line is TextLine) _naturalWidth(line.words),
     ].where((w) => w > 0).toList()..sort();
     if (widths.isEmpty) return width / 16;
-    // The page is sized by its usual line, as the print: a line a riwaya
-    // makes longer is set smaller itself (at most a tenth), so one long
-    // line does not shrink the whole page.
+    // Fit the longest printed line once for the entire page; shrinking
+    // individual lines would make adjacent words appear different sizes.
     final widest = widths.last;
-    final usual = centered ? widest : widths[widths.length ~/ 2];
-    final size = math.min(
-      _probe * width * 0.995 / usual,
-      _probe * width * 0.995 / widest * 1.1,
-    );
+    final size = _probe * width * 0.995 / widest;
     // Al-Fatiha and the start of Al-Baqarah have short, centred lines.
     return math.min(size, width / 13);
   }

@@ -17,6 +17,10 @@ import 'package:qiraat_mushaf/ui/mushaf_page.dart';
 import 'package:qiraat_mushaf/ui/mushaf_lines.dart';
 import 'package:qiraat_mushaf/ui/reading_colors.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
+import 'package:qiraat_mushaf/ui/variant_sheet.dart';
+import 'package:qiraat_mushaf/ui/reference_sheet.dart';
+import 'package:qiraat_mushaf/data/manzumat.dart';
+import 'package:qiraat_mushaf/data/kharouf.dart';
 
 import '../tool/build_warsh_usul.dart';
 import '../tool/build_usul.dart' as usul_builder;
@@ -34,7 +38,7 @@ void main() {
     quran = await QuranRepository.load();
     shamarly = await QuranRepository.load(null, MushafEdition.shamarly);
     variants = await VariantRepository.discover();
-    await variants.ensureLoaded(['warsh', 'qunbul', 'susi']);
+    await variants.ensureLoaded(['warsh', 'qunbul', 'susi', 'shubah', 'qalun']);
     mutashabihat = await MutashabihatRepository.load();
   });
 
@@ -60,6 +64,28 @@ void main() {
       expect(readings.any((v) => v.description.contains('هاء')), isFalse);
       expect(readings.any((v) => v.inHamesh), isFalse);
     }
+  });
+
+  test(
+    'yartadid retains the two dal reading without shared idgham in farsh',
+    () {
+      final farsh = variants
+          .at(['warsh'], 5, 54, 4)
+          .singleWhere((v) => v.inHamesh);
+      expect(farsh.text, 'يَرْتَدِدْ');
+      expect(farsh.shownDescription, isNot(contains('بالإدغام')));
+      expect(farsh.shownDescription, contains('زيادة الدال'));
+      expect(variants.sourceTextAt('warsh', 5, 54, 4), 'يَرْتَدِدْ');
+      expect(variants.sourceTextAt('warsh', 5, 54, 3), 'مَن');
+    },
+  );
+
+  test('hadyan agrees with Hafs and has no farsh or usul row', () {
+    expect(variants.at(['warsh'], 5, 95, 23), isEmpty);
+    expect(variants.sourceTextAt('warsh', 5, 95, 23), 'هَدْيَۢا');
+    // A genuine neighbouring lexical difference remains.
+    expect(variants.at(['warsh'], 5, 95, 12).any((v) => v.inHamesh), isTrue);
+    expect(variants.at(['warsh'], 7, 57, 4).any((v) => v.inHamesh), isTrue);
   });
 
   test('shared nun idgham is not a Warsh difference alongside ibdal', () {
@@ -346,6 +372,211 @@ void main() {
   });
 
   testWidgets(
+    'page 123 hadyan has no difference colour or alert with either base',
+    (t) async {
+      for (final displayed in [null, 'warsh']) {
+        await page(
+          t,
+          123,
+          settings: ReaderSettings.memory(selected: {'warsh'})
+            ..displayed = displayed
+            ..mode = DisplayMode.highlight
+            ..diffAlert = DiffAlert.glow
+            ..showMutashabihat = false,
+        );
+        final main = find.byKey(const ValueKey('word:5:95:23'));
+        final word = t.widget<InkText>(main);
+        expect(word.style.color, MushafColors.ink);
+        expect(word.parts?.every((p) => p.$2 == null) ?? true, isTrue);
+        expect(
+          find.ancestor(
+            of: main,
+            matching: find.byWidgetPredicate(
+              (w) => w.runtimeType.toString() == '_Alerting',
+            ),
+          ),
+          findsNothing,
+        );
+        expect(t.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets(
+    'page 117 yartadid has no extra ya shadda and preserves the dal reading',
+    (t) async {
+      await page(
+        t,
+        117,
+        settings: ReaderSettings.memory(selected: {'warsh'})
+          ..displayed = 'warsh',
+      );
+      final word = t.widget<InkText>(find.byKey(const ValueKey('word:5:54:4')));
+      expect(lettersOf(word.text).first, 'يَ');
+      expect(word.text, endsWith('دِدْ'));
+      final preceding = t.widget<InkText>(
+        find.byKey(const ValueKey('word:5:54:3')),
+      );
+      expect(preceding.text, 'مَن');
+      expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Warsh base with Hafs selected shows the reverse farsh in every printed mode',
+    (t) async {
+      for (final mode in [
+        DisplayMode.hamesh,
+        DisplayMode.replace,
+        DisplayMode.highlight,
+      ]) {
+        final settings = ReaderSettings.memory(selected: {'warsh'}, mode: mode)
+          ..displayed = 'warsh'
+          ..compareHafs = true;
+        await page(t, 123, settings: settings);
+        for (final w in [12, 13, 27, 28]) {
+          final margin = find.byKey(ValueKey('margin-reference:5:95:$w'));
+          expect(margin, findsOneWidget, reason: '${mode.name}: $w');
+          expect(
+            t
+                .widgetList<Text>(
+                  find.descendant(of: margin, matching: find.byType(Text)),
+                )
+                .any(
+                  (text) => (text.data ?? text.textSpan?.toPlainText() ?? '')
+                      .contains(quran.ayah(5, 95).words[w]),
+                ),
+            isTrue,
+          );
+        }
+        expect(find.textContaining('حفص', findRichText: true), findsWidgets);
+        expect(t.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets(
+    'reverse Hafs farsh follows the visible words in landscape replacement mode',
+    (t) async {
+      await page(
+        t,
+        123,
+        settings:
+            ReaderSettings.memory(
+                selected: {'warsh'},
+                mode: DisplayMode.replace,
+              )
+              ..displayed = 'warsh'
+              ..compareHafs = true,
+        viewport: const Size(800, 432),
+      );
+      final scroll = t
+          .widget<SingleChildScrollView>(
+            find.byKey(const ValueKey('landscape-page-scroll')),
+          )
+          .controller!;
+      final target = t
+          .getTopLeft(find.byKey(const ValueKey('word:5:95:12')))
+          .dy;
+      final print = t.getTopLeft(find.byKey(const ValueKey('mushaf-print'))).dy;
+      scroll.jumpTo((target - print).clamp(0, scroll.position.maxScrollExtent));
+      await t.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('margin-reference:5:95:12')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('حفص', findRichText: true), findsWidgets);
+      expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Warsh and Shubah compare directly without selecting Hafs', (
+    t,
+  ) async {
+    for (final base in ['warsh', 'shubah']) {
+      final settings = ReaderSettings.memory(
+        selected: {'warsh', 'shubah'},
+        mode: DisplayMode.replace,
+      )..displayed = base;
+      await page(t, 123, settings: settings);
+      final margin = find.byKey(const ValueKey('margin-reference:5:95:12'));
+      expect(margin, findsOneWidget);
+      final text = t
+          .widgetList<Text>(
+            find.descendant(of: margin, matching: find.byType(Text)),
+          )
+          .map((w) => w.data ?? w.textSpan?.toPlainText() ?? '')
+          .join(' ');
+      expect(text, contains(base == 'warsh' ? 'شعبة' : 'ورش'));
+      expect(text, isNot(contains('حفص')));
+      expect(t.takeException(), isNull);
+    }
+    await page(
+      t,
+      123,
+      settings: ReaderSettings.memory(selected: {'warsh', 'qalun'})
+        ..displayed = 'warsh'
+        ..showMutashabihat = false,
+    );
+    expect(
+      find.byKey(const ValueKey('margin-reference:5:95:12')),
+      findsNothing,
+    );
+    final word = t.widget<InkText>(find.byKey(const ValueKey('word:5:95:12')));
+    expect(word.style.color, MushafColors.ink);
+  });
+
+  testWidgets(
+    'word details name the displayed base and resolve an implicit Shubah reading',
+    (t) async {
+      await t.runAsync(() async {
+        await variants.ensureLoaded(variants.available);
+        await Manzumat.load();
+        await Kharouf.load();
+      });
+      final settings = ReaderSettings.memory(selected: {'warsh', 'shubah'})
+        ..displayed = 'warsh';
+      await page(t, 123, settings: settings);
+      VariantSheet.show(
+        t.element(find.byType(MushafPage)),
+        VariantSheet(
+          ayah: quran.ayah(5, 95),
+          word: 12,
+          surahName: quran.surah(5).nameAr,
+          settings: settings,
+          variants: variants,
+          surahNames: [for (final s in quran.surahs) s.nameAr],
+        ),
+      );
+      await t.pump();
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 30)),
+      );
+      await t.pumpAndSettle();
+      expect(find.text('ورش عن نافع (الرواية المعروضة)'), findsOneWidget);
+      expect(find.text('حفص عن عاصم (النص الأساسي)'), findsNothing);
+      final evidence = find.byKey(const ValueKey('word-reading-evidence'));
+      await t.scrollUntilVisible(
+        evidence,
+        150,
+        scrollable: find
+            .descendant(
+              of: find.byType(VariantSheet),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await t.pumpAndSettle();
+      final readings = t.widget<ReadingReferences>(evidence).readings;
+      expect(
+        readings.singleWhere((v) => v.riwayaId == 'shubah').text,
+        quran.ayah(5, 95).words[12],
+      );
+      expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'page 11 lists yuminun only under ibdal and leaves the preceding nun bare',
     (t) async {
       for (final displayed in [null, 'warsh']) {
@@ -385,7 +616,7 @@ void main() {
       final main = find.byKey(const ValueKey('word:2:72:3'));
       final word = t.widget<InkText>(main);
       expect(word.style.color, MushafColors.ink);
-      expect(word.parts, isNull);
+      expect(word.parts?.every((p) => p.$2 == null) ?? true, isTrue);
       expect(
         find.ancestor(
           of: main,
@@ -501,7 +732,7 @@ void main() {
           find.byKey(const ValueKey('word:2:40:1')),
         );
         expect(word.style.color, MushafColors.ink);
-        expect(word.parts, isNull);
+        expect(word.parts?.every((p) => p.$2 == null) ?? true, isTrue);
         final note = find.byKey(const ValueKey('margin-reference:2:40:1'));
         expect(note, findsOneWidget);
         expect(

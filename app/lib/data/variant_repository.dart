@@ -274,6 +274,23 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
 
 /// Whether a generated rule already covers the book's general-rule note.
 bool _matchesUsul(Variant v, String how) {
+  if (v.isLinHamz) {
+    final plain = how.replaceAll(RegExp('[ً-ٰٟ]'), '').trim();
+    // The book also records madd faces in its farsh section. They are
+    // already covered by this word's lin rule, not a lexical difference.
+    if (RegExp(
+      r'^(?:وله في «[^»]+» )?ب?(?:التوسط|توسط)'
+      r'(?: اللين ومده| والمد| والطول)'
+      r'(?: على (?:حرف )?اللين(?: الواقع بعده? همزة)?| في حرف اللين| في الحالين| وصلا ووقفا)?$',
+    ).hasMatch(plain)) {
+      return true;
+    }
+    if (v.rule == 'lin_hamz_sawat' &&
+        plain.startsWith('وله مع اللين قبله أربعة أوجه') &&
+        plain.contains('البدل')) {
+      return true;
+    }
+  }
   if (v.rule == 'ya_zaida' && RegExp('وصل|وقف|الحالين|الياء').hasMatch(how)) {
     return true;
   }

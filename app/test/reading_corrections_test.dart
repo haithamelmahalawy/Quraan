@@ -19,6 +19,10 @@ import '../tool/build_kharouf.dart' as book_data;
 import '../tool/correct_reviewed_farsh.dart';
 
 void main() {
+  test('iqlab tanween on the final alif is spelling, not farsh', () {
+    expect(data.classify('هَدۡيَۢا', 'هَدْياَۢ'), isNull);
+    expect(data.describe('هَدۡيَۢا', 'هَدْياَۢ'), isEmpty);
+  });
   TestWidgetsFlutterBinding.ensureInitialized();
   late QuranRepository quran;
   late MutashabihatRepository mutashabihat;

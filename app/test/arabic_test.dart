@@ -25,6 +25,10 @@ void main() {
     expect(madinahScript('يُوَ۬اخِذُكُمُ'), 'يُوَاخِذُكُمُ');
     expect(madinahScript('فَلْيُوَ۬دِّ'), 'فَلْيُوَدِّ');
     expect(madinahScript('لِيَ۬لَّا'), 'لِيَلَّا');
+    expect(madinahScript('يَّرْتَدِدْ'), 'يَرْتَدِدْ');
+    expect(madinahScript('مَنْ يَّرْتَدِدْ'), 'مَن يَرْتَدِدْ');
+    expect(madinahScript('هَدْياَۢ'), 'هَدْيَۢا');
+    expect(madinahScript('قَوْلاَۢۖ'), 'قَوْلَۢاۖ');
   });
 
   test(

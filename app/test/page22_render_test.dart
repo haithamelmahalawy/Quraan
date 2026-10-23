@@ -38,7 +38,7 @@ void main() {
     mutashabihat = await MutashabihatRepository.load();
   });
   testWidgets(
-    'page 22 Hafs with Warsh comparison in the real QCF page font',
+    'page 22 uses one font when Warsh comparison needs editable letters',
     tags: 'golden',
     (t) async {
       t.view.physicalSize = const Size(685, 960);
@@ -72,17 +72,7 @@ void main() {
         (w) =>
             w is InkText && (w.style.fontFamily?.startsWith('QCF_') ?? false),
       );
-      expect(engraved, findsWidgets);
-      for (final word in engraved.evaluate()) {
-        expect(
-          find.descendant(
-            of: find.byWidget(word.widget),
-            matching: find.byType(Text),
-          ),
-          findsOneWidget,
-          reason: 'QCF words must have one fill pass',
-        );
-      }
+      expect(engraved, findsNothing);
       await expectLater(
         find.byType(MushafPage),
         matchesGoldenFile('goldens/p22_hafs_warsh_qcf.png'),
@@ -128,6 +118,43 @@ void main() {
         'بداية الجزء 2',
       );
       expect(t.takeException(), isNull, reason: '$id');
+      final words = t
+          .widgetList<InkText>(
+            find.byWidgetPredicate(
+              (w) =>
+                  w is InkText &&
+                  w.key is ValueKey<String> &&
+                  (w.key as ValueKey<String>).value.startsWith('word:'),
+            ),
+          )
+          .toList();
+      expect(words, isNotEmpty);
+      expect(words.map((w) => w.style.fontFamily).toSet(), {
+        'Hafs',
+      }, reason: '$id');
+      expect(
+        words.map((w) => w.style.fontSize).toSet(),
+        hasLength(1),
+        reason: '$id',
+      );
     }
+  });
+  testWidgets('engraved QCF words still use a single fill pass', (t) async {
+    final glyph = quran.ayah(2, 142).glyphs![1];
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: InkText(
+            glyph,
+            style: TextStyle(fontFamily: QcfFonts.family(22), fontSize: 36),
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.descendant(of: find.byType(InkText), matching: find.byType(Text)),
+      findsOneWidget,
+    );
+    expect(t.takeException(), isNull);
   });
 }

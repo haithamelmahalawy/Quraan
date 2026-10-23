@@ -29,6 +29,20 @@ class RiwayatMenu extends StatelessWidget {
     final next = {...settings.selected};
     on ? next.add(id) : next.remove(id);
     settings.setSelected(next);
+    _ensureChosenReading();
+  }
+
+  void _ensureChosenReading() {
+    if (!settings.compareHafs &&
+        settings.displayed == null &&
+        settings.selected.isNotEmpty) {
+      settings.displayed = _ordered(settings.selected).first;
+    }
+  }
+
+  void _toggleHafs(bool on) {
+    settings.compareHafs = on;
+    _ensureChosenReading();
   }
 
   @override
@@ -44,7 +58,7 @@ class RiwayatMenu extends StatelessWidget {
         ),
         menuChildren: [
           // Which riwaya the page shows; the others are compared with it.
-          if (settings.selected.isNotEmpty) ...[
+          if (settings.selected.isNotEmpty || settings.compareHafs) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
               child: Text(
@@ -55,17 +69,17 @@ class RiwayatMenu extends StatelessWidget {
                 ),
               ),
             ),
-            for (final id in [hafsId, ..._ordered(settings.selected)])
+            for (final id in [
+              if (settings.compareHafs) hafsId,
+              ..._ordered(settings.selected),
+            ])
               RadioMenuButton<String>(
                 value: id,
                 groupValue: settings.displayed ?? hafsId,
                 closeOnActivate: false,
-                onChanged: (v) =>
-                    settings.displayed = v == hafsId ? null : v,
+                onChanged: (v) => settings.displayed = v == hafsId ? null : v,
                 child: Text(
-                  id == hafsId
-                      ? 'حفص (النص الأساسي)'
-                      : 'رواية ${riwayaById(id).nameAr} عن ${qiraaOf(id).shortAr}',
+                  'رواية ${riwayaById(id).nameAr} عن ${qiraaOf(id).shortAr}',
                 ),
               ),
             const Divider(height: 12),
@@ -73,7 +87,11 @@ class RiwayatMenu extends StatelessWidget {
           if (settings.selected.isNotEmpty)
             MenuItemButton(
               leadingIcon: const Icon(Icons.clear_all),
-              onPressed: () => settings.setSelected({}),
+              onPressed: () {
+                settings.setSelected({});
+                settings.compareHafs = true;
+                settings.displayed = null;
+              },
               child: const Text('إلغاء الكل (حفص فقط)'),
             ),
           for (final q in qiraat) ...[
@@ -98,7 +116,7 @@ class RiwayatMenu extends StatelessWidget {
               CheckboxMenuButton(
                 value: settings.compareHafs,
                 closeOnActivate: false,
-                onChanged: (v) => settings.compareHafs = v ?? false,
+                onChanged: (v) => _toggleHafs(v ?? false),
                 child: const Text('رواية حفص'),
               ),
             for (final r in q.riwayat)

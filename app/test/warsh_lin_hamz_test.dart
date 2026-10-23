@@ -124,6 +124,34 @@ void main() {
     );
   });
 
+  test('book lin faces are not backfilled as farsh anywhere in the Quran', () {
+    var checked = 0;
+    for (final e in book.entries) {
+      for (final r in e.readings) {
+        if (!r.riwayat.contains('warsh') ||
+            r.text.isNotEmpty ||
+            !r.how.contains('اللين') ||
+            !RegExp(r'^ب?(التوسط|توسط)').hasMatch(r.how)) {
+          continue;
+        }
+        final at = variants.at(['warsh'], e.surah, e.ayah, e.word).toList();
+        if (!at.any((v) => v.isLinHamz)) continue;
+        expect(
+          at.where((v) => v.inHamesh && v.description == r.how),
+          isEmpty,
+          reason: '${e.surah}:${e.ayah}:${e.word} ${r.how}',
+        );
+        checked++;
+      }
+    }
+    expect(checked, greaterThan(40));
+    for (final (s, a, w) in [(5, 110, 30), (25, 40, 7), (7, 20, 9)]) {
+      expect(variants.at(['warsh'], s, a, w).where((v) => v.inHamesh), isEmpty);
+      expect(lin(s, a, w).usulWays, isNotEmpty);
+    }
+    expect(variants.at(['warsh'], 5, 110, 36).any((v) => v.inHamesh), isTrue);
+  });
+
   test(
     'mawilan and mawudah are exceptions and sawat retains its own faces',
     () {
@@ -240,6 +268,26 @@ void main() {
           ),
           findsOneWidget,
         );
+        expect(t.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets(
+    'page 126 keeps kahayati under lin usul with both base readings',
+    (t) async {
+      for (final displayed in [null, 'warsh']) {
+        await showPage(t, 126, displayed: displayed);
+        expect(
+          find.byKey(
+            const ValueKey('usul-reference:مد اللين المهموز:5:110:30:warsh'),
+          ),
+          findsOneWidget,
+        );
+        final word = t.widget<InkText>(
+          find.byKey(const ValueKey('word:5:110:30')),
+        );
+        expect(word.parts!.any((p) => p.$2 == MushafColors.green), isTrue);
         expect(t.takeException(), isNull);
       }
     },

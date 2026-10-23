@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/variant_repository.dart';
+import '../data/reading_comparison.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../state/reader_settings.dart';
@@ -71,16 +72,27 @@ class VariantSheet extends StatelessWidget {
         final ready =
             snapshot.connectionState == ConnectionState.done ||
             [...settings.selected, ...others].every(variants.isLoaded);
+        final comparedIds = {
+          ...settings.selected,
+          if (settings.compareHafs) hafsId,
+        }..remove(settings.displayed ?? hafsId);
         final selectedReadings = ready
-            ? variants
-                  .at(
-                    _ordered(settings.selected),
-                    ayah.surah,
-                    ayah.number,
-                    word,
-                  )
-                  .toList()
-            : const <Variant>[];
+            ? [
+                ...variants.at(
+                  [?settings.displayed],
+                  ayah.surah,
+                  ayah.number,
+                  word,
+                ),
+                ...compareReadings(
+                  repository: variants,
+                  ayah: ayah,
+                  word: word,
+                  displayed: settings.displayed,
+                  selected: comparedIds,
+                ),
+              ]
+            : <Variant>[];
         // The Hafs span covered by any reading of this word.
         var from = word, to = word + 1;
         if (ready) {
@@ -125,9 +137,12 @@ class VariantSheet extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _ReadingTile(
-              color: qiraaOf(hafsId).color,
-              title: 'حفص عن عاصم (النص الأساسي)',
-              text: ayah.words.sublist(from, to).join(' '),
+              color: qiraaOf(settings.displayed ?? hafsId).color,
+              title: settings.displayed == null
+                  ? 'حفص عن عاصم (النص الأساسي)'
+                  : '${riwayaById(settings.displayed!).nameAr} عن '
+                        '${qiraaOf(settings.displayed!).shortAr} (الرواية المعروضة)',
+              text: readingText(variants, settings.displayed, ayah, from, to),
               font: 'Hafs',
             ),
             KharoufSection(
@@ -160,9 +175,9 @@ class VariantSheet extends StatelessWidget {
                     showBook: false,
                   ),
                 ),
-              if (settings.selected.isNotEmpty) ...[
+              if (comparedIds.isNotEmpty) ...[
                 _header(context, 'القراءات المختارة'),
-                for (final id in _ordered(settings.selected))
+                for (final id in _ordered(comparedIds))
                   _tile(context, id, from, to),
               ],
               if (others.isNotEmpty) ...[
@@ -191,34 +206,35 @@ class VariantSheet extends StatelessWidget {
   Widget _tile(BuildContext context, String id, int from, int to) {
     final riwaya = riwayaById(id);
     final qiraa = qiraaOf(id);
-    final list = variants.at([id], ayah.surah, ayah.number, word).toList();
+    final compared = compareReadings(
+      repository: variants,
+      ayah: ayah,
+      word: word,
+      displayed: settings.displayed,
+      selected: [id],
+    );
+    final list = compared;
     final title = '${qiraa.nameAr} - رواية ${riwaya.nameAr}';
     if (list.isEmpty) {
       return _ReadingTile(
         color: qiraa.color,
         title: title,
-        text: 'كقراءة حفص',
+        text: settings.displayed == null ? 'كقراءة حفص' : 'كالرواية المعروضة',
         dimmed: true,
       );
     }
-    final v = list.first;
-    final before = ayah.words.sublist(from, v.word).join(' ');
-    final after = ayah.words.sublist(v.word + v.count, to).join(' ');
+    final v = list.where((v) => v.inHamesh).firstOrNull ?? list.first;
     return _ReadingTile(
       color: ReadingColors.of(v),
       title: title,
-      text: v.text.isEmpty && v.description.isNotEmpty
-          ? ayah.words.sublist(from, to).join(' ')
-          : [
-              before,
-              v.text.isEmpty ? '(بحذف الكلمة)' : v.text,
-              after,
-            ].where((t) => t.isNotEmpty).join(' '),
+      text: readingText(variants, id, ayah, from, to).isEmpty
+          ? '(بحذف الكلمة)'
+          : readingText(variants, id, ayah, from, to),
       font: riwaya.fontFamily ?? 'Hafs',
       kind: v.kind,
       description: v.shownDescription,
       // Beside the farsh, readings the certified source does not state.
-      uncertified: !v.certified && !v.isUsul,
+      uncertified: !v.certified && !v.isUsul && v.rule != 'comparison',
       onTap: () => ReferenceSheet.show(
         context,
         readings: [v],

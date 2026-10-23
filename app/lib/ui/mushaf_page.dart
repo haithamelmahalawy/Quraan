@@ -9,6 +9,7 @@ import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
 import '../data/usul_text.dart';
+import '../data/reading_comparison.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../state/reader_settings.dart';
@@ -96,6 +97,15 @@ class _MushafPageState extends State<MushafPage>
   final _zoom = TransformationController();
   bool _zoomed = false;
   bool _pinching = false;
+  bool _pageQcf = false;
+
+  bool get _showFarshMargins =>
+      widget.showHamesh &&
+      (widget.settings.mode == DisplayMode.hamesh ||
+          widget.settings.selected.any(
+            (id) => id != widget.settings.displayed,
+          ) ||
+          widget.settings.displayed != null && widget.settings.compareHafs);
 
   /// The page with its hamesh and usul below it.
   final _scroll = ScrollController();
@@ -153,6 +163,16 @@ class _MushafPageState extends State<MushafPage>
     // The riwayat or their data may have changed since the last build.
     _readingsMemo.clear();
     final ayahs = widget.quran.page(widget.page);
+    // Page glyphs and the editable Hafs font have different visual scales.
+    // If one word needs editable letters, use that font for the whole page.
+    _pageQcf =
+        widget.qcf &&
+        ayahs.every(
+          (ayah) => ayah.words.indexed.every((entry) {
+            final shown = _displayWord(ayah, entry.$1, qcf: true);
+            return shown == null || shown.font.startsWith('QCF_');
+          }),
+        );
     final s = widget.settings;
     final narrow = MediaQuery.sizeOf(context).width < 600;
 
@@ -210,7 +230,7 @@ class _MushafPageState extends State<MushafPage>
   Widget _landscapePage(List<Ayah> ayahs, List<MushafLine> lines, Size size) {
     final scroll = _landscapeScroll;
     final sides = widget.showHamesh;
-    final entries = sides && widget.settings.mode == DisplayMode.hamesh
+    final entries = _showFarshMargins
         ? _hameshEntries(ayahs)
         : const <HameshEntry>[];
     final words = [
@@ -413,8 +433,7 @@ class _MushafPageState extends State<MushafPage>
     Size size,
     bool narrow,
   ) {
-    final entries =
-        widget.settings.mode == DisplayMode.hamesh && widget.showHamesh
+    final entries = _showFarshMargins
         ? _hameshEntries(ayahs)
         : const <HameshEntry>[];
     // The hamesh takes room beside the page only when it has notes; the
@@ -831,6 +850,14 @@ class _MushafPageState extends State<MushafPage>
   /// given only as a description keep the Hafs word, with the imala sign
   /// under its letter when read with imala.
   ({String text, String font})? _display(Ayah ayah, int w) {
+    return _displayWord(ayah, w, qcf: _pageQcf);
+  }
+
+  ({String text, String font})? _displayWord(
+    Ayah ayah,
+    int w, {
+    required bool qcf,
+  }) {
     final s = widget.settings;
     final source = widget.variants.sourceTextAt(
       s.displayed,
@@ -849,8 +876,7 @@ class _MushafPageState extends State<MushafPage>
       if (v.word != w || v.text.isEmpty) return null;
       return (text: withNaqlVowel(v.text, ayah.words[w]), font: 'Hafs');
     }
-    final glyph =
-        widget.qcf && !(w == 0 && (ayah.rubStart != null || ayah.juzStart))
+    final glyph = qcf && !(w == 0 && (ayah.rubStart != null || ayah.juzStart))
         ? (ayah.glyphs?[w])
         : null;
     // Drawn with the word before.
@@ -881,7 +907,7 @@ class _MushafPageState extends State<MushafPage>
     final s = widget.settings;
     final readings =
         [
-              ..._baseAt(widget.variants, s, ayah, w),
+              ..._baseAt(widget.variants, s, ayah, w).where((v) => v.isUsul),
               ..._readingsAt(widget.variants, s, ayah, w).shown,
             ]
             .where(
@@ -1030,7 +1056,7 @@ class _MushafPageState extends State<MushafPage>
 
   /// The ayah-end ornament: the printed one from the page font when loaded.
   ({String text, String font})? _marker(Ayah ayah) =>
-      widget.qcf && ayah.endGlyph != null
+      _pageQcf && ayah.endGlyph != null
       ? (text: ' ${ayah.endGlyph}', font: QcfFonts.family(widget.page))
       : null;
 
@@ -1206,11 +1232,9 @@ Color? _colorOf(List<Variant> readings) {
 }
 
 /// How the other selected riwayat read a word, compared with the riwaya the
-/// mushaf shows (Hafs, or [ReaderSettings.displayed]): a riwaya that reads
-/// it as the shown text is not listed, nor one that reads it as Hafs (it has
-/// no reading). Readings of the kinds shown, their qiraat's colours, and the
-/// word's colour: theirs, or else the shown riwaya's own where it differs
-/// from Hafs.
+/// mushaf shows (Hafs, or [ReaderSettings.displayed]). Agreement with Hafs
+/// is reconstructed when it differs from the displayed reading. Equal
+/// readings are omitted; the base keeps its own usul colours.
 _Readings _readingsAt(
   VariantRepository variants,
   ReaderSettings s,
@@ -1241,39 +1265,15 @@ _Readings _readingsOf(
   int w,
 ) {
   final base = _baseAt(variants, s, ayah, w);
-  final same = {for (final v in base) _readingKey(v)};
-  final all = variants
-      .at(
-        s.selected.where((id) => id != s.displayed && variants.isLoaded(id)),
-        ayah.surah,
-        ayah.number,
-        w,
-      )
-      .where((v) => !v.readsAsHafs && !same.contains(_readingKey(v)))
-      .toList();
+  final all = compareReadings(
+    repository: variants,
+    ayah: ayah,
+    word: w,
+    displayed: s.displayed,
+    selected: {...s.selected, if (s.compareHafs) hafsId},
+  ).where((v) => !v.readsAsHafs).toList();
   // Source reminders remain visible when their own riwaya is the base.
   all.addAll(base.where((v) => v.isMarginNote));
-  // Hafs, where the riwaya shown differs from it (not by its usul alone).
-  if (s.compareHafs) {
-    for (final v in base) {
-      if (v.isUsul ||
-          v.isMarginNote ||
-          all.any((h) => h.riwayaId == hafsId && h.word == v.word)) {
-        continue;
-      }
-      all.add(
-        Variant(
-          riwayaId: hafsId,
-          surah: ayah.surah,
-          ayah: ayah.number,
-          word: v.word,
-          count: v.count,
-          text: ayah.words.sublist(v.word, v.word + v.count).join(' '),
-          kind: v.kind,
-        ),
-      );
-    }
-  }
   final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
   final colors = [
     for (final id in shown.map((v) => v.riwayaId).toSet())
@@ -1285,7 +1285,9 @@ _Readings _readingsOf(
     colors: colors,
     color:
         _colorOf(shown) ??
-        _colorOf(base.where((v) => s.kinds.contains(v.kind)).toList()),
+        _colorOf(
+          base.where((v) => v.isUsul && s.kinds.contains(v.kind)).toList(),
+        ),
   );
 }
 
@@ -1466,13 +1468,7 @@ List<HameshEntry> _entriesOf(
           .map((v) => v.word + v.count)
           .reduce((a, b) => a > b ? a : b);
       // The word as shown on the page: Hafs, or the riwaya shown.
-      final shownText = _baseAt(
-        variants,
-        settings,
-        ayah,
-        w,
-      ).where((v) => v.word == w && v.text.isNotEmpty).firstOrNull?.text;
-      final hafs = shownText ?? ayah.words.sublist(w, end).join(' ');
+      final hafs = readingText(variants, settings.displayed, ayah, w, end);
       // With its vowels: «زَكَرِيَّآءَ» then «زَكَرِيَّآءُ» are two notes.
       final key = [
         hafs,
@@ -1512,21 +1508,9 @@ _Naql? _naqlKind(Variant v) => switch (v.description) {
   _ => null,
 };
 
-/// Identifies a reading independently of each riwaya's text encoding: the
-/// description when there is one, otherwise the bare letters.
-String _readingKey(Variant v) =>
-    v.description.isNotEmpty ? v.description : _bare(v.text);
-
 /// The hamesh's few words on a reading: the riwaya file's explanation
 /// (بفتح النون وتشديد الجيم), else the certified source's wording.
 String _brief(Variant v) => v.shownDescription;
-
-/// Letters only (no vowels, waqf signs or tatweel).
-String _bare(String text) => String.fromCharCodes(
-  text.runes.where(
-    (c) => (c >= 0x0621 && c <= 0x064A) || c == 0x0671 || c == 0x0020,
-  ),
-);
 
 String arabicDigits(int n) => n
     .toString()
@@ -2135,7 +2119,12 @@ class _EntryView extends StatelessWidget {
               ],
             ),
           ),
-          for (final g in _readings(e.readings))
+          for (final g in _readings(
+            e.readings,
+            e.ayah.words
+                .sublist(e.word, e.word + e.readings.first.count)
+                .join(' '),
+          ))
             Text.rich(
               TextSpan(
                 children: [
@@ -2191,10 +2180,10 @@ class _EntryView extends StatelessWidget {
   /// Who reads what: a qiraa by its name ("نافع") when both its riwayat
   /// read alike, otherwise each riwaya ("ورش عن نافع"); qiraat with the same
   /// reading share one line ("نافع وابن كثير: مَلِكِ").
-  static List<_Reading> _readings(List<Variant> vs) {
+  static List<_Reading> _readings(List<Variant> vs, String baseline) {
     final out = <_Reading>[];
     void add(String name, Color color, String font, Variant v) {
-      final key = _readingKey(v);
+      final key = readingVariantKey(v, baseline: baseline);
       final same = out.where((g) => g.key == key).firstOrNull;
       same != null
           ? same.names.add((name, color))
@@ -2219,7 +2208,11 @@ class _EntryView extends StatelessWidget {
       if (mine.isEmpty) continue;
       final sameReading =
           mine.length == q.riwayat.length &&
-          mine.every((m) => _readingKey(m.$2) == _readingKey(mine.first.$2));
+          mine.every(
+            (m) =>
+                readingVariantKey(m.$2, baseline: baseline) ==
+                readingVariantKey(mine.first.$2, baseline: baseline),
+          );
       if (sameReading) {
         final (r, v) = mine.first;
         add(q.shortAr, q.color, r.fontFamily ?? 'Hafs', v);

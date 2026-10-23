@@ -96,6 +96,16 @@ void main() {
         .widget<InkText>(find.byKey(const ValueKey('word:2:6:0')))
         .style
         .fontSize!;
+    final pageWords = t.widgetList<InkText>(
+      find.byWidgetPredicate(
+        (w) =>
+            w is InkText &&
+            w.key is ValueKey<String> &&
+            (w.key as ValueKey<String>).value.startsWith('word:'),
+      ),
+    );
+    expect(pageWords.map((w) => w.style.fontSize).toSet(), hasLength(1));
+    expect(pageWords.map((w) => w.style.fontFamily).toSet(), {'Hafs'});
     expect(landscape, greaterThan(portrait * 1.15));
     expect(
       t.getSize(find.byKey(const ValueKey('mushaf-print'))).height,
@@ -130,7 +140,8 @@ void main() {
       find.descendant(of: note, matching: find.byType(RichText)),
     );
     expect(words.any((w) => w.text.toPlainText().contains('السطر')), isTrue);
-    controller(t).jumpTo(350);
+    final target = t.getTopLeft(find.byKey(const ValueKey('word:2:10:0'))).dy;
+    controller(t).jumpTo(target - print.top);
     await t.pumpAndSettle();
     expect(note, findsNothing);
     expect(find.byKey(const ValueKey('landscape-note:2:10:0')), findsOneWidget);

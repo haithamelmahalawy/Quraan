@@ -9,6 +9,7 @@ import 'package:qiraat_mushaf/data/arabic.dart';
 import 'correct_warsh_lin_hamz.dart';
 import 'correct_warsh_lexical_badal.dart';
 import 'correct_ya_zawaid.dart';
+import 'correct_iqlab_spelling.dart';
 
 typedef _Word = ({int surah, int ayah, int word, String text});
 
@@ -62,6 +63,7 @@ Map<String, int> correctWarshUsul(
         (surah: a[0] as int, ayah: a[1] as int, word: w, text: text),
   ];
   String key(_Word w) => '${w.surah}:${w.ayah}:${w.word}';
+  correctIqlabSpelling(quran, variants);
   final actual = <String, String>{
     if (sourceText != null)
       for (final a in sourceText['ayahs'] as List)
@@ -178,7 +180,8 @@ Map<String, int> correctWarshUsul(
         lettersOf(v[4] as String).first[0] == lettersOf(w.text).first[0] &&
         (RegExp(r'ن[ْۡ]?[ۖ-ۭ]*$').hasMatch(previous.text) ||
             RegExp(r'[ًٌٍٖٗٞ][اى]?[ۖ-ۭ]*$').hasMatch(previous.text)) &&
-        RegExp('إبدال الهمزة|تخفيف الهمزة|نقل').hasMatch(how)) {
+        (v[5] == 'f' ||
+            RegExp('إبدال الهمزة|تخفيف الهمزة|نقل').hasMatch(how))) {
       // Nun/tanween idgham shared with Hafs is notation, not a Warsh
       // difference. Keep the independent hamza/silah/lexical description.
       how = how

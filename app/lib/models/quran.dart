@@ -130,9 +130,10 @@ class Variant {
   /// Told in the hamesh: the riwaya's farsh, and what the certified source
   /// states in its farsh. Usul are told by their colour, in the page's key.
   bool get inHamesh =>
+      rule == 'comparison' ||
       !isUsul &&
-      !(rule.isNotEmpty && rule != 'kharouf') &&
-      (bookFarsh || (!isUsul && (certified || kind == VariantKind.farsh)));
+          !(rule.isNotEmpty && rule != 'kharouf') &&
+          (bookFarsh || (!isUsul && (certified || kind == VariantKind.farsh)));
 
   /// The short explanation to show: the riwaya file's (بفتح النون وتشديد
   /// الجيم), else the certified source's wording.
@@ -152,7 +153,11 @@ class Variant {
     word: word,
     count: count,
     text: text,
-    kind: kind,
+    // A certified tanween change stays farsh even when its source also
+    // mentions a madd face and originally tagged the row as usul.
+    kind: farsh && rule.isEmpty && description.contains('تنوين')
+        ? VariantKind.farsh
+        : kind,
     description: description,
     rule: rule,
     certified: true,
@@ -208,11 +213,13 @@ class Variant {
   /// The page explains these once by their colour instead
   /// of a note at each word.
   bool get isUsul =>
-      (rule.isNotEmpty && rule != 'kharouf') ||
-      (kind == VariantKind.usul && rule != 'kharouf') ||
-      isQasr ||
-      (isImala && (description.isEmpty || _imalaOnly.hasMatch(description))) ||
-      _onlyGeneralRules(description);
+      rule != 'comparison' &&
+      ((rule.isNotEmpty && rule != 'kharouf') ||
+          (kind == VariantKind.usul && rule != 'kharouf') ||
+          isQasr ||
+          (isImala &&
+              (description.isEmpty || _imalaOnly.hasMatch(description))) ||
+          _onlyGeneralRules(description));
 
   /// Qasr of the separated madd (Qalun, Ibn Kathir, al-Susi): بِمَا أُنزِلَ.
   bool get isQasr => description == 'بالقصر';

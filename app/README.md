@@ -309,6 +309,35 @@ the replacement dot in `يُوَ۬اخِذُكُم` is removed for the Hafs font
 retaining the waw's fatha. These are display conversions; source assets
 remain unchanged.
 
+Iqlab tanween written on a final alif is normalised to the preceding
+letter in the Madinah display. `tool/correct_iqlab_spelling.dart` removes
+stale single-word farsh rows only when the current comparator confirms
+they read identically to Hafs (for example `هَدْياَۢ` at 5:95); actual
+lexical differences and independent usul are retained.
+
+Printed pages use a single font for their Quran words: QCF when the entire
+page can use engraved glyphs, otherwise Hafs for every word and ayah marker.
+This avoids mixing glyphs with different visual scales when a reading needs
+editable letters or per-letter colours. All lines share one font size,
+fitted to the longest line; shorter lines are justified without enlarging
+their letters. The same sizing rule applies in portrait and landscape.
+
+Book notes that only describe Warsh's lin faces are covered by the
+existing lin usul rather than duplicated as farsh. Shared boundary idgham
+is omitted from lexical difference descriptions; `يَرْتَدِدْ` keeps the
+Madinah-style plain initial ya while preserving the two separate dals.
+
+Hafs appears in the displayed-reading menu only when its comparison
+checkbox is selected, like the other narrators. Every selected narrator
+is compared with the displayed narrator through `reading_comparison.dart`.
+Missing lexical deltas reconstruct agreement with Hafs, so selecting Warsh
+and Shu'bah works in either direction without selecting Hafs. Equal readings
+are omitted; overlapping multiword readings and omissions are compared as
+whole spans. Margins and word details share this comparison, including the
+selected narrator's evidence. Farsh colours reflect the selected differences;
+the displayed reading retains its own usul colours. Data generation and the
+comparison share spelling normalization, including vowels and tanween.
+
 `flutter test` checks the data (604 pages, 6236 ayahs, known variants and
 descriptions, mutashabihat) and renders pages to `test/goldens/` (tag
 `golden`; CI runs `flutter test --exclude-tags golden`).

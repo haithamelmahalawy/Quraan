@@ -40,6 +40,7 @@ String madinahScript(String text, {String? followingWord}) {
       .replaceAll('ے', 'ى')
       .replaceAll('يٰ', 'ىٰ')
       .replaceAll('ٜ', '۪')
+      .replaceAll(_iqlabOnAlif, 'َۢا')
       // The Maghribi export attaches the following hamza to a sakin ya
       // in شَئْا. The Hafs font would compose it as ئ, hiding the ya.
       // Give the hamza its own joining carrier, as in شَيۡـٔٗا.
@@ -54,7 +55,9 @@ String madinahScript(String text, {String? followingWord}) {
   if (followingWord != null && _idghamStart.hasMatch(followingWord)) {
     shown = shown.replaceFirstMapped(_nunEnd, (m) => 'ن${m[1]}');
   }
-  return shown;
+  // Initial ya here is a prefix, not an intrinsically doubled letter.
+  // Keep the Madinah spelling when the source marks the boundary ghunna.
+  return shown.replaceAllMapped(_yartadid, (m) => '${m[1]}يَ');
 }
 
 // In Madinah notation a nun assimilated into the next word is bare.
@@ -65,6 +68,10 @@ final _nunEnd = RegExp(r'ن[ْۡ]([ۖ-ۭ]*)$');
 final _nunBeforeIdgham = RegExp(r'ن[ْۡ]([ۖ-ۭ]*)(?=\s+[يرملون][َُِ]*ّ)');
 
 final _naqlAlef = RegExp(r'(^|\s)ا۟');
+final _yartadid = RegExp(r'(^|\s)ي[َّ]+(?=ر[ْۡ]تَدِد)');
+// Some exports place the iqlab fatha and mim on the silent final alif.
+// Return them to the preceding letter, matching the Madinah script.
+final _iqlabOnAlif = RegExp(r'اَۢ(?=[ۖ-ۭ]*(?:\s|$))');
 final _linHamzaCarrier = RegExp('(َ[ويى][ْۡ])ٔ');
 final _replacementDot = RegExp('([وي])۬(?=[َُِ])');
 // A vowel + sifr marks a joined hamzat al-wasl in the Maghribi export
