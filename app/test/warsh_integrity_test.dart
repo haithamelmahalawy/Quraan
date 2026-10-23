@@ -136,6 +136,74 @@ void main() {
   });
 
   test(
+    'every exported shayan keeps a ya separate from its following hamza',
+    () {
+      var checked = 0;
+      for (final a in sourceAsset['ayahs'] as List) {
+        for (final (w, raw) in (a[2] as List).indexed) {
+          if (!(raw as String).contains('شَئْ')) continue;
+          final shown = variants.sourceTextAt(
+            'warsh',
+            a[0] as int,
+            a[1] as int,
+            w,
+          )!;
+          expect(shown, contains('شَيْـٔ'), reason: '${a[0]}:${a[1]}:$w');
+          expect(lettersOf(shown).map((l) => l[0]), ['ش', 'ي', 'ـ', 'ا']);
+          checked++;
+        }
+      }
+      expect(checked, 77);
+    },
+  );
+
+  test('replacement waw and ya keep their vowel without the Maghribi dot', () {
+    var checked = 0;
+    for (final a in sourceAsset['ayahs'] as List) {
+      for (final (w, raw) in (a[2] as List).indexed) {
+        if (!RegExp('([وي])۬(?=[َُِ])').hasMatch(raw as String)) continue;
+        final shown = variants.sourceTextAt(
+          'warsh',
+          a[0] as int,
+          a[1] as int,
+          w,
+        )!;
+        expect(shown, isNot(contains('۬')), reason: '${a[0]}:${a[1]}:$w');
+        expect(shown, contains(RegExp('[وي]َ')));
+        checked++;
+      }
+    }
+    expect(checked, greaterThanOrEqualTo(30));
+    expect(variants.sourceTextAt('warsh', 2, 225, 1), 'يُوَاخِذُكُمُ');
+  });
+
+  testWidgets('page 36 ibdal shows a plain waw with fatha', (t) async {
+    addTearDown(t.view.reset);
+    await showPage(t, 36);
+    for (final w in [1, 7]) {
+      final ink = t.widget<InkText>(find.byKey(ValueKey('word:2:225:$w')));
+      expect(ink.text, contains('وَا'));
+      expect(ink.text, isNot(contains('۬')));
+      expect(lettersOf(ink.text).where((p) => p.startsWith('و')).single, 'وَ');
+    }
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('page 34 shayan retains its ya and the lin colour', (t) async {
+    addTearDown(t.view.reset);
+    await showPage(t, 34);
+    for (final w in [9, 16]) {
+      final ink = t.widget<InkText>(find.byKey(ValueKey('word:2:216:$w')));
+      expect(ink.text, 'شَيْـٔاٗ');
+      expect(
+        ink.parts!.where((p) => p.$1.startsWith('ي')).single.$2,
+        MushafColors.green,
+      );
+    }
+    expect(t.takeException(), isNull);
+  });
+
+  test(
     'repeated words and a joined source-export word retain individual anchors',
     () {
       for (var w = 0; w < 3; w++) {

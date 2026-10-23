@@ -933,6 +933,7 @@ class _MushafPageState extends State<MushafPage>
     if (readings == null) return null;
     final letters = lettersOf(text);
     final colors = <int, Color>{};
+    final badal = <int>{};
     void mark(int? i, Color color) {
       if (i != null && i >= 0 && i < letters.length) colors[i] = color;
     }
@@ -959,6 +960,7 @@ class _MushafPageState extends State<MushafPage>
           : naqlLetter(letters, last: kind == _Naql.last);
       if (v.isBadal || kind != null) {
         mark(i, v.isBadal ? MushafColors.green : ReadingColors.naql);
+        if (v.isBadal && i != null) badal.add(i);
       }
       final d = v.description;
       if (v.rule == 'hamza_wasl' && d.contains('نقل')) {
@@ -1001,6 +1003,11 @@ class _MushafPageState extends State<MushafPage>
       }
     }
     if (colors.isEmpty) return null;
+    // Badal takes priority when naql marks the same letter, independently
+    // of rule order (آتيناهم، آية، and the dagger alif of فَالَٰنَ).
+    for (final i in badal) {
+      if (colors[i] == ReadingColors.naql) colors[i] = MushafColors.green;
+    }
     return [for (final (i, l) in letters.indexed) (l, colors[i])];
   }
 

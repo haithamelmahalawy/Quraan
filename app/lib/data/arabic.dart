@@ -40,6 +40,13 @@ String madinahScript(String text, {String? followingWord}) {
       .replaceAll('ے', 'ى')
       .replaceAll('يٰ', 'ىٰ')
       .replaceAll('ٜ', '۪')
+      // The Maghribi export attaches the following hamza to a sakin ya
+      // in شَئْا. The Hafs font would compose it as ئ, hiding the ya.
+      // Give the hamza its own joining carrier, as in شَيۡـٔٗا.
+      .replaceAllMapped(_linHamzaCarrier, (m) => '${m[1]}ـٔ')
+      // This Maghribi replacement dot is not part of the substituted
+      // waw/ya in the Madinah font. Retain the vowel (يُوَاخِذُكُم).
+      .replaceAllMapped(_replacementDot, (m) => m[1]!)
       .replaceAllMapped(_waslSifrAlef, (m) => '${m[1]}ٱ')
       .replaceAllMapped(_naqlAlef, (m) => '${m[1]}ا')
       .replaceAllMapped(_waslAlef, (m) => '${m[1]}ٱ')
@@ -58,6 +65,8 @@ final _nunEnd = RegExp(r'ن[ْۡ]([ۖ-ۭ]*)$');
 final _nunBeforeIdgham = RegExp(r'ن[ْۡ]([ۖ-ۭ]*)(?=\s+[يرملون][َُِ]*ّ)');
 
 final _naqlAlef = RegExp(r'(^|\s)ا۟');
+final _linHamzaCarrier = RegExp('(َ[ويى][ْۡ])ٔ');
+final _replacementDot = RegExp('([وي])۬(?=[َُِ])');
 // A vowel + sifr marks a joined hamzat al-wasl in the Maghribi export
 // (اُ۟عْبُدُواْ / اِ۟سْجُدُواْ); a bare ا۟ instead belongs to naql.
 final _waslSifrAlef = RegExp(r'(^|\s|[وفبك]َ|لِ)ا[َُِ]۟');

@@ -301,6 +301,14 @@ are independent of the selected reading and available in both editions.
 QCF engraved words use one fill pass; the page 22 regression loads a real
 QCF font to cover this rendering path without building or launching an APK.
 
+When naql and badal share a letter, badal green takes priority over naql
+blue, including the dagger alif of `فَالَٰنَ`. Pure book naql examples do
+not create duplicate lexical rows that colour the entire word. Maghribi
+`شَئْا` is drawn with a separate hamza carrier so the ya stays visible;
+the replacement dot in `يُوَ۬اخِذُكُم` is removed for the Hafs font while
+retaining the waw's fatha. These are display conversions; source assets
+remain unchanged.
+
 `flutter test` checks the data (604 pages, 6236 ayahs, known variants and
 descriptions, mutashabihat) and renders pages to `test/goldens/` (tag
 `golden`; CI runs `flutter test --exclude-tags golden`).

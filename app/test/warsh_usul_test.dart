@@ -48,6 +48,7 @@ void main() {
     expect(naql.text, 'فَالَٰنَ');
     expect(naql.isUsul, isTrue);
     expect(rule(2, 187, 23, 'badal').isBadal, isTrue);
+    expect(variants.at(['warsh'], 2, 187, 23).every((v) => v.isUsul), isTrue);
   });
 
   test('extra ya is an independent usul with wasl and waqf faces', () {
@@ -277,6 +278,22 @@ void main() {
             findsOneWidget,
           );
         }
+        final ink = t.widget<InkText>(
+          find.byKey(const ValueKey('word:2:187:23')),
+        );
+        final parts = ink.parts!;
+        expect(
+          parts.map((p) => p.$1).join().replaceAll(tatweel, ''),
+          ink.text.replaceAll(tatweel, ''),
+        );
+        expect(
+          parts.where((p) => p.$1.contains('ٰ')).single.$2,
+          MushafColors.green,
+        );
+        expect(
+          parts.where((p) => p.$1.startsWith('ل')).single.$2,
+          displayed == 'warsh' ? MushafColors.green : ReadingColors.naql,
+        );
         await page(
           t,
           quran.pageOf(2, 186),
@@ -299,6 +316,34 @@ void main() {
       }
     },
   );
+
+  testWidgets('badal green takes priority over naql on ataynahum and aya', (
+    t,
+  ) async {
+    for (final displayed in [null, 'warsh']) {
+      await page(
+        t,
+        quran.pageOf(2, 211),
+        settings: ReaderSettings.memory(selected: {'warsh'})
+          ..displayed = displayed,
+      );
+      for (final w in [4, 6]) {
+        final ink = t.widget<InkText>(find.byKey(ValueKey('word:2:211:$w')));
+        final parts = ink.parts!;
+        final target = badalLetter(lettersOf(ink.text))!;
+        expect(
+          parts[target].$2,
+          MushafColors.green,
+          reason: '$displayed: ${ink.text}',
+        );
+        expect(
+          parts.map((p) => p.$1).join().replaceAll(tatweel, ''),
+          ink.text.replaceAll(tatweel, ''),
+        );
+      }
+      expect(t.takeException(), isNull);
+    }
+  });
 
   testWidgets(
     'page 11 lists yuminun only under ibdal and leaves the preceding nun bare',

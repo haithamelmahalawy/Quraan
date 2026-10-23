@@ -216,6 +216,15 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       for (final v in [...list]) {
         if (v.rule.isNotEmpty) {
           if (v.rule == 'ya_zaida' && _matchesUsul(v, how)) found = true;
+          // Written naql examples remain usul; a duplicate lexical row
+          // would colour the whole word and hide its separate badal.
+          if (v.rule == 'naql' &&
+              v.word == word &&
+              v.count == count &&
+              RegExp(r'^ب?النقل(?: في الحالين)?$')
+                  .hasMatch(how.replaceAll(RegExp('[ً-ٰٟ]'), '').trim())) {
+            found = true;
+          }
           // Do not duplicate an existing rule as a lexical book variant.
           if ((p[4] as String).isEmpty && _matchesUsul(v, how)) found = true;
           continue;

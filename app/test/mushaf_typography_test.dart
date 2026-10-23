@@ -89,6 +89,50 @@ void main() {
     picture.dispose();
   });
 
+  testWidgets(
+    'shayan preserves the lin ya and following hamza',
+    tags: 'golden',
+    (t) async {
+      t.view.physicalSize = const Size(650, 400);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      await t.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+        for (final word in ['شَيۡـٔٗا', madinahScript('شَئْاٗ')])
+                    InkText(
+                      word,
+                      parts: [
+                        for (final cluster in lettersOf(word))
+                          (
+                            cluster,
+                            cluster.startsWith('ي') ? MushafColors.green : null,
+                          ),
+                      ],
+                      style: const TextStyle(
+                        fontFamily: 'Hafs',
+                        fontSize: 96,
+                        height: 1.2,
+                        color: Colors.black,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await expectLater(
+        find.byType(Scaffold),
+        matchesGoldenFile('goldens/shayan_typography.png'),
+      );
+    },
+  );
+
   testWidgets('fathatan on alif and madd above dagger alif', tags: 'golden', (
     t,
   ) async {

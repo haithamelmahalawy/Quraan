@@ -22,7 +22,24 @@ void main() {
     expect(madinahScript('ا۟خَرَۖ'), 'اخَرَۖ');
     expect(madinahScript('اَ۬لدَّاعِۦٓ'), 'ٱلدَّاعِۦٓ');
     expect(madinahScript('قَالُواْ اَ۬لْءَٰنَ'), 'قَالُواْ ٱلْءَٰنَ');
+    expect(madinahScript('يُوَ۬اخِذُكُمُ'), 'يُوَاخِذُكُمُ');
+    expect(madinahScript('فَلْيُوَ۬دِّ'), 'فَلْيُوَدِّ');
+    expect(madinahScript('لِيَ۬لَّا'), 'لِيَلَّا');
   });
+
+  test(
+    'lin ya and the following hamza keep separate letters in the Hafs font',
+    () {
+      for (final word in ['شَئْاٗ', 'شَئْاً', 'شَئْاٗۖ']) {
+        final shown = madinahScript(word);
+        expect(shown, word.replaceAll('ئْ', 'يْـٔ'));
+        expect(lettersOf(shown).map((l) => l[0]), ['ش', 'ي', 'ـ', 'ا']);
+        expect(madinahScript(shown), shown);
+      }
+      expect(madinahScript('بِئْرٍ'), 'بِئْرٍ');
+      expect(madinahScript('شَيۡـٔٗا'), 'شَيۡـٔٗا');
+    },
+  );
 
   test('the letters of naql and madd al-badal', () {
     // Warsh's وَلَقَدَ اٰتَيْنَا: the dal takes the vowel, the alef is the madd.
