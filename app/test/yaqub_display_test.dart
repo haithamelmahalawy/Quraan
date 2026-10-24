@@ -40,8 +40,12 @@ void main() {
     Set<String>? selected,
     bool qcf = false,
     DiffAlert? alert,
+    MarginLayout layout = MarginLayout.organized,
+    bool landscape = false,
   }) async {
-    t.view.physicalSize = const Size(1080, 2000);
+    t.view.physicalSize = landscape
+        ? const Size(2000, 1080)
+        : const Size(1080, 2000);
     t.view.devicePixelRatio = 2.5;
     addTearDown(t.view.reset);
     final settings =
@@ -52,6 +56,7 @@ void main() {
             },
           )
           ..displayed = displayed
+          ..marginLayout = layout
           ..diffAlert = alert;
     await t.pumpWidget(
       MaterialApp(
@@ -76,8 +81,246 @@ void main() {
   }
 
   Finder word(int s, int a, int w) => find.byKey(ValueKey('word:$s:$a:$w'));
+
+  testWidgets(
+    'sequential notes stay on the page side and continue below in order',
+    (t) async {
+      for (final configuration in [
+        (false, 4),
+        (false, 5),
+        (true, 4),
+        (true, 5),
+      ]) {
+        final (landscape, number) = configuration;
+        await page(
+          t,
+          null,
+          number: number,
+          selected: {'ruways', 'warsh'},
+          layout: MarginLayout.sequential,
+          landscape: landscape,
+        );
+        final right = find.byKey(const ValueKey('sequential-right-margin'));
+        final left = find.byKey(const ValueKey('sequential-left-margin'));
+        final isRight = quran.isRightPage(number);
+        expect(right, isRight ? findsOneWidget : findsNothing);
+        expect(left, isRight ? findsNothing : findsOneWidget);
+        final bottom = find.byKey(const ValueKey('sequential-bottom-notes'));
+        if (!landscape && number == 4) expect(bottom, findsOneWidget);
+        if (bottom.evaluate().isNotEmpty) {
+          await t.ensureVisible(bottom);
+          await t.pump();
+        }
+        final positions = <int>[];
+        var usul = false, farsh = false;
+        for (final rail in [isRight ? right : left, bottom]) {
+          final notes = find.descendant(
+            of: rail,
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w is KeyedSubtree &&
+                  w.key is ValueKey<String> &&
+                  ((w.key as ValueKey<String>).value.startsWith(
+                        'sequential-usul:',
+                      ) ||
+                      (w.key as ValueKey<String>).value.startsWith(
+                        'sequential-farsh:',
+                      )),
+            ),
+          );
+          for (final widget in t.widgetList<KeyedSubtree>(notes)) {
+            final key = (widget.key as ValueKey<String>).value;
+            usul |= key.startsWith('sequential-usul:');
+            farsh |= key.startsWith('sequential-farsh:');
+            positions.add(int.parse(key.split(':')[1]));
+          }
+        }
+        expect(usul, isTrue);
+        if (number == 4) expect(farsh, isTrue);
+        expect(positions, orderedEquals([...positions]..sort()));
+        if (landscape) {
+          final scroll = t
+              .widget<SingleChildScrollView>(
+                find.byKey(const ValueKey('landscape-page-scroll')),
+              )
+              .controller!;
+          scroll.jumpTo(150);
+          await t.pump();
+          await t.pump();
+          expect(scroll.offset, 150);
+        }
+        expect(t.takeException(), isNull);
+      }
+      await page(t, null, number: 4, selected: {'ruways', 'warsh'});
+      expect(find.byKey(const ValueKey('sequential-reader')), findsNothing);
+      expect(find.byKey(const ValueKey('usul-notes')), findsOneWidget);
+      expect(t.takeException(), isNull);
+    },
+  );
   Finder mark(Finder w) =>
       find.ancestor(of: w, matching: find.byType(HamzaReplacementMark));
+
+  testWidgets('Yaqub tasal on page 18 uses the nabra in page and margin', (
+    t,
+  ) async {
+    for (final id in [null, 'ruways', 'rawh']) {
+      await page(t, id, number: 18, selected: {'ruways', 'rawh', 'hafs'});
+      final text = t.widget<InkText>(word(2, 119, 6)).text.replaceAll('ـ', '');
+      expect(text, id == null ? 'تُسَۡٔلُ' : 'تَسَۡٔلۡ');
+      expect(text, isNot(contains('أ')));
+      final note = find.byKey(const ValueKey('margin-reference:2:119:6'));
+      expect(note, findsOneWidget);
+      if (id == null) {
+        expect(
+          find.descendant(of: note, matching: find.textContaining('تَسۡـَٔلۡ')),
+          findsWidgets,
+        );
+      }
+      expect(t.takeException(), isNull);
+    }
+  });
+
+  test('Hafs remains the baseline when selected for comparison', () {
+    final settings = ReaderSettings.memory(selected: {'hafs', 'ruways'});
+    settings.displayed = null;
+    expect(settings.displayed, isNull);
+    settings.displayed = 'ruways';
+    expect(settings.displayed, 'ruways');
+    settings.displayed = 'hafs';
+    expect(settings.displayed, isNull);
+  });
+
+  testWidgets(
+    'broken mim after broken ha in qulubihim is listed, coloured and glowing',
+    (t) async {
+      for (final id in [null, 'ruways', 'rawh']) {
+        await page(
+          t,
+          id,
+          number: 14,
+          selected: {'ruways', 'rawh', 'hafs'},
+          alert: DiffAlert.glow,
+        );
+        final w = word(2, 93, 16);
+        final ink = t.widget<InkText>(w);
+        expect(
+          ink.text.replaceAll('ـ', ''),
+          contains(id == null ? 'هِمُ' : 'هِمِ'),
+        );
+        expect(ink.style.color, isNot(MushafColors.ink));
+        expect(
+          find.ancestor(
+            of: w,
+            matching: find.byWidgetPredicate(
+              (w) => w.runtimeType.toString() == '_Alerting',
+            ),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.byWidgetPredicate(
+            (w) =>
+                w.key is ValueKey<String> &&
+                (w.key as ValueKey<String>).value.startsWith(
+                  'usul-reference:ميم الجمع:2:93:16:',
+                ),
+          ),
+          findsOneWidget,
+        );
+        expect(t.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets('page 14 displays light yunzilla for Yaqub with farsh margin', (
+    t,
+  ) async {
+    for (final id in [null, 'ruways', 'rawh']) {
+      await page(t, id, number: 14, selected: {'ruways', 'rawh', 'hafs'});
+      expect(
+        compareReadings(
+          repository: variants,
+          ayah: quran.ayah(2, 90),
+          word: 11,
+          displayed: id,
+          selected: ['ruways', 'rawh', 'hafs'],
+        ).where((v) => v.inHamesh),
+        hasLength(id == null ? 2 : 1),
+      );
+      final text = t.widget<InkText>(word(2, 90, 11)).text.replaceAll('ـ', '');
+      expect(text, id == null ? 'يُنَزِّلَ' : 'يُنۡزِلَ');
+      expect(
+        find.byKey(const ValueKey('margin-reference:2:90:11')),
+        findsOneWidget,
+        reason: '$id',
+      );
+      expect(t.takeException(), isNull);
+    }
+  });
+
+  testWidgets(
+    'khatiatuhu keeps full Hafs spelling without a false difference for Yaqub',
+    (t) async {
+      for (final id in [null, 'ruways', 'rawh']) {
+        await page(t, id, number: 12, selected: {'ruways', 'rawh', 'hafs'});
+        final ink = t.widget<InkText>(word(2, 81, 6));
+        expect(
+          ink.text.replaceAll('ـ', ''),
+          quran.ayah(2, 81).words[6].replaceAll('ـ', ''),
+        );
+        expect(ink.style.color, MushafColors.ink);
+        expect(
+          find.byKey(const ValueKey('margin-reference:2:81:6')),
+          findsNothing,
+        );
+        expect(t.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets('Yaqub tarjiun is written actively and listed in farsh', (
+    t,
+  ) async {
+    for (final id in [null, 'ruways', 'rawh']) {
+      await page(
+        t,
+        id,
+        number: quran.ayah(2, 28).page,
+        selected: {'ruways', 'rawh', if (id != null) 'shubah'},
+      );
+      final text = t.widget<InkText>(word(2, 28, 12)).text;
+      expect(text, startsWith(id == null ? 'تُ' : 'تَ'));
+      expect(text, contains(id == null ? 'جَ' : 'جِ'));
+      final note = find.byKey(const ValueKey('margin-reference:2:28:12'));
+      expect(note, findsOneWidget);
+      expect(
+        find.descendant(
+          of: note,
+          matching: find.textContaining('بفتح التاء وكسر الجيم'),
+        ),
+        id == null ? findsWidgets : findsNothing,
+      );
+      expect(t.takeException(), isNull);
+    }
+  });
+
+  testWidgets('Ruways bi-l-kafirin imala appears on kaf and in usul margin', (
+    t,
+  ) async {
+    for (final id in [null, 'ruways']) {
+      await page(t, id, number: 4, selected: {'ruways'});
+      final text = t.widget<InkText>(word(2, 19, 18)).text;
+      expect(
+        lettersOf(text).singleWhere((c) => c.contains(imalaSign)),
+        startsWith('ك'),
+      );
+      expect(
+        find.byKey(const ValueKey('usul-reference:الإمالة:2:19:18:ruways')),
+        findsOneWidget,
+      );
+      expect(t.takeException(), isNull);
+    }
+  });
 
   testWidgets('Ruways kabir writes both consonants in page and own margin', (
     t,
@@ -295,8 +538,7 @@ void main() {
       // Hum al-muflihun/al-mufsidun agree with Hafs and have no example.
       expect(mimNotes(), findsNothing);
       await page(t, id, number: 22, selected: {id});
-      // Unchanged kasra on ha is excluded from the margin, but the written
-      // kasra on the mim remains in Yaqub's main reading.
+      // A changed mim following a broken ha is included in the margin.
       expect(
         find.byWidgetPredicate(
           (w) =>
@@ -305,7 +547,7 @@ void main() {
                 'usul-reference:ميم الجمع:2:142:7:',
               ),
         ),
-        findsNothing,
+        findsOneWidget,
       );
       expect(t.widget<InkText>(word(2, 142, 7)).text, contains('هِمِ'));
       await page(t, id, number: 25, selected: {id});

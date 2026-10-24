@@ -73,7 +73,7 @@ String? ruwaysHasratiMaddText(Variant reading, String text) {
 }
 
 /// Restricts the margin examples, without removing the written mim reading.
-/// The comparison is with Hafs's ha, rather than the mim's own vowel.
+/// A broken ha qualifies without requiring it to become damma in Yaqub.
 bool showYaqubMimExample(Variant reading, String hafs) {
   if (!const {'ruways', 'rawh'}.contains(reading.riwayaId) ||
       reading.rule != 'mim_jam') {
@@ -87,8 +87,7 @@ bool showYaqubMimExample(Variant reading, String hafs) {
   }
 
   final original = ha(hafs);
-  return RegExp('[ْۡ]').hasMatch(original) ||
-      (original.contains('ِ') && ha(reading.text).contains('ُ'));
+  return RegExp('[ْۡ]').hasMatch(original) || original.contains('ِ');
 }
 
 /// Qasr removes the final separated-madd sign, preserving any connected

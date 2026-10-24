@@ -574,6 +574,21 @@ class _ReaderScreenState extends State<ReaderScreen>
                           ),
                         ),
                       ),
+                      PopupMenuButton<MarginLayout>(
+                        tooltip: 'طريقة العرض',
+                        initialValue: widget.settings.marginLayout,
+                        icon: const Icon(Icons.view_sidebar_outlined),
+                        onSelected: (value) =>
+                            widget.settings.marginLayout = value,
+                        itemBuilder: (_) => [
+                          for (final layout in MarginLayout.values)
+                            CheckedPopupMenuItem(
+                              value: layout,
+                              checked: widget.settings.marginLayout == layout,
+                              child: Text(layout.labelAr),
+                            ),
+                        ],
+                      ),
                       RiwayatMenu(
                         settings: widget.settings,
                         variants: widget.variants,

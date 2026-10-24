@@ -145,7 +145,73 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
     for (final v in original)
       if (!pureUsul(v)) [...v],
   ];
+  // Tahbir al-Taysir, 2:81: only Nafi and Abu Jafar read the plural.
+  // Yaqub agrees with Hafs. A legacy singular farsh row suppressed the
+  // printed connected-madd and ha-silah marks despite no lexical difference.
+  rows.removeWhere(
+    (v) =>
+        v[0] == 2 &&
+        v[1] == 81 &&
+        v[2] == 6 &&
+        v[5] == 'f' &&
+        _bare(v[4] as String) == 'خطيئته',
+  );
+  // Tahbir al-Taysir, Baqara 2:90: Yaqub lightens yunazzila.
+  // This first occurrence was absent from both legacy farsh catalogues.
+  if (!rows.any((v) => v[0] == 2 && v[1] == 90 && v[2] == 11 && v[5] == 'f')) {
+    rows.add([
+      2,
+      90,
+      11,
+      1,
+      index['2:90:11']!.t.replaceFirst('نَزِّ', 'نۡزِ'),
+      'f',
+      'بإسكان النون وكسر الزاي مخففة',
+      '',
+      {'reviewSource': 'https://ablibrary.net/book_content/b/8349/303?lang=ar'},
+    ]);
+  }
+  // Checked against Ibn al-Jazari, Tahbir al-Taysir, Baqara 2:28:
+  // Yaqub reads return to the hereafter actively, opening the prefix
+  // and breaking the jim. The legacy catalogue omitted 2:28 and wrote
+  // a contradictory damma on the ya at 28:39 for both narrators.
+  for (final (s, a, w) in [(2, 28, 12), (28, 39, 11)]) {
+    final source = index['$s:$a:$w']!;
+    final text = source.t
+        .replaceFirstMapped(RegExp(r'([تي])ُ'), (m) => '${m[1]}َ')
+        .replaceFirst('جَ', 'جِ');
+    final how = s == 2 ? 'بفتح التاء وكسر الجيم' : 'بفتح الياء وكسر الجيم';
+    final found = rows.where(
+      (v) => v[0] == s && v[1] == a && v[2] == w && v[5] == 'f',
+    );
+    if (found.isEmpty) {
+      rows.add([
+        s,
+        a,
+        w,
+        1,
+        text,
+        'f',
+        how,
+        '',
+        {'reviewSource': 'https://beta.tafsir.app/tahbeer-altayseer/2/28'},
+      ]);
+    } else {
+      for (final v in found) {
+        v[4] = text;
+        v[6] = how;
+      }
+    }
+  }
   for (final v in rows) {
+    if (v[0] == 2 && v[1] == 119 && v[2] == 6 && v[5] == 'f') {
+      // Preserve the Mushaf's nabra seat, as in Hafs and reviewed Warsh,
+      // changing only Yaqub's opening ta and final sakin lam.
+      v[4] = index['2:119:6']!.t
+          .replaceFirst('تُ', 'تَ')
+          .replaceFirst('لُ', 'لۡ');
+      v[6] = 'بفتح التاء وجزم اللام';
+    }
     if (id == 'rawh' && v[0] == 27 && v[1] == 36 && v[2] == 7 && v[3] == 2) {
       v[3] = 1;
       v[4] = 'ءَاتَانِ';
@@ -314,7 +380,8 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
                 .take(i)
                 .any((x) => x.s == 17 && x.a == 72 && _bare(x.t) == 'أعمي')) ||
         (w.s == 27 && w.a == 43 && b == 'كافرين') ||
-        (id == 'ruways' && RegExp(r'^(و|ف)?(ال)?كافرين$').hasMatch(b)) ||
+        (id == 'ruways' &&
+            RegExp(r'^[وف]?(?:ال|بال|لل|ب|ل)?كافرين$').hasMatch(b)) ||
         (id == 'rawh' && w.s == 36 && w.a == 1)) {
       add(w, 'imala', 'بالإمالة الكبرى', 12);
     }

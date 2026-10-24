@@ -22,6 +22,14 @@ enum DisplayMode {
   final String labelAr;
 }
 
+enum MarginLayout {
+  organized('عرض تنظيمي'),
+  sequential('عرض تسلسلي');
+
+  const MarginLayout(this.labelAr);
+  final String labelAr;
+}
+
 /// What the reader shows. Persisted between launches.
 class ReaderSettings extends ChangeNotifier {
   ReaderSettings._(this._prefs);
@@ -43,6 +51,7 @@ class ReaderSettings extends ChangeNotifier {
   Set<String> get selected => _selected;
   Set<VariantKind> get kinds => _kinds;
   double get fontSize => _fontSize;
+
   /// The page read, in the mushaf open ([edition]).
   int get page => edition == MushafEdition.madani
       ? _page
@@ -69,6 +78,11 @@ class ReaderSettings extends ChangeNotifier {
     notifyListeners();
   }
 
+  MarginLayout get marginLayout =>
+      MarginLayout.values.asNameMap()[_get('marginLayout')] ??
+      MarginLayout.organized;
+  set marginLayout(MarginLayout value) => _set('marginLayout', value.name);
+
   /// The sheikh chosen for a riwaya (a reciter id), null for the first.
   int? reciterFor(String riwaya) => _get('reciter.$riwaya') as int?;
   void setReciter(String riwaya, int id) => _set('reciter.$riwaya', id);
@@ -82,9 +96,9 @@ class ReaderSettings extends ChangeNotifier {
   /// the "replace" mode. The other selected riwayat are compared with it.
   String? get displayed {
     final base = _get('base') as String?;
-    if (base != null && _selected.contains(base)) return base;
     // Hafs chosen.
     if (base == 'hafs') return null;
+    if (base != null && _selected.contains(base)) return base;
     if (mode == DisplayMode.replace && _selected.length == 1) {
       return _selected.single;
     }

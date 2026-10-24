@@ -188,6 +188,9 @@ class _MushafPageState extends State<MushafPage>
         final content = printed
             ? MediaQuery.orientationOf(context) == Orientation.landscape
                   ? _landscapePage(ayahs, lines, viewport.biggest)
+                  : widget.settings.marginLayout == MarginLayout.sequential &&
+                        widget.showHamesh
+                  ? _sequentialPage(ayahs, lines, viewport.biggest)
                   : _printedPage(ayahs, lines, viewport.biggest, narrow)
             : SingleChildScrollView(
                 physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
@@ -225,6 +228,128 @@ class _MushafPageState extends State<MushafPage>
     );
   }
 
+  /// Mix both kinds of notes in Quran order, on the outer page margin.
+  List<Widget> _sequentialNotes(
+    List<(Ayah, int)> words,
+    List<HameshEntry> entries,
+  ) {
+    final ordered = <({int position, int order, Widget child})>[];
+    int position(Ayah a, int w) => VariantRepository.key(a.surah, a.number, w);
+    void add(int p, Widget child) =>
+        ordered.add((position: p, order: ordered.length, child: child));
+    for (final e in entries) {
+      add(
+        position(e.ayah, e.word),
+        KeyedSubtree(
+          key: ValueKey('sequential-farsh:${position(e.ayah, e.word)}'),
+          child: _EntryView(
+            entry: e,
+            onTap: _openReference,
+            compact: false,
+            scale: 1.1,
+          ),
+        ),
+      );
+    }
+    for (final word in words) {
+      final groups = _usulNotes(
+        [word],
+        widget.variants,
+        widget.settings,
+        widget.quran,
+      );
+      for (final (index, g) in groups.indexed) {
+        if (g.noteOnly && word != words.first) continue;
+        add(
+          g.noteOnly ? -1 : position(word.$1, word.$2),
+          KeyedSubtree(
+            key: ValueKey(
+              'sequential-usul:${position(word.$1, word.$2)}:$index',
+            ),
+            child: _UsulBox(
+              groups: [g],
+              onTap: _openUsulReference,
+              scale: 1.15,
+            ),
+          ),
+        );
+      }
+    }
+    ordered.sort((a, b) {
+      final c = a.position.compareTo(b.position);
+      return c == 0 ? a.order.compareTo(b.order) : c;
+    });
+    return ordered
+        .map(
+          (e) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: e.child,
+          ),
+        )
+        .toList();
+  }
+
+  Widget _sequentialPage(List<Ayah> ayahs, List<MushafLine> lines, Size size) {
+    final notes = _sequentialNotes([
+      for (final line in lines)
+        if (line is TextLine) ...line.words,
+    ], _showFarshMargins ? _hameshEntries(ayahs) : []);
+    final rail = notes.isEmpty ? 0.0 : (size.width * 0.20).clamp(60.0, 220.0);
+    final textHeight = math.max(
+      1.0,
+      size.height - 30 - 2 * OrnamentFrame.inset - _PageFrame.numberHeight,
+    );
+    return _SequentialMarginPage(
+      key: ValueKey(_sequentialSignature(size)),
+      notes: notes,
+      right: widget.quran.isRightPage(widget.page),
+      rail: rail,
+      height: size.height,
+      zoomed: _zoomed,
+      page: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 22,
+              child: _PageHeader(
+                surah: widget.quran.surah(ayahs.first.surah).nameAr,
+                juz: ayahs.first.juz,
+              ),
+            ),
+            Expanded(
+              child: _PageFrame(
+                page: widget.page,
+                sides: true,
+                onNumberTap: widget.onPageNumberTap,
+                child: MushafLines(
+                  lines: lines,
+                  centered: widget.quran.isCentered(widget.page),
+                  quran: widget.quran,
+                  wordBuilder: _word,
+                  display: _display,
+                  marker: _marker,
+                  height: textHeight,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _sequentialSignature(Size size) => [
+    widget.page,
+    widget.quran.edition,
+    size,
+    widget.settings.displayed,
+    widget.settings.selected.join(','),
+    widget.settings.kinds.join(','),
+    widget.settings.compareHafs,
+    widget.showHamesh,
+  ].join('|');
+
   /// A large, continuously scrolling print. Fixed side margins follow
   /// only the lines currently in view; their own scroll keeps dense
   /// readings accessible without reducing the font or dropping notes.
@@ -238,18 +363,33 @@ class _MushafPageState extends State<MushafPage>
       for (final l in lines)
         if (l is TextLine) ...l.words,
     ];
-    final hasUsul =
-        sides &&
-        _usulNotes(
-          words,
-          widget.variants,
-          widget.settings,
-          widget.quran,
-        ).isNotEmpty;
-    final hasFarsh = entries.isNotEmpty;
+    final sequential = widget.settings.marginLayout == MarginLayout.sequential;
+    final anyNotes =
+        entries.isNotEmpty ||
+        (sides &&
+            _usulNotes(
+              words,
+              widget.variants,
+              widget.settings,
+              widget.quran,
+            ).isNotEmpty);
+    final hasUsul = sequential
+        ? anyNotes
+        : sides &&
+              _usulNotes(
+                words,
+                widget.variants,
+                widget.settings,
+                widget.quran,
+              ).isNotEmpty;
+    final hasFarsh = sequential ? anyNotes : entries.isNotEmpty;
     final both = hasUsul && hasFarsh;
     final rail = (size.width * (both ? 0.19 : 0.30)).clamp(96.0, 280.0);
-    final pageWidth = size.width - (hasUsul ? rail : 0) - (hasFarsh ? rail : 0);
+    final pageWidth =
+        size.width -
+        (sequential
+            ? (anyNotes ? rail : 0)
+            : (hasUsul ? rail : 0) + (hasFarsh ? rail : 0));
     const outer = 4.0, header = 22.0;
     const contentTop = outer + header + OrnamentFrame.inset;
     final textWidth =
@@ -316,6 +456,56 @@ class _MushafPageState extends State<MushafPage>
         ),
       ),
     );
+
+    if (sequential) {
+      return ListenableBuilder(
+        listenable: scroll,
+        builder: (context, _) {
+          final offset = scroll.hasClients ? scroll.offset : 0.0;
+          final visible = <(Ayah, int)>[];
+          var span = 0;
+          for (final line in lines) {
+            final top = contentTop + span * lineHeight;
+            final bottom = top + line.span * lineHeight;
+            if (line is TextLine &&
+                bottom > offset &&
+                top < offset + size.height) {
+              visible.addAll(line.words);
+            }
+            span += line.span;
+          }
+          final keys = {
+            for (final (a, w) in visible)
+              VariantRepository.key(a.surah, a.number, w),
+          };
+          final notes = _sequentialNotes(
+            visible,
+            entries
+                .where(
+                  (e) => keys.contains(
+                    VariantRepository.key(e.ayah.surah, e.ayah.number, e.word),
+                  ),
+                )
+                .toList(),
+          );
+          return _SequentialMarginPage(
+            key: ValueKey(_sequentialSignature(size)),
+            section: keys.join(','),
+            notes: notes,
+            right: widget.quran.isRightPage(widget.page),
+            rail: anyNotes ? rail : 0,
+            height: size.height,
+            zoomed: _zoomed,
+            page: SingleChildScrollView(
+              key: const ValueKey('landscape-page-scroll'),
+              controller: scroll,
+              physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
+              child: print,
+            ),
+          );
+        },
+      );
+    }
 
     Widget margin(bool farsh) => SizedBox(
       width: rail,
@@ -1963,6 +2153,90 @@ class _LandscapeMarginState extends State<_LandscapeMargin> {
       ),
     ),
   );
+}
+
+/// One outer margin; the measured remainder continues below the print.
+class _SequentialMarginPage extends StatefulWidget {
+  const _SequentialMarginPage({
+    super.key,
+    required this.notes,
+    required this.page,
+    required this.right,
+    required this.rail,
+    required this.height,
+    required this.zoomed,
+    this.section = '',
+  });
+  final String section;
+  final List<Widget> notes;
+  final Widget page;
+  final bool right, zoomed;
+  final double rail, height;
+  @override
+  State<_SequentialMarginPage> createState() => _SequentialMarginPageState();
+}
+
+class _SequentialMarginPageState extends State<_SequentialMarginPage> {
+  int? _fit;
+  @override
+  void didUpdateWidget(_SequentialMarginPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.section != widget.section) _fit = null;
+  }
+
+  void _onFit(int fit) {
+    if (_fit != null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _fit == null) setState(() => _fit = fit);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final split = _fit ?? widget.notes.length;
+    return SingleChildScrollView(
+      key: const ValueKey('sequential-reader'),
+      primary: false,
+      physics: widget.zoomed ? const NeverScrollableScrollPhysics() : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: widget.height,
+            child: ClipRect(
+              key: ValueKey(
+                widget.right
+                    ? 'sequential-right-margin'
+                    : 'sequential-left-margin',
+              ),
+              child: CustomMultiChildLayout(
+                delegate: _NotesLayout(
+                  List.filled(split, 0.0),
+                  _onFit,
+                  widget.right ? widget.rail : 0,
+                  widget.right ? 0 : widget.rail,
+                ),
+                children: [
+                  LayoutId(id: 'page', child: widget.page),
+                  for (var i = 0; i < split; i++)
+                    LayoutId(id: i, child: widget.notes[i]),
+                ],
+              ),
+            ),
+          ),
+          if (split < widget.notes.length)
+            Padding(
+              key: const ValueKey('sequential-bottom-notes'),
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: widget.notes.skip(split).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Portrait notes follow their printed lines and report how many fit.

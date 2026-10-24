@@ -37,16 +37,179 @@ void main() {
     expect(rules(rh, 'ishmam', 2, 11), isEmpty);
     expect(rules(rw, 'badal', 2, 13), isEmpty);
   });
+  test(
+    'Yaqub tasal keeps the Mushaf nabra and agrees with reviewed Warsh',
+    () async {
+      final repo = await VariantRepository.discover();
+      await repo.ensureLoaded(['ruways', 'rawh', 'warsh']);
+      final q = await QuranRepository.load();
+      final ayah = q.ayah(2, 119);
+      for (final id in ['ruways', 'rawh']) {
+        final own = repo.at([id], 2, 119, 6).singleWhere((v) => v.inHamesh);
+        expect(own.text, 'تَسۡـَٔلۡ');
+        expect(own.text, isNot(contains('أ')));
+        expect(readingText(repo, id, ayah, 6, 7), own.text);
+        expect(
+          compareReadings(
+            repository: repo,
+            ayah: ayah,
+            word: 6,
+            displayed: id,
+            selected: ['warsh'],
+          ).where((v) => v.inHamesh),
+          isEmpty,
+        );
+        expect(
+          compareReadings(
+            repository: repo,
+            ayah: ayah,
+            word: 6,
+            displayed: id,
+            selected: ['hafs'],
+          ).where((v) => v.inHamesh),
+          hasLength(1),
+        );
+      }
+    },
+  );
+  test(
+    'Yaqub yunzilla at 2:90 is light farsh in both comparison directions',
+    () async {
+      final repo = await VariantRepository.discover();
+      await repo.ensureLoaded(['ruways', 'rawh']);
+      final q = await QuranRepository.load();
+      final ayah = q.ayah(2, 90);
+      for (final id in ['ruways', 'rawh']) {
+        final own = repo.at([id], 2, 90, 11).singleWhere((v) => v.inHamesh);
+        expect(own.text, 'يُنۡزِلَ');
+        expect(own.isUsul, isFalse);
+        expect(own.description, 'بإسكان النون وكسر الزاي مخففة');
+        expect(readingText(repo, id, ayah, 11, 12), 'يُنۡزِلَ');
+        for (final base in [null, id]) {
+          final compared = compareReadings(
+            repository: repo,
+            ayah: ayah,
+            word: 11,
+            displayed: base,
+            selected: [base == null ? id : 'hafs'],
+          );
+          expect(compared.where((v) => v.inHamesh), hasLength(1));
+        }
+        expect(
+          compareReadings(
+            repository: repo,
+            ayah: ayah,
+            word: 11,
+            displayed: id,
+            selected: [id == 'ruways' ? 'rawh' : 'ruways'],
+          ),
+          isEmpty,
+        );
+      }
+    },
+  );
+  test(
+    'Yaqub singular khatiatuhu agrees with Hafs and differs from Warsh',
+    () async {
+      final repo = await VariantRepository.discover();
+      await repo.ensureLoaded(['ruways', 'rawh', 'warsh']);
+      final q = await QuranRepository.load();
+      final ayah = q.ayah(2, 81);
+      for (final id in ['ruways', 'rawh']) {
+        expect(readingText(repo, id, ayah, 6, 7), ayah.words[6]);
+        expect(repo.at([id], 2, 81, 6).where((v) => v.inHamesh), isEmpty);
+        for (final base in [null, id]) {
+          expect(
+            compareReadings(
+              repository: repo,
+              ayah: ayah,
+              word: 6,
+              displayed: base,
+              selected: [base == null ? id : 'hafs'],
+            ),
+            isEmpty,
+          );
+        }
+        expect(
+          compareReadings(
+            repository: repo,
+            ayah: ayah,
+            word: 6,
+            displayed: id,
+            selected: ['warsh'],
+          ).any((v) => v.inHamesh),
+          isTrue,
+        );
+      }
+    },
+  );
+  test(
+    'Yaqub return verbs retain active vowels and narrator pronouns',
+    () async {
+      final repo = await VariantRepository.discover();
+      await repo.ensureLoaded(['ruways', 'rawh']);
+      final q = await QuranRepository.load();
+      for (final id in ['ruways', 'rawh']) {
+        var count = 0;
+        for (final a in quran['ayahs'] as List) {
+          for (final (w, t) in (a[4] as String).split(' ').indexed) {
+            if (!RegExp(r'^[وف]?[تي]ُ').hasMatch(t) ||
+                !skeleton(t).contains('رجع')) {
+              continue;
+            }
+            count++;
+            final ayah = q.ayah(a[0], a[1]);
+            final own = repo.at([id], a[0], a[1], w).where((v) => v.inHamesh);
+            expect(own, hasLength(1), reason: '$id ${a[0]}:${a[1]}');
+            final text = readingText(repo, id, ayah, w, w + 1);
+            expect(text, matches(RegExp(r'^[تي]َ')));
+            expect(text, contains('جِ'));
+          }
+        }
+        expect(count, 32);
+        expect(
+          readingText(repo, id, q.ayah(30, 11), 7, 8),
+          startsWith(id == 'ruways' ? 'تَ' : 'يَ'),
+        );
+        expect(
+          readingText(repo, id, q.ayah(43, 85), 12, 13),
+          startsWith(id == 'ruways' ? 'يَ' : 'تَ'),
+        );
+      }
+    },
+  );
   test('source imala is restricted to its narrator and first aama', () {
     for (final id in ['ruways', 'rawh']) {
       final d = load(id);
       expect(rules(d, 'imala', 17, 72), hasLength(1));
       expect(rules(d, 'imala', 27, 43), hasLength(1));
       expect(rules(d, 'imala', 11, 41), isEmpty);
-      expect(rules(d, 'imala', 2, 19), isEmpty);
+      expect(rules(d, 'imala', 2, 19), id == 'ruways' ? hasLength(1) : isEmpty);
     }
     expect(rules(load('rawh'), 'imala', 36, 1), hasLength(1));
     expect(rules(load('ruways'), 'imala', 36, 1), isEmpty);
+  });
+  test('Ruways kafirin imala covers every prefix and marks the kaf', () {
+    final rw = load('ruways'), rh = load('rawh');
+    var count = 0;
+    for (final a in quran['ayahs'] as List) {
+      for (final (w, text) in (a[4] as String).split(' ').indexed) {
+        if (!skeleton(text).endsWith('كفرين')) continue;
+        count++;
+        final own = rules(rw, 'imala', a[0], a[1]).where((v) => v[2] == w);
+        expect(own, hasLength(1), reason: '${a[0]}:${a[1]} $text');
+        expect(
+          rules(rh, 'imala', a[0], a[1]).where((v) => v[2] == w),
+          a[0] == 27 && a[1] == 43 ? hasLength(1) : isEmpty,
+        );
+        final marked = lettersOf(withImalaSign(text));
+        expect(
+          marked.singleWhere((c) => c.contains(imalaSign)),
+          startsWith('ك'),
+        );
+      }
+    }
+    expect(count, 93);
   });
   test('hamza boundary rules preserve first hamza and their context', () {
     final d = load('ruways');
@@ -255,7 +418,7 @@ void main() {
     final q = await QuranRepository.load();
     for (final id in ['ruways', 'rawh']) {
       for (final w in [2, 19, 24]) {
-        // Legacy data asserted false imala in words on early Baqara pages.
+        // Only kafirin has genuine Ruways imala in these early-page words.
         final rows = repo.at(
           [id],
           2,
@@ -266,7 +429,11 @@ void main() {
               ? 18
               : 12,
         );
-        expect(rows.any((v) => v.isImala), isFalse, reason: '$id 2:$w');
+        expect(
+          rows.any((v) => v.isImala),
+          id == 'ruways' && w != 2,
+          reason: '$id 2:$w',
+        );
       }
       final own = repo.at([id], 2, 11, 1);
       expect(own.any((v) => v.rule == 'ishmam'), id == 'ruways');
