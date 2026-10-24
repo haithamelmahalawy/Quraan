@@ -87,6 +87,64 @@ void main() {
     expect(() => buildYaqubUsul(quran, d, 'warsh'), throwsArgumentError);
     expect(jsonEncode(d), before);
   });
+  test('ha sakt excludes lexical doubled ya and retains first-person ya', () {
+    for (final id in ['ruways', 'rawh']) {
+      final d = load(id);
+      final hs = (d['variants'] as List)
+          .cast<List>()
+          .where(
+            (v) =>
+                v.length > 8 && v[7] == 'ha_sakt' && v[8]['stopOnly'] == true,
+          )
+          .toList();
+      for (final v in hs) {
+        final a = (quran['ayahs'] as List).firstWhere(
+          (a) => a[0] == v[0] && a[1] == v[1],
+        );
+        final hf = (a[4] as String).split(' ')[v[2] as int];
+        expect(hf.contains('نَّبِيّ'), isFalse, reason: '$id $hf');
+        expect(hf.contains('ٱلۡحَيّ'), isFalse, reason: '$id $hf');
+        expect(hf.contains('بُنَيّ'), isFalse, reason: '$id $hf');
+      }
+      expect(rules(d, 'ha_sakt', 3, 68), isEmpty); // النبي
+      expect(
+        rules(
+          d,
+          'ha_sakt',
+          31,
+          13,
+        ).any((v) => (v[8]['stopText'] as String).contains('بُنَيّ')),
+        isFalse,
+      );
+      expect(
+        rules(
+          d,
+          'ha_sakt',
+          14,
+          22,
+        ).any((v) => (v[8]['stopText'] as String).contains('مُصرِخِيَّ')),
+        isTrue,
+      );
+      expect(
+        rules(
+          d,
+          'ha_sakt',
+          50,
+          23,
+        ).any((v) => (v[8]['stopText'] as String).startsWith('لَدَيَّ')),
+        isTrue,
+      );
+      expect(
+        rules(
+          d,
+          'ha_sakt',
+          2,
+          132,
+        ).any((v) => (v[8]['stopText'] as String).contains('بَنِيَّ')),
+        isTrue,
+      );
+    }
+  });
   test(
     'checked extra ya catalogue covers all 86 verse endings and exclusions',
     () {

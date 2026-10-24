@@ -2,6 +2,38 @@ import '../models/quran.dart';
 import 'arabic.dart';
 import 'variant_repository.dart';
 
+bool isYaqubSeparatedMadd(Variant reading) =>
+    const {'ruways', 'rawh'}.contains(reading.riwayaId) &&
+    reading.rule == 'madd_munfasil';
+
+bool isYaqubMadd(Variant reading) =>
+    const {'ruways', 'rawh'}.contains(reading.riwayaId) &&
+    const {'madd_munfasil', 'madd_muttasil'}.contains(reading.rule);
+
+/// Restricts the margin examples, without removing the written mim reading.
+/// The comparison is with Hafs's ha, rather than the mim's own vowel.
+bool showYaqubMimExample(Variant reading, String hafs) {
+  if (!const {'ruways', 'rawh'}.contains(reading.riwayaId) ||
+      reading.rule != 'mim_jam') {
+    return true;
+  }
+  String ha(String text) {
+    final clusters = lettersOf(text);
+    return clusters.length >= 2 && clusters[clusters.length - 2].startsWith('ه')
+        ? clusters[clusters.length - 2]
+        : '';
+  }
+
+  final original = ha(hafs);
+  return RegExp('[ْۡ]').hasMatch(original) ||
+      (original.contains('ِ') && ha(reading.text).contains('ُ'));
+}
+
+/// Qasr removes the final separated-madd sign, preserving any connected
+/// madd inside the same word, and all vowels and silent carrier letters.
+String withoutSeparatedMaddSign(String text) =>
+    text.replaceFirst(RegExp(r'ٓ(?=[ً-ٰٟۖ-ۭ]*(?:ا[ْ۟۠][ً-ٰٟۖ-ۭ]*)?$)'), '');
+
 /// The source's bare initial alif records the ibdal face. A long ibdal before
 /// a sakin needs its madd sign; a facilitated/retained hamza must stay intact.
 String? hamzaPairMaddText(Variant reading, String source) {

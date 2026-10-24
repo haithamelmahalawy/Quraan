@@ -859,6 +859,35 @@ class _MushafPageState extends State<MushafPage>
     int w, {
     required bool qcf,
   }) {
+    final isYaqub = const {
+      'ruways',
+      'rawh',
+    }.contains(widget.settings.displayed);
+    final nextWord = w + 1 < ayah.words.length
+        ? ayah.words[w + 1]
+        : ayah.number < widget.quran.surahs[ayah.surah - 1].ayahCount
+        ? widget.quran.ayah(ayah.surah, ayah.number + 1).words.first
+        : '';
+    final shortMadd =
+        isYaqub &&
+        ((RegExp(r'^[ءأإؤئآ]').hasMatch(nextWord) &&
+                withoutSeparatedMaddSign(ayah.words[w]) != ayah.words[w]) ||
+            _baseAt(
+              widget.variants,
+              widget.settings,
+              ayah,
+              w,
+            ).any(isYaqubSeparatedMadd));
+    final shown = _writtenDisplayWord(ayah, w, qcf: qcf && !shortMadd);
+    if (shown == null || !shortMadd) return shown;
+    return (text: withoutSeparatedMaddSign(shown.text), font: shown.font);
+  }
+
+  ({String text, String font})? _writtenDisplayWord(
+    Ayah ayah,
+    int w, {
+    required bool qcf,
+  }) {
     final s = widget.settings;
     final source = widget.variants.sourceTextAt(
       s.displayed,
@@ -921,7 +950,11 @@ class _MushafPageState extends State<MushafPage>
               ..._readingsAt(widget.variants, s, ayah, w).shown,
             ]
             .where(
-              (v) => v.word == w && !v.isMarginNote && s.kinds.contains(v.kind),
+              (v) =>
+                  v.word == w &&
+                  !v.isMarginNote &&
+                  !isYaqubMadd(v) &&
+                  s.kinds.contains(v.kind),
             )
             .toList();
     bool targeted(Variant v) =>
@@ -1381,7 +1414,9 @@ _Readings _readingsOf(
   ).where((v) => !v.readsAsHafs).toList();
   // Source reminders remain visible when their own riwaya is the base.
   all.addAll(base.where((v) => v.isMarginNote));
-  final shown = all.where((v) => s.kinds.contains(v.kind)).toList();
+  final shown = all
+      .where((v) => s.kinds.contains(v.kind) && !isYaqubMadd(v))
+      .toList();
   final colors = [
     for (final id in shown.map((v) => v.riwayaId).toSet())
       ?ReadingColors.ofReadings(shown.where((v) => v.riwayaId == id).toList()),
@@ -1392,7 +1427,11 @@ _Readings _readingsOf(
     colors: colors,
     color:
         _colorOf(
-          base.where((v) => v.isUsul && s.kinds.contains(v.kind)).toList(),
+          base
+              .where(
+                (v) => v.isUsul && !isYaqubMadd(v) && s.kinds.contains(v.kind),
+              )
+              .toList(),
         ) ??
         _colorOf(shown),
   );
@@ -1408,6 +1447,17 @@ List<_UsulGroup> _usulNotes(
   QuranRepository quran,
 ) {
   final groups = <String, _UsulGroup>{};
+  final hasYaqub = {
+    ...s.selected,
+    ?s.displayed,
+  }.any((id) => const {'ruways', 'rawh'}.contains(id));
+  if (hasYaqub) {
+    groups['yaqub-madd-note'] = _UsulGroup(
+      'يعقوب: المد المتصل بالتوسط، والمد المنفصل بالقصر',
+      MushafColors.ink,
+      noteOnly: true,
+    );
+  }
   for (final (ayah, w) in words) {
     // Equal rule descriptions can still have different written examples
     // (e.g. Warsh's extended mim silah versus Ibn Kathir's). Do not use
@@ -1422,6 +1472,8 @@ List<_UsulGroup> _usulNotes(
           v.word != w ||
           v.inHamesh ||
           v.riwayaId == hafsId ||
+          isYaqubMadd(v) ||
+          !showYaqubMimExample(v, ayah.words[w]) ||
           v.rule == 'naql_source' ||
           v.rule == 'hamza_source') {
         continue;
@@ -1476,7 +1528,9 @@ List<_UsulGroup> _usulNotes(
         );
         g.ways.addAll(ways);
         final item = g.items.putIfAbsent(
-          '${ayah.surah}:${ayah.number}:$w:${v.stopOnly}:$word:${v.hamzaReplacement}',
+          hasYaqub
+              ? 'yaqub:${v.stopOnly}:$word:${v.hamzaReplacement}'
+              : '${ayah.surah}:${ayah.number}:$w:${v.stopOnly}:$word:${v.hamzaReplacement}',
           () => _UsulItem(
             ayah,
             w,
@@ -1505,10 +1559,11 @@ List<_UsulGroup> _usulNotes(
 }
 
 class _UsulGroup {
-  _UsulGroup(this.label, this.color);
+  _UsulGroup(this.label, this.color, {this.noteOnly = false});
 
   final String label;
   final Color color;
+  final bool noteOnly;
   final items = <String, _UsulItem>{};
   final ways = <String>{};
 }
@@ -1607,7 +1662,9 @@ List<HameshEntry> _entriesOf(
       if (!seen.add(key)) continue;
       out.add(
         HameshEntry(
-          ayah, w, hafs,
+          ayah,
+          w,
+          hafs,
           ReadingColors.ofReadings(starting) ?? m.color ?? MushafColors.ink,
           starting,
         ),
@@ -1998,101 +2055,107 @@ class _UsulBox extends StatelessWidget {
           for (final (n, g) in groups.indexed)
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 2,
-                    children: [
-                      if (n == 0)
-                        Text(
-                          'الأصول',
-                          style: TextStyle(
-                            fontSize: 8 * scale,
-                            fontWeight: FontWeight.bold,
-                            color: MushafColors.green,
-                          ),
-                        ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: g.color,
-                              shape: BoxShape.circle,
+              child: g.noteOnly
+                  ? Text(
+                      g.label,
+                      key: const ValueKey('yaqub-madd-note'),
+                      style: TextStyle(fontSize: 9 * scale, color: g.color),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 2,
+                          children: [
+                            if (n == 0)
+                              Text(
+                                'الأصول',
+                                style: TextStyle(
+                                  fontSize: 8 * scale,
+                                  fontWeight: FontWeight.bold,
+                                  color: MushafColors.green,
+                                ),
+                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color: g.color,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    '${g.label}:',
+                                    style: TextStyle(
+                                      fontSize: 9 * scale,
+                                      fontWeight: FontWeight.bold,
+                                      color: g.color,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
+                            for (final i in g.items.values)
+                              InkWell(
+                                key: ValueKey(
+                                  'usul-reference:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.riwayat.join(',')}',
+                                ),
+                                onTap: () => onTap(i),
+                                child: Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    _usulWord(i, g.color),
+                                    if (i.stopOnly)
+                                      Text(
+                                        ' (وقفًا فقط)',
+                                        style: TextStyle(
+                                          fontSize: 9 * scale,
+                                          color: g.color,
+                                        ),
+                                      ),
+                                    Text(
+                                      ' (${readersAr(i.riwayat.toList(), const [])})',
+                                      style: TextStyle(
+                                        fontSize: 8.5 * scale,
+                                        color: MushafColors.ink,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (g.ways.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 1, bottom: 1),
                             child: Text(
-                              '${g.label}:',
+                              g.ways
+                                  .toList()
+                                  .asMap()
+                                  .entries
+                                  .map((e) => '${e.key + 1}- ${e.value}')
+                                  .join('؛ '),
+                              key: ValueKey(
+                                g.label.contains('في كلمة')
+                                    ? 'hamza-word-ways'
+                                    : 'hamza-ways:${g.label}:${g.ways.join('|')}',
+                              ),
                               style: TextStyle(
                                 fontSize: 9 * scale,
-                                fontWeight: FontWeight.bold,
+                                height: 1.3,
                                 color: g.color,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      for (final i in g.items.values)
-                        InkWell(
-                          key: ValueKey(
-                            'usul-reference:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.riwayat.join(',')}',
-                          ),
-                          onTap: () => onTap(i),
-                          child: Wrap(
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              _usulWord(i, g.color),
-                              if (i.stopOnly)
-                                Text(
-                                  ' (وقفًا فقط)',
-                                  style: TextStyle(
-                                    fontSize: 9 * scale,
-                                    color: g.color,
-                                  ),
-                                ),
-                              Text(
-                                ' (${readersAr(i.riwayat.toList(), const [])})',
-                                style: TextStyle(
-                                  fontSize: 8.5 * scale,
-                                  color: MushafColors.ink,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  if (g.ways.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 1, bottom: 1),
-                      child: Text(
-                        g.ways
-                            .toList()
-                            .asMap()
-                            .entries
-                            .map((e) => '${e.key + 1}- ${e.value}')
-                            .join('؛ '),
-                        key: ValueKey(
-                          g.label.contains('في كلمة')
-                              ? 'hamza-word-ways'
-                              : 'hamza-ways:${g.label}:${g.ways.join('|')}',
-                        ),
-                        style: TextStyle(
-                          fontSize: 9 * scale,
-                          height: 1.3,
-                          color: g.color,
-                        ),
-                      ),
+                      ],
                     ),
-                ],
-              ),
             ),
         ],
       ),

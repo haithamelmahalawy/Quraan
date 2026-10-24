@@ -515,6 +515,13 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
         ways: ['حذف هاء السكت وصلاً', 'إثبات هاء السكت وقفًا'],
       );
     }
+    // The source (p.31) specifies the built first-person doubled ya, not
+    // every final doubled ya (النبي، الحي، أي...). Ya bunayya is read with
+    // kasra by Yaqub and stops without this ha; plural ya baniyya retains it.
+    final firstPersonYa =
+        RegExp(r'^(?:[وفبل])?(?:إلي|علي|لدي|يدي|والدي|ابنتي|بمصرخي)$')
+            .hasMatch(b) ||
+        (const {'بني', 'وبني', 'يابني'}.contains(b) && w.t.contains('نِ'));
     final stopHa =
         const {
           'عم',
@@ -535,7 +542,7 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
             RegExp(r'[ُِ]').hasMatch(cs[cs.length - 2]) &&
             cs.last.startsWith('ن') &&
             cs.last.contains('ّ')) ||
-        RegExp(r'يّ[َُِ]?$').hasMatch(w.t);
+        (firstPersonYa && RegExp(r'يّ[َُِ]?[ۖ-ۭ]*$').hasMatch(w.t));
     if (stopHa ||
         (id == 'ruways' &&
             (const {'ياأسفي', 'ياويلتي', 'ياحسرتا'}.contains(b) ||
