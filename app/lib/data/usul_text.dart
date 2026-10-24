@@ -10,6 +10,68 @@ bool isYaqubMadd(Variant reading) =>
     const {'ruways', 'rawh'}.contains(reading.riwayaId) &&
     const {'madd_munfasil', 'madd_muttasil'}.contains(reading.rule);
 
+bool showYaqubYaIdafaExample(Variant reading, String reference) {
+  if (!const {'ruways', 'rawh'}.contains(reading.riwayaId) ||
+      reading.rule != 'ya_idafa') {
+    return true;
+  }
+  final own = lettersOf(reading.text), other = lettersOf(reference);
+  if (own.isEmpty || other.isEmpty) return false;
+  return own.last.contains('َ') != other.last.contains('َ');
+}
+
+/// Writes Ruways's chosen idgham face without adding a sukun to the first
+/// consonant. Both page words and the margin use this same transformation.
+({String first, String second})? ruwaysKabirText(
+  Variant reading,
+  String first,
+  String second,
+) {
+  if (reading.riwayaId != 'ruways' || reading.rule != 'idgham_kabir') {
+    return null;
+  }
+  final a = lettersOf(first), b = lettersOf(second);
+  if (a.isEmpty || b.isEmpty) return null;
+  String doubled(String c) => '${c[0]}ّ${c.substring(1).replaceAll('ّ', '')}';
+  if (reading.surah == 27 && reading.ayah == 36) {
+    final ns = [
+      for (final (i, c) in a.indexed)
+        if (c.startsWith('ن')) i,
+    ];
+    if (ns.length >= 2 && ns.last == ns[ns.length - 2] + 1) {
+      a[ns.last] = doubled(a[ns.last]);
+      a.removeAt(ns[ns.length - 2]);
+    }
+    final waw = a.lastIndexWhere((c) => c.startsWith('و'));
+    if (waw >= 0 && !a[waw].contains('ٓ')) a[waw] += 'ٓ';
+    return (first: a.join(), second: second);
+  }
+  if (reading.surah == 34 && reading.ayah == 46) {
+    // The doubled consonants are the two tas in تتفكروا, not ثم's mim.
+    if (b.length >= 2 && b[0].startsWith('ت') && b[1].startsWith('ت')) {
+      b[0] = 'ت';
+      b[1] = doubled(b[1]);
+    }
+    return (first: first, second: b.join());
+  }
+  a[a.length - 1] = a.last[0];
+  b[0] = doubled(b[0]);
+  return (first: a.join(), second: b.join());
+}
+
+/// Marks Ruways's long stopping face on يا حسرتى; the ha itself belongs only
+/// to the stopping example in the margin, never to the continuous page text.
+String? ruwaysHasratiMaddText(Variant reading, String text) {
+  if (reading.riwayaId != 'ruways' ||
+      reading.surah != 39 ||
+      reading.ayah != 56 ||
+      reading.rule != 'ha_sakt' ||
+      !reading.stopOnly) {
+    return null;
+  }
+  return text.replaceFirstMapped(RegExp(r'([ىا]ٰ?)ٓ?$'), (m) => '${m[1]}ٓ');
+}
+
 /// Restricts the margin examples, without removing the written mim reading.
 /// The comparison is with Hafs's ha, rather than the mim's own vowel.
 bool showYaqubMimExample(Variant reading, String hafs) {
@@ -62,6 +124,30 @@ String usulReadingText(
 }) {
   Iterable<Variant> at(Ayah a, int w) =>
       variants.at([reading.riwayaId], a.surah, a.number, w);
+
+  if (reading.riwayaId == 'ruways' && reading.rule == 'idgham_kabir') {
+    final context = reading.usulText.split(RegExp(r'\s+'));
+    if (context.length == 2) {
+      String actual(int w, String fallback) =>
+          at(ayah, w)
+              .where(
+                (v) =>
+                    v.word == w &&
+                    v.count == 1 &&
+                    v.canReplaceText &&
+                    v.text.isNotEmpty,
+              )
+              .firstOrNull
+              ?.text ??
+          fallback;
+      final pair = ruwaysKabirText(
+        reading,
+        actual(reading.word, context.first),
+        actual(reading.word + 1, context.last),
+      );
+      if (pair != null) return madinahScript('${pair.first} ${pair.second}');
+    }
+  }
 
   String example(Variant v, String hafs) {
     if (v.stopOnly && v.stopText.isNotEmpty) return v.stopText;

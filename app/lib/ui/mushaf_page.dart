@@ -863,6 +863,26 @@ class _MushafPageState extends State<MushafPage>
       'ruways',
       'rawh',
     }.contains(widget.settings.displayed);
+    final ownKabir = widget.settings.displayed == 'ruways'
+        ? _baseAt(
+            widget.variants,
+            widget.settings,
+            ayah,
+            w,
+          ).where((v) => v.word == w && v.rule == 'idgham_kabir').firstOrNull
+        : null;
+    final previousAyah = w > 0
+        ? ayah
+        : ayah.number > 1
+        ? widget.quran.ayah(ayah.surah, ayah.number - 1)
+        : null;
+    final previousWord = w > 0 ? w - 1 : (previousAyah?.words.length ?? 0) - 1;
+    final previousKabir =
+        widget.settings.displayed == 'ruways' && previousAyah != null
+        ? _baseAt(widget.variants, widget.settings, previousAyah, previousWord)
+              .where((v) => v.word == previousWord && v.rule == 'idgham_kabir')
+              .firstOrNull
+        : null;
     final nextWord = w + 1 < ayah.words.length
         ? ayah.words[w + 1]
         : ayah.number < widget.quran.surahs[ayah.surah - 1].ayahCount
@@ -878,9 +898,54 @@ class _MushafPageState extends State<MushafPage>
               ayah,
               w,
             ).any(isYaqubSeparatedMadd));
-    final shown = _writtenDisplayWord(ayah, w, qcf: qcf && !shortMadd);
-    if (shown == null || !shortMadd) return shown;
-    return (text: withoutSeparatedMaddSign(shown.text), font: shown.font);
+    final stoppingMadd = _baseAt(
+      widget.variants,
+      widget.settings,
+      ayah,
+      w,
+    ).where((v) => ruwaysHasratiMaddText(v, ayah.words[w]) != null).firstOrNull;
+    final shown = _writtenDisplayWord(
+      ayah,
+      w,
+      qcf:
+          qcf &&
+          !shortMadd &&
+          stoppingMadd == null &&
+          ownKabir == null &&
+          previousKabir == null,
+    );
+    if (shown == null) return null;
+    var text = shown.text;
+    if (ownKabir != null) {
+      final nextAyah = w + 1 < ayah.words.length
+          ? ayah
+          : ayah.number < widget.quran.surahs[ayah.surah - 1].ayahCount
+          ? widget.quran.ayah(ayah.surah, ayah.number + 1)
+          : null;
+      if (nextAyah != null) {
+        final nextW = nextAyah == ayah ? w + 1 : 0;
+        final following =
+            _writtenDisplayWord(nextAyah, nextW, qcf: false)?.text ??
+            nextAyah.words[nextW];
+        text = ruwaysKabirText(ownKabir, text, following)?.first ?? text;
+      }
+    }
+    if (previousKabir != null && previousAyah != null) {
+      final previous =
+          _writtenDisplayWord(previousAyah, previousWord, qcf: false)?.text ??
+          previousAyah.words[previousWord];
+      text = ruwaysKabirText(previousKabir, previous, text)?.second ?? text;
+    }
+    if (stoppingMadd != null) {
+      return (
+        text: ruwaysHasratiMaddText(stoppingMadd, text)!,
+        font: shown.font,
+      );
+    }
+    return (
+      text: shortMadd ? withoutSeparatedMaddSign(text) : text,
+      font: shown.font,
+    );
   }
 
   ({String text, String font})? _writtenDisplayWord(
@@ -954,6 +1019,8 @@ class _MushafPageState extends State<MushafPage>
                   v.word == w &&
                   !v.isMarginNote &&
                   !isYaqubMadd(v) &&
+                  showYaqubMimExample(v, ayah.words[v.word]) &&
+                  _showYaIdafa(v, ayah, widget.variants, s) &&
                   s.kinds.contains(v.kind),
             )
             .toList();
@@ -1371,6 +1438,21 @@ Color? _colorOf(List<Variant> readings) {
   return ReadingColors.ofReadings(readings);
 }
 
+bool _showYaIdafa(
+  Variant v,
+  Ayah ayah,
+  VariantRepository variants,
+  ReaderSettings s,
+) {
+  if (v.rule != 'ya_idafa' || !const {'ruways', 'rawh'}.contains(v.riwayaId)) {
+    return true;
+  }
+  final reference = s.displayed == null || s.displayed == v.riwayaId
+      ? ayah.words[v.word]
+      : readingText(variants, s.displayed, ayah, v.word, v.word + v.count);
+  return showYaqubYaIdafaExample(v, reference);
+}
+
 /// How the other selected riwayat read a word, compared with the riwaya the
 /// mushaf shows (Hafs, or [ReaderSettings.displayed]). Agreement with Hafs
 /// is reconstructed when it differs from the displayed reading. Equal
@@ -1415,7 +1497,13 @@ _Readings _readingsOf(
   // Source reminders remain visible when their own riwaya is the base.
   all.addAll(base.where((v) => v.isMarginNote));
   final shown = all
-      .where((v) => s.kinds.contains(v.kind) && !isYaqubMadd(v))
+      .where(
+        (v) =>
+            s.kinds.contains(v.kind) &&
+            !isYaqubMadd(v) &&
+            showYaqubMimExample(v, ayah.words[v.word]) &&
+            _showYaIdafa(v, ayah, variants, s),
+      )
       .toList();
   final colors = [
     for (final id in shown.map((v) => v.riwayaId).toSet())
@@ -1429,7 +1517,12 @@ _Readings _readingsOf(
         _colorOf(
           base
               .where(
-                (v) => v.isUsul && !isYaqubMadd(v) && s.kinds.contains(v.kind),
+                (v) =>
+                    v.isUsul &&
+                    !isYaqubMadd(v) &&
+                    showYaqubMimExample(v, ayah.words[v.word]) &&
+                    _showYaIdafa(v, ayah, variants, s) &&
+                    s.kinds.contains(v.kind),
               )
               .toList(),
         ) ??
@@ -1474,6 +1567,7 @@ List<_UsulGroup> _usulNotes(
           v.riwayaId == hafsId ||
           isYaqubMadd(v) ||
           !showYaqubMimExample(v, ayah.words[w]) ||
+          !_showYaIdafa(v, ayah, variants, s) ||
           v.rule == 'naql_source' ||
           v.rule == 'hamza_source') {
         continue;

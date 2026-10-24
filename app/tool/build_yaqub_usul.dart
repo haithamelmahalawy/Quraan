@@ -154,6 +154,24 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
   }
   for (final v in rows) {
     v[4] = (v[4] as String).split(RegExp(r'[:(]')).first.trim();
+    if (const {'f', 'h'}.contains(v[5]) && (v[4] as String).isNotEmpty) {
+      final source = <String>[];
+      for (var offset = 0; offset < (v[3] as int); offset++) {
+        final w = index['${v[0]}:${v[1]}:${(v[2] as int) + offset}'];
+        if (w != null) source.add(w.t);
+      }
+      if (source.length == v[3]) {
+        final originalText = v[4] as String;
+        v[4] = completeReadingVowels(originalText, source.join(' '));
+        if (v[4] != originalText) {
+          while (v.length < 8) {
+            v.add('');
+          }
+          if (v.length == 8) v.add(<String, dynamic>{});
+          (v[8] as Map).putIfAbsent('vocalizationSource', () => originalText);
+        }
+      }
+    }
   }
   final counts = <String, int>{};
   final added = <String>{};
@@ -543,18 +561,25 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
             cs.last.startsWith('ن') &&
             cs.last.contains('ّ')) ||
         (firstPersonYa && RegExp(r'يّ[َُِ]?[ۖ-ۭ]*$').hasMatch(w.t));
+    final hasrati = id == 'ruways' && w.s == 39 && w.a == 56 && b == 'ياحسرتي';
     if (stopHa ||
         (id == 'ruways' &&
-            (const {'ياأسفي', 'ياويلتي', 'ياحسرتا'}.contains(b) ||
+            (const {'ياأسفي', 'ياويلتي', 'ياحسرتي'}.contains(b) ||
                 (b == 'ثم' && w.t.startsWith('ثَ'))))) {
       add(
         w,
         'ha_sakt',
-        'بإلحاق هاء السكت وقفًا فقط',
+        hasrati
+            ? 'بإلحاق هاء السكت وقفًا مع المد المشبع ست حركات'
+            : 'بإلحاق هاء السكت وقفًا فقط',
         31,
         stop: true,
-        stopText: '${w.t.replaceAll(RegExp(r'[ۖ-ۭ]'), '')}هۡ',
-        ways: ['إلحاق هاء السكت عند الوقف، دون الوصل'],
+        stopText: hasrati
+            ? 'يَٰحَسۡرَتَآهۡ'
+            : '${w.t.replaceAll(RegExp(r'[ۖ-ۭ]'), '')}هۡ',
+        ways: hasrati
+            ? ['إلحاق هاء السكت عند الوقف مع المد المشبع ست حركات، دون الوصل']
+            : ['إلحاق هاء السكت عند الوقف، دون الوصل'],
       );
     }
     if (b == 'وكأين' ||

@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/reading_comparison.dart';
+import 'package:qiraat_mushaf/data/usul_text.dart';
+import 'package:qiraat_mushaf/data/arabic.dart';
 
 import '../tool/build_yaqub_usul.dart';
 
@@ -87,6 +89,53 @@ void main() {
     expect(() => buildYaqubUsul(quran, d, 'warsh'), throwsArgumentError);
     expect(jsonEncode(d), before);
   });
+  test(
+    'all 24 Ruways kabir examples have their own assimilated spelling',
+    () async {
+      final repo = await VariantRepository.discover();
+      await repo.ensureLoaded(['ruways']);
+      final q = await QuranRepository.load();
+      final rows = (load('ruways')['variants'] as List)
+          .cast<List>()
+          .where((v) => v.length > 7 && v[7] == 'idgham_kabir')
+          .toList();
+      expect(rows, hasLength(24));
+      for (final row in rows) {
+        final v = repo
+            .at(['ruways'], row[0] as int, row[1] as int, row[2] as int)
+            .singleWhere((v) => v.rule == 'idgham_kabir');
+        final example = usulReadingText(
+          v,
+          q.ayah(v.surah, v.ayah),
+          repo,
+        ).split(' ');
+        final first = lettersOf(example.first),
+            second = lettersOf(example.last);
+        if (v.surah == 27 && v.ayah == 36) {
+          expect(example.first, contains('وٓنّ'));
+        } else if (v.surah == 34 && v.ayah == 46) {
+          expect(example.first, 'ثُمَّ');
+          expect(second[0], 'ت');
+          expect(second[1], contains('ّ'));
+        } else {
+          expect(first.last.length, 1, reason: example.join(' '));
+          expect(second.first, contains('ّ'), reason: example.join(' '));
+        }
+      }
+    },
+  );
+  test(
+    'hasrati is a Ruways stopping rule with six-count madd, never lexical ha',
+    () {
+      final v = rules(load('ruways'), 'ha_sakt', 39, 56).single;
+      expect(v[2], 3);
+      expect(v[4], isEmpty);
+      expect(v[8]['stopOnly'], isTrue);
+      expect(v[8]['stopText'], 'يَٰحَسۡرَتَآهۡ');
+      expect(v[6], contains('المد المشبع ست حركات'));
+      expect(rules(load('rawh'), 'ha_sakt', 39, 56), isEmpty);
+    },
+  );
   test('ha sakt excludes lexical doubled ya and retains first-person ya', () {
     for (final id in ['ruways', 'rawh']) {
       final d = load(id);

@@ -394,3 +394,58 @@ String withNaqlVowel(String text, String hafs) {
   final vowel = from[0].replaceAll(RegExp('[^َُِ]'), '');
   return vowel.isEmpty ? text : 'ا$vowel${letters.skip(1).join()}';
 }
+
+/// Completes a partial quotation from the unchanged letters of its aligned
+/// source. Explicit vowels (including a changed case ending) always win.
+/// New letters and recitation signs are never inferred from another reading.
+String completeReadingVowels(String text, String baseline) {
+  final ownWords = text.split(RegExp(r'\s+'));
+  final sourceWords = baseline.split(RegExp(r'\s+'));
+  if (ownWords.length != sourceWords.length) return text;
+  final explicit = RegExp('[ً-ِْٖۡٗٞ]');
+  final marks = RegExp('[ً-ْٖۡٗٞۢ]');
+  String key(String cluster) =>
+      cluster[0].replaceAll('ٱ', 'ا').replaceAll('ى', 'ي').replaceAll('ے', 'ي');
+  return [
+    for (var w = 0; w < ownWords.length; w++)
+      (() {
+        final own = lettersOf(ownWords[w]), source = lettersOf(sourceWords[w]);
+        final lengths = List.generate(
+          own.length + 1,
+          (_) => List.filled(source.length + 1, 0),
+        );
+        for (var i = own.length - 1; i >= 0; i--) {
+          for (var j = source.length - 1; j >= 0; j--) {
+            lengths[i][j] = key(own[i]) == key(source[j])
+                ? 1 + lengths[i + 1][j + 1]
+                : (lengths[i + 1][j] > lengths[i][j + 1]
+                      ? lengths[i + 1][j]
+                      : lengths[i][j + 1]);
+          }
+        }
+        var i = 0, j = 0;
+        while (i < own.length && j < source.length) {
+          if (key(own[i]) == key(source[j])) {
+            final followingDoubled = i + 1 < own.length
+                ? own[i + 1].contains('ّ')
+                : w + 1 < ownWords.length &&
+                      lettersOf(ownWords[w + 1]).first.contains('ّ');
+            final assimilated =
+                followingDoubled && RegExp('[ْۡ]').hasMatch(source[j]);
+            if (!explicit.hasMatch(own[i]) && !assimilated) {
+              for (final m in marks.allMatches(source[j])) {
+                if (!own[i].contains(m[0]!)) own[i] += m[0]!;
+              }
+            }
+            i++;
+            j++;
+          } else if (lengths[i + 1][j] >= lengths[i][j + 1]) {
+            i++;
+          } else {
+            j++;
+          }
+        }
+        return own.join();
+      })(),
+  ].join(' ');
+}

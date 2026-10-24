@@ -130,7 +130,8 @@ class Variant {
     'ibdal_waw' => 'و',
     'ibdal_ya' => 'ي',
     'tasheel_pair'
-        when usulText.contains(' ') &&
+        when riwayaId == 'warsh' &&
+            usulText.contains(' ') &&
             RegExp(r'ءِ[ۖ-ۭ]*$').hasMatch(usulText.split(' ').first) &&
             usulText.split(' ').last.startsWith('إِ') =>
       'ي',
