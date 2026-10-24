@@ -67,7 +67,7 @@ void main() {
           displayed: base == 'hafs' ? null : base, selected: [selected],
         );
         expect(
-          differences.where((v) => v.inHamesh).isNotEmpty,
+          differences.isNotEmpty,
           (base == 'hafs') != (selected == 'hafs'),
           reason: '$base / $selected',
         );
@@ -78,6 +78,14 @@ void main() {
     for (final id in ['hisham', 'ibn_dhakwan']) {
       expect(repo.at([id], 2, 51, 6)
           .firstWhere((v) => v.rule == 'idgham_saghir').text, shubah);
+      final fromHafs = compareReadings(
+        repository: repo, ayah: ayah, word: 6,
+        displayed: null, selected: [id],
+      );
+      expect(fromHafs, hasLength(1));
+      expect(fromHafs.single.rule, 'idgham_saghir');
+      expect(fromHafs.single.isUsul, isTrue);
+      expect(fromHafs.single.inHamesh, isFalse);
     }
   });
 }
