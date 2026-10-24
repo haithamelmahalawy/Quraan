@@ -1,0 +1,1353 @@
+{
+  "21": {
+    "hisham": {
+      "text": "وَمِيكَٰئِيلَ",
+      "description": "زاد همزة مكسورة وياء قبل اللام"
+    },
+    "ibn_dhakwan": {
+      "text": "وَمِيكَٰئِيلَ",
+      "description": "زاد همزة مكسورة وياء قبل اللام"
+    }
+  },
+  "24": {
+    "hisham": {
+      "text": "نُنسِخۡ",
+      "description": "ضم النون الأوىل وكسر السين",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "نُنسِخۡ",
+      "description": "ضم النون الأوىل وكسر السين",
+      "count": 1
+    }
+  },
+  "27": {
+    "hisham": {
+      "text": "فَيَكُونَ",
+      "description": "فتح النون",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "فَيَكُونَ",
+      "description": "فتح النون",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "29": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمَ",
+      "description": "هشام : فتح الهاء وألف بدل الياء ابن ذكوان : وجهان ١ . كهشام ٢ . كحفص وهو المقدم",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمَ",
+      "description": "هشام : فتح الهاء وألف بدل الياء ابن ذكوان : وجهان ١ . كهشام ٢ . كحفص وهو المقدم",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "33": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمَ",
+      "description": "هشام : فتح الهاء ثم ألف ) الموضعني ( ابن ذكوان وجهان : كحفص ، كهشام",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمَ",
+      "description": "هشام : فتح الهاء ثم ألف ) الموضعني ( ابن ذكوان وجهان : كحفص ، كهشام",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "35": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمُ",
+      "description": "هشام : فتح الهاء ثم ألف ابن ذكوان وجهان : كحفص ، كهشام",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمُ",
+      "description": "هشام : فتح الهاء ثم ألف ابن ذكوان وجهان : كحفص ، كهشام",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "37": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمُ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمُ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "38": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمَ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمَ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "40": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمُ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمُ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "41": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمَ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمَ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "42": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمَ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمَ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "43": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمَ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمَ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "44": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمَ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمَ",
+      "description": "هشام: فتح الهاء وألف بدل الياء في إبراهيم؛ ولابن ذكوان وجهان: كحفص، وكهشام.",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "54": {
+    "hisham": {
+      "text": "ٱلۡبِرُّ",
+      "description": "ضم الراء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "ٱلۡبِرُّ",
+      "description": "ضم الراء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "55": {
+    "hisham": {
+      "text": "",
+      "description": "تخفيف النون وكسرها ً وصلا وضم الراء",
+      "changes": [
+        {
+          "offset": 0,
+          "count": 1,
+          "text": "وَلَٰكِنِ"
+        },
+        {
+          "offset": 1,
+          "count": 1,
+          "text": "ٱلۡبِرُّ"
+        }
+      ]
+    },
+    "ibn_dhakwan": {
+      "text": "",
+      "description": "تخفيف النون وكسرها ً وصلا وضم الراء",
+      "changes": [
+        {
+          "offset": 0,
+          "count": 1,
+          "text": "وَلَٰكِنِ"
+        },
+        {
+          "offset": 1,
+          "count": 1,
+          "text": "ٱلۡبِرُّ"
+        }
+      ]
+    }
+  },
+  "59": {
+    "hisham": {
+      "text": "",
+      "description": "تخفيف النون مكسورة وضم الراء",
+      "changes": [
+        {
+          "offset": 0,
+          "count": 1,
+          "text": "وَلَٰكِنِ"
+        },
+        {
+          "offset": 1,
+          "count": 1,
+          "text": "ٱلۡبِرُّ"
+        }
+      ]
+    },
+    "ibn_dhakwan": {
+      "text": "",
+      "description": "تخفيف النون مكسورة وضم الراء",
+      "changes": [
+        {
+          "offset": 0,
+          "count": 1,
+          "text": "وَلَٰكِنِ"
+        },
+        {
+          "offset": 1,
+          "count": 1,
+          "text": "ٱلۡبِرُّ"
+        }
+      ]
+    }
+  },
+  "70": {
+    "ibn_dhakwan": {
+      "text": "وَيَبۡسُطُ",
+      "description": "ابن ذكوان وجهان ١ . بالسين وهو المقدم ٢ . بال ص اد",
+      "wujuh": "الأول بالسين وهو المقدم، والثاني بالصاد كحفص"
+    }
+  },
+  "75": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمَ",
+      "description": "هشام : فتح الهاء ثم ألف ) ٣ مواضع ( ابن ذكوان وجهان كحفص ، كهشام",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمَ",
+      "description": "هشام : فتح الهاء ثم ألف ) ٣ مواضع ( ابن ذكوان وجهان كحفص ، كهشام",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "78": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمُ",
+      "description": "هشام : فتح الهاء ثم ألف بدل الياء ابن ذكوان وجهان كحفص ، كهشام",
+      "transform": "ibrahaam"
+    },
+    "ibn_dhakwan": {
+      "text": "إِبۡرَٰهِـۧمُ",
+      "description": "هشام : فتح الهاء ثم ألف بدل الياء ابن ذكوان وجهان كحفص ، كهشام",
+      "primaryHafs": true,
+      "transform": "ibrahaam-optional",
+      "wujuh": "الأول كحفص وهو المقدم، والثاني بفتح الهاء وألف بعدها: إبراهام"
+    }
+  },
+  "98": {
+    "hisham": {
+      "text": "فَيَكُونَ",
+      "description": "فتح النون",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "فَيَكُونَ",
+      "description": "فتح النون",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "135": {
+    "hisham": {
+      "text": "قُتِّلُواْۗ",
+      "description": "هشام : تشديد التاء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "136": {
+    "hisham": {
+      "text": "تَحۡسَبَنَّ",
+      "description": "هشام وجهان : ١ . بالتاء، وهو المقدم ٢ . بالياء",
+      "primaryHafs": true,
+      "wujuh": "الأول بالتاء كحفص وهو المقدم، والثاني بالياء: يحسبن"
+    }
+  },
+  "170": {
+    "hisham": {
+      "text": "يَكُنۢ",
+      "description": "بالياء بدل التاء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "يَكُنۢ",
+      "description": "بالياء بدل التاء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "231": {
+    "hisham": {
+      "text": "قِيَمٗا",
+      "description": "حذف الألف"
+    },
+    "ibn_dhakwan": {
+      "text": "قِيَمٗا",
+      "description": "حذف الألف"
+    }
+  },
+  "246": {
+    "hisham": {
+      "text": "نُكَذِّبُ",
+      "description": "ضم الباء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "نُكَذِّبُ",
+      "description": "ضم الباء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "249": {
+    "hisham": {
+      "text": "ٱلۡأٓخِرَةِ",
+      "description": "كسر التاء"
+    },
+    "ibn_dhakwan": {
+      "text": "ٱلۡأٓخِرَةِ",
+      "description": "كسر التاء"
+    }
+  },
+  "267": {
+    "ibn_dhakwan": {
+      "text": "أَتُحَٰٓجُّونِي",
+      "description": "ابن ذكوان : تخفيف النون، وبلا مد في الواو هشام وجهان : ١ . كابن ذكوان ٢ . كحفص"
+    },
+    "hisham": {
+      "text": "أَتُحَٰٓجُّونِي",
+      "description": "ابن ذكوان : تخفيف النون، وبلا مد في الواو هشام وجهان : ١ . كابن ذكوان ٢ . كحفص",
+      "wujuh": "الأول بتخفيف النون، والثاني بالتشديد كحفص"
+    }
+  },
+  "283": {
+    "hisham": {
+      "text": "تُؤۡمِنُونَ",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تُؤۡمِنُونَ",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "301": {
+    "hisham": {
+      "text": "تَكُن",
+      "description": "با لتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تَكُن",
+      "description": "با لتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "323": {
+    "hisham": {
+      "text": "مَا",
+      "description": "حذف الواو",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "مَا",
+      "description": "حذف الواو",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "326": {
+    "hisham": {
+      "text": "",
+      "description": "فتح النون وتشديدها وفتح التاء المربو ط ة",
+      "changes": [
+        {
+          "offset": 0,
+          "count": 1,
+          "text": "أَنَّ"
+        },
+        {
+          "offset": 1,
+          "count": 1,
+          "text": "لَعۡنَةَ"
+        }
+      ]
+    },
+    "ibn_dhakwan": {
+      "text": "",
+      "description": "فتح النون وتشديدها وفتح التاء المربو ط ة",
+      "changes": [
+        {
+          "offset": 0,
+          "count": 1,
+          "text": "أَنَّ"
+        },
+        {
+          "offset": 1,
+          "count": 1,
+          "text": "لَعۡنَةَ"
+        }
+      ]
+    }
+  },
+  "364": {
+    "hisham": {
+      "text": "أُمِّ",
+      "description": "كسر الميم",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "أُمِّ",
+      "description": "كسر الميم",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "373": {
+    "hisham": {
+      "text": "بِئۡسٖ",
+      "description": "كسر الباء وإسكان الهمزة وحذف الياء"
+    },
+    "ibn_dhakwan": {
+      "text": "بِئۡسٖ",
+      "description": "كسر الباء وإسكان الهمزة وحذف الياء"
+    }
+  },
+  "385": {
+    "hisham": {
+      "text": "وَلَٰكِنِ",
+      "description": "تخفيف النون وكسرها وصلاً؛ حركة لفظ الجلالة المترتبة على ذلك ليست فرشاً آخر.",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "وَلَٰكِنِ",
+      "description": "تخفيف النون وكسرها وصلاً؛ حركة لفظ الجلالة المترتبة على ذلك ليست فرشاً آخر.",
+      "count": 1
+    }
+  },
+  "390": {
+    "hisham": {
+      "text": "تَرۡجِعُ",
+      "description": "فتح التاء وكسر الجيم",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تَرۡجِعُ",
+      "description": "فتح التاء وكسر الجيم",
+      "count": 1
+    }
+  },
+  "394": {
+    "hisham": {
+      "text": "تَكُن",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تَكُن",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "396": {
+    "hisham": {
+      "text": "تَكُن",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تَكُن",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "445": {
+    "hisham": {
+      "text": "يَهَدِّيٓ",
+      "description": "فتح الهاء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "يَهَدِّيٓ",
+      "description": "فتح الهاء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "461": {
+    "ibn_dhakwan": {
+      "text": "تَتَّبِعَآنِ",
+      "description": "ابن ذكوان : تخفيف النون – بلا مد -",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "467": {
+    "hisham": {
+      "text": "قُلُ",
+      "description": "ضم اللام",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "قُلُ",
+      "description": "ضم اللام",
+      "count": 1
+    }
+  },
+  "530": {
+    "hisham": {
+      "text": "وَقَالَتُ",
+      "description": "ًضم التاء وصلا",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "وَقَالَتُ",
+      "description": "ًضم التاء وصلا",
+      "count": 1
+    }
+  },
+  "569": {
+    "hisham": {
+      "text": "ٱللَّهُ",
+      "description": "ضم هاء لف ظ الجلالة"
+    },
+    "ibn_dhakwan": {
+      "text": "ٱللَّهُ",
+      "description": "ضم هاء لف ظ الجلالة"
+    }
+  },
+  "576": {
+    "hisham": {
+      "text": "أَفۡـِٔيدَةٗ",
+      "description": "هشام وجهان : ١ . كحفص ٢ . زاد ياء بعد الهمزة، وهو المقدم",
+      "wujuh": "الأول بزيادة ياء بعد الهمزة وهو المقدم، والثاني كحفص"
+    }
+  },
+  "579": {
+    "hisham": {
+      "text": "تَنَزَّلُ",
+      "description": "إبدال النون الأوىل تاء مفتوحة وفتح الزاي",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تَنَزَّلُ",
+      "description": "إبدال النون الأوىل تاء مفتوحة وفتح الزاي",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "580": {
+    "hisham": {
+      "text": "ٱلۡمَلَٰٓئِكَةُ",
+      "description": "بالضم بدل الفتح"
+    },
+    "ibn_dhakwan": {
+      "text": "ٱلۡمَلَٰٓئِكَةُ",
+      "description": "بالضم بدل الفتح"
+    }
+  },
+  "588": {
+    "hisham": {
+      "text": "بِيُوتًا",
+      "description": "كسر الباء"
+    },
+    "ibn_dhakwan": {
+      "text": "بِيُوتًا",
+      "description": "كسر الباء"
+    }
+  },
+  "602": {
+    "hisham": {
+      "text": "بِيُوتٗا",
+      "description": "كسر الباء"
+    },
+    "ibn_dhakwan": {
+      "text": "بِيُوتٗا",
+      "description": "كسر الباء"
+    }
+  },
+  "604": {
+    "hisham": {
+      "text": "تَرَوۡاْ",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تَرَوۡاْ",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "606": {
+    "hisham": {
+      "text": "بِيُوتٗا",
+      "description": "كسر الباء"
+    },
+    "ibn_dhakwan": {
+      "text": "بِيُوتٗا",
+      "description": "كسر الباء"
+    }
+  },
+  "612": {
+    "hisham": {
+      "text": "وَلَيَجۡزِيَنَّ",
+      "description": "بالياء بدل النون، وهو المقدم ٍ و لا بن ذكوان وج ه ثان كحفص"
+    },
+    "ibn_dhakwan": {
+      "text": "وَلَيَجۡزِيَنَّ",
+      "description": "بالياء بدل النون، وهو المقدم ٍ و لا بن ذكوان وج ه ثان كحفص",
+      "wujuh": "الأول بالياء وهو المقدم، والثاني بالنون كحفص"
+    }
+  },
+  "613": {
+    "hisham": {
+      "text": "فَتَنُواْ",
+      "description": "فتح الفاء والتاء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "فَتَنُواْ",
+      "description": "فتح الفاء والتاء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "620": {
+    "hisham": {
+      "text": "لِيَسُوٓءَ",
+      "description": "فتح الهمزة وحذف الواو"
+    },
+    "ibn_dhakwan": {
+      "text": "لِيَسُوٓءَ",
+      "description": "فتح الهمزة وحذف الواو"
+    }
+  },
+  "628": {
+    "hisham": {
+      "text": "تَقُولُونَ",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تَقُولُونَ",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "629": {
+    "hisham": {
+      "text": "يُسَبِّحُ",
+      "description": "بالياء بدل التاء",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "يُسَبِّحُ",
+      "description": "بالياء بدل التاء",
+      "count": 1
+    }
+  },
+  "649": {
+    "hisham": {
+      "text": "عِوَجَا",
+      "description": "ترك السكت على «عوجا» وصلاً.",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "عِوَجَا",
+      "description": "ترك السكت على «عوجا» وصلاً.",
+      "count": 1
+    }
+  },
+  "654": {
+    "hisham": {
+      "text": "تُشۡرِكۡ",
+      "description": "بالتاء بدل الياء وإسكان الكاف",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تُشۡرِكۡ",
+      "description": "بالتاء بدل الياء وإسكان الكاف",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "659": {
+    "hisham": {
+      "text": "لَّٰكِنَّا",
+      "description": "ًإثبا ت الألف وصلا",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "لَّٰكِنَّا",
+      "description": "ًإثبا ت الألف وصلا",
+      "count": 1
+    }
+  },
+  "707": {
+    "hisham": {
+      "text": "فَيَكُونَ",
+      "description": "ًفتح النون وصلا",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "فَيَكُونَ",
+      "description": "ًفتح النون وصلا",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "711": {
+    "hisham": {
+      "text": "يَٰٓإِبۡرَٰهَٰمُۖ",
+      "description": "هشام : فتح الهاء ثم ألف"
+    }
+  },
+  "746": {
+    "hisham": {
+      "text": "قُلۡ",
+      "description": "ضم القاف وحذف الألف وإسكان اللام؛ إدغام اللام في الراء مستقل.",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "قُلۡ",
+      "description": "ضم القاف وحذف الألف وإسكان اللام؛ إدغام اللام في الراء مستقل.",
+      "count": 1
+    }
+  },
+  "756": {
+    "hisham": {
+      "text": "تُسۡمِعُ",
+      "description": "إبدال الياء تاء مضمومة وكسر الميم",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تُسۡمِعُ",
+      "description": "إبدال الياء تاء مضمومة وكسر الميم",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "766": {
+    "hisham": {
+      "text": "قُلۡ",
+      "description": "ضم القاف وحذف الألف وإسكان اللام؛ إدغام اللام في الراء مستقل.",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "قُلۡ",
+      "description": "ضم القاف وحذف الألف وإسكان اللام؛ إدغام اللام في الراء مستقل.",
+      "count": 1
+    }
+  },
+  "780": {
+    "hisham": {
+      "text": "تَرۡجِعُ",
+      "description": "فتح التاء وكسر الجيم",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تَرۡجِعُ",
+      "description": "فتح التاء وكسر الجيم",
+      "count": 1
+    }
+  },
+  "817": {
+    "hisham": {
+      "text": "غَيۡرَ",
+      "description": "فتح الراء",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "غَيۡرَ",
+      "description": "فتح الراء",
+      "count": 1
+    }
+  },
+  "827": {
+    "hisham": {
+      "text": "بِيُوتٗا",
+      "description": "كسر الباء"
+    },
+    "ibn_dhakwan": {
+      "text": "بِيُوتٗا",
+      "description": "كسر الباء"
+    }
+  },
+  "831": {
+    "hisham": {
+      "text": "وَيَجۡعَلُ لَكَ",
+      "description": "ضم اللام",
+      "count": 2
+    },
+    "ibn_dhakwan": {
+      "text": "وَيَجۡعَلُ لَكَ",
+      "description": "ضم اللام",
+      "count": 2
+    }
+  },
+  "874": {
+    "hisham": {
+      "text": "",
+      "description": "بالتاء بدل الياء تنوين ضم",
+      "changes": [
+        {
+          "offset": 0,
+          "count": 1,
+          "text": "تَكُن"
+        },
+        {
+          "absoluteWord": 3,
+          "ayah": 197,
+          "count": 1,
+          "text": "ءَايَةٌ"
+        }
+      ]
+    },
+    "ibn_dhakwan": {
+      "text": "",
+      "description": "بالتاء بدل الياء تنوين ضم",
+      "changes": [
+        {
+          "offset": 0,
+          "count": 1,
+          "text": "تَكُن"
+        },
+        {
+          "absoluteWord": 3,
+          "ayah": 197,
+          "count": 1,
+          "text": "ءَايَةٌ"
+        }
+      ]
+    }
+  },
+  "959": {
+    "ibn_dhakwan": {
+      "text": "تَخۡرُجُونَ",
+      "description": "ابن ذكوان وجهان : ١ . كحفص ٢ . فتح التاء وضم الراء ، مقدم",
+      "wujuh": "الأول بفتح التاء وضم الراء وهو المقدم، والثاني كحفص"
+    }
+  },
+  "962": {
+    "hisham": {
+      "text": "كِسَفٗا",
+      "description": "إسكان السين وهلشام وجه آخر : كحفص ، وهو الم قدم",
+      "primaryHafs": true,
+      "wujuh": "الأول بفتح السين كحفص وهو المقدم، والثاني بإسكانها"
+    },
+    "ibn_dhakwan": {
+      "text": "كِسۡفٗا",
+      "description": "إسكان السين وهلشام وجه آخر : كحفص ، وهو الم قدم"
+    }
+  },
+  "1004": {
+    "hisham": {
+      "text": "تُرۡجِئُ",
+      "description": "إبدال الياء همزة مضمومة"
+    },
+    "ibn_dhakwan": {
+      "text": "تُرۡجِئُ",
+      "description": "إبدال الياء همزة مضمومة"
+    }
+  },
+  "1053": {
+    "hisham": {
+      "text": "مَّرۡقَدِنَا",
+      "description": "ترك السكت على «مرقدنا» وصلاً.",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "مَّرۡقَدِنَا",
+      "description": "ترك السكت على «مرقدنا» وصلاً.",
+      "count": 1
+    }
+  },
+  "1055": {
+    "hisham": {
+      "text": "جُبۡلًا",
+      "description": "ضم الجيم وإسكان الباء و تخفيف اللام"
+    },
+    "ibn_dhakwan": {
+      "text": "جُبۡلًا",
+      "description": "ضم الجيم وإسكان الباء و تخفيف اللام"
+    }
+  },
+  "1060": {
+    "hisham": {
+      "text": "فَيَكُونَ",
+      "description": "ًفتح النون وصلا",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "فَيَكُونَ",
+      "description": "ًفتح النون وصلا",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "1066": {
+    "hisham": {
+      "text": "أَوۡءَابَآؤُنَا",
+      "description": "إسكان الواو"
+    },
+    "ibn_dhakwan": {
+      "text": "أَوۡءَابَآؤُنَا",
+      "description": "إسكان الواو"
+    }
+  },
+  "1084": {
+    "ibn_dhakwan": {
+      "text": "ٱلۡيَاسَ",
+      "description": "ابن ذكوان: وجه بهمزة وصل بدل همزة القطع، ووجه كحفص؛ راجع صورة المصدر.",
+      "offset": 1,
+      "count": 1,
+      "wujuh": "وجه بهمزة وصل بدل همزة القطع، ووجه بتحقيقها كحفص"
+    }
+  },
+  "1085": {
+    "hisham": {
+      "text": "",
+      "description": "ضم الهاء ضم الباء ضم الباء",
+      "changes": [
+        {
+          "absoluteWord": 0,
+          "ayah": 126,
+          "count": 1,
+          "text": "ٱللَّهُ"
+        },
+        {
+          "absoluteWord": 1,
+          "ayah": 126,
+          "count": 1,
+          "text": "رَبُّكُمۡ"
+        },
+        {
+          "absoluteWord": 2,
+          "ayah": 126,
+          "count": 1,
+          "text": "وَرَبُّ"
+        }
+      ]
+    },
+    "ibn_dhakwan": {
+      "text": "",
+      "description": "ضم الهاء ضم الباء ضم الباء",
+      "changes": [
+        {
+          "absoluteWord": 0,
+          "ayah": 126,
+          "count": 1,
+          "text": "ٱللَّهُ"
+        },
+        {
+          "absoluteWord": 1,
+          "ayah": 126,
+          "count": 1,
+          "text": "رَبُّكُمۡ"
+        },
+        {
+          "absoluteWord": 2,
+          "ayah": 126,
+          "count": 1,
+          "text": "وَرَبُّ"
+        }
+      ]
+    }
+  },
+  "1087": {
+    "hisham": {
+      "text": "ءَالِ",
+      "description": "ًفتح الهمزة وزاد ألف ا بعد ها وكسر اللام",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "ءَالِ",
+      "description": "ًفتح الهمزة وزاد ألف ا بعد ها وكسر اللام",
+      "count": 1
+    }
+  },
+  "1130": {
+    "hisham": {
+      "text": "وَأَن",
+      "description": "فتح الواو دون همزة قبلها",
+      "count": 2
+    },
+    "ibn_dhakwan": {
+      "text": "وَأَن",
+      "description": "فتح الواو دون همزة قبلها",
+      "count": 2
+    }
+  },
+  "1137": {
+    "ibn_dhakwan": {
+      "text": "قَلۡبٍ",
+      "description": "ابن ذكوان : تنوين الباء",
+      "count": 1
+    }
+  },
+  "1147": {
+    "hisham": {
+      "text": "فَيَكُونَ",
+      "description": "ًفتح النون وصلا",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "فَيَكُونَ",
+      "description": "ًفتح النون وصلا",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "1159": {
+    "hisham": {
+      "text": "أَعۡجَمِيٌّ",
+      "description": "هشام: إسقاط همزة الاستفهام؛ وصف أداء الهمزة الباقية مستقل."
+    }
+  },
+  "1167": {
+    "hisham": {
+      "text": "بِمَا",
+      "description": "حذف الفاء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "بِمَا",
+      "description": "حذف الفاء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "1179": {
+    "hisham": {
+      "text": "لَمَّا",
+      "description": "ابن عامر : تخفيف الميم وهلشام وجه آخر كحفص",
+      "primaryHafs": true,
+      "wujuh": "وجه بتخفيف الميم، ووجه بالتشديد كحفص"
+    },
+    "ibn_dhakwan": {
+      "text": "لَمَا",
+      "description": "ابن عامر : تخفيف الميم وهلشام وجه آخر كحفص"
+    }
+  },
+  "1199": {
+    "hisham": {
+      "text": "تَغۡلِي",
+      "description": "ًإبدال الياء تاء"
+    },
+    "ibn_dhakwan": {
+      "text": "تَغۡلِي",
+      "description": "ًإبدال الياء تاء"
+    }
+  },
+  "1263": {
+    "hisham": {
+      "text": "ذُرِّيَّٰتُهُم",
+      "description": "ألف بعد الياء على الجمع",
+      "word": 3,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "ذُرِّيَّٰتُهُم",
+      "description": "ألف بعد الياء على الجمع",
+      "word": 3,
+      "count": 1
+    }
+  },
+  "1264": {
+    "hisham": {
+      "text": "ذُرِّيَّٰتِهِمۡ",
+      "description": "ألف بعد الياء وكسر التاء والهاء",
+      "word": 7,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "ذُرِّيَّٰتِهِمۡ",
+      "description": "ألف بعد الياء وكسر التاء والهاء",
+      "word": 7,
+      "count": 1
+    }
+  },
+  "1266": {
+    "hisham": {
+      "text": "كَذَّبَ",
+      "description": "هشام : تشديد الذال",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "1282": {
+    "hisham": {
+      "text": "ذَا",
+      "description": "فتح ال ذ ال وإبدال الواو ألفا",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "ذَا",
+      "description": "فتح ال ذ ال وإبدال الواو ألفا",
+      "count": 1
+    }
+  },
+  "1286": {
+    "hisham": {
+      "text": "ذُو",
+      "description": "ضم ال ذ ًال وأبدل الياء واو ا",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "ذُو",
+      "description": "ضم ال ذ ًال وأبدل الياء واو ا",
+      "count": 1
+    }
+  },
+  "1292": {
+    "hisham": {
+      "text": "أَوۡءَابَآؤُنَا",
+      "description": "إسكان الواو"
+    },
+    "ibn_dhakwan": {
+      "text": "أَوۡءَابَآؤُنَا",
+      "description": "إسكان الواو"
+    }
+  },
+  "1299": {
+    "hisham": {
+      "text": "تَرۡجِعُ",
+      "description": "فتح التاء وكسر الجيم",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تَرۡجِعُ",
+      "description": "فتح التاء وكسر الجيم",
+      "count": 1
+    }
+  },
+  "1300": {
+    "hisham": {
+      "text": "وَكُلٌّ",
+      "description": "تنوين ضم",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "وَكُلٌّ",
+      "description": "تنوين ضم",
+      "count": 1
+    }
+  },
+  "1304": {
+    "hisham": {
+      "text": "تُؤۡخَذُ",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "تُؤۡخَذُ",
+      "description": "بالتاء بدل الياء",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "1318": {
+    "hisham": {
+      "text": "يَكُونَ",
+      "description": "هشام وجهان : ١ . كحفص ٢ . بالتاء بدل الياء ، مقدم",
+      "offset": 1,
+      "count": 1,
+      "primaryHafs": true,
+      "wujuh": "الأول بالتاء وهو المقدم، والثاني بالياء كحفص"
+    },
+    "ibn_dhakwan": {
+      "text": "تَكُونَ",
+      "description": "هشام وجهان : ١ . كحفص ٢ . بالتاء بدل الياء ، مقدم",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "1325": {
+    "hisham": {
+      "text": "إِبۡرَٰهَٰمَ",
+      "description": "هشام : فتح الهاء وألف بدل الياء أما ) قول إبراهيم ( ف قرأها م ث ل حفص",
+      "offset": 1,
+      "count": 1
+    }
+  },
+  "1347": {
+    "ibn_dhakwan": {
+      "text": "نُّكُرٗا",
+      "description": "ابن ذكوان : ضم الكاف"
+    }
+  },
+  "1367": {
+    "hisham": {
+      "text": "يُؤۡمِنُونَ",
+      "description": "ابن عامر : بالياء بدل التاء ، م قدم و لا بن ذكوان وجه آخر كحفص"
+    },
+    "ibn_dhakwan": {
+      "text": "يُؤۡمِنُونَ",
+      "description": "ابن عامر : بالياء بدل التاء ، م قدم و لا بن ذكوان وجه آخر كحفص",
+      "wujuh": "الأول بالياء وهو المقدم، والثاني بالتاء كحفص"
+    }
+  },
+  "1378": {
+    "hisham": {
+      "text": "لُبَدٗا",
+      "description": "هشام وجهان : ١ . ضم اللام ، م قدم ٢ . كحفص",
+      "wujuh": "الأول بضم اللام وهو المقدم، والثاني بكسرها كحفص"
+    }
+  },
+  "1389": {
+    "hisham": {
+      "text": "إِذَا دَبَرَ",
+      "description": "ًفتح الذال وزاد ألف ا بعدها وحذف همزة أدبر ثم فتح الدال",
+      "count": 2
+    },
+    "ibn_dhakwan": {
+      "text": "إِذَا دَبَرَ",
+      "description": "ًفتح الذال وزاد ألف ا بعدها وحذف همزة أدبر ثم فتح الدال",
+      "count": 2
+    }
+  },
+  "1396": {
+    "hisham": {
+      "text": "مَن رَّاقٖ",
+      "description": "ترك السكت على «من راق» وصلاً مع إدغام النون في الراء.",
+      "count": 2
+    },
+    "ibn_dhakwan": {
+      "text": "مَن رَّاقٖ",
+      "description": "ترك السكت على «من راق» وصلاً مع إدغام النون في الراء.",
+      "count": 2
+    }
+  },
+  "1398": {
+    "hisham": {
+      "text": "سَلَٰسِلًا",
+      "description": "هشام : ًبالتنوين وصلا ،ً والألف وقف ا"
+    }
+  },
+  "1422": {
+    "hisham": {
+      "text": "سُعِرَتۡ",
+      "description": "هشام : تخفيف العين"
+    }
+  },
+  "1431": {
+    "hisham": {
+      "text": "بَل رَّانَ",
+      "description": "ترك السكت على «بل ران» وصلاً مع إدغام اللام في الراء.",
+      "count": 2
+    },
+    "ibn_dhakwan": {
+      "text": "بَل رَّانَ",
+      "description": "ترك السكت على «بل ران» وصلاً مع إدغام اللام في الراء.",
+      "count": 2
+    }
+  },
+  "1448": {
+    "hisham": {
+      "text": "فَلَا",
+      "description": "بالفاء بدل الواو",
+      "count": 1
+    },
+    "ibn_dhakwan": {
+      "text": "فَلَا",
+      "description": "بالفاء بدل الواو",
+      "count": 1
+    }
+  },
+  "1462": {
+    "hisham": {
+      "text": "لِإِلَٰفِ",
+      "description": "حذف الياء بعد الهمزة"
+    },
+    "ibn_dhakwan": {
+      "text": "لِإِلَٰفِ",
+      "description": "حذف الياء بعد الهمزة"
+    }
+  }
+}

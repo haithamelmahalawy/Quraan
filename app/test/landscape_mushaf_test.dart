@@ -10,6 +10,7 @@ import 'package:qiraat_mushaf/ui/book_pager.dart';
 import 'package:qiraat_mushaf/ui/mushaf_lines.dart';
 import 'package:qiraat_mushaf/ui/mushaf_page.dart';
 import 'package:qiraat_mushaf/ui/mushaf_zoom.dart';
+import 'package:qiraat_mushaf/ui/page_slider.dart';
 import 'package:qiraat_mushaf/ui/reader_screen.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
@@ -82,6 +83,69 @@ void main() {
   Finder central() => find.byKey(const ValueKey('landscape-page-scroll'));
   ScrollController controller(WidgetTester t) =>
       t.widget<SingleChildScrollView>(central()).controller!;
+
+  testWidgets(
+    'landscape bars collapse independently without covering the page',
+    (t) async {
+      final settings = ReaderSettings.memory(selected: {'warsh'})
+        ..page = 3
+        ..qcfFont = false;
+      await show(t, const Size(800, 432), settings: settings, reader: true);
+      final top = find.byKey(const ValueKey('top-bar-toggle'));
+      final bottom = find.byKey(const ValueKey('bottom-bar-toggle'));
+      final current = find.byType(MushafPage).last;
+      expect(top.hitTestable(), findsOneWidget);
+      expect(bottom.hitTestable(), findsOneWidget);
+      expect(find.byType(Slider).hitTestable(), findsNothing);
+      final full = t.getRect(current);
+      expect(full.height, closeTo(432 - 48, 1));
+      expect(full.top, greaterThanOrEqualTo(t.getRect(top).bottom));
+      expect(full.bottom, lessThanOrEqualTo(t.getRect(bottom).top));
+
+      final scroll = t
+          .widget<SingleChildScrollView>(
+            find.descendant(of: current, matching: central()),
+          )
+          .controller!;
+      scroll.jumpTo(180);
+      await t.pumpAndSettle();
+      await t.tap(top);
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 160));
+      final halfway = t.getSize(current).height;
+      await t.pumpAndSettle();
+      final topOpen = t.getRect(current);
+      expect(halfway, lessThan(full.height));
+      expect(halfway, greaterThan(topOpen.height));
+      expect(find.byType(Slider).hitTestable(), findsNothing);
+      expect(scroll.offset, closeTo(180, .1));
+
+      await t.tap(bottom);
+      await t.pumpAndSettle();
+      expect(find.byType(Slider).hitTestable(), findsOneWidget);
+      final bothOpen = t.getRect(current);
+      expect(bothOpen.height, closeTo(topOpen.height - 44, 1));
+      expect(bothOpen.bottom, lessThanOrEqualTo(t.getRect(bottom).top));
+      expect(
+        t.getRect(find.byType(PageSlider)).top,
+        greaterThanOrEqualTo(t.getRect(bottom).bottom),
+      );
+      await t.tap(top);
+      await t.tap(bottom);
+      await t.pumpAndSettle();
+      expect(t.getSize(current).height, full.height);
+      expect(settings.page, 3);
+
+      t.view.physicalSize = const Size(432, 800);
+      await t.pumpAndSettle();
+      expect(top, findsNothing);
+      expect(bottom, findsNothing);
+      expect(find.byType(Slider).hitTestable(), findsOneWidget);
+      expect(t.takeException(), isNull);
+      await t.pumpWidget(const SizedBox());
+      await t.pumpAndSettle();
+    },
+  );
 
   testWidgets('landscape enlarges the print and scrolls its original lines', (
     t,

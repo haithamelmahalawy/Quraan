@@ -108,6 +108,8 @@ class InkText extends StatelessWidget {
     required this.style,
     this.firmness = 1,
     this.parts,
+    this.glowFinalAlif = false,
+    this.glowStrength = 0,
   });
 
   final String text;
@@ -115,6 +117,8 @@ class InkText extends StatelessWidget {
   /// The text in parts with their own colour (null: [style]'s), when some
   /// letters are coloured apart from the word. Joins [text].
   final List<(String, Color?)>? parts;
+  final bool glowFinalAlif;
+  final double glowStrength;
 
   /// Font, size and colour (ink by default); background and decoration are
   /// drawn once, under the outline.
@@ -176,6 +180,12 @@ class InkText extends StatelessWidget {
         ..color = c,
     );
     if (parts != null) {
+      var glowAt = glowFinalAlif
+          ? parts.lastIndexWhere((p) => p.$1.startsWith('ى'))
+          : -1;
+      if (glowFinalAlif && glowAt < 0) {
+        glowAt = parts.lastIndexWhere((p) => p.$1.startsWith('ا'));
+      }
       return Stack(
         clipBehavior: Clip.none,
         children: [
@@ -192,10 +202,22 @@ class InkText extends StatelessWidget {
             TextSpan(
               style: style.copyWith(color: color),
               children: [
-                for (final (t, c) in parts)
+                for (final (i, (t, c)) in parts.indexed)
                   TextSpan(
                     text: t,
-                    style: TextStyle(color: c ?? color),
+                    style: TextStyle(
+                      color: c ?? color,
+                      shadows: i == glowAt && glowStrength > 0
+                          ? [
+                              Shadow(
+                                color: (c ?? color).withValues(
+                                  alpha: glowStrength * .8,
+                                ),
+                                blurRadius: 8 * glowStrength,
+                              ),
+                            ]
+                          : null,
+                    ),
                   ),
               ],
             ),

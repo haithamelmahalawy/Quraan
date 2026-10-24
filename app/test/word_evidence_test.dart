@@ -156,6 +156,30 @@ void main() {
     },
   );
 
+  testWidgets('ana uhyii opens bayt 521 from both word and usul margin', (
+    t,
+  ) async {
+    await showReader(t, page: 43);
+    await t.tap(find.byKey(const ValueKey('word:2:258:20')));
+    await settleSources(t);
+    expect(verseKeys(t, find.byType(VariantSheet)), {
+      const ValueKey('shatibiyya-521'),
+    });
+    Navigator.of(t.element(find.byType(VariantSheet))).pop();
+    await t.pumpAndSettle();
+    final margin = find.byKey(
+      const ValueKey('usul-reference:المدود:2:258:20:warsh'),
+    );
+    await t.ensureVisible(margin);
+    await t.pumpAndSettle();
+    await t.tap(margin);
+    await settleSources(t);
+    expect(verseKeys(t, find.byType(ReferenceSheet)), {
+      const ValueKey('shatibiyya-521'),
+    });
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('word and margin expose the same Shatibiyya and Durrah verses', (
     t,
   ) async {

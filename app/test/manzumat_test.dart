@@ -41,6 +41,37 @@ void main() {
     surahs,
   );
 
+  test('ana before hamza points to bayt 521 in Baqarah with book priority', () {
+    for (final id in ['warsh', 'qalun']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 2,
+        ayah: 258,
+        word: 20,
+        count: 1,
+        text: 'أَنَآ',
+        kind: VariantKind.usul,
+        description: 'بالمد',
+      );
+      final direct = manzumat.referenceOf(v, 'أَنَا۠', 2, surahs);
+      expect(direct.mention, {521});
+      expect(direct.chapter, 'سُوْرَةُ الْبَقَرَةِ');
+      final cited = manzumat.referenceOf(
+        v,
+        'أَنَا۠',
+        2,
+        surahs,
+        entries: book.at(2, 258, 20),
+      );
+      expect(cited.mention, {521});
+      expect(cited.fromBook, isTrue);
+      expect(
+        cited.verses.singleWhere((b) => b.n == 521).sadr,
+        contains('وَمَدُّ'),
+      );
+    }
+  });
+
   test('the whole of both poems', () {
     expect(manzumat.verses(Poem.shatibiyya), hasLength(1173));
     expect(manzumat.verses(Poem.durrah).length, greaterThanOrEqualTo(240));

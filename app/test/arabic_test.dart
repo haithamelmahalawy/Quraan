@@ -5,14 +5,14 @@ void main() {
   test('nun sukun is omitted only at a marked boundary idgham', () {
     expect(madinahScript('أَنْ يُّومِنُواْ'), 'أَن يُّومِنُواْ');
     expect(madinahScript('أَنْ', followingWord: 'يُّومِنُواْ'), 'أَن');
-    expect(madinahScript('مِنْ رَّبِّهِمْ'), 'مِن رَّبِّهِمْ');
-    expect(madinahScript('مِنْ أَهْلِهِ'), 'مِنْ أَهْلِهِ');
-    expect(madinahScript('مِنْ', followingWord: 'أَهْلِهِ'), 'مِنْ');
-    expect(madinahScript('الدُّنْيَا'), 'الدُّنْيَا');
+    expect(madinahScript('مِنْ رَّبِّهِمْ'), 'مِن رَّبِّهِمۡ');
+    expect(madinahScript('مِنْ أَهْلِهِ'), 'مِنۡ أَهۡلِهِ');
+    expect(madinahScript('مِنْ', followingWord: 'أَهْلِهِ'), 'مِنۡ');
+    expect(madinahScript('الدُّنْيَا'), 'الدُّنۡيَا');
   });
   test('riwaya text in the script of the Madinah page', () {
     // Warsh's أَرَىٰكُمۡ (Hud 29): ya before the dagger alef is ى, as in Hafs.
-    expect(madinahScript('أَر۪يٰكُمْ'), 'أَر۪ىٰكُمْ');
+    expect(madinahScript('أَر۪يٰكُمْ'), 'أَر۪ىٰكُمۡ');
     // The Maghribi yeh barree.
     expect(madinahScript('مُوسَےٰ'), 'مُوسَىٰ');
     // Shu'bah's dot below for imala becomes the Madinah imala sign.
@@ -21,14 +21,14 @@ void main() {
     expect(madinahScript('ا۟جِيبُ'), 'اجِيبُ');
     expect(madinahScript('ا۟خَرَۖ'), 'اخَرَۖ');
     expect(madinahScript('اَ۬لدَّاعِۦٓ'), 'ٱلدَّاعِۦٓ');
-    expect(madinahScript('قَالُواْ اَ۬لْءَٰنَ'), 'قَالُواْ ٱلْءَٰنَ');
+    expect(madinahScript('قَالُواْ اَ۬لْءَٰنَ'), 'قَالُواْ ٱلۡءَٰنَ');
     expect(madinahScript('يُوَ۬اخِذُكُمُ'), 'يُوَاخِذُكُمُ');
-    expect(madinahScript('فَلْيُوَ۬دِّ'), 'فَلْيُوَدِّ');
+    expect(madinahScript('فَلْيُوَ۬دِّ'), 'فَلۡيُوَدِّ');
     expect(madinahScript('لِيَ۬لَّا'), 'لِيَلَّا');
-    expect(madinahScript('يَّرْتَدِدْ'), 'يَرْتَدِدْ');
-    expect(madinahScript('مَنْ يَّرْتَدِدْ'), 'مَن يَرْتَدِدْ');
-    expect(madinahScript('هَدْياَۢ'), 'هَدْيَۢا');
-    expect(madinahScript('قَوْلاَۢۖ'), 'قَوْلَۢاۖ');
+    expect(madinahScript('يَّرْتَدِدْ'), 'يَرۡتَدِدۡ');
+    expect(madinahScript('مَنْ يَّرْتَدِدْ'), 'مَن يَرۡتَدِدۡ');
+    expect(madinahScript('هَدْياَۢ'), 'هَدۡيَۢا');
+    expect(madinahScript('قَوْلاَۢۖ'), 'قَوۡلَۢاۖ');
   });
 
   test(
@@ -36,14 +36,33 @@ void main() {
     () {
       for (final word in ['شَئْاٗ', 'شَئْاً', 'شَئْاٗۖ']) {
         final shown = madinahScript(word);
-        expect(shown, word.replaceAll('ئْ', 'يْـٔ'));
+        expect(shown, word.replaceAll('ئْ', 'يۡـٔ'));
         expect(lettersOf(shown).map((l) => l[0]), ['ش', 'ي', 'ـ', 'ا']);
         expect(madinahScript(shown), shown);
       }
-      expect(madinahScript('بِئْرٍ'), 'بِئْرٍ');
+      expect(madinahScript('بِئْرٍ'), 'بِئۡرٍ');
       expect(madinahScript('شَيۡـٔٗا'), 'شَيۡـٔٗا');
     },
   );
+
+  test('pronounced sukun uses jazm while silent-letter circles survive', () {
+    for (final (input, expected) in [
+      ('شَيْءٍ', 'شَيۡءٍ'),
+      ('مِنْ آمَنَ', 'مِنۡ آمَنَ'),
+      ('قُلْ هُوَ', 'قُلۡ هُوَ'),
+      ('يَوْمٍ', 'يَوۡمٍ'),
+      ('مُرْجَئُوْنَ', 'مُرۡجَئُونَ'),
+      ('بَيْتِىْ', 'بَيۡتِى'),
+      ('أُوْلَٰٓئِكَ', 'أُوْلَٰٓئِكَ'),
+      ('وَمَلَإِيْهِمْ', 'وَمَلَإِيْهِمۡ'),
+      ('ءَامَنُواْ', 'ءَامَنُواْ'),
+      ('أُو۟لَٰٓئِكَ', 'أُو۟لَٰٓئِكَ'),
+      ('أَنَا۠', 'أَنَا۠'),
+    ]) {
+      expect(madinahScript(input), expected);
+      expect(madinahScript(expected), expected);
+    }
+  });
 
   test('the letters of naql and madd al-badal', () {
     // Warsh's وَلَقَدَ اٰتَيْنَا: the dal takes the vowel, the alef is the madd.
@@ -86,6 +105,49 @@ void main() {
     expect(under('رَحۡمَةٞ'), 'رحم');
     // Already marked: unchanged.
     expect(withImalaSign('مَجۡر۪ىٰهَا'), 'مَجۡر۪ىٰهَا');
+  });
+
+  test('tarqiq distinguishes fathatan/dammatan from shared kasratan', () {
+    for (final text in [
+      'خَيْرَ',
+      'خَيْرُ',
+      'خَيْرًا',
+      'خَيْراً',
+      'خَيْرٗا',
+      'خَيْراٗ',
+      'خَيْرٌ',
+      'خَيْرٞ',
+      'كَثِيراٗۖ',
+    ]) {
+      expect(raLetter(lettersOf(text)), isNotNull, reason: text);
+    }
+    for (final text in [
+      'خَيْرِ',
+      'خَيْرٍ',
+      'خَيْرٖ',
+      'خَيْرࣲ',
+      'مُّدَّكِرٖۖ',
+    ]) {
+      expect(raLetter(lettersOf(text)), isNull, reason: text);
+    }
+  });
+
+  test('naql targets tanween before a silent alif instead of that alif', () {
+    for (final text in [
+      'مَّرِيضًا',
+      'صِيَامٍ',
+      'صَدَقَةٍ',
+      'مَرِيضٗا',
+      'صِيَامٖ',
+      'عَذَابٌ',
+      'عَذَابٞ',
+    ]) {
+      final letters = lettersOf(text);
+      final at = naqlLetter(letters, last: true)!;
+      expect(RegExp('[ًٌٍٖٗٞ]').hasMatch(letters[at]), isTrue, reason: text);
+    }
+    expect(naqlLetter(lettersOf('وَلَقَدۡ'), last: true), 3);
+    expect(naqlLetter([], last: true), isNull);
   });
 
   test('naql: the alef keeps the vowel of the hamza', () {

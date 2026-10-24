@@ -27,6 +27,43 @@ void main() {
     expect(readings.any((v) => v.rule == 'ghunna'), isTrue);
   });
 
+  test('page 74 book context only colours the actual Warsh difference', () {
+    final ayah = quran.ayah(3, 181);
+    for (var w = 11; w <= 18; w++) {
+      final compared = compareReadings(
+        repository: repository,
+        ayah: ayah,
+        word: w,
+        displayed: null,
+        selected: ['warsh'],
+      );
+      expect(
+        compared.where((v) => v.inHamesh).isNotEmpty,
+        w == 15,
+        reason: 'word $w: ${ayah.words[w]}',
+      );
+      if (w == 15) {
+        expect(compared.any((v) => v.rule == 'naql'), isTrue);
+        expect(compared.where((v) => v.inHamesh).single.count, 1);
+      }
+    }
+    // Preserve Hamzah's lexical changes and its explicit tanween/idgham span.
+    for (var w = 11; w <= 18; w++) {
+      final compared = compareReadings(
+        repository: repository,
+        ayah: ayah,
+        word: w,
+        displayed: null,
+        selected: ['khalaf_hamzah'],
+      );
+      expect(
+        compared.any((v) => v.inHamesh),
+        {11, 14, 17, 18}.contains(w),
+        reason: 'Hamzah word $w',
+      );
+    }
+  });
+
   test(
     'an implicit Hafs agreement still resolves the selected narrator evidence',
     () async {
@@ -175,7 +212,7 @@ void main() {
       expect(compared.single.riwayaId, 'unchanged');
       expect(compared.single.word, 0);
       expect(compared.single.count, 2);
-      expect(compared.single.text, 'عَلَيْهِ بِمَا');
+      expect(compared.single.text, 'عَلَيۡهِ بِمَا');
       expect(compared.single.inHamesh, isTrue);
     }
   });

@@ -10,6 +10,7 @@ import 'correct_warsh_lin_hamz.dart';
 import 'correct_warsh_lexical_badal.dart';
 import 'correct_ya_zawaid.dart';
 import 'correct_iqlab_spelling.dart';
+import 'correct_warsh_tarqiq.dart';
 
 typedef _Word = ({int surah, int ayah, int word, String text});
 
@@ -96,7 +97,11 @@ Map<String, int> correctWarshUsul(
   List? reading(_Word w) {
     final candidates =
         at[key(w)]
-            ?.where((v) => v.length < 8 || v[7] == '' || _rules.contains(v[7]))
+            ?.where(
+              (v) =>
+                  (v.length < 8 || v[7] == '' || _rules.contains(v[7])) &&
+                  !(v.length > 7 && v[7] == 'naql_source' && v[4] == ''),
+            )
             .toList() ??
         const <List>[];
     return candidates
@@ -433,6 +438,31 @@ Map<String, int> correctWarshUsul(
     }
   }
 
+  // The source represents a facilitated second hamza on waw/ya with a
+  // round sign. Naql on the first hamza must not hide this separate rule.
+  for (final w in words) {
+    final own = actual[key(w)];
+    final cs = lettersOf(w.text);
+    if (own == null ||
+        !RegExp(r'^[اأ]َ[وي][ْۡ]۟').hasMatch(own) ||
+        cs.length < 2 ||
+        !_hamza(cs[0]) ||
+        !_hamza(cs[1])) {
+      continue;
+    }
+    if (at[key(w)]?.any((v) => v.length > 7 && v[7] == 'tasheel_word') ==
+        true) {
+      continue;
+    }
+    tag(
+      add(w),
+      'tasheel_word',
+      'بتسهيل الهمزة الثانية بلا إدخال',
+      context: w.text,
+      ways: ['تسهيل الهمزة الثانية بلا إدخال'],
+    );
+  }
+
   // The tanweened final alif is dropped in wasl. Its taqlil is visible
   // only on stopping, and is not spelled in the continuous KFGQPC text.
   for (final e in book['entries'] as List) {
@@ -441,17 +471,54 @@ Map<String, int> correctWarshUsul(
       (g) =>
           ((g[1] as List).contains('warsh') ||
               (g[2] as List).contains('warsh')) &&
-          (g[5] == true || (g[3] as String).contains('تقليل')),
+          (g[5] == true || g[4] == true || (g[3] as String).contains('تقليل')),
     );
     if (mine.isEmpty) continue;
     final w = source['${e[0]}:${e[1]}:${e[2]}'];
-    if (w == null || !RegExp(r'[ًٗ].*[ىا][ۖ-ۜ]?$').hasMatch(w.text)) continue;
+    if (w == null || !RegExp(r'[ىا][ۖ-ۭ]*$').hasMatch(w.text)) continue;
+    final stopping =
+        RegExp(r'ى[ۖ-ۭ]*$').hasMatch(w.text) &&
+            mine.any((g) => g[4] == true || (g[3] as String).contains('وقف')) ||
+        RegExp(r'[ًٗ].*[ىا][ۖ-ۜ]?$').hasMatch(w.text) &&
+            mine.any((g) => g[5] == true || (g[3] as String).contains('تقليل'));
+    if (!stopping) continue;
     final v = reading(w) ?? add(w);
     tag(v, 'taqlil_stop', 'بالتقليل وقفًا', stop: true);
   }
   correctWarshLexicalBadal(quran, variants, sourceText: sourceText);
   correctYaZawaid(quran, variants, 'warsh', book);
   counts.addAll(correctWarshLinHamz(quran, variants));
+  correctWarshTarqiq(quran, variants, sourceText: sourceText);
+  // Tanween receives the transferred vowel in wasl although its written
+  // word does not change. Link both sides after all reading refinements,
+  // including boundaries across ayahs, without replacing the Quran text.
+  for (var i = 1; i < words.length; i++) {
+    final w = words[i], previous = words[i - 1];
+    if (w.surah != previous.surah ||
+        !RegExp(r'[ًٌٍٖٗٞ][اى]?[ۖ-ۭ]*$').hasMatch(previous.text)) {
+      continue;
+    }
+    final boundary =
+        at[key(w)]?.any(
+          (v) =>
+              v.length > 7 &&
+              v[7] == 'naql' &&
+              (v[6] as String).startsWith('بنقل حركة الهمزة إلى الساكن قبلها'),
+        ) ??
+        false;
+    if (!boundary) continue;
+    final carrier =
+        at[key(previous)]
+            ?.where((v) => v.length > 7 && v[7] == 'naql_source')
+            .firstOrNull ??
+        add(previous);
+    tag(
+      carrier,
+      'naql_source',
+      'بنقل حركة الهمزة إليها',
+      context: '${previous.text} ${w.text}',
+    );
+  }
   variants.sort((a, b) {
     for (var i = 0; i < 3; i++) {
       final c = (a[i] as int).compareTo(b[i] as int);

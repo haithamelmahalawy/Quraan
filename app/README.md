@@ -234,7 +234,8 @@ off (pages 4 and 42 checked against the print: most lines exact).
   automatically, using the same Shatibiyya/Durrah cards as a margin note.
   Book citations take priority; matching bayts appear first with expandable
   commentary and the rest of the chapter under "more". If no matching bayt
-  is identified, the whole chapter appears immediately. The Durrah covers
+  is identified, the first five bayts appear immediately with “show more”
+  to expand the chapter and “hide more” to collapse it. The Durrah covers
   Abu Ja'far, Ya'qub and Khalaf al-'Ashir. Text: Quranpedia's books 127 and 126,
   built by `dart run tool/build_manzumat.dart` into `assets/data/manzumat.json`
   (1173 + 240 verses).
@@ -282,11 +283,44 @@ needed. If the text needs its own font, add it to `pubspec.yaml` and set
 Usul examples open the evidence for the clicked rule and its narrators,
 including when that narrator is the main displayed reading. Warsh's circled
 waw/ya annotations belong to its own text or margin, including the ya face
-of two broken hamzas. Vowels follow the circle. Joined hamzat al-wasl is
+of two broken hamzas. Circles follow the original hamza's seat above/below
+the alif, independently of the letter inside. Vowels follow the circle.
+Stopping-only taqlil colours and alerts only the final alif, with a small
+circled dot instead of an ordinary taqlil dot and a «وقفًا فقط» margin label.
+Book-marked stopping cases include فهدى (2:213) and أذى (2:222).
+Joined hamzat al-wasl is
 normalised to the Hafs-style wasl sign without a circle. The Hafs font's
 fathatan and stacked dagger-alif/madd anchors are adjusted only for drawing;
 the Quran source text remains intact. Israel's foreign-name exception stays
 as a margin reminder and does not trigger difference colours or animations.
+
+The Madinah display converts pronounced sukun to the dotless head of kha,
+while preserving the round zero on unpronounced letters such as the waw
+of أولئك and the silent alif after plural waw. Raw reading assets stay intact.
+The facilitated second hamza's small empty circle is drawn directly on its
+seat, without the source's adjacent sukun/round-sign combination.
+When the source uses an alif for the second hamza's long ibdal face between
+words, its madd sign is shown on that alif in Warsh and in the usul example
+(e.g. السماء أن at 22:65); the Hafs main text retains its hamza.
+Imala under dotted letters has extra clearance from their dots.
+Font-anchor repairs retain each hamza and its vowel in the same colour run,
+preventing incomplete hamzas and missing vowels in both the page and margins.
+Multiword book quotations retain their source context, but comparisons colour
+only the changed words (e.g. الأنبياء at 3:181 on page 74).
+
+Warsh's tarqiq is re-evaluated after lexical changes such as ننشرها; the ra
+keeps its rule colour while the other letters keep the comparison colour.
+Evidence for مد أنا in wasl points to Shatibiyya bayt 521, including book
+citations from the word details and the usul margin.
+
+Warsh's tarqiq annotations exclude kasra and kasratan already naturally
+thin. Fathatan on a silent final alif still identifies the preceding ra;
+`tool/correct_warsh_tarqiq.dart` preserves independent farsh and usul and
+exports the removed annotations with page/ayah/word references to `reports/`.
+
+Warsh's naql after tanween colours both sides of the word boundary, including
+across ayahs. Colour-only source annotations preserve the displayed text;
+the tanween carrier is coloured instead of a silent final alif.
 
 Warsh's badal is re-evaluated after lexical additions or omissions, and naql
 also recognises combining hamzas such as `فَٱلۡـَٰٔنَ` on page 29. Extra ya

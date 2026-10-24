@@ -108,7 +108,13 @@ String readingVariantKey(Variant v, {String? baseline}) {
       '${_descriptionKey(v.bookWujuh)}';
 }
 
-bool _lexical(Variant v) => v.inHamesh && !v.isMarginNote && !v.readsAsHafs;
+bool _writtenIdgham(Variant v) =>
+    const {'idgham', 'idgham_saghir', 'idgham_kabir'}.contains(v.rule) &&
+    v.text.isNotEmpty &&
+    !v.stopOnly;
+
+bool _lexical(Variant v) =>
+    (v.inHamesh || _writtenIdgham(v)) && !v.isMarginNote && !v.readsAsHafs;
 
 List<Variant> _rows(
   VariantRepository repository,
@@ -119,9 +125,54 @@ List<Variant> _rows(
 ) => id == null || id == 'hafs'
     ? []
     : {
-        for (var w = from; w < to; w++)
-          ...repository.at([id], ayah.surah, ayah.number, w),
-      }.toList();
+            for (var w = from; w < to; w++)
+              ...repository.at([id], ayah.surah, ayah.number, w),
+          }
+          .expand((v) => _bookWordDifferences(v, ayah))
+          .where((v) => v.word < to && v.word + v.count > from)
+          .toList();
+
+/// Book quotations include unchanged context. Keep that context in the source,
+/// but only expose the actual changed words as comparison spans. Unequal word
+/// counts and readings with additional faces retain their complete spans.
+Iterable<Variant> _bookWordDifferences(Variant v, Ayah ayah) sync* {
+  final words = v.text.trim().split(RegExp(r'\s+'));
+  if (v.rule != 'kharouf' ||
+      v.count <= 1 ||
+      v.bookWujuh.isNotEmpty ||
+      words.length != v.count ||
+      v.word < 0 ||
+      v.word + v.count > ayah.words.length) {
+    yield v;
+    return;
+  }
+  for (var i = 0; i < words.length; i++) {
+    final baseline = ayah.words[v.word + i];
+    if (readingTextKey(words[i], baseline: baseline) ==
+        readingTextKey(baseline)) {
+      continue;
+    }
+    yield Variant(
+      riwayaId: v.riwayaId,
+      surah: v.surah,
+      ayah: v.ayah,
+      word: v.word + i,
+      count: 1,
+      text: words[i],
+      kind: v.kind,
+      description: v.description,
+      rule: v.rule,
+      certified: v.certified,
+      bookHow: v.bookHow,
+      bookFarsh: v.bookFarsh,
+      stopOnly: v.stopOnly,
+      stopText: v.stopText,
+      omission: v.omission,
+      usulText: v.usulText,
+      usulWays: v.usulWays,
+    );
+  }
+}
 
 String _apply(Ayah ayah, List<Variant> rows, int from, int to) {
   final text = <String>[];
@@ -168,14 +219,14 @@ String readingText(
 
 String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
   final unresolved = [
-    for (final v in rows) ...[
+    for (final v in rows.where(_lexical)) ...[
       if (!v.canReplaceText)
         '${v.word - from}:${v.count}:${_descriptionKey(v.shownDescription)}',
       if (v.bookWujuh.isNotEmpty)
         '${v.word - from}:${_descriptionKey(v.bookWujuh)}',
     ],
   ]..sort();
-  return '${readingTextKey(_apply(ayah, rows, from, to), baseline: ayah.words.sublist(from, to).join(' '))}#${unresolved.join(';')}';
+  return '${readingTextKey(_apply(ayah, rows.where((v) => !v.stopOnly).toList(), from, to), baseline: ayah.words.sublist(from, to).join(' '))}#${unresolved.join(';')}';
 }
 
 /// Compare each selected narrator with the displayed narrator. A missing
@@ -199,11 +250,25 @@ List<Variant> compareReadings({
   if (ids.isEmpty) return [];
   final base = _rows(repository, displayed, ayah, word, word + 1);
   final baseRules = base.where((v) => v.isUsul).map(readingVariantKey).toSet();
+  bool sharedWrittenIdgham(Variant v) {
+    if (!_writtenIdgham(v)) {
+      return false;
+    }
+    final from = v.word, to = v.word + v.count;
+    final actual = readingText(repository, displayed, ayah, from, to);
+    final hafs = ayah.words.sublist(from, to).join(' ');
+    return readingTextKey(actual, baseline: hafs) ==
+            readingTextKey(v.text, baseline: hafs) &&
+        readingTextKey(actual, baseline: hafs) != readingTextKey(hafs);
+  }
+
   final result = <Variant>[
     for (final id in ids)
       for (final v in _rows(repository, id, ayah, word, word + 1))
         if (v.isMarginNote ||
-            v.isUsul && !baseRules.contains(readingVariantKey(v)))
+            v.isUsul &&
+                !baseRules.contains(readingVariantKey(v)) &&
+                !sharedWrittenIdgham(v))
           v,
   ];
 
@@ -233,14 +298,22 @@ List<Variant> compareReadings({
       id: _rows(repository, id, ayah, from, to).where(_lexical).toList(),
   };
   if (lexical.values.every((rows) => rows.isEmpty)) return result;
-  final baseKey = _lexicalKey(ayah, lexical[displayed ?? 'hafs']!, from, to);
+  final baseKey = _lexicalKey(
+    ayah,
+    _rows(repository, displayed, ayah, from, to),
+    from,
+    to,
+  );
   for (final id in ids) {
     final own = lexical[id]!;
-    if (_lexicalKey(ayah, own, from, to) == baseKey) continue;
+    if (_lexicalKey(ayah, _rows(repository, id, ayah, from, to), from, to) ==
+        baseKey) {
+      continue;
+    }
     if (own.length == 1 &&
         own.single.word == from &&
         own.single.count == to - from) {
-      result.add(own.single);
+      if (!result.contains(own.single)) result.add(own.single);
       continue;
     }
     result.add(

@@ -17,10 +17,10 @@ void main() {
 
   test('joined wasl signs are converted without confusing the naql alif', () {
     for (final (before, after) in [
-      ('اُ۟عْبُدُواْ', 'ٱعْبُدُواْ'),
-      ('اِ۟سْجُدُواْ', 'ٱسْجُدُواْ'),
-      ('اُ۟سْكُنَ', 'ٱسْكُنَ'),
-      ('وَاُ۟عْبُدُواْ', 'وَٱعْبُدُواْ'),
+      ('اُ۟عْبُدُواْ', 'ٱعۡبُدُواْ'),
+      ('اِ۟سْجُدُواْ', 'ٱسۡجُدُواْ'),
+      ('اُ۟سْكُنَ', 'ٱسۡكُنَ'),
+      ('وَاُ۟عْبُدُواْ', 'وَٱعۡبُدُواْ'),
       ('ا۟جِيبُ', 'اجِيبُ'),
     ]) {
       expect(madinahScript(before), after);
@@ -32,6 +32,17 @@ void main() {
       final parts = HafsFontMarks.positionedParts([(before, Colors.green)]);
       expect(parts.map((p) => p.$1).join(), 'فِرَٰشاً');
       expect(parts.every((p) => p.$2 == Colors.green), isTrue);
+    }
+  });
+
+  test('font mark repairs keep hamzas and their vowels in one colour run', () {
+    for (final cluster in ['أَ', 'إِ', 'أُ', 'ؤُ', 'ئِ', 'ءَ', 'أَ', 'إِ']) {
+      final parts = HafsFontMarks.positionedParts([
+        (cluster, Colors.blue),
+        ('لۡقَ۪ىٰٓ', Colors.black),
+      ]);
+      expect(parts.first, (cluster, Colors.blue));
+      expect(parts.map((p) => p.$1).join(), '$clusterلۡقَ۪ىٰٓ');
     }
   });
 
@@ -103,7 +114,7 @@ void main() {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-        for (final word in ['شَيۡـٔٗا', madinahScript('شَئْاٗ')])
+                  for (final word in ['شَيۡـٔٗا', madinahScript('شَئْاٗ')])
                     InkText(
                       word,
                       parts: [

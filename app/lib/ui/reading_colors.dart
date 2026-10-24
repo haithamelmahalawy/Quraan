@@ -13,11 +13,44 @@ abstract final class ReadingColors {
   static Color get idgham => MushafColors.tone(const Color(0xFF546E7A));
   static Color get sakt => MushafColors.tone(const Color(0xFF795548));
   static Color get other => MushafColors.tone(const Color(0xFF455A64));
+  static Color get ishmam => MushafColors.tone(const Color(0xFFAD1457));
+  static Color get yaIdafa => MushafColors.tone(const Color(0xFF00838F));
+  static Color get haSakt => MushafColors.tone(const Color(0xFF6D4C41));
+  static Color get rasmStop => MushafColors.tone(const Color(0xFF5C6BC0));
+  static Color get firstSakin => MushafColors.tone(const Color(0xFF827717));
+  static Color get connectedMadd => MushafColors.tone(const Color(0xFF00695C));
+  static Color get separatedMadd => MushafColors.tone(const Color(0xFF558B2F));
+  static Color get kabirIdgham => MushafColors.tone(const Color(0xFF4527A0));
+
+  /// Typed rules describe only this row's narrator, even when its source
+  /// sentence mentions the contrasting performance of another reader.
+  static String? labelForRule(String rule) => switch (rule) {
+    'ishmam' => 'الإشمام',
+    'ishmam_sad' => 'إشمام الصاد',
+    'ya_idafa' => 'ياءات الإضافة',
+    'ya_zaida' => 'ياءات الزوائد',
+    'ha_silah' || 'ha_kinaya' || 'ha_damir' => 'هاء الكناية',
+    'mim_jam' => 'ميم الجمع',
+    'rasm_stop' || 'waqf_rasm' => 'الوقف على مرسوم الخط',
+    'ha_sakt' => 'هاء السكت',
+    'hisham_waqf' => 'وقف هشام على الهمز',
+    'first_sakin' => 'التقاء الساكنين',
+    'idgham' || 'idgham_saghir' => 'الإدغام',
+    'idgham_kabir' => 'الإدغام الكبير',
+    'madd_munfasil' => 'المد المنفصل',
+    'madd_muttasil' => 'المد المتصل',
+    'madd' => 'المدود',
+    'no_sakt' => 'ترك السكت',
+    'fath' => 'الفتح',
+    _ => null,
+  };
 
   static Color of(Variant v) {
     if (v.rule == 'ya_zaida') return MushafColors.green;
     if (v.isMarginNote) return MushafColors.ink;
     if (!v.isUsul) return qiraaOf(v.riwayaId).color;
+    final label = labelForRule(v.rule);
+    if (label != null) return forLabel(label);
     final d = v.description;
     if (v.rule == 'naql' || v.rule == 'naql_source' || d.contains('نقل')) {
       return naql;
@@ -45,6 +78,15 @@ abstract final class ReadingColors {
   }
 
   static Color forLabel(String label) {
+    if (label.contains('إشمام') || label == 'الإشمام') return ishmam;
+    if (label == 'ياءات الإضافة') return yaIdafa;
+    if (label == 'هاء السكت') return haSakt;
+    if (label == 'الوقف على مرسوم الخط') return rasmStop;
+    if (label == 'التقاء الساكنين') return firstSakin;
+    if (label == 'المد المتصل') return connectedMadd;
+    if (label == 'المد المنفصل') return separatedMadd;
+    if (label == 'الإدغام الكبير') return kabirIdgham;
+    if (label == 'هاء الكناية' || label == 'ميم الجمع') return silah;
     if (label == 'ياءات الزوائد') return MushafColors.green;
     if (label.contains('مد اللين المهموز')) return MushafColors.green;
     if (label == 'النقل') return naql;

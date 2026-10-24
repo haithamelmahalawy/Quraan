@@ -32,15 +32,52 @@ void main() {
     }
     expect(text(rule(10, 8, 'naql')), 'عَذَابٌ اَلِيمُۢ');
     expect(text(rule(14, 8, 'naql')), 'خَلَوِاْ اِلَىٰ');
-    expect(text(rule(107, 0, 'naql')), 'قَدِيرٌ اَلَمْ');
+    expect(text(rule(107, 0, 'naql')), 'قَدِيرٌ اَلَمۡ');
     expect(text(rule(49, 3, 'naql')), 'مِّنَ اٰلِ');
-    expect(text(rule(53, 1, 'naql')), 'وَإِذَ اٰتَيْنَا');
+    expect(text(rule(53, 1, 'naql')), 'وَإِذَ اٰتَيۡنَا');
   });
+
+  test(
+    'long alif ibdal has madd in both-word examples, not a restored hamza',
+    () {
+      final v = variants
+          .at(['warsh'], 22, 65, 16)
+          .singleWhere((v) => v.rule == 'tasheel_pair');
+      expect(hamzaPairMaddText(v, 'ان'), 'آن');
+      expect(hamzaPairMaddText(v, 'آن'), 'آن');
+      expect(hamzaPairMaddText(v, 'أَن'), isNull);
+      expect(text(v), endsWith(' آن'));
+      const short = Variant(
+        riwayaId: 'warsh',
+        surah: 2,
+        ayah: 133,
+        word: 17,
+        count: 1,
+        text: 'إِذ',
+        kind: VariantKind.hamza,
+        rule: 'tasheel_pair',
+        usulWays: ['إبدال الهمزة الثانية ألفًا مع القصر (حركتان)'],
+      );
+      expect(hamzaPairMaddText(short, 'اذ'), isNull);
+    },
+  );
+
+  test(
+    'stopping taqlil examples retain spelling without an ordinary imala dot',
+    () {
+      for (final (a, w) in [(2, 5), (213, 32), (222, 5)]) {
+        final v = rule(a, w, 'taqlil_stop');
+        expect(v.isStoppingTaqlil, isTrue);
+        expect(text(v), isNot(contains('۪')));
+        expect(text(v), contains('ى'));
+      }
+    },
+  );
 
   test('mim silah keeps each narrator’s written connection and madd', () {
     final warsh = variants.at(['warsh'], 2, 6, 4).single;
     final qunbul = variants.at(['qunbul'], 2, 6, 4).single;
-    expect(text(warsh), 'عَلَيْهِمُۥٓ');
+    expect(text(warsh), 'عَلَيۡهِمُۥٓ');
     expect(text(qunbul), 'عَلَيۡهِمُۥ');
     expect(text(warsh), isNot(text(qunbul)));
   });

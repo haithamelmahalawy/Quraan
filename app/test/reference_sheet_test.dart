@@ -5,6 +5,7 @@ import 'package:qiraat_mushaf/data/manzumat.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/models/quran.dart';
 import 'package:qiraat_mushaf/ui/reference_sheet.dart';
+import 'package:qiraat_mushaf/ui/poem_verse.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -124,36 +125,62 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('unmatched evidence shows the whole chapter automatically', (
-    tester,
-  ) async {
-    for (final (riwaya, poem) in [
-      ('warsh', Poem.shatibiyya),
-      ('ibn_wardan', Poem.durrah),
-    ]) {
-      final v = reading(
-        ayah: 1,
-        word: 0,
-        text: 'كلمةغيرموجودة',
-        riwaya: riwaya,
-      );
-      await show(tester, v, 'كلمةغيرموجودة');
-      final expected = poems.referenceOf(v, 'كلمةغيرموجودة', 2, surahs);
-      expect(expected.mention, isEmpty);
-      expect(find.text('أبيات الباب كاملة'), findsOneWidget);
-      expect(
-        find.byKey(ValueKey('${poem.name}-${expected.verses.first.n}')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(ValueKey('${poem.name}-${expected.verses.last.n}')),
-        findsOneWidget,
-      );
-      expect(find.textContaining('عرض المزيد ('), findsNothing);
-      expect(find.text('إخفاء المزيد'), findsNothing);
-    }
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'unmatched evidence previews five bayts then expands and collapses',
+    (tester) async {
+      for (final (riwaya, poem) in [
+        ('warsh', Poem.shatibiyya),
+        ('ibn_wardan', Poem.durrah),
+      ]) {
+        final v = reading(
+          ayah: 1,
+          word: 0,
+          text: 'كلمةغيرموجودة',
+          riwaya: riwaya,
+        );
+        await show(tester, v, 'كلمةغيرموجودة');
+        final expected = poems.referenceOf(v, 'كلمةغيرموجودة', 2, surahs);
+        expect(expected.mention, isEmpty);
+        final preview = expected.verses.take(5).toList();
+        expect(
+          tester
+              .widgetList<PoemVerse>(find.byType(PoemVerse))
+              .map((v) => v.bayt.n),
+          preview.map((b) => b.n),
+        );
+        if (expected.verses.length > 5) {
+          expect(find.text('أول 5 أبيات من الباب'), findsOneWidget);
+          expect(
+            find.byKey(ValueKey('${poem.name}-${expected.verses[5].n}')),
+            findsNothing,
+          );
+          final more = find.textContaining('إظهار المزيد (');
+          await tester.ensureVisible(more);
+          await tester.tap(more);
+          await tester.pumpAndSettle();
+          expect(find.text('أبيات الباب كاملة'), findsOneWidget);
+          expect(
+            tester
+                .widgetList<PoemVerse>(find.byType(PoemVerse))
+                .map((v) => v.bayt.n),
+            expected.verses.map((b) => b.n),
+          );
+          final less = find.text('إخفاء المزيد').first;
+          await tester.ensureVisible(less);
+          await tester.tap(less);
+          await tester.pumpAndSettle();
+          expect(
+            tester.widgetList<PoemVerse>(find.byType(PoemVerse)),
+            hasLength(5),
+          );
+        } else {
+          expect(find.text('أبيات الباب كاملة'), findsOneWidget);
+          expect(find.textContaining('إظهار المزيد ('), findsNothing);
+        }
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('proof and open explanation survive phone rotation', (
     tester,

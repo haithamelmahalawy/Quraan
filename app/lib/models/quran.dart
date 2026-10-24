@@ -58,6 +58,8 @@ class Variant {
     this.bookFarsh = false,
     this.bookWujuh = '',
     this.stopOnly = false,
+    this.stopText = '',
+    this.omission = false,
     this.usulText = '',
     this.usulWays = const [],
   });
@@ -78,8 +80,10 @@ class Variant {
   /// Only an explicit raw farsh omission may erase a word. A blank book note
   /// or a rule without written text is an annotation, never a Quran deletion.
   bool get canReplaceText =>
-      text.isNotEmpty ||
-      (kind == VariantKind.farsh && rule.isEmpty && description.isEmpty);
+      !stopOnly &&
+      (text.isNotEmpty ||
+          omission ||
+          (kind == VariantKind.farsh && rule.isEmpty && description.isEmpty));
   final VariantKind kind;
 
   /// How the reading differs, in Arabic: "بالتاء", "بضم الهاء", ...
@@ -110,6 +114,12 @@ class Variant {
   /// This rule applies on stopping, rather than in continuous recitation.
   final bool stopOnly;
 
+  /// Reviewed stopping form, shown in the margin without changing wasl text.
+  final String stopText;
+
+  /// An explicitly reviewed lexical omission, rather than an empty annotation.
+  final bool omission;
+
   /// Both Hafs words of a rule at a word boundary (also across ayahs).
   final String usulText;
 
@@ -131,6 +141,7 @@ class Variant {
   /// states in its farsh. Usul are told by their colour, in the page's key.
   bool get inHamesh =>
       rule == 'comparison' ||
+      rule == 'reviewed_farsh' ||
       !isUsul &&
           !(rule.isNotEmpty && rule != 'kharouf') &&
           (bookFarsh || (!isUsul && (certified || kind == VariantKind.farsh)));
@@ -166,6 +177,8 @@ class Variant {
     // Retain an explicitly reviewed ordering/wording of the book's faces.
     bookWujuh: bookWujuh.isNotEmpty ? bookWujuh : wujuh,
     stopOnly: stopOnly,
+    stopText: stopText,
+    omission: omission,
     usulText: usulText,
     usulWays: usulWays,
   );
@@ -183,6 +196,10 @@ class Variant {
           .hasMatch(description) ||
       (description.contains('بين بين') &&
           !RegExp('همز|تسهيل').hasMatch(description));
+
+  /// Lesser imala that applies only when stopping on this word.
+  bool get isStoppingTaqlil =>
+      stopOnly && isImala && description.contains('تقليل');
 
   /// Shown in green, like imala: madd al-badal.
   bool get isBadal => rule == 'badal';
@@ -214,6 +231,7 @@ class Variant {
   /// of a note at each word.
   bool get isUsul =>
       rule != 'comparison' &&
+      rule != 'reviewed_farsh' &&
       ((rule.isNotEmpty && rule != 'kharouf') ||
           (kind == VariantKind.usul && rule != 'kharouf') ||
           isQasr ||

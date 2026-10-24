@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// A small circled waw above, or ya below, the second hamza. Painting the
+/// A small circled waw/ya in the original hamza's position. Painting the
 /// annotation preserves Arabic shaping, word width and the printed lines.
 class HamzaReplacementMark extends StatelessWidget {
   const HamzaReplacementMark({
@@ -13,6 +13,7 @@ class HamzaReplacementMark extends StatelessWidget {
     required this.color,
     required this.builder,
     this.offset = 0,
+    this.originalHamza,
   });
 
   final String text, letter;
@@ -23,6 +24,12 @@ class HamzaReplacementMark extends StatelessWidget {
   /// hamza's place. The original [text] remains available for semantics.
   final Widget Function(String text, int? hiddenHamza) builder;
   final int offset;
+
+  /// Hafs-aligned source cluster before Warsh's replacement spelling.
+  final String? originalHamza;
+
+  static bool isBelow(String cluster) =>
+      cluster.startsWith('إ') || RegExp('[ٕ۪]').hasMatch(cluster);
 
   static String seatText(String text, int offset) {
     if (offset < 0 || offset >= text.length) return text;
@@ -35,7 +42,7 @@ class HamzaReplacementMark extends StatelessWidget {
         .replaceAll(RegExp('[أإٱ]'), 'ا')
         .replaceAll('ؤ', 'و')
         .replaceAll('ئ', 'ى')
-        .replaceAll(RegExp('[َُِٕ۪ٔ۬]'), '');
+        .replaceAll(RegExp('[َُِْٕ۪ٔ۬۟ۡ]'), '');
     return text.replaceRange(offset, end, seat);
   }
 
@@ -67,7 +74,11 @@ class HamzaReplacementMark extends StatelessWidget {
     final shown = seatText(text, offset);
     return Semantics(
       label:
-          '$text، ${letter == 'و' ? 'إبدال الهمزة واوًا وصلاً' : 'إبدال الهمزة ياءً وصلاً'}',
+          '$text، ${letter.isEmpty
+              ? 'تسهيل الهمزة الثانية بلا إدخال'
+              : letter == 'و'
+              ? 'إبدال الهمزة واوًا وصلاً'
+              : 'إبدال الهمزة ياءً وصلاً'}',
       excludeSemantics: true,
       child: CustomPaint(
         foregroundPainter: _ReplacementPainter(
@@ -77,6 +88,7 @@ class HamzaReplacementMark extends StatelessWidget {
           color,
           offset,
           MediaQuery.textScalerOf(context),
+          originalHamza,
         ),
         child: builder(
           shown,
@@ -97,6 +109,7 @@ class _ReplacementPainter extends CustomPainter {
     this.color,
     this.offset,
     this.textScaler,
+    this.originalHamza,
   );
 
   final String text, letter;
@@ -104,6 +117,7 @@ class _ReplacementPainter extends CustomPainter {
   final Color color;
   final int offset;
   final TextScaler textScaler;
+  final String? originalHamza;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -135,7 +149,7 @@ class _ReplacementPainter extends CustomPainter {
     }
     final box = boxes.first;
     final fontSize = textScaler.scale(style.fontSize ?? 14);
-    final diameter = fontSize * 0.30;
+    final diameter = fontSize * (letter.isEmpty ? .16 : .30);
     final lines = painter.computeLineMetrics();
     final line = lines.firstWhere(
       (l) => box.top <= l.baseline && box.bottom >= l.baseline,
@@ -143,15 +157,18 @@ class _ReplacementPainter extends CustomPainter {
     );
     // A selection box covers the line's font metrics, not the hamza's ink.
     // Anchor to the alif's baseline instead of the top/bottom of that box.
+    final hamza = originalHamza ?? text.substring(offset, end);
     final center = Offset(
       (box.left + box.right) / 2,
       line.baseline +
           fontSize *
-              (text[offset] == 'ء'
+              (hamza.startsWith('ء')
                   ? -0.12
-                  : letter == 'و'
-                  ? -0.83
-                  : 0.15),
+                  : HamzaReplacementMark.isBelow(hamza)
+                  ? 0.15
+                  : letter.isEmpty && RegExp('^[ؤئ]').hasMatch(hamza)
+                  ? -.48
+                  : -0.83),
     );
     canvas.drawCircle(
       center,
@@ -161,23 +178,25 @@ class _ReplacementPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = math.max(0.5, diameter * 0.065),
     );
-    final glyph = TextPainter(
-      text: TextSpan(
-        text: letter,
-        style: TextStyle(
-          fontFamily: 'Hafs',
-          fontSize: diameter * 0.83,
-          height: 1,
-          color: color,
+    if (letter.isNotEmpty) {
+      final glyph = TextPainter(
+        text: TextSpan(
+          text: letter,
+          style: TextStyle(
+            fontFamily: 'Hafs',
+            fontSize: diameter * 0.83,
+            height: 1,
+            color: color,
+          ),
         ),
-      ),
-      textDirection: TextDirection.rtl,
-    )..layout();
-    glyph.paint(canvas, center - Offset(glyph.width / 2, glyph.height / 2));
-    glyph.dispose();
-    final vowel = RegExp('[َُِ]')
-        .firstMatch(text.substring(offset, end))
-        ?.group(0);
+        textDirection: TextDirection.rtl,
+      )..layout();
+      glyph.paint(canvas, center - Offset(glyph.width / 2, glyph.height / 2));
+      glyph.dispose();
+    }
+    final vowel =
+        RegExp('[َُِ]').firstMatch(text.substring(offset, end))?.group(0) ??
+        RegExp('[َُِ]').firstMatch(hamza)?.group(0);
     if (vowel != null) {
       final below = vowel == 'ِ';
       final markSize = fontSize * 0.64;
@@ -221,5 +240,6 @@ class _ReplacementPainter extends CustomPainter {
       style != old.style ||
       color != old.color ||
       offset != old.offset ||
+      originalHamza != old.originalHamza ||
       textScaler != old.textScaler;
 }

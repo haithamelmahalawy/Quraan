@@ -27,6 +27,36 @@ import 'page_slider.dart';
 import 'theme.dart';
 import 'variant_sheet.dart';
 
+/// Collapses in the layout, keeping the bars outside Quran lines and giving
+/// the landscape margin the same available height as the printed page.
+class _CollapsibleReaderBar extends StatelessWidget {
+  const _CollapsibleReaderBar({required this.open, required this.child});
+
+  final bool open;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(end: open ? 1 : 0),
+    duration: const Duration(milliseconds: 320),
+    curve: Curves.easeInOutCubic,
+    child: ExcludeSemantics(
+      excluding: !open,
+      child: ExcludeFocus(
+        excluding: !open,
+        child: IgnorePointer(ignoring: !open, child: child),
+      ),
+    ),
+    builder: (context, value, child) => ClipRect(
+      child: Align(
+        alignment: Alignment.topCenter,
+        heightFactor: value,
+        child: child,
+      ),
+    ),
+  );
+}
+
 class ReaderScreen extends StatefulWidget {
   const ReaderScreen({
     super.key,
@@ -86,6 +116,8 @@ class _ReaderScreenState extends State<ReaderScreen>
   Timer? _settle;
 
   bool _landscape = false;
+  bool _topBarOpen = false;
+  bool _bottomBarOpen = false;
   bool get _twoPages => widget.settings.twoPages && !_landscape;
 
   @override
@@ -95,6 +127,8 @@ class _ReaderScreenState extends State<ReaderScreen>
         MediaQuery.orientationOf(context) == Orientation.landscape;
     if (landscape == _landscape) return;
     _landscape = landscape;
+    _topBarOpen = false;
+    _bottomBarOpen = false;
     // Landscape reads a single enlarged page in sections. Keep the saved
     // spread preference for portrait and retain the current page number.
     _pager = GlobalKey<BookPagerState>();
@@ -491,214 +525,253 @@ class _ReaderScreenState extends State<ReaderScreen>
       );
     }
 
-    // The page takes the whole screen; a slim row of small controls stays
-    // above it.
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // The controls, raised above the page; those that do not fit
-            // scroll sideways, the page's place stays in view.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
-              child: Raised(
-                radius: 26,
-                depth: 0.8,
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: SizedBox(
-                  height: 38,
+    final topBar = Padding(
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+      child: Raised(
+        radius: 26,
+        depth: 0.8,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: SizedBox(
+          height: 38,
+          child: Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              RaisedIcon(
-                                icon: Icons.home_rounded,
-                                tooltip: 'الصفحة الرئيسية',
-                                onTap: () =>
-                                    Navigator.of(context)
-                                        .popUntil((route) => route.isFirst),
-                              ),
-                              // Madinah or Shamarly, at the place read.
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 3,
-                                ),
-                                child: Raised(
-                                  radius: 19,
-                                  depth: 0.6,
-                                  tooltip: 'التبديل بين مصحف المدينة والشمرلي',
-                                  onTap: () => _setEdition(
-                                    _edition == MushafEdition.madani
-                                        ? MushafEdition.shamarly
-                                        : MushafEdition.madani,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 8,
-                                  ),
-                                  child: Text(
-                                    _edition == MushafEdition.madani
-                                        ? 'المدينة'
-                                        : 'الشمرلي',
-                                    style: TextStyle(
-                                      color: MushafColors.green,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              RiwayatMenu(
-                                settings: widget.settings,
-                                variants: widget.variants,
-                              ),
-                              RaisedIcon(
-                                icon: Icons.search_rounded,
-                                tooltip: 'بحث',
-                                onTap: () async {
-                                  final page = await Navigator.of(context)
-                                      .push<int>(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              SearchScreen(quran: _quran),
-                                        ),
-                                      );
-                                  if (page != null) _goToPage(page);
-                                },
-                              ),
-                              RaisedIcon(
-                                icon: Icons.format_list_bulleted_rounded,
-                                tooltip: 'فهرس السور',
-                                onTap: () async {
-                                  final page = await Navigator.of(context)
-                                      .push<int>(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              SurahIndex(quran: _quran),
-                                        ),
-                                      );
-                                  if (page != null) _goToPage(page);
-                                },
-                              ),
-                              if (!_landscape)
-                                RaisedIcon(
-                                  icon: two
-                                      ? Icons.crop_portrait_rounded
-                                      : Icons.auto_stories_rounded,
-                                  tooltip: two
-                                      ? 'صفحة واحدة'
-                                      : 'صفحتان متقابلتان',
-                                  onTap: () {
-                                    setState(() {
-                                      _pager = GlobalKey<BookPagerState>();
-                                      _zoomed = false;
-                                    });
-                                    widget.settings.twoPages = !two;
-                                  },
-                                ),
-                              RaisedIcon(
-                                icon: widget.settings.showMutashabihat
-                                    ? Icons.highlight_rounded
-                                    : Icons.highlight_off_rounded,
-                                tooltip: widget.settings.showMutashabihat
-                                    ? 'إخفاء تظليل المتشابهات'
-                                    : 'إظهار تظليل المتشابهات',
-                                color: widget.settings.showMutashabihat
-                                    ? MushafColors.gold
-                                    : null,
-                                onTap: () => widget.settings.showMutashabihat =
-                                    !widget.settings.showMutashabihat,
-                              ),
-                              // The double blink: turns the front camera on
-                              // or off.
-                              RaisedIcon(
-                                icon: widget.settings.blinkToOpen
-                                    ? Icons.remove_red_eye_rounded
-                                    : Icons.visibility_off_outlined,
-                                tooltip: widget.settings.blinkToOpen
-                                    ? 'إيقاف التقليب بالرمش مرتين'
-                                    : 'التقليب بالرمش مرتين (الكاميرا الأمامية)',
-                                color: widget.settings.blinkToOpen
-                                    ? MushafColors.gold
-                                    : null,
-                                onTap: () => widget.settings.blinkToOpen =
-                                    !widget.settings.blinkToOpen,
-                              ),
-                              // «تنبيه الاختلافات»: the words that differ
-                              // from Hafs move, in the way chosen.
-                              RaisedIcon(
-                                icon: Icons.notifications_active_rounded,
-                                tooltip: 'تنبيه الاختلافات',
-                                color: widget.settings.diffAlert != null
-                                    ? MushafColors.gold
-                                    : null,
-                                onTap: _chooseDiffAlert,
-                              ),
-                              RaisedIcon(
-                                icon: Icons.fullscreen_rounded,
-                                tooltip: 'ملء الشاشة',
-                                onTap: () => _setFullScreen(true),
-                              ),
-                              if (_loading)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 8),
-                                  child: SizedBox.square(
-                                    dimension: 14,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
+                      RaisedIcon(
+                        icon: Icons.home_rounded,
+                        tooltip: 'الصفحة الرئيسية',
+                        onTap: () =>
+                            Navigator.of(context)
+                                .popUntil((route) => route.isFirst),
                       ),
-                      if (widget.settings.blinkToOpen && _blink.isRunning)
-                        _EyeIndicator(blink: _blink, flash: _blinkFlash),
-                      if (!two && !_turning)
-                        Tooltip(
-                          message: _quran.isRightPage(_page)
-                              ? 'الصفحة في يمين المصحف'
-                              : 'الصفحة في يسار المصحف',
-                          child: GestureDetector(
-                            onTap: () => _showSide(fly: true),
-                            child: OpenMushafView(
-                              right: _quran.isRightPage(_page),
-                              width: 44,
-                              current: _currentPicture,
-                              facing: _facingPicture,
+                      // Madinah or Shamarly, at the place read.
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Raised(
+                          radius: 19,
+                          depth: 0.6,
+                          tooltip: 'التبديل بين مصحف المدينة والشمرلي',
+                          onTap: () => _setEdition(
+                            _edition == MushafEdition.madani
+                                ? MushafEdition.shamarly
+                                : MushafEdition.madani,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            _edition == MushafEdition.madani
+                                ? 'المدينة'
+                                : 'الشمرلي',
+                            style: TextStyle(
+                              color: MushafColors.green,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                      const SizedBox(width: 4),
-                      Raised(
-                        color: MushafColors.green,
-                        radius: 19,
-                        depth: 0.6,
-                        tooltip: 'اختر صفحة',
-                        onTap: _pickPage,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                      ),
+                      RiwayatMenu(
+                        settings: widget.settings,
+                        variants: widget.variants,
+                      ),
+                      RaisedIcon(
+                        icon: Icons.search_rounded,
+                        tooltip: 'بحث',
+                        onTap: () async {
+                          final page = await Navigator.of(context).push<int>(
+                            MaterialPageRoute(
+                              builder: (_) => SearchScreen(quran: _quran),
+                            ),
+                          );
+                          if (page != null) _goToPage(page);
+                        },
+                      ),
+                      RaisedIcon(
+                        icon: Icons.format_list_bulleted_rounded,
+                        tooltip: 'فهرس السور',
+                        onTap: () async {
+                          final page = await Navigator.of(context).push<int>(
+                            MaterialPageRoute(
+                              builder: (_) => SurahIndex(quran: _quran),
+                            ),
+                          );
+                          if (page != null) _goToPage(page);
+                        },
+                      ),
+                      if (!_landscape)
+                        RaisedIcon(
+                          icon: two
+                              ? Icons.crop_portrait_rounded
+                              : Icons.auto_stories_rounded,
+                          tooltip: two ? 'صفحة واحدة' : 'صفحتان متقابلتان',
+                          onTap: () {
+                            setState(() {
+                              _pager = GlobalKey<BookPagerState>();
+                              _zoomed = false;
+                            });
+                            widget.settings.twoPages = !two;
+                          },
                         ),
-                        child: Text(
-                          'ص $_page',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                      RaisedIcon(
+                        icon: widget.settings.showMutashabihat
+                            ? Icons.highlight_rounded
+                            : Icons.highlight_off_rounded,
+                        tooltip: widget.settings.showMutashabihat
+                            ? 'إخفاء تظليل المتشابهات'
+                            : 'إظهار تظليل المتشابهات',
+                        color: widget.settings.showMutashabihat
+                            ? MushafColors.gold
+                            : null,
+                        onTap: () => widget.settings.showMutashabihat =
+                            !widget.settings.showMutashabihat,
+                      ),
+                      // The double blink: turns the front camera on
+                      // or off.
+                      RaisedIcon(
+                        icon: widget.settings.blinkToOpen
+                            ? Icons.remove_red_eye_rounded
+                            : Icons.visibility_off_outlined,
+                        tooltip: widget.settings.blinkToOpen
+                            ? 'إيقاف التقليب بالرمش مرتين'
+                            : 'التقليب بالرمش مرتين (الكاميرا الأمامية)',
+                        color: widget.settings.blinkToOpen
+                            ? MushafColors.gold
+                            : null,
+                        onTap: () => widget.settings.blinkToOpen =
+                            !widget.settings.blinkToOpen,
+                      ),
+                      // «تنبيه الاختلافات»: the words that differ
+                      // from Hafs move, in the way chosen.
+                      RaisedIcon(
+                        icon: Icons.notifications_active_rounded,
+                        tooltip: 'تنبيه الاختلافات',
+                        color: widget.settings.diffAlert != null
+                            ? MushafColors.gold
+                            : null,
+                        onTap: _chooseDiffAlert,
+                      ),
+                      RaisedIcon(
+                        icon: Icons.fullscreen_rounded,
+                        tooltip: 'ملء الشاشة',
+                        onTap: () => _setFullScreen(true),
+                      ),
+                      if (_loading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: SizedBox.square(
+                            dimension: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
               ),
-            ),
+              if (widget.settings.blinkToOpen && _blink.isRunning)
+                _EyeIndicator(blink: _blink, flash: _blinkFlash),
+              if (!two && !_turning)
+                Tooltip(
+                  message: _quran.isRightPage(_page)
+                      ? 'الصفحة في يمين المصحف'
+                      : 'الصفحة في يسار المصحف',
+                  child: GestureDetector(
+                    onTap: () => _showSide(fly: true),
+                    child: OpenMushafView(
+                      right: _quran.isRightPage(_page),
+                      width: 44,
+                      current: _currentPicture,
+                      facing: _facingPicture,
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 4),
+              Raised(
+                color: MushafColors.green,
+                radius: 19,
+                depth: 0.6,
+                tooltip: 'اختر صفحة',
+                onTap: _pickPage,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Text(
+                  'ص $_page',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final bottomBar = PageSlider(quran: _quran, page: _page, onGo: _goToPage);
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            if (_landscape) ...[
+              _CollapsibleReaderBar(open: _topBarOpen, child: topBar),
+              _barHandle(top: true),
+            ] else
+              topBar,
             Expanded(child: pages),
-            PageSlider(quran: _quran, page: _page, onGo: _goToPage),
+            if (_landscape) ...[
+              _barHandle(top: false),
+              _CollapsibleReaderBar(open: _bottomBarOpen, child: bottomBar),
+            ] else
+              bottomBar,
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _barHandle({required bool top}) {
+    final open = top ? _topBarOpen : _bottomBarOpen;
+    final label = top ? 'الشريط العلوي' : 'شريط التنقل السفلي';
+    return SizedBox(
+      height: 24,
+      child: Center(
+        child: Semantics(
+          button: true,
+          expanded: open,
+          child: Material(
+            color: MushafColors.green.withAlpha(24),
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              key: ValueKey(top ? 'top-bar-toggle' : 'bottom-bar-toggle'),
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => setState(() {
+                if (top) {
+                  _topBarOpen = !open;
+                } else {
+                  _bottomBarOpen = !open;
+                }
+              }),
+              child: Tooltip(
+                message: '${open ? 'إخفاء' : 'إظهار'} $label',
+                child: SizedBox(
+                  width: 48,
+                  height: 24,
+                  child: Icon(
+                    top == open
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: 22,
+                    color: MushafColors.green,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -195,7 +195,9 @@ class _ReadingReferenceState extends State<_ReadingReference> {
       for (final b in r.verses)
         if (r.mention.contains(b.n)) b,
     ];
-    final shown = _whole || named.isEmpty ? r.verses : named;
+    final preview = named.isEmpty ? r.verses.take(5).toList() : named;
+    final canExpand = preview.length < r.verses.length;
+    final shown = _whole ? r.verses : preview;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -238,8 +240,13 @@ class _ReadingReferenceState extends State<_ReadingReference> {
               'الدليل المقتبس في التسهيل لقراءات التنزيل',
               style: TextStyle(color: MushafColors.green, fontSize: 12),
             ),
-          if (named.isEmpty) const Text('أبيات الباب كاملة'),
-          if (_whole && named.isNotEmpty && named.length < r.verses.length)
+          if (named.isEmpty)
+            Text(
+              _whole || !canExpand
+                  ? 'أبيات الباب كاملة'
+                  : 'أول 5 أبيات من الباب',
+            ),
+          if (_whole && canExpand)
             TextButton.icon(
               onPressed: () => setState(() => _whole = false),
               icon: const Icon(Icons.unfold_less),
@@ -253,14 +260,15 @@ class _ReadingReferenceState extends State<_ReadingReference> {
               explanation: widget.manzumat.explanation(r.poem, b.n),
               bookExplanation: r.bookExplanation[b.n] ?? '',
             ),
-          if (named.isNotEmpty && named.length < r.verses.length)
+          if (canExpand)
             TextButton.icon(
               onPressed: () => setState(() => _whole = !_whole),
               icon: Icon(_whole ? Icons.unfold_less : Icons.unfold_more),
               label: Text(
                 _whole
                     ? 'إخفاء المزيد'
-                    : 'عرض المزيد (${r.verses.length - named.length} بيتًا من الباب)',
+                    : '${named.isEmpty ? 'إظهار المزيد' : 'عرض المزيد'} '
+                          '(${r.verses.length - preview.length} بيتًا من الباب)',
               ),
             ),
         ],

@@ -1,0 +1,23 @@
+{
+  "sourceRows": 1469,
+  "sourceExactAlignment": 1461,
+  "sourceReviewedSpecialAlignment": 8,
+  "unknownLegacyGlyphs": 0,
+  "multiHafsLines": 41,
+  "multiReadingLines": 137,
+  "farshMultiReadingLines": 46,
+  "alternativeReadingCells": 22,
+  "manifest": {
+    "sourceRows": 722,
+    "ready": 721,
+    "unresolved": 0,
+    "reclassifyUsul": 1,
+    "variants": {
+      "hisham": 734,
+      "ibn_dhakwan": 734
+    },
+    "canonicalReuses": 869
+  },
+  "conflictingSamePosition": [],
+  "contradictoryVowels": []
+}

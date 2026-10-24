@@ -8,6 +8,7 @@ import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
+import 'package:qiraat_mushaf/data/usul_text.dart';
 import 'package:qiraat_mushaf/models/quran.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
 import 'package:qiraat_mushaf/ui/mushaf_lines.dart';
@@ -148,7 +149,7 @@ void main() {
             a[1] as int,
             w,
           )!;
-          expect(shown, contains('شَيْـٔ'), reason: '${a[0]}:${a[1]}:$w');
+          expect(shown, contains('شَيۡـٔ'), reason: '${a[0]}:${a[1]}:$w');
           expect(lettersOf(shown).map((l) => l[0]), ['ش', 'ي', 'ـ', 'ا']);
           checked++;
         }
@@ -194,7 +195,7 @@ void main() {
     await showPage(t, 34);
     for (final w in [9, 16]) {
       final ink = t.widget<InkText>(find.byKey(ValueKey('word:2:216:$w')));
-      expect(ink.text, 'شَيْـٔاٗ');
+      expect(ink.text, 'شَيۡـٔاٗ');
       expect(
         ink.parts!.where((p) => p.$1.startsWith('ي')).single.$2,
         MushafColors.green,
@@ -252,12 +253,27 @@ void main() {
               reason: 'duplicate word on page $p: $key',
             );
             final shown = display(ayah, w);
+            final rawSource = variants.sourceTextAt(
+              'warsh',
+              ayah.surah,
+              ayah.number,
+              w,
+            )!;
+            final marked = variants
+                .at(['warsh'], ayah.surah, ayah.number, w)
+                .map((v) => hamzaPairMaddText(v, rawSource))
+                .whereType<String>()
+                .firstOrNull;
             expect(
               shown?.text ?? '',
-              variants.sourceTextAt('warsh', ayah.surah, ayah.number, w),
+              marked ?? rawSource,
               reason: 'page $p ${ayah.surah}:${ayah.number}:$w',
             );
-            (actual[ayah.surah] ??= StringBuffer()).write(shown?.text ?? '');
+            // Only the explicitly tested display madd is additional to the
+            // archived source; all other letters and marks remain exact.
+            (actual[ayah.surah] ??= StringBuffer()).write(
+              marked == null ? shown?.text ?? '' : rawSource,
+            );
             words++;
           }
         }

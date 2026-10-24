@@ -2,6 +2,23 @@ import '../models/quran.dart';
 import 'arabic.dart';
 import 'variant_repository.dart';
 
+/// The source's bare initial alif records the ibdal face. A long ibdal before
+/// a sakin needs its madd sign; a facilitated/retained hamza must stay intact.
+String? hamzaPairMaddText(Variant reading, String source) {
+  if (reading.riwayaId != 'warsh' ||
+      reading.rule != 'tasheel_pair' ||
+      !reading.usulWays.any(
+        (way) =>
+            way.contains('إبدال الهمزة الثانية ألفًا') &&
+            way.contains('المد المشبع'),
+      )) {
+    return null;
+  }
+  final letters = lettersOf(source);
+  if (letters.isEmpty || !RegExp(r'^آ?$').hasMatch(letters.first)) return null;
+  return ['آ', ...letters.skip(1)].join();
+}
+
 /// A margin example is always written in its own narrator's reading,
 /// independently of the narrator selected for the main page. The stored
 /// context identifies a boundary; it is not the text to display unchanged.
@@ -15,6 +32,7 @@ String usulReadingText(
       variants.at([reading.riwayaId], a.surah, a.number, w);
 
   String example(Variant v, String hafs) {
+    if (v.stopOnly && v.stopText.isNotEmpty) return v.stopText;
     final actual = v.text.isNotEmpty
         ? v
         : at(ayah, v.word)
@@ -26,12 +44,20 @@ String usulReadingText(
               )
               .firstOrNull;
     var text = actual?.text ?? hafs;
+    final source = variants.sourceTextAt(
+      v.riwayaId,
+      ayah.surah,
+      ayah.number,
+      v.word,
+    );
+    if (source != null) text = hamzaPairMaddText(v, source) ?? text;
     // The small vowel belongs to the riwaya's spelling as on the main page.
     text = withNaqlVowel(text, hafs);
     text = _silah(text, v.shownDescription);
     if (actual != null && actual != v) {
       text = _silah(text, actual.shownDescription);
     }
+    if (v.isStoppingTaqlil) return text.replaceAll(RegExp('[۪ٜ]'), '');
     return v.isImala ? withImalaSign(text, v.text) : text;
   }
 

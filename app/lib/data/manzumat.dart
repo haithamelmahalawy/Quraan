@@ -268,9 +268,36 @@ class Manzumat {
 
   /// Verified rule statements for cases where the book has no quotation.
   /// No chapter-wide fallback: the rest remains available under “more”.
+  bool _anaWasl(Variant v) {
+    final word = v.text.trim().split(RegExp(r'\s+')).first;
+    final d = v.shownDescription.replaceAll(RegExp('[ً-ٰٟ]'), '');
+    return const {'warsh', 'qalun'}.contains(v.riwayaId) &&
+        _letters(word) == 'انا' &&
+        (d.contains('مد') || RegExp('إثبات.*ألف.*أنا').hasMatch(d));
+  }
+
   Set<int> _ruleVerses(Poem poem, Variant v) {
     final d = v.shownDescription;
+    if (poem == Poem.shatibiyya && _anaWasl(v)) return {521};
     if (poem == Poem.durrah) {
+      if (const {'ruways', 'rawh'}.contains(v.riwayaId)) {
+        final specific = switch (v.rule) {
+          'ishmam' when v.riwayaId == 'ruways' => <int>{62, 63},
+          'ha_damir' => <int>{11, 12},
+          'mim_jam' => <int>{13},
+          'madd_munfasil' || 'madd_muttasil' => <int>{22},
+          'imala' || 'fath' => <int>{44, 45},
+          'ha_silah' || 'ha_kinaya' => <int>{18, 19, 20, 21},
+          'no_sakt' => <int>{37},
+          'naql' when v.surah == 55 && v.ayah == 54 => <int>{37},
+          'idgham_saghir' when v.surah == 36 || v.surah == 68 => <int>{41},
+          'idgham_saghir' => <int>{40},
+          'idgham_kabir' when v.surah == 27 => <int>{15, 16},
+          'idgham_kabir' => <int>{14, 15},
+          _ => <int>{},
+        };
+        if (specific.isNotEmpty) return specific;
+      }
       return switch (v.rule) {
         'tasheel_word' => {23},
         'tasheel_pair' || 'ibdal_waw' || 'ibdal_ya' => {27},
@@ -294,7 +321,7 @@ class Manzumat {
         case 'taghliz':
           return {359, 360};
         case 'tasheel_word':
-          return {183, 184};
+          return v.usulWays.length == 1 ? {183} : {183, 184};
         case 'tasheel_pair':
           return {206};
         case 'ibdal_waw':
@@ -312,9 +339,23 @@ class Manzumat {
   /// The chapter of the usul a reading belongs to, by its rule or by the
   /// words of its description.
   String? _usulChapter(Poem poem, Variant v) {
+    if (poem == Poem.durrah &&
+        const {'ruways', 'rawh'}.contains(v.riwayaId) &&
+        v.isUsul) {
+      final evidence = _ruleVerses(poem, v);
+      if (evidence.isNotEmpty) {
+        return verses(poem).firstWhere((b) => evidence.contains(b.n)).chapter;
+      }
+    }
+    if (poem == Poem.shatibiyya && _anaWasl(v)) {
+      return verses(poem).firstWhere((b) => b.n == 521).chapter;
+    }
     final d = v.shownDescription;
     final topics = <String>[
       if (v.rule == 'ya_zaida') 'الزوائد',
+      if (v.rule == 'ya_idafa') 'الإضافة',
+      if (const {'rasm_stop', 'waqf_rasm', 'ha_sakt'}.contains(v.rule))
+        'المرسوم',
       if (v.rule == 'naql') 'نقل',
       if (v.rule == 'tasheel_word' || v.rule == 'hamza_wasl')
         'الهمزتين من كلمة',

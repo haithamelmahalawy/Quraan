@@ -57,7 +57,29 @@ String madinahScript(String text, {String? followingWord}) {
   }
   // Initial ya here is a prefix, not an intrinsically doubled letter.
   // Keep the Madinah spelling when the source marks the boundary ghunna.
-  return shown.replaceAllMapped(_yartadid, (m) => '${m[1]}يَ');
+  return _madaniSukun(shown.replaceAllMapped(_yartadid, (m) => '${m[1]}يَ'));
+}
+
+/// The Hafs font distinguishes jazm (head of kha) from the round zero on
+/// unpronounced letters. Maghribi text uses the round Unicode sukun also
+/// for pronounced consonants; do not confuse it with its silent carriers.
+String _madaniSukun(String text) {
+  final cs = lettersOf(text);
+  for (var i = 0; i < cs.length; i++) {
+    final c = cs[i];
+    if (!c.contains('ْ')) continue;
+    final before = i > 0 ? cs[i - 1] : '';
+    final silent =
+        c.startsWith('ا') ||
+        c.startsWith('و') && before.startsWith('أ') && before.contains('ُ') ||
+        c.startsWith('ي') && before.startsWith('إ') && before.contains('ِ');
+    if (silent) continue;
+    final madd =
+        c.startsWith('و') && before.contains('ُ') ||
+        (c.startsWith('ي') || c.startsWith('ى')) && before.contains('ِ');
+    cs[i] = c.replaceAll('ْ', madd ? '' : 'ۡ');
+  }
+  return cs.join();
 }
 
 // In Madinah notation a nun assimilated into the next word is bare.
@@ -185,7 +207,16 @@ const _alefs = 'اٱ';
 /// of a word: the lam of al before its hamza (وَبِالَاخِرَةِ), or with
 /// [last], the last letter of a word followed by the hamza (وَلَقَدَ ءَاتَيۡنَا).
 int? naqlLetter(List<String> letters, {bool last = false}) {
-  if (last) return letters.isEmpty ? null : letters.length - 1;
+  if (last) {
+    // In naql after tanween the pronounced nun belongs to the tanween,
+    // not to the silent final alif of a word such as مريضًا.
+    final tanween = letters.lastIndexWhere(
+      (l) => RegExp('[ًٌٍٖٗٞ]').hasMatch(l),
+    );
+    return tanween >= 0
+        ? tanween
+        : (letters.isEmpty ? null : letters.length - 1);
+  }
   for (var i = 1; i + 1 < letters.length; i++) {
     if (letters[i].startsWith('ل') &&
         (_alefs.contains(letters[i - 1][0]) ||
@@ -226,17 +257,69 @@ int? badalLetter(List<String> letters) {
   return null;
 }
 
+/// A fatha/damma ra, including their tanween encodings. Kasra and kasratan
+/// are shared natural tarqiq and cannot identify a Warsh difference.
+bool isOpenRa(String cluster) =>
+    cluster.startsWith('ر') &&
+    !RegExp('[ٍࣲِٖ]').hasMatch(cluster) &&
+    RegExp('[ًࣰٌࣱَُٗٞ]').hasMatch(cluster);
+
 /// The ra read with tarqiq among [letters]: the last ra with a fatha, damma
-/// or tanween (وَبِالَاخِرَةِ, خَيۡرٞ).
+/// or their tanween (وَبِالَاخِرَةِ, خَيۡرٞ).
 int? raLetter(List<String> letters) {
   for (var i = letters.length - 1; i > 0; i--) {
     final l = letters[i];
-    if (l.startsWith('ر') &&
-        RegExp('[\u064B-\u064F\u08F0-\u08F2]').hasMatch(l)) {
+    // Maghribi exports can attach fathatan to the silent final alif,
+    // e.g. خَيْراٗ. The vowel still belongs to the preceding ra.
+    final finalFathatan =
+        i + 1 == letters.length - 1 &&
+        RegExp(r'^ا[ًࣰٗ][ۖ-ۭ]*$').hasMatch(letters[i + 1]);
+    if (isOpenRa(finalFathatan ? '$l${letters[i + 1]}' : l)) {
       return i;
     }
   }
   return null;
+}
+
+/// Warsh's automatic tarqiq, evaluated on the word after lexical changes.
+bool hasWarshTarqiq(String word) {
+  final bare = String.fromCharCodes(
+    word.runes.where(
+      (c) =>
+          c >= 0x0621 &&
+          c <= 0x064A &&
+          c != 0x0640 &&
+          !'ءئأإآاؤ'.runes.contains(c),
+    ),
+  );
+  if (RegExp('برهي?م').hasMatch(bare) ||
+      bare.contains('عمرن') ||
+      bare.contains('سريل')) {
+    return false;
+  }
+  final cs = lettersOf(word);
+  const high = 'صضطظقغ';
+  for (var r = 1; r < cs.length; r++) {
+    final tailTanween =
+        r + 1 == cs.length - 1 && RegExp(r'^ا[ًࣰٗ][ۖ-ۭ]*$').hasMatch(cs[r + 1]);
+    if (!isOpenRa(tailTanween ? '${cs[r]}${cs[r + 1]}' : cs[r])) continue;
+    if (cs.skip(r + 1).any((c) => high.contains(c[0]))) continue;
+    if (r + 2 < cs.length &&
+        cs[r + 1].startsWith('ا') &&
+        cs[r + 2].startsWith('ر')) {
+      continue;
+    }
+    final p = cs[r - 1];
+    if (p.contains('ِ') && !(r == 1 && 'بل'.contains(p[0]))) return true;
+    if (p.startsWith('ي') && !RegExp('[َُِ]').hasMatch(p)) return true;
+    if (r >= 2 &&
+        RegExp('[ْۡ]').hasMatch(p) &&
+        !high.contains(p[0]) &&
+        cs[r - 2].contains('ِ')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /// The lam read with taghliz among [letters]: a lam with a fatha after a

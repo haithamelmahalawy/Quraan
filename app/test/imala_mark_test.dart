@@ -63,7 +63,7 @@ void main() {
         expect(ys, isNotEmpty);
         expect(
           ys.reduce((a, b) => a < b ? a : b),
-          greaterThan(100 + baseline + 40 * scale * .25),
+          greaterThan(100 + baseline + 40 * scale * .38),
         );
         raster!.dispose();
         picture.dispose();

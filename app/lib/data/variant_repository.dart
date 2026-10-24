@@ -151,6 +151,10 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
       rule: v.length > 7 ? v[7] as String : '',
       bookWujuh: v.length > 8 ? (v[8] as Map)['wujuh'] as String? ?? '' : '',
       stopOnly: v.length > 8 && (v[8] as Map)['stopOnly'] == true,
+      stopText: v.length > 8
+          ? madinahScript((v[8] as Map)['stopText'] as String? ?? '')
+          : '',
+      omission: v.length > 8 && (v[8] as Map)['omission'] == true,
       usulText: v.length > 8 ? (v[8] as Map)['context'] as String? ?? '' : '',
       usulWays: v.length > 8
           ? ((v[8] as Map)['ways'] as List? ?? const []).cast<String>()
@@ -165,7 +169,13 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
           .add(variant);
     }
   }
-  if (book != null) _certify(id, index, book);
+  // Independently reviewed source files replace their old annotations. Mixing
+  // in the legacy book here would restore removed rules and wrong attributions.
+  if (book != null &&
+      json['reviewedUsul'] != true &&
+      json['reviewedFarsh'] != true) {
+    _certify(id, index, book);
+  }
   return index;
 }
 
