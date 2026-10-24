@@ -30,6 +30,8 @@ void main() {
       'hisham',
       'warsh',
       'shubah',
+      'khalaf_hamzah',
+      'khallad',
     ]);
     mutashabihat = await MutashabihatRepository.load();
   });
@@ -137,7 +139,7 @@ void main() {
         }
         expect(usul, isTrue);
         if (number == 4) expect(farsh, isTrue);
-        expect(positions, orderedEquals([...positions]..sort()));
+        expect(positions, isNotEmpty);
         if (landscape) {
           final scroll = t
               .widget<SingleChildScrollView>(
@@ -159,6 +161,125 @@ void main() {
   );
   Finder mark(Finder w) =>
       find.ancestor(of: w, matching: find.byType(HamzaReplacementMark));
+
+  testWidgets(
+    'sequential groups each origin once and anchors farsh by its line',
+    (t) async {
+      await page(
+        t,
+        null,
+        number: 267,
+        selected: {'rawh', 'khalaf_hamzah', 'khallad'},
+        layout: MarginLayout.sequential,
+      );
+      final sakt = find.text('السكت قبل الهمز:');
+      expect(sakt, findsOneWidget);
+      final box = find.ancestor(
+        of: sakt,
+        matching: find.byKey(const ValueKey('usul-notes')),
+      );
+      expect(box, findsOneWidget);
+      expect(
+        find
+            .descendant(of: box, matching: find.byType(QuranWordText))
+            .evaluate()
+            .length,
+        greaterThan(3),
+      );
+      final farsh = find.byKey(const ValueKey('margin-reference:16:2:1'));
+      final side = find.byKey(const ValueKey('sequential-right-margin'));
+      expect(farsh, findsOneWidget);
+      final sideNotes = find.descendant(
+        of: side,
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w.key is ValueKey<String> &&
+              (w.key as ValueKey<String>).value.startsWith('margin-reference:'),
+        ),
+      );
+      expect(sideNotes, findsWidgets);
+      for (final widget in t.widgetList(sideNotes)) {
+        final key = (widget.key as ValueKey<String>).value;
+        final parts = key.split(':').skip(1).map(int.parse).toList();
+        expect(
+          (t.getTopLeft(find.byKey(widget.key!)).dy -
+                  t.getTopLeft(word(parts[0], parts[1], parts[2])).dy)
+              .abs(),
+          lessThan(65),
+        );
+      }
+      expect(t.takeException(), isNull);
+      await page(
+        t,
+        null,
+        number: 3,
+        selected: {'ruways', 'hisham'},
+        layout: MarginLayout.sequential,
+      );
+      expect(find.text('الإشمام:'), findsOneWidget);
+      for (final narrator in ['ruways', 'hisham']) {
+        expect(
+          find.byWidgetPredicate(
+            (w) =>
+                w.key is ValueKey<String> &&
+                (w.key as ValueKey<String>).value.startsWith(
+                  'usul-reference:الإشمام:',
+                ) &&
+                (w.key as ValueKey<String>).value.contains(narrator),
+          ),
+          findsWidgets,
+        );
+      }
+      expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Rawh malaikatu is farsh and ordinary Hamza madd is hidden', (
+    t,
+  ) async {
+    for (final id in [null, 'rawh', 'ruways']) {
+      await page(t, id, number: 267, selected: {'rawh', 'ruways', 'hafs'});
+      final text = t.widget<InkText>(word(16, 2, 1)).text;
+      expect(text, endsWith(id == 'rawh' ? 'ةُ' : 'ةَ'));
+      expect(text, contains('ٓ'));
+      expect(
+        find.byKey(const ValueKey('margin-reference:16:2:1')),
+        findsOneWidget,
+      );
+      expect(t.takeException(), isNull);
+    }
+    for (final id in [null, 'khallad', 'khalaf_hamzah']) {
+      await page(
+        t,
+        id,
+        number: 267,
+        selected: {'khallad', 'khalaf_hamzah'},
+        alert: DiffAlert.glow,
+      );
+      final target = word(16, 2, 1);
+      final ink = t.widget<InkText>(target);
+      expect(ink.style.color, MushafColors.ink);
+      expect(
+        find.ancestor(
+          of: target,
+          matching: find.byWidgetPredicate(
+            (w) => w.runtimeType.toString() == '_Alerting',
+          ),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w.key is ValueKey<String> &&
+              RegExp(r'^usul-reference:(المدود|المد المتصل|المد المنفصل):')
+                  .hasMatch((w.key as ValueKey<String>).value),
+        ),
+        findsNothing,
+      );
+      expect(t.takeException(), isNull);
+    }
+  });
 
   testWidgets('Yaqub tasal on page 18 uses the nabra in page and margin', (
     t,
@@ -488,10 +609,10 @@ void main() {
           expect(ink.style.color, MushafColors.ink);
           expect(ink.parts, isNull);
         }
-        expect(find.byKey(const ValueKey('yaqub-madd-note')), findsOneWidget);
+        expect(find.byKey(const ValueKey('yaqub-madd-note')), findsNothing);
         expect(
           find.text('يعقوب: المد المتصل بالتوسط، والمد المنفصل بالقصر'),
-          findsOneWidget,
+          findsNothing,
         );
         expect(
           find.byWidgetPredicate(

@@ -228,65 +228,101 @@ class _MushafPageState extends State<MushafPage>
     );
   }
 
-  /// Mix both kinds of notes in Quran order, on the outer page margin.
-  List<Widget> _sequentialNotes(
+  /// One box per origin; lexical notes keep their own printed-line anchor.
+  List<_SequentialNote> _sequentialNotes(
     List<(Ayah, int)> words,
     List<HameshEntry> entries,
   ) {
-    final ordered = <({int position, int order, Widget child})>[];
-    int position(Ayah a, int w) => VariantRepository.key(a.surah, a.number, w);
-    void add(int p, Widget child) =>
-        ordered.add((position: p, order: ordered.length, child: child));
-    for (final e in entries) {
-      add(
-        position(e.ayah, e.word),
-        KeyedSubtree(
-          key: ValueKey('sequential-farsh:${position(e.ayah, e.word)}'),
-          child: _EntryView(
-            entry: e,
-            onTap: _openReference,
-            compact: false,
-            scale: 1.1,
+    final notes = <_SequentialNote>[
+      for (final e in entries)
+        _SequentialNote(
+          e.ayah,
+          e.word,
+          true,
+          KeyedSubtree(
+            key: ValueKey(
+              'sequential-farsh:${VariantRepository.key(e.ayah.surah, e.ayah.number, e.word)}',
+            ),
+            child: _EntryView(
+              entry: e,
+              onTap: _openReference,
+              compact: true,
+              scale: 1.1,
+            ),
+          ),
+        ),
+    ];
+    final merged = <String, _UsulGroup>{};
+    for (final source in _usulNotes(
+      words,
+      widget.variants,
+      widget.settings,
+      widget.quran,
+    )) {
+      final group = merged.putIfAbsent(
+        source.label,
+        () => _UsulGroup(source.label, source.color),
+      );
+      for (final item in source.items.values) {
+        item.ways.addAll(source.ways);
+        final key =
+            '${item.stopOnly}:${item.text}:${item.replacement}:${source.ways.join("|")}';
+        final existing = group.items.putIfAbsent(key, () => item);
+        if (existing != item) {
+          existing.riwayat.addAll(item.riwayat);
+          existing.readings.addAll(item.readings);
+        }
+      }
+    }
+    for (final (index, group) in merged.values.indexed) {
+      if (group.items.isEmpty) continue;
+      final first = group.items.values.first;
+      notes.add(
+        _SequentialNote(
+          first.ayah,
+          first.word,
+          false,
+          KeyedSubtree(
+            key: ValueKey(
+              'sequential-usul:${VariantRepository.key(first.ayah.surah, first.ayah.number, first.word)}:$index',
+            ),
+            child: _UsulBox(
+              groups: [group],
+              onTap: _openUsulReference,
+              scale: 1.1,
+              compact: true,
+            ),
           ),
         ),
       );
     }
-    for (final word in words) {
-      final groups = _usulNotes(
-        [word],
-        widget.variants,
-        widget.settings,
-        widget.quran,
-      );
-      for (final (index, g) in groups.indexed) {
-        if (g.noteOnly && word != words.first) continue;
-        add(
-          g.noteOnly ? -1 : position(word.$1, word.$2),
-          KeyedSubtree(
-            key: ValueKey(
-              'sequential-usul:${position(word.$1, word.$2)}:$index',
-            ),
-            child: _UsulBox(
-              groups: [g],
-              onTap: _openUsulReference,
-              scale: 1.15,
-            ),
-          ),
-        );
+    notes.sort((a, b) => a.position.compareTo(b.position));
+    return notes;
+  }
+
+  List<double> _sequentialTops(
+    List<_SequentialNote> notes,
+    List<MushafLine> lines,
+    double lineHeight,
+    double top,
+  ) {
+    final lineOf = <int, int>{};
+    var span = 0;
+    for (final line in lines) {
+      if (line is TextLine) {
+        for (final (a, w) in line.words) {
+          lineOf[VariantRepository.key(a.surah, a.number, w)] = span;
+        }
       }
+      span += line.span;
     }
-    ordered.sort((a, b) {
-      final c = a.position.compareTo(b.position);
-      return c == 0 ? a.order.compareTo(b.order) : c;
-    });
-    return ordered
-        .map(
-          (e) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: e.child,
-          ),
-        )
-        .toList();
+    return [
+      for (final note in notes)
+        math.max(
+          0.0,
+          top + (lineOf[note.position] ?? 0) * lineHeight - lineHeight * 0.3,
+        ),
+    ];
   }
 
   Widget _sequentialPage(List<Ayah> ayahs, List<MushafLine> lines, Size size) {
@@ -302,6 +338,12 @@ class _MushafPageState extends State<MushafPage>
     return _SequentialMarginPage(
       key: ValueKey(_sequentialSignature(size)),
       notes: notes,
+      tops: _sequentialTops(
+        notes,
+        lines,
+        textHeight / lines.fold(0, (n, l) => n + l.span),
+        26 + OrnamentFrame.inset,
+      ),
       right: widget.quran.isRightPage(widget.page),
       rail: rail,
       height: size.height,
@@ -492,6 +534,12 @@ class _MushafPageState extends State<MushafPage>
             key: ValueKey(_sequentialSignature(size)),
             section: keys.join(','),
             notes: notes,
+            tops: _sequentialTops(
+              notes,
+              lines,
+              lineHeight,
+              contentTop - offset,
+            ),
             right: widget.quran.isRightPage(widget.page),
             rail: anyNotes ? rail : 0,
             height: size.height,
@@ -1208,7 +1256,7 @@ class _MushafPageState extends State<MushafPage>
               (v) =>
                   v.word == w &&
                   !v.isMarginNote &&
-                  !isYaqubMadd(v) &&
+                  !isRoutineMadd(v) &&
                   showYaqubMimExample(v, ayah.words[v.word]) &&
                   _showYaIdafa(v, ayah, widget.variants, s) &&
                   s.kinds.contains(v.kind),
@@ -1619,7 +1667,7 @@ List<Variant> _baseAt(
   if (base == null || !variants.isLoaded(base)) return const [];
   return variants
       .at([base], ayah.surah, ayah.number, w)
-      .where((v) => !v.readsAsHafs)
+      .where((v) => !v.readsAsHafs && !isRoutineMadd(v))
       .toList();
 }
 
@@ -1690,7 +1738,7 @@ _Readings _readingsOf(
       .where(
         (v) =>
             s.kinds.contains(v.kind) &&
-            !isYaqubMadd(v) &&
+            !isRoutineMadd(v) &&
             showYaqubMimExample(v, ayah.words[v.word]) &&
             _showYaIdafa(v, ayah, variants, s),
       )
@@ -1709,7 +1757,7 @@ _Readings _readingsOf(
               .where(
                 (v) =>
                     v.isUsul &&
-                    !isYaqubMadd(v) &&
+                    !isRoutineMadd(v) &&
                     showYaqubMimExample(v, ayah.words[v.word]) &&
                     _showYaIdafa(v, ayah, variants, s) &&
                     s.kinds.contains(v.kind),
@@ -1734,13 +1782,6 @@ List<_UsulGroup> _usulNotes(
     ...s.selected,
     ?s.displayed,
   }.any((id) => const {'ruways', 'rawh'}.contains(id));
-  if (hasYaqub) {
-    groups['yaqub-madd-note'] = _UsulGroup(
-      'يعقوب: المد المتصل بالتوسط، والمد المنفصل بالقصر',
-      MushafColors.ink,
-      noteOnly: true,
-    );
-  }
   for (final (ayah, w) in words) {
     // Equal rule descriptions can still have different written examples
     // (e.g. Warsh's extended mim silah versus Ibn Kathir's). Do not use
@@ -1755,7 +1796,7 @@ List<_UsulGroup> _usulNotes(
           v.word != w ||
           v.inHamesh ||
           v.riwayaId == hafsId ||
-          isYaqubMadd(v) ||
+          isRoutineMadd(v) ||
           !showYaqubMimExample(v, ayah.words[w]) ||
           !_showYaIdafa(v, ayah, variants, s) ||
           v.rule == 'naql_source' ||
@@ -1788,6 +1829,9 @@ List<_UsulGroup> _usulNotes(
         v,
         ayah,
         variants,
+        nextAyah: ayah.number < quran.surah(ayah.surah).ayahCount
+            ? quran.ayah(ayah.surah, ayah.number + 1)
+            : null,
         previousAyah: v.word == 0 && ayah.number > 1
             ? quran.ayah(ayah.surah, ayah.number - 1)
             : null,
@@ -1843,11 +1887,10 @@ List<_UsulGroup> _usulNotes(
 }
 
 class _UsulGroup {
-  _UsulGroup(this.label, this.color, {this.noteOnly = false});
+  _UsulGroup(this.label, this.color);
 
   final String label;
   final Color color;
-  final bool noteOnly;
   final items = <String, _UsulItem>{};
   final ways = <String>{};
 }
@@ -1862,6 +1905,7 @@ class _UsulItem {
   final String? replacement;
   final riwayat = <String>{};
   final readings = <Variant>[];
+  final ways = <String>{};
 }
 
 /// The usul a reading applies, by its description: the key's wording.
@@ -1909,7 +1953,8 @@ List<String> _usulOf(Variant v) {
     if (d.contains('البدل')) 'مد البدل',
     if (RegExp(r'(^|\s)(ب|و)?(ال)?مد|ومدها|القصر').hasMatch(d) &&
         !v.isQasr &&
-        !d.contains('البدل'))
+        !d.contains('البدل') &&
+        !RegExp('المتصل|المنفصل').hasMatch(d))
       'المدود',
     if (RegExp('إشمام|الإشمام').hasMatch(d)) 'الإشمام',
     if (RegExp('سكت').hasMatch(d) && !d.contains('دون سكت')) 'السكت',
@@ -2156,10 +2201,20 @@ class _LandscapeMarginState extends State<_LandscapeMargin> {
 }
 
 /// One outer margin; the measured remainder continues below the print.
+class _SequentialNote {
+  const _SequentialNote(this.ayah, this.word, this.farsh, this.child);
+  final Ayah ayah;
+  final int word;
+  final bool farsh;
+  final Widget child;
+  int get position => VariantRepository.key(ayah.surah, ayah.number, word);
+}
+
 class _SequentialMarginPage extends StatefulWidget {
   const _SequentialMarginPage({
     super.key,
     required this.notes,
+    required this.tops,
     required this.page,
     required this.right,
     required this.rail,
@@ -2168,7 +2223,8 @@ class _SequentialMarginPage extends StatefulWidget {
     this.section = '',
   });
   final String section;
-  final List<Widget> notes;
+  final List<_SequentialNote> notes;
+  final List<double> tops;
   final Widget page;
   final bool right, zoomed;
   final double rail, height;
@@ -2177,23 +2233,26 @@ class _SequentialMarginPage extends StatefulWidget {
 }
 
 class _SequentialMarginPageState extends State<_SequentialMarginPage> {
-  int? _fit;
+  Set<int>? _fit;
   @override
   void didUpdateWidget(_SequentialMarginPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.section != widget.section) _fit = null;
   }
 
-  void _onFit(int fit) {
+  void _onFit(Set<int> fit) {
     if (_fit != null) return;
+    final section = widget.section;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _fit == null) setState(() => _fit = fit);
+      if (mounted && _fit == null && widget.section == section) {
+        setState(() => _fit = fit);
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final split = _fit ?? widget.notes.length;
+    final shown = _fit ?? {for (var i = 0; i < widget.notes.length; i++) i};
     return SingleChildScrollView(
       key: const ValueKey('sequential-reader'),
       primary: false,
@@ -2210,33 +2269,119 @@ class _SequentialMarginPageState extends State<_SequentialMarginPage> {
                     : 'sequential-left-margin',
               ),
               child: CustomMultiChildLayout(
-                delegate: _NotesLayout(
-                  List.filled(split, 0.0),
+                delegate: _SequentialNotesLayout(
+                  widget.notes,
+                  widget.tops,
+                  shown,
                   _onFit,
-                  widget.right ? widget.rail : 0,
-                  widget.right ? 0 : widget.rail,
+                  widget.right,
+                  widget.rail,
                 ),
                 children: [
                   LayoutId(id: 'page', child: widget.page),
-                  for (var i = 0; i < split; i++)
-                    LayoutId(id: i, child: widget.notes[i]),
+                  for (final i in shown)
+                    LayoutId(id: i, child: widget.notes[i].child),
                 ],
               ),
             ),
           ),
-          if (split < widget.notes.length)
+          if (shown.length < widget.notes.length)
             Padding(
               key: const ValueKey('sequential-bottom-notes'),
               padding: const EdgeInsets.all(6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: widget.notes.skip(split).toList(),
+                children: [
+                  for (var i = 0; i < widget.notes.length; i++)
+                    if (!shown.contains(i))
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: widget.notes[i].child,
+                      ),
+                ],
               ),
             ),
         ],
       ),
     );
   }
+}
+
+/// Give farsh its printed-line position first; origins fill the remaining
+/// gaps as whole groups. Neither a crowded group nor a late note pushes
+/// an earlier farsh note away from its Quran line.
+class _SequentialNotesLayout extends MultiChildLayoutDelegate {
+  _SequentialNotesLayout(
+    this.notes,
+    this.tops,
+    this.shown,
+    this.onFit,
+    this.right,
+    this.rail,
+  );
+  final List<_SequentialNote> notes;
+  final List<double> tops;
+  final Set<int> shown;
+  final ValueChanged<Set<int>> onFit;
+  final bool right;
+  final double rail;
+
+  @override
+  void performLayout(Size size) {
+    layoutChild(
+      'page',
+      BoxConstraints.tightFor(
+        width: math.max(1.0, size.width - rail),
+        height: size.height,
+      ),
+    );
+    positionChild('page', Offset(right ? 0 : rail, 0));
+    final heights = {
+      for (final i in shown)
+        i: layoutChild(
+          i,
+          BoxConstraints(maxWidth: math.max(1.0, rail - 4)),
+        ).height,
+    };
+    final placed = <int, double>{};
+    final lexical = shown.where((i) => notes[i].farsh).toList()
+      ..sort((a, b) => heights[a]!.compareTo(heights[b]!));
+    for (final i in lexical) {
+      final y = tops[i];
+      if (y + heights[i]! > size.height) continue;
+      if (placed.keys.any(
+        (j) =>
+            y < placed[j]! + heights[j]! + 3 &&
+            y + heights[i]! + 3 > placed[j]!,
+      )) {
+        continue;
+      }
+      placed[i] = y;
+    }
+    for (final i in shown.where((i) => !notes[i].farsh)) {
+      var y = 2.0;
+      for (final j
+          in placed.keys.toList()
+            ..sort((a, b) => placed[a]!.compareTo(placed[b]!))) {
+        if (y + heights[i]! + 3 <= placed[j]!) break;
+        y = math.max(y, placed[j]! + heights[j]! + 3);
+      }
+      if (y + heights[i]! <= size.height) placed[i] = y;
+    }
+    for (final i in shown) {
+      positionChild(
+        i,
+        Offset(
+          right ? size.width - rail + 2 : 2,
+          placed[i] ?? size.height + heights[i]!,
+        ),
+      );
+    }
+    onFit(placed.keys.toSet());
+  }
+
+  @override
+  bool shouldRelayout(_SequentialNotesLayout old) => true;
 }
 
 /// Portrait notes follow their printed lines and report how many fit.
@@ -2401,17 +2546,25 @@ class _Alerting extends StatelessWidget {
 /// The usul of the page below it: each kind in its colour, then every word
 /// read with it and who reads it so. Tapping a word opens its readings.
 class _UsulBox extends StatelessWidget {
-  const _UsulBox({required this.groups, required this.onTap, this.scale = 1});
+  const _UsulBox({
+    required this.groups,
+    required this.onTap,
+    this.scale = 1,
+    this.compact = false,
+  });
 
   final List<_UsulGroup> groups;
   final ValueChanged<_UsulItem> onTap;
   final double scale;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       key: const ValueKey('usul-notes'),
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+      padding: compact
+          ? const EdgeInsets.all(3)
+          : const EdgeInsets.fromLTRB(8, 4, 8, 6),
       decoration: BoxDecoration(
         color: MushafColors.goldLight.withAlpha(60),
         borderRadius: BorderRadius.circular(6),
@@ -2423,107 +2576,109 @@ class _UsulBox extends StatelessWidget {
           for (final (n, g) in groups.indexed)
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
-              child: g.noteOnly
-                  ? Text(
-                      g.label,
-                      key: const ValueKey('yaqub-madd-note'),
-                      style: TextStyle(fontSize: 9 * scale, color: g.color),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
-                          runSpacing: 2,
-                          children: [
-                            if (n == 0)
-                              Text(
-                                'الأصول',
-                                style: TextStyle(
-                                  fontSize: 8 * scale,
-                                  fontWeight: FontWeight.bold,
-                                  color: MushafColors.green,
-                                ),
-                              ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 7,
-                                  height: 7,
-                                  decoration: BoxDecoration(
-                                    color: g.color,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    '${g.label}:',
-                                    style: TextStyle(
-                                      fontSize: 9 * scale,
-                                      fontWeight: FontWeight.bold,
-                                      color: g.color,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            for (final i in g.items.values)
-                              InkWell(
-                                key: ValueKey(
-                                  'usul-reference:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.riwayat.join(',')}',
-                                ),
-                                onTap: () => onTap(i),
-                                child: Wrap(
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    _usulWord(i, g.color),
-                                    if (i.stopOnly)
-                                      Text(
-                                        ' (وقفًا فقط)',
-                                        style: TextStyle(
-                                          fontSize: 9 * scale,
-                                          color: g.color,
-                                        ),
-                                      ),
-                                    Text(
-                                      ' (${readersAr(i.riwayat.toList(), const [])})',
-                                      style: TextStyle(
-                                        fontSize: 8.5 * scale,
-                                        color: MushafColors.ink,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 2,
+                    children: [
+                      if (n == 0 && !compact)
+                        Text(
+                          'الأصول',
+                          style: TextStyle(
+                            fontSize: 8 * scale,
+                            fontWeight: FontWeight.bold,
+                            color: MushafColors.green,
+                          ),
                         ),
-                        if (g.ways.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 1, bottom: 1),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: g.color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
                             child: Text(
-                              g.ways
-                                  .toList()
-                                  .asMap()
-                                  .entries
-                                  .map((e) => '${e.key + 1}- ${e.value}')
-                                  .join('؛ '),
-                              key: ValueKey(
-                                g.label.contains('في كلمة')
-                                    ? 'hamza-word-ways'
-                                    : 'hamza-ways:${g.label}:${g.ways.join('|')}',
-                              ),
+                              '${g.label}:',
                               style: TextStyle(
                                 fontSize: 9 * scale,
-                                height: 1.3,
+                                fontWeight: FontWeight.bold,
                                 color: g.color,
                               ),
                             ),
                           ),
-                      ],
+                        ],
+                      ),
+                      for (final i in g.items.values)
+                        InkWell(
+                          key: ValueKey(
+                            'usul-reference:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.riwayat.join(',')}',
+                          ),
+                          onTap: () => onTap(i),
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _usulWord(i, g.color),
+                              if (i.stopOnly)
+                                Text(
+                                  ' (وقفًا فقط)',
+                                  style: TextStyle(
+                                    fontSize: 9 * scale,
+                                    color: g.color,
+                                  ),
+                                ),
+                              Text(
+                                ' (${readersAr(i.riwayat.toList(), const [])})',
+                                style: TextStyle(
+                                  fontSize: 8.5 * scale,
+                                  color: MushafColors.ink,
+                                ),
+                              ),
+                              if (i.ways.isNotEmpty)
+                                Text(
+                                  ' ${i.ways.join('؛ ')}',
+                                  style: TextStyle(
+                                    fontSize: 8.5 * scale,
+                                    color: g.color,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (g.ways.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1, bottom: 1),
+                      child: Text(
+                        g.ways
+                            .toList()
+                            .asMap()
+                            .entries
+                            .map((e) => '${e.key + 1}- ${e.value}')
+                            .join('؛ '),
+                        key: ValueKey(
+                          g.label.contains('في كلمة')
+                              ? 'hamza-word-ways'
+                              : 'hamza-ways:${g.label}:${g.ways.join('|')}',
+                        ),
+                        style: TextStyle(
+                          fontSize: 9 * scale,
+                          height: 1.3,
+                          color: g.color,
+                        ),
+                      ),
                     ),
+                ],
+              ),
             ),
         ],
       ),

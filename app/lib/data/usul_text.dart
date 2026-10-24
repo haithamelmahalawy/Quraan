@@ -1,5 +1,6 @@
 import '../models/quran.dart';
 import 'arabic.dart';
+import 'reading_comparison.dart';
 import 'variant_repository.dart';
 
 bool isYaqubSeparatedMadd(Variant reading) =>
@@ -9,6 +10,30 @@ bool isYaqubSeparatedMadd(Variant reading) =>
 bool isYaqubMadd(Variant reading) =>
     const {'ruways', 'rawh'}.contains(reading.riwayaId) &&
     const {'madd_munfasil', 'madd_muttasil'}.contains(reading.rule);
+
+/// Ordinary connected/separated madd is part of every narrator's profile,
+/// not a word-level usul example. Keep compound hamza, imala, silah and
+/// other actual rules, and keep exceptional madd such as badal and lin.
+bool isRoutineMadd(Variant reading) {
+  if (const {'madd_munfasil', 'madd_muttasil'}.contains(reading.rule) ||
+      reading.isQasr) {
+    return true;
+  }
+  if (!reading.isUsul ||
+      reading.isImala ||
+      reading.isBadal ||
+      reading.isLinHamz) {
+    return false;
+  }
+  if (reading.rule.isNotEmpty && reading.rule != 'kharouf') return false;
+  final d = reading.shownDescription;
+  if (!RegExp(r'(?:مد|قصر|المد|القصر).*?(?:المتصل|المنفصل)').hasMatch(d)) {
+    return false;
+  }
+  return !RegExp(
+    r'همز|صلة|إدغام|ادغام|إشمام|اشمام|نقل|ترقيق|تغليظ|إمالة|تقليل|البدل|اللين|سكت|إثبات|حذف|فتح|كسر|ضم|تخفيف|إظهار|اظهار|بالياء|بالتاء',
+  ).hasMatch(d);
+}
 
 bool showYaqubYaIdafaExample(Variant reading, String reference) {
   if (!const {'ruways', 'rawh'}.contains(reading.riwayaId) ||
@@ -120,6 +145,7 @@ String usulReadingText(
   Ayah ayah,
   VariantRepository variants, {
   Ayah? previousAyah,
+  Ayah? nextAyah,
 }) {
   Iterable<Variant> at(Ayah a, int w) =>
       variants.at([reading.riwayaId], a.surah, a.number, w);
@@ -182,6 +208,35 @@ String usulReadingText(
       .sublist(reading.word, reading.word + reading.count)
       .join(' ');
   final target = example(reading, hafs);
+  if (reading.isSakt && reading.count == 1 && !target.contains(' ')) {
+    // Sakt at a word boundary must show the hamza word as well. Internal
+    // sakt (al/شيء) stays a single word, even if another hamza follows.
+    final following = reading.word + 1 < ayah.words.length ? ayah : nextAyah;
+    final nextWord = following == ayah ? reading.word + 1 : 0;
+    final boundary = RegExp(r'ۜ(?:[اى][ً-ٰٟۖ-ۭ]*)?$').hasMatch(target);
+    if (boundary &&
+        following != null &&
+        RegExp(r'^[ءأإؤئآ]').hasMatch(following.words[nextWord])) {
+      var second = readingText(
+        variants,
+        reading.riwayaId,
+        following,
+        nextWord,
+        nextWord + 1,
+      );
+      // Some legacy quotations list alternatives from different places
+      // (إليهم، عليهم). Select this word, never append unrelated examples.
+      final pieces = second.split(RegExp(r'[\s،,]+'));
+      if (pieces.length != 1) {
+        final baseline = following.words[nextWord];
+        final own = pieces
+            .where((t) => skeleton(t) == skeleton(baseline))
+            .firstOrNull;
+        second = completeReadingVowels(own ?? baseline, baseline);
+      }
+      return madinahScript('$target $second');
+    }
+  }
   if (reading.usulText.isEmpty) return target;
   final context = reading.usulText.split(RegExp(r'\s+'));
   final prefixLength = context.length - reading.count;

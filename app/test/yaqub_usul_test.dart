@@ -38,6 +38,71 @@ void main() {
     expect(rules(rw, 'badal', 2, 13), isEmpty);
   });
   test(
+    'Rawh malaikatu is nominative farsh while Ruways keeps accusative',
+    () async {
+      final repo = await VariantRepository.discover();
+      await repo.ensureLoaded(['ruways', 'rawh']);
+      final q = await QuranRepository.load();
+      final ayah = q.ayah(16, 2);
+      expect(readingText(repo, 'rawh', ayah, 1, 2), endsWith('ةُ'));
+      expect(readingText(repo, 'ruways', ayah, 1, 2), endsWith('ةَ'));
+      final row = repo.at(['rawh'], 16, 2, 1).singleWhere((v) => v.inHamesh);
+      expect(row.description, 'برفع التاء');
+      expect(row.isUsul, isFalse);
+      expect(
+        compareReadings(
+          repository: repo,
+          ayah: ayah,
+          word: 1,
+          displayed: 'rawh',
+          selected: ['hafs'],
+        ).where((v) => v.inHamesh),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'all separate Khalaf sakt examples include the following hamza word',
+    () async {
+      final repo = await VariantRepository.discover();
+      await repo.ensureLoaded(['khalaf_hamzah']);
+      final q = await QuranRepository.load();
+      var count = 0;
+      for (final row in load('khalaf_hamzah')['variants'] as List) {
+        if (row.length < 8 || row[7] != 'sakt' || row[3] != 1) continue;
+        final a = q.ayah(row[0], row[1]);
+        final next = a.number < q.surah(a.surah).ayahCount
+            ? q.ayah(a.surah, a.number + 1)
+            : null;
+        final following = row[2] + 1 < a.words.length ? a : next;
+        final w = following == a ? row[2] + 1 : 0;
+        final v = repo
+            .at(['khalaf_hamzah'], row[0], row[1], row[2])
+            .firstWhere((v) => v.isSakt && v.word == row[2]);
+        final text = usulReadingText(v, a, repo, nextAyah: next);
+        if (RegExp(r'ۜ(?:[اى][ً-ٰٟۖ-ۭ]*)?$').hasMatch(v.text) &&
+            following != null &&
+            RegExp(r'^[ءأإؤئآ]').hasMatch(following.words[w])) {
+          count++;
+          expect(
+            text.split(' '),
+            hasLength(2),
+            reason: '${a.surah}:${a.number}:${row[2]}',
+          );
+          expect(skeleton(text.split(' ').last), skeleton(following.words[w]));
+        }
+      }
+      expect(count, greaterThan(100));
+      for (final (s, a, w) in [(15, 92, 1), (16, 2, 3), (16, 2, 10)]) {
+        final v = repo
+            .at(['khalaf_hamzah'], s, a, w)
+            .firstWhere((v) => v.isSakt);
+        expect(usulReadingText(v, q.ayah(s, a), repo).split(' '), hasLength(2));
+      }
+    },
+  );
+  test(
     'Yaqub tasal keeps the Mushaf nabra and agrees with reviewed Warsh',
     () async {
       final repo = await VariantRepository.discover();

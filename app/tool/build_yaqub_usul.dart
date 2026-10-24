@@ -156,6 +156,22 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
         v[5] == 'f' &&
         _bare(v[4] as String) == 'خطيئته',
   );
+  // Tahbir al-Taysir, Nahl 16:2: Rawh has tanazzalu al-malaikatu.
+  // The verb was present, but the nominative noun was missing.
+  if (id == 'rawh' &&
+      !rows.any((v) => v[0] == 16 && v[1] == 2 && v[2] == 1 && v[5] == 'f')) {
+    rows.add([
+      16,
+      2,
+      1,
+      1,
+      index['16:2:1']!.t.replaceFirst('ةَ', 'ةُ'),
+      'f',
+      'برفع التاء',
+      '',
+      {'reviewSource': 'https://ablibrary.net/book_content/b/8349/442?lang=ar'},
+    ]);
+  }
   // Tahbir al-Taysir, Baqara 2:90: Yaqub lightens yunazzila.
   // This first occurrence was absent from both legacy farsh catalogues.
   if (!rows.any((v) => v[0] == 2 && v[1] == 90 && v[2] == 11 && v[5] == 'f')) {
