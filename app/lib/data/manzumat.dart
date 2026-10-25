@@ -185,7 +185,7 @@ class Manzumat {
         .split(' ')
         .map(skeleton)
         .any((w) => keys.any((k) => w == k || w == 'و$k' || w == 'ف$k'));
-    final ruleVerses = _ruleVerses(poem, reading);
+    final ruleVerses = _ruleVerses(poem, reading, hafs);
     final selected = quoted.isNotEmpty
         ? quoted
         : ruleVerses.isNotEmpty
@@ -276,7 +276,7 @@ class Manzumat {
         (d.contains('مد') || RegExp('إثبات.*ألف.*أنا').hasMatch(d));
   }
 
-  Set<int> _ruleVerses(Poem poem, Variant v) {
+  Set<int> _ruleVerses(Poem poem, Variant v, [String hafs = '']) {
     final d = v.shownDescription;
     if (poem == Poem.shatibiyya && _anaWasl(v)) return {521};
     if (poem == Poem.durrah) {
@@ -332,6 +332,17 @@ class Manzumat {
       if (d.contains('نقل') && v.isUsul) return {226};
     }
     if (v.rule == 'sakt') return {227, 228, 229};
+    // «وَقِيلَ وَغِيضَ ثُمَّ جِيءَ يُشِمُّهَا ... لَدَى كَسْرِهَا ضَمًّا رِجَالٌ لِتَكْمُلَا».
+    if (v.rule == 'ishmam') return {447};
+    // Hisham stops on the last hamza as Hamza does: «وَمِثْلُهُ يَقُولُ هِشَامٌ
+    // مَا تَطَرَّفَ مُسْهِلَا», with the ways of the chapter.
+    if (v.rule == 'hisham_waqf') return {236, 237, 239, 242, 250, 252};
+    // «وَجَاءَ ابْنُ ذَكْوَانٍ وَفِي شَاءَ مَيَّلَا».
+    if (v.riwayaId == 'ibn_dhakwan' &&
+        v.isImala &&
+        RegExp(r'^[وف]?(شا|جا)ء').hasMatch(skeleton(hafs))) {
+      return {319};
+    }
     if (d.contains('ميم الجمع')) return {111, 112};
     return {};
   }

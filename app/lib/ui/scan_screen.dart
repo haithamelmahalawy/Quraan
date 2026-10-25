@@ -428,6 +428,7 @@ class _PageReadingsState extends State<_PageReadings> {
     ayah: ayah,
     quran: widget.quran,
     settings: widget.settings,
+    variants: widget.variants,
   );
 
   @override

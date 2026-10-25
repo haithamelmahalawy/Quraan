@@ -105,7 +105,7 @@ class _AyahSheetState extends State<AyahSheet> {
       parts.add(
         widget.variants == null
             ? a.words.sublist(from, to).join(' ')
-            : readingText(widget.variants!, s.displayed, a, from, to),
+            : readingText(widget.variants!, _textRiwaya, a, from, to),
       );
     }
     return parts.where((p) => p.isNotEmpty).join(' ');
@@ -159,6 +159,34 @@ class _AyahSheetState extends State<AyahSheet> {
   ReaderSettings get s => widget.settings;
 
   /// Hafs and the selected riwayat that have a recording.
+  /// The riwaya listened to: the one chosen here, else the one the mushaf
+  /// shows, else (with only Hafs) Hafs.
+  String get _listening {
+    final riwayat = _riwayat;
+    return riwayat.contains(s.listenRiwaya)
+        ? s.listenRiwaya!
+        : riwayat.contains(s.displayed)
+        ? s.displayed!
+        : riwayat[riwayat.length > 1 ? 1 : 0];
+  }
+
+  /// The ayah is written in the riwaya listened to (as its reciter reads
+  /// it), or else in the one the mushaf shows; null for Hafs.
+  String? get _textRiwaya {
+    final id = _recitations == null ? s.displayed : _listening;
+    if (id == null || id == hafsId) return null;
+    final variants = widget.variants!;
+    if (!variants.isLoaded(id)) {
+      variants.ensureLoaded([id]).then((_) {
+        if (mounted) setState(() {});
+      });
+      return s.displayed != null && variants.isLoaded(s.displayed!)
+          ? s.displayed
+          : null;
+    }
+    return id;
+  }
+
   List<String> get _riwayat => [
     hafsId,
     for (final q in qiraat)
@@ -213,11 +241,7 @@ class _AyahSheetState extends State<AyahSheet> {
     final recitations = _recitations;
     if (recitations == null) return const SizedBox(height: 60);
     final riwayat = _riwayat;
-    final riwaya = riwayat.contains(s.listenRiwaya)
-        ? s.listenRiwaya!
-        : riwayat.contains(s.displayed)
-        ? s.displayed!
-        : riwayat[riwayat.length > 1 ? 1 : 0];
+    final riwaya = _listening;
     final reciters = recitations.of(riwaya);
     final reciter = reciters.firstWhere(
       (r) => r.id == s.reciterFor(riwaya),

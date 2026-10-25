@@ -86,10 +86,13 @@ void main() {
       );
     }
     // مَرْفِقًا ends 18:16; Quranpedia files it under 18:17 with وَتَرَى.
-    expect(variants('hisham', 18, 16).single.sublist(0, 3), [
-      18,
-      1,
-      'مَرْفِقاً',
-    ]);
+    // (Besides Hisham's stop on a last hamza, a rule of its own.)
+    expect(
+      variants('hisham', 18, 16)
+          .where((v) => v.length < 6 || v[5] != 'hisham_waqf')
+          .single
+          .sublist(0, 3),
+      [18, 1, 'مَرْفِقٗا'],
+    );
   });
 }

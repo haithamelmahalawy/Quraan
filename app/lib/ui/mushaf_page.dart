@@ -1960,10 +1960,25 @@ List<String> _usulOf(Variant v) {
     if (v.description.contains('تحقيق') && !v.description.contains('تسهيل')) {
       return ['الهمزتان في كلمة'];
     }
+    // Named by the vowel of the second hamza of the word (ءَأَنذَرۡتَهُمۡ،
+    // أَئِنَّكُمۡ، أَءُنزِلَ).
+    // (Ibn 'Amir's readings; the others keep their own names.)
+    final match = RegExp(
+      '[ءأإئؤ][ً-ٰٟ]*[^ءأإئؤ]{0,2}?[ءأإئؤ]([ً-ٰٟ]*)',
+    ).firstMatch(v.usulText);
+    final second = const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId)
+        ? match?.group(1)
+        : null;
     return [
-      v.usulWays.length > 1
-          ? 'الهمزتان المفتوحتان في كلمة'
-          : 'تسهيل الهمزتين في كلمة',
+      second == null
+          ? v.usulWays.length > 1
+                ? 'الهمزتان المفتوحتان في كلمة'
+                : 'تسهيل الهمزتين في كلمة'
+          : second.contains('ِ')
+          ? 'الهمزتان المفتوحة والمكسورة في كلمة'
+          : second.contains('ُ')
+          ? 'الهمزتان المفتوحة والمضمومة في كلمة'
+          : 'الهمزتان المفتوحتان في كلمة',
       if (d.contains('صلة ميم الجمع')) 'صلة ميم الجمع',
     ];
   }

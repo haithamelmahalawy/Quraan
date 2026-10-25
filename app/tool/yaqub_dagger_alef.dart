@@ -4,13 +4,16 @@
 // before it (دِفَٰعُ), keeping the rasm of the Madinah mushaf. Run it after
 // any change of their readings (tool/add_yaqub_book_farsh.dart).
 //
-//   dart run tool/yaqub_dagger_alef.dart
+//   dart run tool/yaqub_dagger_alef.dart [riwaya ...]
+//
+// Other riwayat named (hisham ibn_dhakwan) have their quotations completed
+// with the vowels of Hafs only; the dagger alef is Ya'qub's.
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:qiraat_mushaf/data/arabic.dart';
 
-void main() {
+void main(List<String> args) {
   final quran = jsonDecode(
     File('assets/data/quran.json').readAsStringSync(),
   ) as Map<String, dynamic>;
@@ -18,7 +21,8 @@ void main() {
     for (final a in quran['ayahs'] as List)
       '${a[0]}:${a[1]}': (a[4] as String).split(' '),
   };
-  for (final id in ['rawh', 'ruways']) {
+  const yaqub = {'rawh', 'ruways'};
+  for (final id in args.isEmpty ? yaqub : args) {
     final file = File('assets/data/qiraat/$id.json');
     final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
     var changed = 0;
@@ -31,7 +35,7 @@ void main() {
       );
       // A quotation of the farsh short of its vowels (زكريآءُ) takes those
       // of Hafs for the letters they share, as the page writes it.
-      if (const {'f', 'h'}.contains(v[5]) &&
+      if ((const {'f', 'h'}.contains(v[5]) || !yaqub.contains(id)) &&
           text.split(RegExp(r'\s+')).length == hafs.length) {
         final complete = completeReadingVowels(text, hafs.join(' '));
         if (complete != text) {
@@ -39,6 +43,7 @@ void main() {
           changed++;
         }
       }
+      if (!yaqub.contains(id)) continue;
       final daggered = withDaggerAlef(v[4] as String, hafs);
       if (daggered == null) continue;
       v[4] = daggered;
