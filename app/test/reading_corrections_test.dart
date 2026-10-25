@@ -102,7 +102,12 @@ void main() {
       for (final id in readers) {
         final reading = variants.at([id], 25, 69, 6).single;
         expect(reading.text, 'فِيهِ', reason: id);
-        expect(reading.shownDescription, contains('بلا صلة'), reason: id);
+        // Yaqub's notes say «دون صلة», the others «بلا صلة».
+        expect(
+          reading.shownDescription,
+          matches(RegExp('(بلا|دون) صلة')),
+          reason: id,
+        );
         expect(
           reading.shownDescription,
           isNot(contains('إسكان الهاء')),

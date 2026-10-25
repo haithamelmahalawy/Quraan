@@ -51,8 +51,15 @@ class HafsFontMarks extends StatelessWidget {
   static bool _lowerImala(String cluster) =>
       'بيئج'.contains(cluster[0]) && RegExp('[۪ٜ]').hasMatch(cluster);
 
+  /// The iqlab mim drawn apart: the low one always, the high one only over
+  /// a letter with a kasra (ءَايَٰتِۢ), whose anchor the font then moves into
+  /// the letter. Over a letter without a vowel (مِنۢ، أَنۢبِئۡهُم) the font
+  /// places it whole itself; drawn apart, its lower half was clipped.
+  static bool _iqlabApart(String cluster) =>
+      cluster.contains('ۭ') || cluster.contains('ۢ') && cluster.contains('ِ');
+
   static bool needsAdjustment(String text) =>
-      RegExp('[ۭۢ]').hasMatch(text) ||
+      _cluster.allMatches(text).any((m) => _iqlabApart(m[0]!)) ||
       _boundarySakt.hasMatch(text) ||
       _tanween.hasMatch(text) ||
       _needsClusterAdjustment(text);
@@ -104,7 +111,7 @@ class HafsFontMarks extends StatelessWidget {
         final markAt = full.indexOf(RegExp('[۪ٜ]'), m.start);
         marks[markAt] = placed[markAt].$2;
       }
-      if (RegExp('[ۭۢ]').hasMatch(m[0]!)) {
+      if (_iqlabApart(m[0]!)) {
         final markAt = full.indexOf(RegExp('[ۭۢ]'), m.start);
         marks[markAt] = placed[markAt].$2;
       }
@@ -178,8 +185,11 @@ class _QuranMarkPainter extends CustomPainter {
     for (final (at, color, sign) in targets) {
       final sakt = sign == 'ۜ';
       final imala = sign == '۪' || sign == 'ٜ';
-      final below = imala || sign == 'ۭ';
-      final iqlab = sign == 'ۢ';
+      final low = sign == 'ۭ';
+      final below = imala;
+      // This font draws the low mim (ۭ) like the high one, on the tatweel:
+      // both are drawn as the high mim, the low one moved below the letter.
+      final iqlab = sign == 'ۢ' || low;
       final end = sakt
           ? at + 1
           : HafsFontMarks._cluster.matchAsPrefix(source, at)!.end;
@@ -218,7 +228,11 @@ class _QuranMarkPainter extends CustomPainter {
       }
       final mark = TextPainter(
         text: TextSpan(
-          text: imala ? 'ا۪' : 'ا$sign',
+          text: imala
+              ? 'ا۪'
+              : iqlab
+              ? 'ـۢ'
+              : 'ا$sign',
           style: TextStyle(
             fontFamily: 'Hafs',
             fontSize: font,
@@ -237,8 +251,10 @@ class _QuranMarkPainter extends CustomPainter {
                     ? .40
                     : below
                     ? .18
+                    : low
+                    ? .72
                     : iqlab
-                    ? -.12
+                    ? -.45
                     : source.substring(at, end).contains('ٰ')
                     ? -.28
                     : -.12),
@@ -252,14 +268,14 @@ class _QuranMarkPainter extends CustomPainter {
           below
               ? origin.dy +
                     mark.computeLineMetrics().single.baseline +
-                    font * .02
+                    font * .10
               : -font * 2,
           size.width + font,
           below
               ? size.height + font
               : origin.dy +
                     mark.computeLineMetrics().single.baseline -
-                    font * .68,
+                    font * (iqlab ? .22 : .68),
         ),
       );
       mark.paint(canvas, origin);

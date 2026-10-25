@@ -427,7 +427,7 @@ void main() {
         isEmpty,
         reason: 'negative lam is not interrogative lim',
       );
-      expect(rules(d, 'ha_silah', 25, 69).single[6], contains('بلا صلة'));
+      expect(rules(d, 'ha_silah', 25, 69).single[6], matches(RegExp('(بلا|دون) صلة')));
       expect(rules(d, 'ha_damir', 1, 7), isNotEmpty);
     }
   });
