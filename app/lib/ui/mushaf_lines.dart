@@ -8,6 +8,7 @@ import '../models/quran.dart';
 import 'mushaf_decor.dart';
 import 'theme.dart';
 import 'partition_marker.dart';
+import 'hafs_font_marks.dart';
 
 /// Builds the widget for one word at the given font size, drawn out by
 /// [kashida] tatweels where its letters join.
@@ -37,6 +38,7 @@ class MushafLines extends StatelessWidget {
     required this.wordBuilder,
     this.display,
     this.marker,
+    this.wordMarker,
     this.height,
   });
 
@@ -50,10 +52,17 @@ class MushafLines extends StatelessWidget {
 
   /// The ayah-end ornament; defaults to the number in the Hafs font.
   final ({String text, String font})? Function(Ayah ayah)? marker;
+  final ({String text, String font})? Function(Ayah ayah, int word)? wordMarker;
 
   ({String text, String font}) _marker(Ayah ayah) =>
       marker?.call(ayah) ??
       (text: ' ${_ayahMarker(ayah.number)}', font: 'Hafs');
+
+  ({String text, String font})? _end(Ayah ayah, int word) => wordMarker != null
+      ? wordMarker!(ayah, word)
+      : word == ayah.words.length - 1
+      ? _marker(ayah)
+      : null;
 
   /// When given, the lines are spread evenly over this height (the page
   /// fills the screen, like a printed mushaf); otherwise each line is as
@@ -171,8 +180,7 @@ class MushafLines extends StatelessWidget {
           }
         }
       }
-      if (w == ayah.words.length - 1) {
-        final end = _marker(ayah);
+      if (_end(ayah, w) case final end?) {
         natural += _measure(end.text, end.font) * scale;
       }
     }
@@ -204,12 +212,12 @@ class MushafLines extends StatelessWidget {
   /// A word, followed by the ayah-end marker when it closes its ayah.
   Widget? _item(Ayah ayah, int w, double fontSize, int kashida) {
     final shown = _show(ayah, w) != null;
-    final closes = w == ayah.words.length - 1;
+    final end = _end(ayah, w);
+    final closes = end != null;
     if (!shown && !closes) return null;
-    final end = _marker(ayah);
     final marker = InkText(
-      end.text,
-      style: _style(fontSize, end.font),
+      end?.text ?? '',
+      style: _style(fontSize, end?.font ?? 'Hafs'),
       firmness: 0.35,
     );
     if (!shown) return marker;
@@ -270,8 +278,7 @@ class MushafLines extends StatelessWidget {
         font ??= shown.font;
         items++;
       }
-      if (i == ayah.words.length - 1) {
-        final end = _marker(ayah);
+      if (_end(ayah, i) case final end?) {
         w += _measure(end.text, end.font);
       }
     }
@@ -287,7 +294,10 @@ class MushafLines extends StatelessWidget {
   static double _measure(String text, String font) =>
       _cache.putIfAbsent('$font|$text', () {
         final painter = TextPainter(
-          text: TextSpan(text: text, style: _style(_probe, font)),
+          text: TextSpan(
+            text: font == 'Hafs' ? HafsFontMarks.boundarySpacing(text) : text,
+            style: _style(_probe, font),
+          ),
           textDirection: TextDirection.rtl,
         )..layout();
         final width = painter.width;

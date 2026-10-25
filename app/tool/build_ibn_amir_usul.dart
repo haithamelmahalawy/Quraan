@@ -817,7 +817,7 @@ void _stoppingHamza(_Word w, String text, _Add add) {
         ? 'ي'
         : 'و';
     stopText = fathatan && v == 'ِ'
-        ? '$prefix${replacement}َا'
+        ? '$prefix$replacementَا'
         : '$prefix$replacement';
     ways.add(
       fathatan && v == 'ِ'

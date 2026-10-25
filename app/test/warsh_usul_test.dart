@@ -985,16 +985,28 @@ void main() {
         for (final w in [12, 13, 27, 28]) {
           final margin = find.byKey(ValueKey('margin-reference:5:95:$w'));
           expect(margin, findsOneWidget, reason: '${mode.name}: $w');
-          expect(
-            t
+          // Adjusted marks are painted separately. Check the complete Quran
+          // source as well as plain text spans, rather than requiring the
+          // detached madd to remain in the low-level shaping run.
+          final texts = [
+            ...t
+                .widgetList<QuranWordText>(
+                  find.descendant(
+                    of: margin,
+                    matching: find.byType(QuranWordText),
+                  ),
+                )
+                .map((v) => v.text),
+            ...t
                 .widgetList<Text>(
                   find.descendant(of: margin, matching: find.byType(Text)),
                 )
-                .any(
-                  (text) => (text.data ?? text.textSpan?.toPlainText() ?? '')
-                      .contains(quran.ayah(5, 95).words[w]),
-                ),
+                .map((v) => v.data ?? v.textSpan?.toPlainText() ?? ''),
+          ];
+          expect(
+            texts.any((text) => text.contains(quran.ayah(5, 95).words[w])),
             isTrue,
+            reason: '${mode.name}: $w',
           );
         }
         expect(find.textContaining('حفص', findRichText: true), findsWidgets);

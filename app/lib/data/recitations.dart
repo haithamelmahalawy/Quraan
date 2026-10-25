@@ -2,16 +2,22 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import 'audio_numbering.dart';
+
 /// A sheikh's recitation of a whole riwaya, recorded ayah by ayah.
 class Reciter {
-  const Reciter(this.id, this.name, this.server);
+  const Reciter(this.id, this.name, this.server, {this.numbering = 'kufi'});
 
   final int id;
   final String name;
 
+  /// The counting system used by these audio files (not the displayed mushaf).
+  final String numbering;
+
   /// Base of the files: `<server><sss><aaa>.mp3`.
   final String server;
 
+  /// [ayah] is a native recording number; map displayed verses before calling.
   Uri ayah(int surah, int ayah) => Uri.parse(
     '$server${surah.toString().padLeft(3, '0')}${ayah.toString().padLeft(3, '0')}.mp3',
   );
@@ -33,7 +39,13 @@ class Recitations {
           in (json['riwayat'] as Map<String, dynamic>).entries)
         key: [
           for (final r in value as List)
-            Reciter(r['id'] as int, r['name'] as String, r['server'] as String),
+            Reciter(
+              r['id'] as int,
+              r['name'] as String,
+              r['server'] as String,
+              numbering:
+                  r['numbering'] as String? ?? AudioNumbering.systemFor(key),
+            ),
         ],
     });
   }

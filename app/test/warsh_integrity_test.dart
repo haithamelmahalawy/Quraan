@@ -116,6 +116,35 @@ void main() {
     }
   });
 
+  test('native Warsh verse boundaries match every KFGQPC source verse', () {
+    final numbering = quran.numbering!;
+    final mismatches = <String>[];
+    for (final row in source) {
+      final s = row['sura_no'] as int;
+      final n = row['aya_no'] as int;
+      final range = numbering.span('madani-last', s, n);
+      final actual = [
+        for (var a = range.first.ayah; a <= range.last.ayah; a++)
+          for (
+            var w = a == range.first.ayah ? range.first.word : 0;
+            w <=
+                (a == range.last.ayah
+                    ? range.last.word
+                    : quran.ayah(s, a).words.length - 1);
+            w++
+          )
+            variants.sourceTextAt('warsh', s, a, w)!,
+      ].join(' ');
+      final expected = madinahScript(
+        sourceWords(row['aya_text'] as String).join(' '),
+      );
+      if (skeleton(actual) != skeleton(expected)) {
+        mismatches.add('Warsh $s:$n: ${range.first}–${range.last}');
+      }
+    }
+    expect(mismatches, isEmpty);
+  });
+
   test('empty annotation notes never erase Quran words; actual raw deletions remain possible', () {
     Variant v(String text, VariantKind kind, String rule, String description) =>
         Variant(

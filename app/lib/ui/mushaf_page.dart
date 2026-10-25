@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../data/arabic.dart';
+import '../data/audio_numbering.dart';
 import '../data/lin_hamz.dart';
 import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
@@ -45,6 +46,7 @@ class MushafPage extends StatefulWidget {
     this.onPageNumberTap,
     this.qcf = false,
     this.onAyahTap,
+    this.onAyahWordTap,
   });
 
   final int page;
@@ -68,6 +70,7 @@ class MushafPage extends StatefulWidget {
 
   /// A word held: opens its ayah (tafsir, recitation).
   final ValueChanged<Ayah>? onAyahTap;
+  final WordTap? onAyahWordTap;
 
   @override
   State<MushafPage> createState() => _MushafPageState();
@@ -168,6 +171,7 @@ class _MushafPageState extends State<MushafPage>
     // If one word needs editable letters, use that font for the whole page.
     _pageQcf =
         widget.qcf &&
+        !_nativeNumbering &&
         ayahs.every(
           (ayah) => ayah.words.indexed.every((entry) {
             final shown = _displayWord(ayah, entry.$1, qcf: true);
@@ -371,6 +375,7 @@ class _MushafPageState extends State<MushafPage>
                   wordBuilder: _word,
                   display: _display,
                   marker: _marker,
+                  wordMarker: _nativeNumbering ? _wordMarker : null,
                   height: textHeight,
                 ),
               ),
@@ -444,6 +449,7 @@ class _MushafPageState extends State<MushafPage>
       wordBuilder: _word,
       display: _display,
       marker: _marker,
+      wordMarker: _nativeNumbering ? _wordMarker : null,
     ).metrics(textWidth);
     // Size by width, with a little less vertical expansion. The glyphs
     // keep their shapes, the print's word order and its inter-word spaces.
@@ -490,6 +496,7 @@ class _MushafPageState extends State<MushafPage>
                   wordBuilder: _word,
                   display: _display,
                   marker: _marker,
+                  wordMarker: _nativeNumbering ? _wordMarker : null,
                   height: textHeight,
                 ),
               ),
@@ -745,6 +752,7 @@ class _MushafPageState extends State<MushafPage>
       wordBuilder: _word,
       display: _display,
       marker: _marker,
+      wordMarker: _nativeNumbering ? _wordMarker : null,
       height: textHeight,
     );
     final first = ayahs.first;
@@ -947,6 +955,10 @@ class _MushafPageState extends State<MushafPage>
     final s = widget.settings;
     final selected = s.selected.where(widget.variants.isLoaded).toList();
     final replace = s.mode == DisplayMode.replace && selected.length == 1;
+    void addEnd(int word) {
+      final end = _wordMarker(ayah, word);
+      if (end != null) out.add(TextSpan(text: '${end.text} '));
+    }
 
     for (var w = 0; w < ayah.words.length; w++) {
       if (w == 0 && (ayah.rubStart != null || ayah.juzStart)) {
@@ -963,15 +975,15 @@ class _MushafPageState extends State<MushafPage>
         );
       }
       final m = _mark(ayah, w);
-      final tap = m.all.isEmpty && !m.mutashabih ? null : _recognizer(ayah, w);
+      final tap = _recognizer(ayah, w);
       final underline = m.mutashabih ? _mutashabihStyle : null;
-      final source = widget.variants.sourceTextAt(
-        s.displayed,
-        ayah.surah,
-        ayah.number,
-        w,
-      );
-      if (source == '') continue;
+      final source = s.displayed == null
+          ? null
+          : _displayWord(ayah, w, qcf: false)?.text ?? '';
+      if (source == '') {
+        if (_nativeNumbering) addEnd(w);
+        continue;
+      }
       final baseWord = source ?? ayah.words[w];
 
       // A reading given only as a description cannot replace the word.
@@ -994,6 +1006,7 @@ class _MushafPageState extends State<MushafPage>
             ),
           );
         }
+        if (_nativeNumbering) addEnd(w);
         continue;
       }
 
@@ -1007,6 +1020,7 @@ class _MushafPageState extends State<MushafPage>
             ),
           )
           ..add(const TextSpan(text: ' '));
+        if (_nativeNumbering) addEnd(w);
         continue;
       }
 
@@ -1048,8 +1062,11 @@ class _MushafPageState extends State<MushafPage>
         }
       }
       out.add(const TextSpan(text: ' '));
+      if (_nativeNumbering) addEnd(w);
     }
-    out.add(TextSpan(text: '${arabicDigits(ayah.number)} '));
+    if (!_nativeNumbering) {
+      out.add(TextSpan(text: '${arabicDigits(ayah.number)} '));
+    }
   }
 
   /// A clear, solid line under the words a mutashabih shares.
@@ -1454,6 +1471,21 @@ class _MushafPageState extends State<MushafPage>
       ? (text: ' ${ayah.endGlyph}', font: QcfFonts.family(widget.page))
       : null;
 
+  String get _countingSystem =>
+      AudioNumbering.displaySystemFor(widget.settings.displayed ?? 'hafs');
+  bool get _nativeNumbering =>
+      widget.quran.numbering != null && _countingSystem != 'kufi';
+
+  ({String text, String font})? _wordMarker(Ayah ayah, int word) {
+    final n = widget.quran.numbering?.markerAt(
+      _countingSystem,
+      ayah.surah,
+      ayah.number,
+      word,
+    );
+    return n == null ? null : (text: ' ${arabicDigits(n)}', font: 'Hafs');
+  }
+
   /// One word of a printed line.
   Widget _word(Ayah ayah, int w, double fontSize, [int kashida = 0]) {
     final m = _mark(ayah, w);
@@ -1587,7 +1619,9 @@ class _MushafPageState extends State<MushafPage>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => widget.onWordTap(ayah, w),
-      onLongPress: widget.onAyahTap == null
+      onLongPress: widget.onAyahWordTap != null
+          ? () => widget.onAyahWordTap!(ayah, w)
+          : widget.onAyahTap == null
           ? null
           : () => widget.onAyahTap!(ayah),
       child: word,

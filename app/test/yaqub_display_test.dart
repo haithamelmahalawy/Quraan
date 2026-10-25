@@ -162,6 +162,32 @@ void main() {
   Finder mark(Finder w) =>
       find.ancestor(of: w, matching: find.byType(HamzaReplacementMark));
 
+  testWidgets('Yaqub keeps malik while opposing margin says only delete alif', (
+    t,
+  ) async {
+    for (final id in ['ruways', 'rawh']) {
+      await page(t, id, number: 1, selected: {id, 'hisham', 'khalaf_hamzah'});
+      expect(
+        t.widget<InkText>(word(1, 4, 0)).text.replaceAll('ـ', ''),
+        'مَٰلِكِ',
+      );
+      final note = find.byKey(const ValueKey('margin-reference:1:4:0'));
+      expect(note, findsOneWidget);
+      expect(
+        find.descendant(of: note, matching: find.textContaining('بحذف الألف')),
+        findsWidgets,
+      );
+      expect(
+        find.descendant(
+          of: note,
+          matching: find.textContaining('الميم الأولى'),
+        ),
+        findsNothing,
+      );
+      expect(t.takeException(), isNull);
+    }
+  });
+
   testWidgets(
     'sequential groups each origin once and anchors farsh by its line',
     (t) async {
@@ -464,6 +490,131 @@ void main() {
           .split(' ');
       expect(lettersOf(example.first).last, 'ب');
       expect(lettersOf(example.last).first, contains('ّ'));
+      expect(t.takeException(), isNull);
+    }
+  });
+
+  testWidgets('Ruways kabir colours and glows both Quran words', (t) async {
+    await page(
+      t,
+      'ruways',
+      number: quran.ayah(2, 176).page,
+      selected: {'ruways'},
+      alert: DiffAlert.glow,
+    );
+    for (final target in [word(2, 176, 4), word(2, 176, 5)]) {
+      expect(target, findsOneWidget);
+      expect(t.widget<InkText>(target).style.color, isNot(MushafColors.ink));
+      expect(
+        find.ancestor(
+          of: target,
+          matching: find.byWidgetPredicate(
+            (w) => w.runtimeType.toString() == '_Alerting',
+          ),
+        ),
+        findsOneWidget,
+      );
+    }
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('Yaqub early Baqara farsh is written in the Quran text', (
+    t,
+  ) async {
+    for (final id in ['ruways', 'rawh']) {
+      await page(t, id, number: 25, selected: {id, 'hafs'});
+      expect(t.widget<InkText>(word(2, 165, 17)).text, 'تَرَى');
+      expect(
+        find.byKey(const ValueKey('margin-reference:2:165:17')),
+        findsOneWidget,
+      );
+
+      await page(t, id, number: 27, selected: {id, 'hafs'});
+      expect(t.widget<InkText>(word(2, 177, 0)).text, 'لَّيۡسَ ٱلۡبِرُّ');
+      final hafs = find.byKey(const ValueKey('margin-reference:2:177:0'));
+      expect(hafs, findsOneWidget);
+      expect(
+        t
+            .widgetList<Text>(
+              find.descendant(of: hafs, matching: find.byType(Text)),
+            )
+            .map((w) => w.data ?? w.textSpan?.toPlainText() ?? '')
+            .any((text) => text.contains('لَّيۡسَ ٱلۡبِرَّ')),
+        isTrue,
+      );
+      expect(t.takeException(), isNull);
+    }
+  });
+
+  testWidgets('tanween before ilayhi is not treated as a hamza pair', (
+    t,
+  ) async {
+    await page(
+      t,
+      'ruways',
+      number: 27,
+      selected: {'ruways'},
+      alert: DiffAlert.glow,
+    );
+    for (final target in [word(2, 178, 22), word(2, 178, 23)]) {
+      final ink = t.widget<InkText>(target);
+      expect(ink.style.color, MushafColors.ink);
+      expect(
+        find.ancestor(
+          of: target,
+          matching: find.byWidgetPredicate(
+            (w) => w.runtimeType.toString() == '_Alerting',
+          ),
+        ),
+        findsNothing,
+      );
+    }
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            (w.key as ValueKey<String>).value.contains(':2:178:23:'),
+      ),
+      findsNothing,
+    );
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('extra ya uses the small silah sign in the Quran text', (
+    t,
+  ) async {
+    for (final id in ['ruways', 'rawh']) {
+      await page(t, id, number: quran.ayah(2, 40).page, selected: {id});
+      expect(t.widget<InkText>(word(2, 40, 12)).text, 'فَٱرهَبُونِۦ');
+      await page(t, id, number: quran.ayah(2, 186).page, selected: {id});
+      expect(t.widget<InkText>(word(2, 186, 10)).text, 'دَعَانِۦ');
+      expect(t.takeException(), isNull);
+    }
+  });
+
+  testWidgets('routine madd and legacy prose never become Quran words', (
+    t,
+  ) async {
+    for (final id in ['ruways', 'rawh']) {
+      await page(t, id, number: 23, selected: {id}, alert: DiffAlert.glow);
+      final remember = word(2, 152, 0);
+      final ink = t.widget<InkText>(remember);
+      expect(ink.text, isNot(contains('ٓ')));
+      expect(ink.style.color, MushafColors.ink);
+      expect(ink.parts?.every((p) => p.$2 == null) ?? true, isTrue);
+      expect(
+        find.ancestor(
+          of: remember,
+          matching: find.byWidgetPredicate(
+            (w) => w.runtimeType.toString() == '_Alerting',
+          ),
+        ),
+        findsNothing,
+      );
+
+      await page(t, id, number: 32, selected: {id});
+      expect(t.widget<InkText>(word(2, 206, 1)).text, isNot(contains('اشمام')));
+      expect(find.textContaining('اظهار اللام الأولى'), findsNothing);
       expect(t.takeException(), isNull);
     }
   });

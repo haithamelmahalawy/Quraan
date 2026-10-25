@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 
 import '../models/quran.dart';
+import 'audio_numbering.dart';
 
 /// A printed mushaf whose pages and lines the Hafs text follows.
 enum MushafEdition {
@@ -35,6 +36,8 @@ class QuranRepository {
   final List<List<MushafLine>>? _lines;
   final Set<int> _centered;
   final Map<(int, int), int> _pageOf;
+  AudioNumbering? _numbering;
+  AudioNumbering? get numbering => _numbering;
 
   /// The number of the first page (the Shamarly print opens on page 2).
   final int firstPage;
@@ -77,18 +80,27 @@ class QuranRepository {
         b.loadString(key).then<String?>((s) => s, onError: (_) => null);
     final raw = await b.loadString('assets/data/quran.json');
     final partitions = await optional('assets/data/partitions.json');
+    final numbering = bundle == null
+        ? await AudioNumbering.load()
+        : await optional('assets/data/audio_numbering.json').then(
+            (s) => s == null
+                ? null
+                : AudioNumbering.fromJson(
+                    jsonDecode(s) as Map<String, dynamic>,
+                  ),
+          );
     if (edition == MushafEdition.shamarly) {
       return parseShamarly(
         raw,
         (await optional('assets/data/layout_shamarly.json'))!,
         partitions,
-      );
+      ).._numbering = numbering;
     }
     final (layout, qcf) = await (
       optional('assets/data/layout.json'),
       optional('assets/data/qcf.json'),
     ).wait;
-    return parse(raw, layout, qcf, partitions);
+    return parse(raw, layout, qcf, partitions).._numbering = numbering;
   }
 
   static List<Surah> _surahs(Map<String, dynamic> json) => [

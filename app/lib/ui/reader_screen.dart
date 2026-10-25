@@ -342,7 +342,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
     // A word with nothing to compare opens its ayah: tafsir, recitation.
     if (!hasReadings) {
-      _openAyah(ayah);
+      _openAyah(ayah, word: word);
       return;
     }
     VariantSheet.show(
@@ -356,7 +356,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         surahNames: [for (final s in _quran.surahs) s.nameAr],
         onAyah: () {
           Navigator.of(context).pop();
-          _openAyah(ayah);
+          _openAyah(ayah, word: word);
         },
         onMutashabihat: places.length > 1
             ? () {
@@ -368,11 +368,13 @@ class _ReaderScreenState extends State<ReaderScreen>
     );
   }
 
-  void _openAyah(Ayah ayah) => AyahSheet.show(
+  void _openAyah(Ayah ayah, {int word = 0}) => AyahSheet.show(
     context,
     ayah: ayah,
     quran: _quran,
     settings: widget.settings,
+    word: word,
+    variants: widget.variants,
   );
 
   Future<void> _openMutashabihat(List<MutashabihPlace> places) =>
@@ -451,6 +453,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       settings: widget.settings,
       onWordTap: _openWord,
       onAyahTap: _openAyah,
+      onAyahWordTap: (ayah, word) => _openAyah(ayah, word: word),
       showHamesh: hamesh,
       onZoomChanged: (z) => setState(() => _zoomed = z),
       onPageNumberTap: _pickPage,

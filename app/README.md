@@ -105,7 +105,9 @@ showing, with its shadow on the page beneath), pinch to zoom the whole page imag
 while zoomed, "حجم الصفحة" resets), full-screen reading without the hamesh, and a
 dark (default), light or system appearance. Replace mode keeps the Madinah
 pages and lines: every riwaya is shown with the same page and line breaks as
-Hafs, the ayahs keeping the Hafs (Kufi) numbering.
+Hafs, while verse ends and numbers follow the displayed riwaya's counting
+system. Internal verse ends are inserted at their words and uncounted Hafs
+ends are omitted, including the unnumbered Fatiha basmala where appropriate.
 
 Words shared with similar ayahs have a dotted underline; tapping one opens a
 carousel of all the places (surah, ayah, page) with the shared words
@@ -265,6 +267,26 @@ recitation and the tafsir. Both come from Quranpedia's dumps too:
   `just_audio` (`lib/services/ayah_player.dart`). The listener chooses among
   Hafs and the selected riwayat, and the sheikh of each.
 
+`audio_numbering.json` maps word anchors between the displayed riwaya and
+the recording's counting system, including merged and split verses and
+Fatiha's uncounted basmala. Tapping or holding either side of an internal
+verse boundary selects that side's native verse; the sheet shows its text
+and number in the displayed riwaya. Choosing another riwaya for listening
+maps the selected word span to the corresponding audio clips, rather than
+reusing its displayed verse number. Playback completes every required clip,
+even when continuous playback is switched off mid-verse. Whole clips covering
+several displayed ayahs show their range; sub-verse timestamps are unavailable.
+Regenerate the map with `dart run tool/build_audio_numbering.dart`;
+source revision and licensing are in `tool/source/audio_numbering/README.md`.
+Recording metadata can override a counting profile: Bazzi recording 268
+counts the extra Naba boundary, while Qunbul recording 269 does not.
+
+Playback controls remain in a compact bar below the app after the listening
+and tafsir sheet is dismissed or another screen is opened. The bar can pause,
+resume, reopen the sheet, or stop and close the player. Its seek slider follows
+the current recording clip and commits a finger drag on release; a stale drag
+is ignored if playback has already advanced to another clip.
+
 ```
 cd <dumps>; curl -LO https://quranpedia.net/dumps/reciters-index.json.gz
 for id in 2012 2003 272 3 2013; do curl -LO https://quranpedia.net/dumps/tafsir-book-$id.json.gz; done
@@ -290,7 +312,8 @@ circled dot instead of an ordinary taqlil dot and a «وقفًا فقط» margin
 Book-marked stopping cases include فهدى (2:213) and أذى (2:222).
 Joined hamzat al-wasl is
 normalised to the Hafs-style wasl sign without a circle. The Hafs font's
-fathatan and stacked dagger-alif/madd anchors are adjusted only for drawing;
+fathatan and madd anchors are adjusted only for drawing; boundary sakt is
+placed above the word gap while internal sakt retains its font anchor;
 the Quran source text remains intact. Israel's foreign-name exception stays
 as a margin reminder and does not trigger difference colours or animations.
 

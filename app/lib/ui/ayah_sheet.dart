@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../data/quran_repository.dart';
+import '../data/audio_numbering.dart';
+import '../data/reading_comparison.dart';
+import '../data/variant_repository.dart';
 import '../data/recitations.dart';
 import '../data/tafsir_repository.dart';
 import '../models/qiraat_catalog.dart';
@@ -8,6 +11,7 @@ import '../models/quran.dart';
 import '../services/ayah_player.dart';
 import '../state/reader_settings.dart';
 import 'raised.dart';
+import 'recitation_player.dart';
 import 'theme.dart';
 
 /// An ayah: listen to it in a riwaya, by a sheikh of that riwaya, and read
@@ -18,11 +22,19 @@ class AyahSheet extends StatefulWidget {
     required this.ayah,
     required this.quran,
     required this.settings,
+    this.word = 0,
+    this.variants,
+    this.player,
+    this.recitations,
   });
 
   final Ayah ayah;
   final QuranRepository quran;
   final ReaderSettings settings;
+  final int word;
+  final VariantRepository? variants;
+  final AyahPlayer? player;
+  final Recitations? recitations;
 
   static final _recitations = Recitations.load();
   static final _tafsir = TafsirRepository();
@@ -32,6 +44,9 @@ class AyahSheet extends StatefulWidget {
     required Ayah ayah,
     required QuranRepository quran,
     required ReaderSettings settings,
+    int word = 0,
+    VariantRepository? variants,
+    AyahPlayer? player,
   }) => showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -43,7 +58,14 @@ class AyahSheet extends StatefulWidget {
       maxChildSize: 0.95,
       builder: (context, controller) => PrimaryScrollController(
         controller: controller,
-        child: AyahSheet(ayah: ayah, quran: quran, settings: settings),
+        child: AyahSheet(
+          ayah: ayah,
+          quran: quran,
+          settings: settings,
+          word: word,
+          variants: variants,
+          player: player,
+        ),
       ),
     ),
   );
@@ -53,21 +75,54 @@ class AyahSheet extends StatefulWidget {
 }
 
 class _AyahSheetState extends State<AyahSheet> {
-  Recitations? _recitations;
+  late Recitations? _recitations = widget.recitations;
 
   /// The ayah shown: the one opened, then each one the sheikh goes on to.
   late Ayah _ayah = widget.ayah;
+  late int _word = widget.word;
+  AyahPlayer get _player => widget.player ?? AyahPlayer.instance;
+  String get _system => AudioNumbering.displaySystemFor(s.displayed ?? hafsId);
+  int get _number =>
+      widget.quran.numbering?.verseAt(
+        _system,
+        _ayah.surah,
+        _ayah.number,
+        _word,
+      ) ??
+      _ayah.number;
+
+  String get _text {
+    final map = widget.quran.numbering;
+    final range = map?.span(_system, _ayah.surah, _number);
+    final first = range?.first ?? (ayah: _ayah.number, word: 0);
+    final last =
+        range?.last ?? (ayah: _ayah.number, word: _ayah.words.length - 1);
+    final parts = <String>[];
+    for (var n = first.ayah; n <= last.ayah; n++) {
+      final a = widget.quran.ayah(_ayah.surah, n);
+      final from = n == first.ayah ? first.word : 0;
+      final to = n == last.ayah ? last.word + 1 : a.words.length;
+      parts.add(
+        widget.variants == null
+            ? a.words.sublist(from, to).join(' ')
+            : readingText(widget.variants!, s.displayed, a, from, to),
+      );
+    }
+    return parts.where((p) => p.isNotEmpty).join(' ');
+  }
 
   /// The ayah playing when last seen.
-  ({int surah, int ayah})? _playing;
+  ({int surah, int ayah, int word})? _playing;
 
   @override
   void initState() {
     super.initState();
-    AyahSheet._recitations.then((r) {
-      if (mounted) setState(() => _recitations = r);
-    });
-    final player = AyahPlayer.instance;
+    if (_recitations == null) {
+      AyahSheet._recitations.then((r) {
+        if (mounted) setState(() => _recitations = r);
+      });
+    }
+    final player = _player;
     player.ayahCounts = [for (final s in widget.quran.surahs) s.ayahCount];
     _playing = _now(player);
     player.addListener(_follow);
@@ -75,24 +130,29 @@ class _AyahSheetState extends State<AyahSheet> {
 
   @override
   void dispose() {
-    AyahPlayer.instance.removeListener(_follow);
+    _player.removeListener(_follow);
     super.dispose();
   }
 
-  static ({int surah, int ayah})? _now(AyahPlayer player) {
+  static ({int surah, int ayah, int word})? _now(AyahPlayer player) {
     final c = player.current;
-    return c == null ? null : (surah: c.surah, ayah: c.ayah);
+    return c == null
+        ? null
+        : (surah: c.surah, ayah: c.ayah, word: player.currentWord);
   }
 
   /// The recitation went on from the ayah shown to the next: show that one,
   /// with its tafsir.
   void _follow() {
-    final now = _now(AyahPlayer.instance);
+    final now = _now(_player);
     final before = _playing;
     _playing = now;
     if (now == null || now == before) return;
     if (before?.surah == _ayah.surah && before?.ayah == _ayah.number) {
-      setState(() => _ayah = widget.quran.ayah(now.surah, now.ayah));
+      setState(() {
+        _ayah = widget.quran.ayah(now.surah, now.ayah);
+        _word = now.word;
+      });
     }
   }
 
@@ -113,13 +173,13 @@ class _AyahSheetState extends State<AyahSheet> {
     final ayah = _ayah;
     final surah = widget.quran.surah(ayah.surah).nameAr;
     return ListenableBuilder(
-      listenable: Listenable.merge([s, AyahPlayer.instance]),
+      listenable: Listenable.merge([s, _player]),
       builder: (context, _) => ListView(
         controller: PrimaryScrollController.of(context),
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
         children: [
           Text(
-            'سورة $surah • الآية ${ayah.number}',
+            'سورة $surah • ${_number == 0 ? 'البسملة' : 'الآية $_number'}',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: MushafColors.green,
@@ -129,7 +189,8 @@ class _AyahSheetState extends State<AyahSheet> {
           ),
           const SizedBox(height: 8),
           Text(
-            ayah.words.join(' '),
+            _text,
+            key: const ValueKey('selected-verse-text'),
             textAlign: TextAlign.center,
             textDirection: TextDirection.rtl,
             style: TextStyle(
@@ -154,16 +215,29 @@ class _AyahSheetState extends State<AyahSheet> {
     final riwayat = _riwayat;
     final riwaya = riwayat.contains(s.listenRiwaya)
         ? s.listenRiwaya!
-        // The selected riwaya, or Hafs.
+        : riwayat.contains(s.displayed)
+        ? s.displayed!
         : riwayat[riwayat.length > 1 ? 1 : 0];
     final reciters = recitations.of(riwaya);
     final reciter = reciters.firstWhere(
       (r) => r.id == s.reciterFor(riwaya),
       orElse: () => reciters.first,
     );
-    final player = AyahPlayer.instance;
+    final player = _player;
     final ayah = _ayah;
-    final here = player.isPlaying(ayah.surah, ayah.number);
+    final c = player.current;
+    final here =
+        c != null &&
+        c.surah == ayah.surah &&
+        (widget.quran.numbering?.verseAt(
+                  _system,
+                  c.surah,
+                  c.ayah,
+                  player.currentWord,
+                ) ??
+                c.ayah) ==
+            _number;
+    final covered = player.clipVersesIn(_system);
     return Raised(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -186,10 +260,22 @@ class _AyahSheetState extends State<AyahSheet> {
                 circle: true,
                 color: MushafColors.green,
                 depth: 0.8,
-                tooltip: here && player.playing ? 'إيقاف' : 'استماع',
+                tooltip: here
+                    ? (player.playbackRequested
+                          ? 'إيقاف مؤقت'
+                          : 'متابعة التلاوة')
+                    : 'استماع',
                 onTap: () => here
-                    ? player.stop()
-                    : player.play(ayah.surah, ayah.number, reciter),
+                    ? (player.playbackRequested
+                          ? player.pause()
+                          : player.resume())
+                    : player.play(
+                        ayah.surah,
+                        ayah.number,
+                        reciter,
+                        selectionSystem: _system,
+                        word: _word,
+                      ),
                 child: SizedBox.square(
                   dimension: 48,
                   child: here && player.loading
@@ -201,14 +287,23 @@ class _AyahSheetState extends State<AyahSheet> {
                           ),
                         )
                       : Icon(
-                          here ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                          here && player.playbackRequested
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
                           color: Colors.white,
                           size: 30,
                         ),
                 ),
               ),
+              if (player.current != null)
+                IconButton(
+                  tooltip: 'إغلاق المشغّل',
+                  onPressed: player.stop,
+                  icon: const Icon(Icons.close_rounded),
+                ),
             ],
           ),
+          if (player.current != null) RecitationSeekBar(player: player),
           // The riwaya, when there is a choice.
           if (riwayat.length > 1) ...[
             const SizedBox(height: 8),
@@ -263,7 +358,13 @@ class _AyahSheetState extends State<AyahSheet> {
           if (player.current != null && !here)
             Text(
               'يُتلى الآن: سورة ${widget.quran.surah(player.current!.surah).nameAr}، '
-              'الآية ${player.current!.ayah}',
+              'الآية ${player.nativeAyah} بحسب الرواية المسموعة',
+              style: TextStyle(color: MushafColors.frame, fontSize: 12),
+            ),
+          if (covered.length > 1)
+            Text(
+              'يشمل هذا المقطع الآيات ${covered.first}–${covered.last} '
+              'من الرواية المعروضة لاختلاف تقسيم الآيات.',
               style: TextStyle(color: MushafColors.frame, fontSize: 12),
             ),
           if (player.error != null)

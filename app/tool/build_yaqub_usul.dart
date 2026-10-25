@@ -114,6 +114,15 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
     if (generated(v) || (v.length > 7 && v[7] == 'ya_zaida')) return true;
     final d = v.length > 6 ? v[6] as String : '';
     final text = v[4] as String;
+    final statement = d.isEmpty ? text : d;
+    final coveredByExtraYa = List.generate(
+      v[3] as int,
+      (offset) => '${v[0]}:${v[1]}:${(v[2] as int) + offset}:ya_zaida',
+    ).any(seedMap.containsKey);
+    if ((coveredByExtraYa || v[0] == 27 && v[1] == 36 && v[2] == 4) &&
+        RegExp(r'إثبات (?:ال)?ياء|بياء ساكنة|بعدها ياء ساكنة').hasMatch(d)) {
+      return true;
+    }
     if (v[5] == 'u' && text.isEmpty) return true;
     if (RegExp(
       r'^(ب?ضم الهاء|ب?كسر الهاء|اشمام كسرة|إشمام كسرة|ب?اسكان ياء الإضافة|ب?إسكان ياء الإضافة|إبدال الهمزة الثانية|ابدال الهمزة الثانية|تسهيل الهمزة الثانية)',
@@ -121,15 +130,23 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
       return true;
     }
     if (d.isEmpty &&
-        RegExp(r'^(فتح |ضم |كسر |ترقيق |تغليظ |إدغام |ادغام )')
-            .hasMatch(text)) {
+        RegExp(
+          r'^(فتح |ضم |كسر |ترقيق |تغليظ |إدغام |ادغام |إشمام |اشمام |إظهار |اظهار )',
+        ).hasMatch(text)) {
       return true;
     }
     if (v[5] != 'f' &&
         (text.isEmpty ||
             RegExp(
-              r'إمالة|بالفتح|مد المتصل|مد المنفصل|تسهيل|تحقيق الهمزة|إظهار|اظهار|ادغام|إدغام|القصر|بالقصر',
+              r'إمالة|بالفتح|مد المتصل|مد المنفصل|مدها|تسهيل|تحقيق الهمزة|إظهار|اظهار|ادغام|إدغام|القصر|بالقصر',
             ).hasMatch(d))) {
+      return true;
+    }
+    // Some legacy rows put performance prose in the replacement-text field.
+    // It must never be printed as Quran text.
+    if (!RegExp('[ً-ْ]').hasMatch(text) &&
+        RegExp(r'^(?:إشمام|اشمام|إظهار|اظهار|إدغام|ادغام)(?:\s|$)')
+            .hasMatch(statement)) {
       return true;
     }
     if (yaPosition(v) &&
@@ -233,6 +250,25 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
       v[4] = 'ءَاتَانِ';
       v[6] = 'بحذف الياء وصلاً';
     }
+    if (v[0] == 2 && v[1] == 165 && v[2] == 17 && v[5] == 'f') {
+      // Yaqub reads ولو ترى الذين ظلموا. Store only the changed word so the
+      // fully vocalised surrounding Quran words remain in their own slots.
+      v[3] = 1;
+      v[4] = index['2:165:17']!.t.replaceFirst('يَ', 'تَ');
+      v[6] = 'بالتاء وفتح الراء وصلاً';
+    }
+    if (v[0] == 2 && v[1] == 177 && v[2] == 0 && v[5] == 'f') {
+      // The quotation is two words. Keeping count=1 used to duplicate البر
+      // in the page and left the partial quotation without Mushaf vowels.
+      v[3] = 2;
+      v[4] =
+          '${index['2:177:0']!.t} '
+          '${index['2:177:1']!.t.replaceFirst('رَّ', 'رُّ')}';
+      v[6] = 'برفع راء البر وتفخيمها';
+    }
+    if (v[0] == 27 && v[1] == 36 && v[2] == 4 && v[5] == 'f') {
+      v[4] = (v[4] as String).replaceFirst(RegExp(r'[يى]$'), 'ۦ');
+    }
   }
   for (final v in rows) {
     v[4] = (v[4] as String).split(RegExp(r'[:(]')).first.trim();
@@ -298,35 +334,9 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
         : null;
     final previous = i > 0 && words[i - 1].s == w.s ? words[i - 1] : null;
     final ns = next == null ? <String>[] : lettersOf(next.t);
-    // Madd rules from p.7. Never attach Warsh's badal to Yaqub's ishmam.
-    if (next != null && ns.isNotEmpty && _hamza(ns.first) && cs.isNotEmpty) {
-      final last = cs.last.replaceAll(RegExp(r'[ٓۖ-ۭ]'), '');
-      if (RegExp(r'^[اويى]$').hasMatch(last) &&
-          cs.length > 1 &&
-          ((last == 'ا' && cs[cs.length - 2].contains('َ')) ||
-              (last == 'و' && cs[cs.length - 2].contains('ُ')) ||
-              ('يى'.contains(last) && cs[cs.length - 2].contains('ِ')))) {
-        add(
-          w,
-          'madd_munfasil',
-          'بقصر المد المنفصل حركتين',
-          7,
-          context: '${w.t} ${next.t}',
-        );
-      }
-    }
-    for (var c = 1; c < cs.length; c++) {
-      if (_hamza(cs[c]) &&
-          (cs[c - 1].contains('ٓ') ||
-              (RegExp(r'^[اويى]').hasMatch(cs[c - 1]) &&
-                  c > 1 &&
-                  ((cs[c - 1][0] == 'ا' && cs[c - 2].contains('َ')) ||
-                      (cs[c - 1][0] == 'و' && cs[c - 2].contains('ُ')) ||
-                      ('يى'.contains(cs[c - 1][0]) &&
-                          cs[c - 2].contains('ِ')))))) {
-        add(w, 'madd_muttasil', 'بتوسط المد المتصل أربع حركات', 7);
-      }
-    }
+    // Yaqub's routine connected/separated madd is part of the narrator's
+    // known profile. It changes the printed madd sign where needed, but is not
+    // emitted as a coloured word-level rule or a margin example.
     // Yaqub's hā of plural/dual/feminine pronouns after a quiescent yā.
     for (var c = 1; c < cs.length; c++) {
       if (cs[c].startsWith('ه') &&
@@ -433,7 +443,11 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
         cs.isNotEmpty &&
         _hamza(cs.first)) {
       final ps = lettersOf(previous.t);
-      if (ps.isNotEmpty && _hamza(ps.last)) {
+      // A tanweened first hamza supplies a pronounced nun before the next
+      // word; it is not one of the two-hamza-from-two-words cases.
+      if (ps.isNotEmpty &&
+          _hamza(ps.last) &&
+          !RegExp('[ًࣰٌࣱٍࣲٖٗٞ]').hasMatch(ps.last)) {
         final v1 = _vowel(ps.last), v2 = _vowel(cs.first);
         if (v1 == v2 || v1 == 'َ') {
           add(
@@ -544,6 +558,7 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
         'idgham_kabir',
         'بالإدغام الكبير وصلاً',
         9,
+        count: 2,
         context: '${w.t} ${next?.t ?? ''}',
       );
     }
@@ -567,6 +582,7 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
         'idgham_kabir',
         'بالإظهار أو الإدغام الكبير وصلاً',
         10,
+        count: 2,
         context: '${w.t} ${next?.t ?? ''}',
         ways: ['الإظهار', 'الإدغام الكبير'],
       );
@@ -745,8 +761,10 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
     var description = z
         ? 'بإثبات الياء الزائدة وصلاً ووقفًا'
         : 'بإسكان ياء الإضافة';
-    if (z && count == 1 && safeText.isEmpty) {
-      safeText = '${w.t.replaceAll(RegExp(r'[ۖ-ۭ]'), '')}ي';
+    if (z && count == 1) {
+      // The extra ya is a Quranic small silah ya after the final kasra, not a
+      // full lexical ya letter (دَعَانِۦ، فَٱرۡهَبُونِۦ).
+      safeText = '${w.t.replaceAll(RegExp(r'[ۖ-ۭ]'), '')}ۦ';
     }
     if (!z) {
       final cs = lettersOf(w.t);
@@ -812,7 +830,7 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
       'بحذف الياء وصلاً لالتقاء الساكنين وإثباتها وقفًا',
       28,
       stop: true,
-      stopText: '${actual.replaceAll(RegExp(r'[ۖ-ۭ]'), '')}ي',
+      stopText: '${actual.replaceAll(RegExp(r'[ۖ-ۭ]'), '')}ۦ',
       ways: ['حذف الياء وصلاً', 'إثبات الياء وقفًا'],
     );
   }
@@ -824,7 +842,7 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
       'بحذف الياء وصلاً وإثباتها وقفًا',
       28,
       stop: true,
-      stopText: 'ءَاتَانِي',
+      stopText: 'ءَاتَانِۦ',
       ways: ['حذف الياء وصلاً', 'إثبات الياء وقفًا'],
     );
   } else {
@@ -842,6 +860,7 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
     'ya_zaida',
     'بإثبات الياء الزائدة وصلاً ووقفًا مع إدغام النونين',
     28,
+    text: '${tumid.t.replaceAll(RegExp(r'[ۖ-ۭ]'), '')}ۦ',
     ways: ['إثبات الياء وصلاً ووقفًا مع إدغام النونين'],
   );
   rows.sort((a, b) {

@@ -149,10 +149,17 @@ class Variant {
 
   /// The short explanation to show: the riwaya file's (بفتح النون وتشديد
   /// الجيم), else the certified source's wording.
-  String get shownDescription => [
-    description.isNotEmpty ? description : bookHow,
-    bookWujuh,
-  ].where((s) => s.isNotEmpty).join('، ');
+  String get shownDescription {
+    // The opposite reading shown beside Yaqub is malik without the alif.
+    // Do not repeat an unrelated preceding-mim explanation at this word.
+    if (surah == 1 && ayah == 4 && word == 0 && text == 'مَلِكِ') {
+      return 'بحذف الألف';
+    }
+    return [
+      description.isNotEmpty ? description : bookHow,
+      bookWujuh,
+    ].where((s) => s.isNotEmpty).join('، ');
+  }
 
   Variant withCertified([
     String how = '',

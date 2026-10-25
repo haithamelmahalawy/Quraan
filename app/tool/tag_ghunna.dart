@@ -11,7 +11,7 @@ import 'dart:io';
 
 String _norm(String t) => t
     .replaceAll(RegExp(r'بلا\s+غنة'), 'بغنة')
-    .replaceAll(RegExp('[ً-ْ\s]'), '');
+    .replaceAll(RegExp(r'[ً-ْ\s]'), '');
 
 /// The words in brackets, as written.
 String? _quoted(String t) => RegExp(r'\(([^)]*)\)').firstMatch(t)?[1]?.trim();

@@ -21,6 +21,18 @@ class HafsFontMarks extends StatelessWidget {
     r'([ًٗ])ا([ۖ-ۭ]*)(?=\s|$)|ا[ًٗ]([ۖ-ۭ]*)(?=\s|$)',
   );
   static final _cluster = RegExp('[^ً-ٰٟۖ-ۭ][ً-ٰٟۖ-ۭ]*');
+  static final _boundarySakt = RegExp(r'ۜ([اى]?[ً-ٰٟۖ-ۭ]*)(?=\s|$)');
+
+  /// Reserve a narrow inter-word anchor for boundary sakt. Source spelling
+  /// and semantics retain the original sign; internal al/شيء are untouched.
+  static String boundarySpacing(String text) =>
+      text.replaceAllMapped(_boundarySakt, (m) => '${m[1]}\u2009');
+
+  static bool _raisedMadd(String cluster, String? previous) =>
+      cluster.contains('ٓ') &&
+      (cluster.contains('ٰ') ||
+          cluster.contains('َ') ||
+          cluster.startsWith('ا') && (previous?.contains('َ') ?? false));
 
   // A separate paint span for each code point breaks the font's hamza/vowel
   // shaping. Keep adjacent characters of the same colour in one shaping run.
@@ -41,14 +53,19 @@ class HafsFontMarks extends StatelessWidget {
 
   static bool needsAdjustment(String text) =>
       RegExp('[ۭۢ]').hasMatch(text) ||
+      _boundarySakt.hasMatch(text) ||
       _tanween.hasMatch(text) ||
-      _cluster
-          .allMatches(text)
-          .any(
-            (m) =>
-                m[0]!.contains('ٰ') && m[0]!.contains('ٓ') ||
-                _lowerImala(m[0]!),
-          );
+      _needsClusterAdjustment(text);
+
+  static bool _needsClusterAdjustment(String text) {
+    String? previous;
+    for (final m in _cluster.allMatches(text)) {
+      final cluster = m[0]!;
+      if (_raisedMadd(cluster, previous) || _lowerImala(cluster)) return true;
+      previous = cluster;
+    }
+    return false;
+  }
 
   static List<(String, Color?)> positionedParts(List<(String, Color?)> parts) {
     final chars = <(String, Color?)>[
@@ -77,8 +94,9 @@ class HafsFontMarks extends StatelessWidget {
     ];
     final full = placed.map((p) => p.$1).join();
     final marks = <int, Color?>{};
+    String? previous;
     for (final m in _cluster.allMatches(full)) {
-      if (m[0]!.contains('ٰ') && m[0]!.contains('ٓ')) {
+      if (_raisedMadd(m[0]!, previous)) {
         final at = full.indexOf('ٓ', m.start);
         marks[at] = placed[at].$2;
       }
@@ -90,26 +108,39 @@ class HafsFontMarks extends StatelessWidget {
         final markAt = full.indexOf(RegExp('[ۭۢ]'), m.start);
         marks[markAt] = placed[markAt].$2;
       }
+      previous = m[0]!;
     }
-    if (marks.isEmpty) return preserveText(builder(_joined(placed)));
-    final rendered = _joined(<(String, Color?)>[
-      for (final (i, p) in placed.indexed)
-        if (!marks.containsKey(i)) p,
-    ]);
+    final sakt = {for (final m in _boundarySakt.allMatches(full)) m.start: m};
+    if (marks.isEmpty && sakt.isEmpty) {
+      return preserveText(builder(_joined(placed)));
+    }
+    final insertions = {for (final m in sakt.values) m.end: placed[m.start].$2};
+    final chars = <(String, Color?)>[];
+    final offsets = <int, int>{};
+    final targets = <(int, Color?, String)>[];
+    for (var i = 0; i <= placed.length; i++) {
+      if (insertions.containsKey(i)) {
+        targets.add((chars.length, insertions[i], 'ۜ'));
+        chars.add(('\u2009', insertions[i]));
+      }
+      offsets[i] = chars.length;
+      if (i < placed.length && !marks.containsKey(i) && !sakt.containsKey(i)) {
+        chars.add(placed[i]);
+      }
+    }
+    for (final entry in marks.entries) {
+      for (final m in _cluster.allMatches(full)) {
+        if (m.start <= entry.key && entry.key < m.end) {
+          targets.add((offsets[m.start]!, entry.value, full[entry.key]));
+        }
+      }
+    }
+    final rendered = _joined(chars);
     return preserveText(
       CustomPaint(
         foregroundPainter: _QuranMarkPainter(
           rendered,
-          [
-            for (final entry in marks.entries)
-              for (final m in _cluster.allMatches(full))
-                if (m.start <= entry.key && entry.key < m.end)
-                  (
-                    m.start - marks.keys.where((at) => at < m.start).length,
-                    entry.value,
-                    full[entry.key],
-                  ),
-          ],
+          targets,
           DefaultTextStyle.of(context).style.merge(style),
           MediaQuery.textScalerOf(context),
         ),
@@ -145,10 +176,13 @@ class _QuranMarkPainter extends CustomPainter {
     final font = scaler.scale(style.fontSize ?? 14);
     final source = parts.map((p) => p.$1).join();
     for (final (at, color, sign) in targets) {
+      final sakt = sign == 'ۜ';
       final imala = sign == '۪' || sign == 'ٜ';
       final below = imala || sign == 'ۭ';
       final iqlab = sign == 'ۢ';
-      final end = HafsFontMarks._cluster.matchAsPrefix(source, at)!.end;
+      final end = sakt
+          ? at + 1
+          : HafsFontMarks._cluster.matchAsPrefix(source, at)!.end;
       final boxes = text.getBoxesForSelection(
         TextSelection(baseOffset: at, extentOffset: end),
       );
@@ -157,6 +191,31 @@ class _QuranMarkPainter extends CustomPainter {
       final line = text.computeLineMetrics().firstWhere(
         (l) => l.baseline >= box.top && l.baseline <= box.bottom,
       );
+      if (sakt) {
+        final mark = TextPainter(
+          text: TextSpan(
+            text: 'س',
+            style: TextStyle(
+              fontFamily: 'Hafs',
+              fontSize: font * .38,
+              height: 1,
+              color: color ?? style.color,
+            ),
+          ),
+          textDirection: TextDirection.rtl,
+        )..layout();
+        mark.paint(
+          canvas,
+          Offset(
+            (box.left + box.right - mark.width) / 2,
+            line.baseline -
+                font * .72 -
+                mark.computeLineMetrics().single.baseline,
+          ),
+        );
+        mark.dispose();
+        continue;
+      }
       final mark = TextPainter(
         text: TextSpan(
           text: imala ? 'ا۪' : 'ا$sign',
@@ -180,7 +239,9 @@ class _QuranMarkPainter extends CustomPainter {
                     ? .18
                     : iqlab
                     ? -.12
-                    : .05),
+                    : source.substring(at, end).contains('ٰ')
+                    ? -.28
+                    : -.12),
       );
       // Some font engines hide a mark when its carrier is transparent.
       // Paint the mark normally and clip away the carrier's ink instead.

@@ -87,6 +87,7 @@ void main(List<String> args) {
       'id': r['id'],
       'name': _reciterName(r['name'] as String),
       'server': server,
+      if (r['id'] == 268) 'numbering': 'makki-6220',
     });
   }
   File('assets/data/reciters.json').writeAsStringSync(

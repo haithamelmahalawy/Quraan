@@ -288,6 +288,125 @@ void main() {
     expect(rules(load('rawh'), 'naql_source', 55, 54), isEmpty);
     expect(rules(d, 'naql', 53, 50).single[4], contains('لُّ'));
   });
+  test('routine Yaqub madd has no row, colour, or margin exception', () {
+    for (final id in ['ruways', 'rawh']) {
+      final rows = (load(id)['variants'] as List).cast<List>();
+      expect(
+        rows.where(
+          (v) =>
+              v.length > 7 &&
+              const {'madd_munfasil', 'madd_muttasil'}.contains(v[7]),
+        ),
+        isEmpty,
+        reason: id,
+      );
+      expect(
+        rows.where((v) => v[0] == 2 && v[1] == 152 && v[2] == 0),
+        isEmpty,
+        reason: '$id فاذكروني',
+      );
+    }
+  });
+  test('reviewed early Baqara phrases are written and fully vocalised', () {
+    for (final id in ['ruways', 'rawh']) {
+      final d = load(id);
+      final tara = (d['variants'] as List).cast<List>().singleWhere(
+        (v) => v[0] == 2 && v[1] == 165 && v[2] == 17,
+      );
+      expect(tara.sublist(2, 5), [17, 1, 'تَرَى']);
+      final birr = (d['variants'] as List).cast<List>().singleWhere(
+        (v) => v[0] == 2 && v[1] == 177 && v[2] == 0,
+      );
+      expect(birr.sublist(2, 5), [0, 2, 'لَّيۡسَ ٱلۡبِرُّ']);
+    }
+  });
+  test('all Yaqub replacement quotations carry the source vowel marks', () {
+    final ayahs = {
+      for (final a in quran['ayahs'] as List) '${a[0]}:${a[1]}': a,
+    };
+    for (final id in ['ruways', 'rawh']) {
+      for (final v in (load(id)['variants'] as List).cast<List>()) {
+        if (!const {'f', 'h'}.contains(v[5]) || (v[4] as String).isEmpty) {
+          continue;
+        }
+        final own = (v[4] as String).split(RegExp(r'\s+'));
+        if (own.length != v[3]) continue;
+        final source = (ayahs['${v[0]}:${v[1]}']![4] as String)
+            .split(' ')
+            .sublist(v[2] as int, (v[2] as int) + (v[3] as int))
+            .join(' ');
+        expect(
+          completeReadingVowels(v[4] as String, source),
+          v[4],
+          reason: '$id ${v[0]}:${v[1]}:${v[2]}',
+        );
+      }
+    }
+  });
+  test('tanweened first hamza never creates a two-word hamza rule', () {
+    final rows = (load('ruways')['variants'] as List).cast<List>();
+    expect(
+      rows.where(
+        (v) =>
+            v[0] == 2 &&
+            v[1] == 178 &&
+            v[2] == 23 &&
+            v.length > 7 &&
+            v[7] == 'tasheel_pair',
+      ),
+      isEmpty,
+    );
+    for (final v in rows.where(
+      (v) =>
+          v.length > 7 &&
+          const {'tasheel_pair', 'ibdal_waw', 'ibdal_ya'}.contains(v[7]),
+    )) {
+      final context = (v[8] as Map)['context'] as String;
+      final previous = context.split(RegExp(r'\s+')).first;
+      expect(
+        lettersOf(previous).last,
+        isNot(matches(RegExp('[ًࣰٌࣱٍࣲٖٗٞ]'))),
+        reason: '${v[0]}:${v[1]}:${v[2]} $previous',
+      );
+    }
+  });
+  test('performance prose is never stored as replacement Quran text', () {
+    for (final id in ['ruways', 'rawh']) {
+      for (final v in (load(id)['variants'] as List).cast<List>()) {
+        expect(
+          v[4] as String,
+          isNot(
+            matches(
+              RegExp(r'^(?:إشمام|اشمام|إظهار|اظهار|إدغام|ادغام)(?:\s|$)'),
+            ),
+          ),
+          reason: '$id ${v[0]}:${v[1]}:${v[2]}',
+        );
+      }
+    }
+  });
+  test('extra ya is drawn as a small silah ya throughout Yaqub', () {
+    for (final id in ['ruways', 'rawh']) {
+      final rows = (load(id)['variants'] as List).cast<List>().where(
+        (v) => v.length > 8 && v[7] == 'ya_zaida',
+      );
+      for (final v in rows) {
+        final metadata = v[8] as Map;
+        final written = metadata['stopOnly'] == true
+            ? metadata['stopText'] as String
+            : v[4] as String;
+        if (written.isEmpty) continue;
+        expect(written, endsWith('ۦ'), reason: '$id ${v[0]}:${v[1]}:${v[2]}');
+        expect(
+          written,
+          isNot(matches(RegExp(r'[يى]$'))),
+          reason: '$id ${v[0]}:${v[1]}:${v[2]}',
+        );
+      }
+      expect(rules(load(id), 'ya_zaida', 2, 186)[1][4], 'دَعَانِۦ');
+      expect(rules(load(id), 'ya_zaida', 2, 40).single[4], 'فَٱرهَبُونِۦ');
+    }
+  });
   test('stop annotations do not replace continuous text', () {
     for (final id in ['ruways', 'rawh']) {
       final d = load(id);
@@ -329,6 +448,7 @@ void main() {
           .toList();
       expect(rows, hasLength(24));
       for (final row in rows) {
+        expect(row[3], 2, reason: '${row[0]}:${row[1]}:${row[2]}');
         final v = repo
             .at(['ruways'], row[0] as int, row[1] as int, row[2] as int)
             .singleWhere((v) => v.rule == 'idgham_kabir');
@@ -352,6 +472,13 @@ void main() {
       }
     },
   );
+  test('every Rawh large-idgham span also covers both words', () {
+    final rows = (load('rawh')['variants'] as List)
+        .cast<List>()
+        .where((v) => v.length > 7 && v[7] == 'idgham_kabir');
+    expect(rows, hasLength(3));
+    expect(rows.every((v) => v[3] == 2), isTrue);
+  });
   test(
     'hasrati is a Ruways stopping rule with six-count madd, never lexical ha',
     () {
@@ -466,7 +593,7 @@ void main() {
         expect(stopped, hasLength(id == 'rawh' ? 19 : 18));
         expect(
           (rules(d, 'ya_zaida', 6, 57).single[8] as Map)['stopText'],
-          'يَقْضِي',
+          'يَقْضِۦ',
         );
         final atan = rules(d, 'ya_zaida', 27, 36).singleWhere((v) => v[2] == 7);
         expect((atan[8] as Map)['stopOnly'] == true, id == 'rawh');
