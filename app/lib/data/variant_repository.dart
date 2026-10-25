@@ -128,15 +128,27 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
   final (id, raw, book) = input;
   final json = jsonDecode(raw) as Map<String, dynamic>;
   final index = <int, List<Variant>>{};
+  // Ya'qub's riwayat (Ruways, Rawh) only: their reviewed rules below.
+  final yaqub = id == 'ruways' || id == 'rawh';
   for (final v in json['variants'] as List) {
     // A few readings of the source give their description as the text
     // (بتفخيم الراء والسكت على الساكن قبل الهمزة): not to be drawn as the
     // words of the page.
-    if (_isDescription(v[4] as String) && (v.length < 7 || v[6] == '')) {
+    if (_isDescription(v[4] as String, voweled: yaqub) &&
+        (v.length < 7 || v[6] == '')) {
       v as List;
       final description = v[4] as String;
       v[4] = '';
       v.length < 7 ? v.addAll([description]) : v[6] = description;
+    }
+    // The length of the separated and connected madd is known of each
+    // riwaya: not told, nor coloured, at each word (فاذكروني «بالقصر»).
+    final rule = v.length > 7 ? v[7] as String : '';
+    if (yaqub && v.length > 6 && (rule.isEmpty || rule.startsWith('madd'))) {
+      final description = v[6] as String;
+      final kept = _withoutMadd(description);
+      if (kept.isEmpty && description.isNotEmpty) continue;
+      v[6] = kept;
     }
     final variant = Variant(
       riwayaId: id,
@@ -160,7 +172,20 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
           ? ((v[8] as Map)['ways'] as List? ?? const []).cast<String>()
           : const [],
     );
-    for (var w = variant.word; w < variant.word + variant.count; w++) {
+    // Idgham kabir merges the word into the next one (ٱلۡكِتَٰبَ بِّٱلۡحَقِّ):
+    // both are coloured, the note stays with the first.
+    final kabir =
+        yaqub &&
+        variant.count == 1 &&
+        (variant.rule == 'idgham_kabir' ||
+            RegExp(
+              'الإدغام فيما بعدها|الإدغام الكبير|إدغام كبير',
+            ).hasMatch(variant.description));
+    for (
+      var w = variant.word;
+      w < variant.word + variant.count + (kabir ? 1 : 0);
+      w++
+    ) {
       index
           .putIfAbsent(
             VariantRepository.key(variant.surah, variant.ayah, w),
@@ -326,10 +351,41 @@ bool _matchesUsul(Variant v, String how) {
 }
 
 /// Text without a vowel that tells of a reading rather than writes it.
-bool _isDescription(String text) =>
-    !RegExp('[ً-ْ]').hasMatch(text) &&
-    RegExp(
-      r'(^|\s)(ب|و)?(ال)?(سكت|تفخيم|ترقيق|إدغام|ادغام|تحقيق|تسهيل|إمالة|تقليل|'
-      r'توسط|تسكين|إسكان|اسكان|إظهار|اظهار|جر|رفع|نصب|ضم|فتح|كسر|ياء|غنة|إبدال|ابدال|'
-      r'نقل|صلة|قصر|قصرالبدل|إخفاء|اخفاء|حذف|مد|إشمام|اشمام|امالة|ادغم)(\s|$)',
-    ).hasMatch(text);
+/// [description] without what it says of the length of a madd (بالقصر،
+/// ومدها 4 حركات، ومد المتصل 6 حركات): «بإسكان الياء ومدها 4 حركات» →
+/// «بإسكان الياء»; empty when that is all it says.
+String _withoutMadd(String description) {
+  final madd = RegExp(
+    r'^(ب|مع )?(ال)?(قصر|مد|توسط|إشباع)(ها|ه)?'
+    r'( (المنفصل|المتصل|اللين|الألف|الياء|الواو))?'
+    r'( \d+ ?حركات| حركتين| (أربع|ست|ثلاث|خمس) حركات)?'
+    r'( وصلاً| وقفاً)?$',
+  );
+  final clauses = description
+      .split(RegExp(r'\s+و(?=\S)|،\s*'))
+      .map((c) => c.trim())
+      .where((c) => c.isNotEmpty)
+      .toList();
+  final kept = clauses.where((c) => !madd.hasMatch(c)).toList();
+  if (kept.length == clauses.length) return description;
+  return kept.join(' و');
+}
+
+bool _isDescription(String text, {bool voweled = false}) {
+  const words =
+      r'(ب|و)?(ال)?(سكت|تفخيم|ترقيق|إدغام|ادغام|تحقيق|تسهيل|إمالة|تقليل|'
+      r'توسط|تسكين|إسكان|اسكان|إظهار|اظهار|جر|بجر|رفع|نصب|ضم|فتح|كسر|ياء|غنة|'
+      r'إبدال|ابدال|نقل|صلة|قصر|قصرالبدل|إخفاء|اخفاء|حذف|مد|إشمام|اشمام|امالة|'
+      r'ادغم|تشديد|تخفيف|زيادة|إثبات|اثبات)';
+  // Without vowels, any such word tells of a reading.
+  if (!RegExp('[ً-ْ]').hasMatch(text) &&
+      RegExp('(^|\\s)$words(\\s|\$)').hasMatch(text)) {
+    return true;
+  }
+  // With them (اشمام القاف ضماً واظهار اللام الأولى): a phrase opening with
+  // such a word.
+  final first = text.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '').split(' ');
+  return voweled &&
+      first.length > 1 &&
+      RegExp('^$words\$').hasMatch(first.first);
+}

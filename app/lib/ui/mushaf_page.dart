@@ -1985,7 +1985,9 @@ List<String> _usulOf(Variant v) {
       'الهمزات',
     if (RegExp('تحقيق الهمز').hasMatch(d)) 'تحقيق الهمز',
     if (d.contains('البدل')) 'مد البدل',
-    if (RegExp(r'(^|\s)(ب|و)?(ال)?مد|ومدها|القصر').hasMatch(d) &&
+    // Ya'qub's madd is known of the riwaya, not told at each word.
+    if (!const {'ruways', 'rawh'}.contains(v.riwayaId) &&
+        RegExp(r'(^|\s)(ب|و)?(ال)?مد|ومدها|القصر').hasMatch(d) &&
         !v.isQasr &&
         !d.contains('البدل') &&
         !RegExp('المتصل|المنفصل').hasMatch(d))

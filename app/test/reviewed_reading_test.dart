@@ -38,7 +38,7 @@ void main() {
     expect(v.withCertified().stopText, v.stopText);
   });
 
-  test('Ruways ishmam and Yaqub madd open the relevant Durrah evidence', () async {
+  test('Ruways ishmam opens the relevant Durrah evidence', () async {
     final poems = await Manzumat.load();
     final quran = await QuranRepository.load();
     final repo = await VariantRepository.discover();
@@ -49,9 +49,12 @@ void main() {
     final evidence = poems.referenceOf(ishmam, 'قِيلَ', 2, names);
     expect(evidence.poem, Poem.durrah);
     expect(evidence.mention, {62, 63});
-    final madd = repo.at(['ruways'], 2, 4, 2)
-        .singleWhere((v) => v.rule == 'madd_munfasil');
-    expect(poems.referenceOf(madd, 'بِمَآ', 2, names).mention, {22});
+    // Ya'qub's routine madd is known of the riwaya and no longer stored per
+    // word: nothing is told at بما.
+    expect(
+      repo.at(['ruways'], 2, 4, 2).where((v) => v.rule == 'madd_munfasil'),
+      isEmpty,
+    );
   });
 
   test('actual shared attakhadhtum is equal across all narrator directions', () async {
