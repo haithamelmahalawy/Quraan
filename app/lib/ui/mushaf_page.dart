@@ -1364,9 +1364,14 @@ class _MushafPageState extends State<MushafPage>
       if (!v.isUsul) continue;
       priority = v.riwayaId == widget.settings.displayed ? 1 : 0;
       if (v.rule == 'ishmam' || v.rule == 'ishmam_sad') {
+        // The letter whose kasra is given a touch of damma: the qaf of
+        // وَقِيلَ, not the waw before it.
+        final kasra = letters.indexWhere((l) => l.contains('ِ'));
         final at = v.rule == 'ishmam_sad'
             ? letters.indexWhere((l) => l.startsWith('ص'))
-            : 0;
+            : kasra < 0
+            ? 0
+            : kasra;
         mark(at, ReadingColors.of(v));
         continue;
       }

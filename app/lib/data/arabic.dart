@@ -432,7 +432,18 @@ String completeReadingVowels(String text, String baseline) {
                       lettersOf(ownWords[w + 1]).first.contains('ّ');
             final assimilated =
                 followingDoubled && RegExp('[ْۡ]').hasMatch(source[j]);
-            if (!explicit.hasMatch(own[i]) && !assimilated) {
+            // A bare nun before a letter of ikhfa is the nun sakina of the
+            // Uthmani script (يُنزِلَ، يَغُرَّنكَ): it takes no vowel.
+            final next = i + 1 < own.length
+                ? own[i + 1]
+                : w + 1 < ownWords.length
+                ? lettersOf(ownWords[w + 1]).first
+                : '';
+            final hidden =
+                own[i] == 'ن' &&
+                next.isNotEmpty &&
+                'تثجدذزسشصضطظفقك'.contains(next[0]);
+            if (!explicit.hasMatch(own[i]) && !assimilated && !hidden) {
               for (final m in marks.allMatches(source[j])) {
                 if (!own[i].contains(m[0]!)) own[i] += m[0]!;
               }

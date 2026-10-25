@@ -395,7 +395,7 @@ void main() {
         hasLength(id == null ? 2 : 1),
       );
       final text = t.widget<InkText>(word(2, 90, 11)).text.replaceAll('ـ', '');
-      expect(text, id == null ? 'يُنَزِّلَ' : 'يُنۡزِلَ');
+      expect(text, id == null ? 'يُنَزِّلَ' : 'يُنزِلَ');
       expect(
         find.byKey(const ValueKey('margin-reference:2:90:11')),
         findsOneWidget,

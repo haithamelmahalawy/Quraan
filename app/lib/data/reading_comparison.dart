@@ -113,8 +113,26 @@ bool _writtenIdgham(Variant v) =>
     v.text.isNotEmpty &&
     !v.stopOnly;
 
+/// Ya' al-idafa (عَهۡدِيَ، بَيۡتِي): a written difference of the words,
+/// compared like the farsh in every riwaya.
+bool _yaIdafaRule(Variant v) =>
+    v.rule == 'ya_idafa' && v.text.isNotEmpty && !v.stopOnly;
+
+/// How a reading reads its ya' al-idafa, by its description: 'sukun' or
+/// 'fath'; null when it says nothing of it. The texts do not always write
+/// the sukun of the ya (بَيۡتِي), so its vowel cannot be told from them.
+String? _yaIdafa(Variant v) {
+  final m = RegExp(
+    r'(^|\s|و)ب?(إسكان|اسكان|فتح) (ال)?ياء( الإضافة)?(\s|$|،)',
+  ).firstMatch(v.description);
+  if (m == null) return null;
+  return m[2] == 'فتح' ? 'fath' : 'sukun';
+}
+
 bool _lexical(Variant v) =>
-    (v.inHamesh || _writtenIdgham(v)) && !v.isMarginNote && !v.readsAsHafs;
+    (v.inHamesh || _writtenIdgham(v) || _yaIdafaRule(v)) &&
+    !v.isMarginNote &&
+    !v.readsAsHafs;
 
 List<Variant> _rows(
   VariantRepository repository,
@@ -224,6 +242,7 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
         '${v.word - from}:${v.count}:${_descriptionKey(v.shownDescription)}',
       if (v.bookWujuh.isNotEmpty)
         '${v.word - from}:${_descriptionKey(v.bookWujuh)}',
+      if (_yaIdafa(v) case final ya?) '${v.word - from}:ya:$ya',
     ],
   ]..sort();
   return '${readingTextKey(_apply(ayah, rows.where((v) => !v.stopOnly).toList(), from, to), baseline: ayah.words.sublist(from, to).join(' '))}#${unresolved.join(';')}';

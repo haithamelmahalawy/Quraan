@@ -239,6 +239,15 @@ String usulReadingText(
   }
   if (reading.usulText.isEmpty) return target;
   final context = reading.usulText.split(RegExp(r'\s+'));
+  // A context opening with the word itself gives what follows it (the
+  // sakin of «قُلُوبِهِمِ ٱلۡعِجۡلَ»): the reading, then those words; never
+  // the Hafs word again before it.
+  if (context.length > reading.count &&
+      skeleton(context.first) == skeleton(ayah.words[reading.word])) {
+    return madinahScript(
+      [target, ...context.skip(reading.count)].join(' '),
+    );
+  }
   final prefixLength = context.length - reading.count;
   if (prefixLength <= 0) return target;
   final prefix = <String>[];

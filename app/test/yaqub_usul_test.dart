@@ -146,10 +146,10 @@ void main() {
       final ayah = q.ayah(2, 90);
       for (final id in ['ruways', 'rawh']) {
         final own = repo.at([id], 2, 90, 11).singleWhere((v) => v.inHamesh);
-        expect(own.text, 'يُنۡزِلَ');
+        expect(own.text, 'يُنزِلَ');
         expect(own.isUsul, isFalse);
         expect(own.description, 'بإسكان النون وكسر الزاي مخففة');
-        expect(readingText(repo, id, ayah, 11, 12), 'يُنۡزِلَ');
+        expect(readingText(repo, id, ayah, 11, 12), 'يُنزِلَ');
         for (final base in [null, id]) {
           final compared = compareReadings(
             repository: repo,
