@@ -382,7 +382,7 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           child: Text(
-            'مرّر لاستعراض الفروع • إصبعان للتكبير\nزر التدوير لتحريك المنظور • اضغط الاسم للنبذة',
+            'اسحب لتدوير الشبكة • إصبعان للتكبير والتحريك\nاضغط مدينة في الأعلى لإبرازها • اضغط الاسم للنبذة',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(fontSize: 11),

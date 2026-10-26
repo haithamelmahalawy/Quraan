@@ -31,31 +31,38 @@ class QcfFonts extends ChangeNotifier {
   /// listeners as each one becomes ready. Errors (offline) are ignored: the
   /// page keeps the Hafs font and is tried again next time.
   Future<void> ensure(Iterable<int> pages) => Future.wait([
-        for (final p in pages)
-          if (p >= 1 && p <= 604 && !_ready.contains(p))
-            _pending.putIfAbsent(p, () => _load(p).whenComplete(() {
-                  _pending.remove(p);
-                })),
-      ]);
+    for (final p in pages)
+      if (p >= 1 && p <= 604 && !_ready.contains(p))
+        _pending.putIfAbsent(
+          p,
+          () => _load(p).whenComplete(() {
+            _pending.remove(p);
+          }),
+        ),
+  ]);
 
   Future<void> _load(int page) async {
     try {
       _dir ??= Directory(
-          '${(await getApplicationSupportDirectory()).path}/qcf_$version');
+        '${(await getApplicationSupportDirectory()).path}/qcf_$version',
+      );
       final file = File('${_dir!.path}/p$page.ttf');
       if (!await file.exists()) {
         final response = await http
-            .get(Uri.parse(
-                'https://static.qurancdn.com/fonts/quran/hafs/$version/ttf/p$page.ttf'))
+            .get(
+              Uri.parse(
+                'https://static.qurancdn.com/fonts/quran/hafs/$version/ttf/p$page.ttf',
+              ),
+            )
             .timeout(const Duration(seconds: 30));
         if (response.statusCode != 200) return;
         await file.parent.create(recursive: true);
         await file.writeAsBytes(response.bodyBytes);
       }
       final bytes = await file.readAsBytes();
-      await (FontLoader(family(page))
-            ..addFont(Future.value(ByteData.sublistView(bytes))))
-          .load();
+      await (FontLoader(
+        family(page),
+      )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
       _ready.add(page);
       notifyListeners();
     } catch (e) {

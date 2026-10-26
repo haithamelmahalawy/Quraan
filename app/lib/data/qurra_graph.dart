@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'qurra_biographies.dart';
 
 enum QurraNodeKind { root, city, reader, narrator }
@@ -83,13 +85,40 @@ class QurraGraph {
         id: 'root',
         label: 'القراءات\nالعشر',
         kind: QurraNodeKind.root,
-        position: GraphPoint3(0, -3.5, 0),
+        position: GraphPoint3(0, -3.6, 0),
       ),
     ];
     final edges = <QurraGraphEdge>[];
-    // Layout follows transmission, not a narrator's city: his own city stays
-    // metadata, without pulling him across the graph away from his reader.
-    double readerX(ReaderBiography b) => readerBiographies.indexOf(b) * 4.8;
+    // A cone around a vertical axis: the cities on an inner ring, the readers
+    // on an outer one in their city's sector, each reader's narrators hanging
+    // straight below him. Layout follows transmission, not a narrator's city: his own
+    // city stays metadata, without pulling him away from his reader. Angles
+    // come from all the readers, so positions stay stable across filters.
+    final order = [
+      for (final c in RecitationCity.values)
+        ...readerBiographies.where((b) => b.city == c),
+    ];
+    double readerAngle(ReaderBiography b) =>
+        (order.indexOf(b) + .5) / order.length * math.pi * 2;
+    GraphPoint3 at(double angle, double radius, double y) =>
+        GraphPoint3(radius * math.sin(angle), y, -radius * math.cos(angle));
+    // A city's angle is the mean of its readers' (or else its narrators').
+    double cityAngle(RecitationCity c) {
+      var sin = 0.0, cos = 0.0;
+      for (final b in readerBiographies) {
+        final own = b.city == c;
+        for (final a in [
+          if (own) readerAngle(b),
+          if (!readerBiographies.any((r) => r.city == c))
+            for (final _ in b.narrators.where((n) => n.city == c))
+              readerAngle(b),
+        ]) {
+          sin += math.sin(a);
+          cos += math.cos(a);
+        }
+      }
+      return math.atan2(sin, cos);
+    }
 
     for (final c in RecitationCity.values.where(cities.contains)) {
       nodes.add(
@@ -98,7 +127,10 @@ class QurraGraph {
           label: c.nameAr,
           kind: QurraNodeKind.city,
           city: c,
-          position: GraphPoint3(c.index * 4.8, -2.5, 0),
+          // Cities of narrators only sit inside the cone, below the readers.
+          position: readerBiographies.any((b) => b.city == c)
+              ? at(cityAngle(c), 2.6, -2)
+              : at(cityAngle(c), 2.4, 3.6),
         ),
       );
       edges.add((
@@ -117,7 +149,7 @@ class QurraGraph {
           kind: QurraNodeKind.reader,
           city: b.city,
           reader: b,
-          position: GraphPoint3(readerX(b), -.85, .35),
+          position: at(readerAngle(b), 4.6, 0),
         ),
       );
       edges.add((
@@ -138,10 +170,10 @@ class QurraGraph {
             city: n.city,
             reader: b,
             narrator: n,
-            position: GraphPoint3(
-              readerX(b) + (b.narrators.indexOf(n) == 0 ? 1.25 : -1.25),
-              .95,
-              -.2,
+            position: at(
+              readerAngle(b),
+              5,
+              b.narrators.indexOf(n) == 0 ? 1.4 : 2.65,
             ),
           ),
         );

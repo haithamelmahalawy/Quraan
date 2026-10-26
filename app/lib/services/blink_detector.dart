@@ -62,8 +62,9 @@ class BlinkDetector {
       // Sharp enough for ML Kit to judge open and closed eyes.
       ResolutionPreset.medium,
       enableAudio: false,
-      imageFormatGroup:
-          Platform.isIOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.nv21,
+      imageFormatGroup: Platform.isIOS
+          ? ImageFormatGroup.bgra8888
+          : ImageFormatGroup.nv21,
     );
     await camera.initialize();
     _faces = FaceDetector(
@@ -175,7 +176,8 @@ class BlinkDetector {
     final camera = _camera;
     if (camera == null) return null;
     final rotation = InputImageRotationValue.fromRawValue(
-        camera.description.sensorOrientation);
+      camera.description.sensorOrientation,
+    );
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
     if (rotation == null || format == null || image.planes.length != 1) {
       return null;

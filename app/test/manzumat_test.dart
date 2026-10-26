@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/manzumat.dart';
@@ -117,6 +120,130 @@ void main() {
       skeleton(chapter('duri_kisai', description: 'بالإمالة')),
       contains('لمله'),
     );
+  });
+
+  test(
+    'Ibn Dhakwan\'s imala of شاء and زاد cites «وَجَاءَ ابْنُ ذَكْوَانٍ»',
+    () {
+      Set<int> mention(String hafs) => ref(
+        'ibn_dhakwan',
+        2,
+        hafs,
+        description: 'بالإمالة',
+        kind: VariantKind.usul,
+      ).mention;
+      expect(mention('شَآءَ'), {319});
+      expect(mention('جَآءَهُمۡ'), {319});
+      expect(mention('وَزَادَهُۥ'), {319, 320});
+    },
+  );
+
+  test(
+    'Ibn Dhakwan\'s imala of التوراة cites «وَإِضْجَاعُكَ التَّوْرَاةَ»',
+    () {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: 'ibn_dhakwan',
+          surah: 3,
+          ayah: 3,
+          word: 9,
+          count: 1,
+          text: 'ٱلتَّوۡر۪ىٰةَ',
+          kind: VariantKind.usul,
+          description: 'بالإمالة',
+        ),
+        'ٱلتَّوۡرَىٰةَ',
+        3,
+        surahs,
+      );
+      expect(r.mention, {546});
+    },
+  );
+
+  test(
+    'Ibn Amir قتلوا with the shadda cites «بِمَا قُتِلُوا التَّشْدِيدُ لَبَّى»',
+    () {
+      Set<int> mention(String id, int surah, int ayah, int word, String text) =>
+          manzumat
+              .referenceOf(
+                Variant(
+                  riwayaId: id,
+                  surah: surah,
+                  ayah: ayah,
+                  word: word,
+                  count: 1,
+                  text: text,
+                  kind: VariantKind.farsh,
+                  description: 'بتشديد التاء',
+                ),
+                'قُتِلُواْ',
+                surah,
+                surahs,
+              )
+              .mention;
+      expect(mention('hisham', 3, 168, 7, 'قُتِّلُواْ'), {576});
+      expect(mention('ibn_dhakwan', 3, 169, 3, 'قُتِّلُواْ'), {576});
+      expect(mention('hisham', 3, 195, 25, 'وَقُتِّلُواْ'), {576, 577});
+      expect(mention('ibn_dhakwan', 22, 58, 6, 'قُتِّلُواْ'), {576});
+    },
+  );
+
+  test('every جاء and شاء of Ibn Dhakwan, on its own word, cites bayt 319', () {
+    final quran = jsonDecode(File('assets/data/quran.json').readAsStringSync());
+    final words = {
+      for (final a in quran['ayahs'] as List)
+        '${a[0]}:${a[1]}': (a[4] as String).split(' '),
+    };
+    final data = jsonDecode(
+      File('assets/data/qiraat/ibn_dhakwan.json').readAsStringSync(),
+    );
+    var checked = 0;
+    for (final v in data['variants'] as List) {
+      final hafs = words['${v[0]}:${v[1]}']![v[2] as int];
+      final bare = hafs.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '');
+      if (!RegExp('^[وفل]?[شج][اآ]ء').hasMatch(bare)) continue;
+      final reading = Variant(
+        riwayaId: 'ibn_dhakwan',
+        surah: v[0] as int,
+        ayah: v[1] as int,
+        word: v[2] as int,
+        count: v[3] as int,
+        text: v[4] as String,
+        kind: VariantKind.fromCode(v[5] as String),
+        description: v[6] as String,
+      );
+      if (!reading.isImala) continue;
+      expect(reading.count, 1, reason: '${v[0]}:${v[1]}:${v[2]}');
+      expect(
+        manzumat.referenceOf(reading, hafs, reading.surah, surahs).mention,
+        {319},
+        reason: '${v[0]}:${v[1]}:${v[2]} $hafs',
+      );
+      checked++;
+    }
+    expect(checked, greaterThan(200));
+  });
+
+  test('Hisham\'s أؤنبئكم cites «وَفي آلِ عِمْرَانَ رَووْا لِهِشَامِهِمْ»', () {
+    final r = manzumat.referenceOf(
+      Variant(
+        riwayaId: 'hisham',
+        surah: 3,
+        ayah: 15,
+        word: 1,
+        count: 1,
+        text: 'أَٰؤُنَبِّئُكُم',
+        kind: VariantKind.usul,
+        description:
+            'بوجهين: تحقيق الهمزة الثانية مع الإدخال؛ أو تحقيقها دون إدخال',
+        rule: 'tasheel_word',
+        usulText: 'أَؤُنَبِّئُكُم',
+      ),
+      'أَؤُنَبِّئُكُم',
+      3,
+      surahs,
+    );
+    expect(r.mention, {200, 201});
   });
 
   Variant reading({

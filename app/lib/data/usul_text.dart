@@ -244,9 +244,7 @@ String usulReadingText(
   // the Hafs word again before it.
   if (context.length > reading.count &&
       skeleton(context.first) == skeleton(ayah.words[reading.word])) {
-    return madinahScript(
-      [target, ...context.skip(reading.count)].join(' '),
-    );
+    return madinahScript([target, ...context.skip(reading.count)].join(' '));
   }
   final prefixLength = context.length - reading.count;
   if (prefixLength <= 0) return target;

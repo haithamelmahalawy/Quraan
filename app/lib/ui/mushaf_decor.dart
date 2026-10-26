@@ -45,7 +45,10 @@ void _rosette(Canvas canvas, Offset c, double r, Color petal, Color heart) {
   for (var k = 0; k < 4; k++) {
     final a = k * math.pi / 2 + math.pi / 4;
     canvas.drawCircle(
-        c + Offset(math.cos(a), math.sin(a)) * r * 0.55, r * 0.42, p);
+      c + Offset(math.cos(a), math.sin(a)) * r * 0.55,
+      r * 0.42,
+      p,
+    );
   }
   canvas.drawCircle(c, r * 0.3, Paint()..color = heart);
 }
@@ -74,22 +77,34 @@ class _FramePainter extends CustomPainter {
       final count = math.max(1, (length / (band * 1.25)).floor());
       final step = (to - from) / count.toDouble();
       for (var i = 0; i < count; i++) {
-        _rosette(canvas, from + step * (i + 0.5), band * 0.42,
-            rose.withAlpha(200), gold);
+        _rosette(
+          canvas,
+          from + step * (i + 0.5),
+          band * 0.42,
+          rose.withAlpha(200),
+          gold,
+        );
         if (i > 0) {
           canvas.drawCircle(
-              from + step * i.toDouble(), 1.3, Paint()..color = gold);
+            from + step * i.toDouble(),
+            1.3,
+            Paint()..color = gold,
+          );
         }
       }
     }
 
     const h = band / 2;
     along(const Offset(band, h), Offset(size.width - band, h));
-    along(Offset(band, size.height - h),
-        Offset(size.width - band, size.height - h));
+    along(
+      Offset(band, size.height - h),
+      Offset(size.width - band, size.height - h),
+    );
     along(const Offset(h, band), Offset(h, size.height - band));
-    along(Offset(size.width - h, band),
-        Offset(size.width - h, size.height - band));
+    along(
+      Offset(size.width - h, band),
+      Offset(size.width - h, size.height - band),
+    );
 
     // Corner squares.
     for (final c in [
@@ -98,22 +113,33 @@ class _FramePainter extends CustomPainter {
       Offset(h, size.height - h),
       Offset(size.width - h, size.height - h),
     ]) {
-      canvas.drawRect(Rect.fromCenter(center: c, width: band, height: band),
-          Paint()..color = rose);
+      canvas.drawRect(
+        Rect.fromCenter(center: c, width: band, height: band),
+        Paint()..color = rose,
+      );
       _rosette(canvas, c, band * 0.4, MushafColors.roseLight, gold);
     }
 
     // Rules: rose outside; gold then rose inside.
     final line = Paint()..style = PaintingStyle.stroke;
-    canvas.drawRect(outer.deflate(0.6), line
-      ..color = rose
-      ..strokeWidth = 1.2);
-    canvas.drawRect(inner, line
-      ..color = gold
-      ..strokeWidth = 1.4);
-    canvas.drawRect(inner.deflate(2.5), line
-      ..color = rose
-      ..strokeWidth = 0.8);
+    canvas.drawRect(
+      outer.deflate(0.6),
+      line
+        ..color = rose
+        ..strokeWidth = 1.2,
+    );
+    canvas.drawRect(
+      inner,
+      line
+        ..color = gold
+        ..strokeWidth = 1.4,
+    );
+    canvas.drawRect(
+      inner.deflate(2.5),
+      line
+        ..color = rose
+        ..strokeWidth = 0.8,
+    );
   }
 
   /// Full screen: the bands above and below the text only.
@@ -123,11 +149,19 @@ class _FramePainter extends CustomPainter {
     final step = size.width / count;
     for (final y in [h, size.height - h]) {
       for (var i = 0; i < count; i++) {
-        _rosette(canvas, Offset(step * (i + 0.5), y), band * 0.42,
-            MushafColors.rose.withAlpha(200), MushafColors.gold);
+        _rosette(
+          canvas,
+          Offset(step * (i + 0.5), y),
+          band * 0.42,
+          MushafColors.rose.withAlpha(200),
+          MushafColors.gold,
+        );
         if (i > 0) {
           canvas.drawCircle(
-              Offset(step * i, y), 1.3, Paint()..color = MushafColors.gold);
+            Offset(step * i, y),
+            1.3,
+            Paint()..color = MushafColors.gold,
+          );
         }
       }
     }
@@ -200,9 +234,15 @@ class _BannerPainter extends CustomPainter {
     final step = size.height / 3;
     for (var x = -size.height; x < size.width + size.height; x += step) {
       canvas.drawLine(
-          Offset(x, 0), Offset(x + size.height, size.height), lattice);
+        Offset(x, 0),
+        Offset(x + size.height, size.height),
+        lattice,
+      );
       canvas.drawLine(
-          Offset(x, size.height), Offset(x + size.height, 0), lattice);
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        lattice,
+      );
     }
     canvas.restore();
 
@@ -233,18 +273,30 @@ class _BannerPainter extends CustomPainter {
     canvas.drawPath(cartouche(3), Paint()..color = gold);
     canvas.drawPath(cartouche(0), Paint()..color = MushafColors.page);
     final stroke = Paint()..style = PaintingStyle.stroke;
-    canvas.drawPath(cartouche(0), stroke
-      ..color = rose
-      ..strokeWidth = 1.2);
-    canvas.drawPath(cartouche(3), stroke
-      ..color = rose
-      ..strokeWidth = 0.8);
-    canvas.drawRect(rect.deflate(0.6), stroke
-      ..color = rose
-      ..strokeWidth = 1.2);
-    canvas.drawRect(rect.deflate(2.5), stroke
-      ..color = gold
-      ..strokeWidth = 0.8);
+    canvas.drawPath(
+      cartouche(0),
+      stroke
+        ..color = rose
+        ..strokeWidth = 1.2,
+    );
+    canvas.drawPath(
+      cartouche(3),
+      stroke
+        ..color = rose
+        ..strokeWidth = 0.8,
+    );
+    canvas.drawRect(
+      rect.deflate(0.6),
+      stroke
+        ..color = rose
+        ..strokeWidth = 1.2,
+    );
+    canvas.drawRect(
+      rect.deflate(2.5),
+      stroke
+        ..color = gold
+        ..strokeWidth = 0.8,
+    );
   }
 
   @override

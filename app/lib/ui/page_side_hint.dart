@@ -67,11 +67,13 @@ class OpenMushafView extends StatelessWidget {
           width: width * 0.03,
           height: pageHeight,
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              Colors.black.withAlpha(20),
-              Colors.black.withAlpha(90),
-              Colors.black.withAlpha(20),
-            ]),
+            gradient: LinearGradient(
+              colors: [
+                Colors.black.withAlpha(20),
+                Colors.black.withAlpha(90),
+                Colors.black.withAlpha(20),
+              ],
+            ),
           ),
         ),
         sheet(isCurrent: !right),
@@ -113,8 +115,7 @@ class PageSideHint extends StatelessWidget {
     final t = progress;
     // Appear (0–0.12), hold (–0.5), fly to the icon (–1).
     final appear = Curves.easeOutBack.transform((t / 0.12).clamp(0.0, 1.0));
-    final fly =
-        Curves.easeInCubic.transform(((t - 0.5) / 0.5).clamp(0.0, 1.0));
+    final fly = Curves.easeInCubic.transform(((t - 0.5) / 0.5).clamp(0.0, 1.0));
     final scale = (0.7 + 0.3 * appear) * (1 - 0.88 * fly);
     final labelOpacity = (1 - fly * 3).clamp(0.0, 1.0);
     final width = MediaQuery.sizeOf(context).width * 0.85;

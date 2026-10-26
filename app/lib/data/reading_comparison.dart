@@ -122,9 +122,8 @@ bool _yaIdafaRule(Variant v) =>
 /// 'fath'; null when it says nothing of it. The texts do not always write
 /// the sukun of the ya (بَيۡتِي), so its vowel cannot be told from them.
 String? _yaIdafa(Variant v) {
-  final m = RegExp(
-    r'(^|\s|و)ب?(إسكان|اسكان|فتح) (ال)?ياء( الإضافة)?(\s|$|،)',
-  ).firstMatch(v.description);
+  final m = RegExp(r'(^|\s|و)ب?(إسكان|اسكان|فتح) (ال)?ياء( الإضافة)?(\s|$|،)')
+      .firstMatch(v.description);
   if (m == null) return null;
   return m[2] == 'فتح' ? 'fath' : 'sukun';
 }

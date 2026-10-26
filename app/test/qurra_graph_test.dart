@@ -56,9 +56,13 @@ void main() {
       final parent = graph.nodes.singleWhere(
         (n) => n.id == 'reader-${narrator.reader!.qiraaId}',
       );
+      // Below his reader, on the same side of the cone.
       expect(
-        (narrator.position.x - parent.position.x).abs(),
-        lessThanOrEqualTo(1.25),
+        math.sqrt(
+          math.pow(narrator.position.x - parent.position.x, 2) +
+              math.pow(narrator.position.z - parent.position.z, 2),
+        ),
+        lessThan(1),
       );
       expect(narrator.position.y, greaterThan(parent.position.y));
     }
@@ -173,35 +177,62 @@ void main() {
   QurraGraphCamera camera(WidgetTester t) =>
       t.widget<QurraGraphView>(find.byType(QurraGraphView)).camera;
 
+  testWidgets('one finger drag turns the 3D scene and moves its nodes', (
+    t,
+  ) async {
+    await show(t);
+    final c = camera(t);
+    final (yaw, pitch) = (c.yaw, c.pitch);
+    final asim = find.byKey(const ValueKey('graph-node-reader-asim'));
+    final before = t.getCenter(asim);
+    await t.drag(
+      find.byKey(const ValueKey('qurra-3d-canvas')),
+      const Offset(90, 30),
+    );
+    await t.pumpAndSettle();
+    expect(c.yaw, isNot(yaw));
+    expect(c.pitch, greaterThan(pitch));
+    expect((t.getCenter(asim) - before).distance, greaterThan(10));
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets(
-    'browsing scrolls through separate city branches without rotating',
+    'a city of the legend stands out with its readers and narrators',
     (t) async {
       await show(t);
-      final initial = camera(t).yaw;
-      final list = t.widget<ListView>(
-        find.byKey(const PageStorageKey('qurra-organized-forest')),
-      );
-      await t.drag(
-        find.byKey(const ValueKey('qurra-3d-canvas')),
-        const Offset(0, -280),
-      );
+      final kufa = find.byKey(const ValueKey('graph-legend-kufa'));
+      await t.ensureVisible(kufa);
       await t.pumpAndSettle();
-      expect(list.controller!.offset, greaterThan(150));
-      expect(camera(t).yaw, initial);
-      expect(find.byTooltip('تدوير بالسحب'), findsOneWidget);
+      await t.tap(kufa);
+      await t.pumpAndSettle();
+      double opacity(String id) => t
+          .widget<Opacity>(
+            find
+                .ancestor(
+                  of: find.byKey(ValueKey('graph-node-$id')),
+                  matching: find.byType(Opacity),
+                )
+                .first,
+          )
+          .opacity;
+      expect(opacity('reader-asim'), greaterThan(.35));
+      expect(opacity('narrator-hafs'), greaterThan(.35));
+      expect(opacity('reader-nafi'), lessThan(.2));
+      await t.tap(kufa);
+      await t.pumpAndSettle();
+      expect(opacity('reader-nafi'), greaterThan(.35));
       expect(t.takeException(), isNull);
     },
   );
 
   testWidgets(
-    'reader and narrator labels remain separated throughout 3D rotation',
+    'a reader stands above his narrators, apart, all around the scene',
     (t) async {
       final c = QurraGraphCamera();
       addTearDown(c.dispose);
       await show(
         t,
         size: const Size(360, 700),
-        scale: 1.4,
         child: Scaffold(
           body: QurraGraphView(
             graph: QurraGraph.build(query: 'عاصم'),
@@ -214,18 +245,16 @@ void main() {
       final shubah = find.byKey(const ValueKey('graph-node-narrator-shubah'));
       final hafs = find.byKey(const ValueKey('graph-node-narrator-hafs'));
       for (final yaw in [0.0, math.pi / 2, math.pi, math.pi * 1.5]) {
-        for (final pitch in [-1.2, 1.2]) {
-          c.orbit(yaw - c.yaw, pitch - c.pitch);
-          await t.pumpAndSettle();
-          final p = t.getRect(parent),
-              a = t.getRect(shubah),
-              b = t.getRect(hafs);
-          expect(a.overlaps(b), isFalse);
-          expect(p.bottom, lessThan(math.min(a.top, b.top)));
-          expect(a.left, greaterThanOrEqualTo(0));
-          expect(b.right, lessThanOrEqualTo(360));
-          expect(t.takeException(), isNull);
+        c.orbit(yaw - c.yaw, 0);
+        await t.pumpAndSettle();
+        final p = t.getRect(parent), a = t.getRect(shubah), b = t.getRect(hafs);
+        expect(a.overlaps(b), isFalse);
+        expect(p.center.dy, lessThan(math.min(a.center.dy, b.center.dy)));
+        for (final r in [p, a, b]) {
+          expect(r.left, greaterThanOrEqualTo(0));
+          expect(r.right, lessThanOrEqualTo(360));
         }
+        expect(t.takeException(), isNull);
       }
     },
   );
@@ -314,8 +343,6 @@ void main() {
         ),
       );
       final start = c.yaw;
-      await t.tap(find.byTooltip('تدوير بالسحب'));
-      await t.pumpAndSettle();
       await t.drag(
         find.byKey(const ValueKey('qurra-3d-canvas')),
         const Offset(80, 25),

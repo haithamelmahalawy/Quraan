@@ -1963,9 +1963,8 @@ List<String> _usulOf(Variant v) {
     // Named by the vowel of the second hamza of the word (ءَأَنذَرۡتَهُمۡ،
     // أَئِنَّكُمۡ، أَءُنزِلَ).
     // (Ibn 'Amir's readings; the others keep their own names.)
-    final match = RegExp(
-      '[ءأإئؤ][ً-ٰٟ]*[^ءأإئؤ]{0,2}?[ءأإئؤ]([ً-ٰٟ]*)',
-    ).firstMatch(v.usulText);
+    final match = RegExp('[ءأإئؤ][ً-ٰٟ]*[^ءأإئؤ]{0,2}?[ءأإئؤ]([ً-ٰٟ]*)')
+        .firstMatch(v.usulText);
     final second = const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId)
         ? match?.group(1)
         : null;

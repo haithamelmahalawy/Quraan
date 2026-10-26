@@ -13,8 +13,8 @@ import 'quran_repository.dart';
 /// for every run of [_gram] letters they share with it.
 class PageMatcher {
   PageMatcher(QuranRepository quran)
-      : _first = quran.firstPage,
-        _last = quran.lastPage {
+    : _first = quran.firstPage,
+      _last = quran.lastPage {
     for (var p = _first; p <= _last; p++) {
       final words = [
         for (final a in quran.page(p))
@@ -24,7 +24,9 @@ class PageMatcher {
         _pagesOf.putIfAbsent(w, () => <int>{}).add(p);
       }
       for (var i = 0; i + 1 < words.length; i++) {
-        _pairPages.putIfAbsent('${words[i]} ${words[i + 1]}', () => <int>{}).add(p);
+        _pairPages
+            .putIfAbsent('${words[i]} ${words[i + 1]}', () => <int>{})
+            .add(p);
       }
       for (final g in _grams(words.join()).toSet()) {
         (_gramPages[g] ??= <int>[]).add(p);
@@ -61,7 +63,13 @@ class PageMatcher {
     final lines = [
       for (final line in raw)
         line
-            .split(RegExp(r'[\s،؛.,:;!?()«»\[\]{}"' "'" r'\-ـ]+'))
+            .split(
+              RegExp(
+                r'[\s،؛.,:;!?()«»\[\]{}"'
+                "'"
+                r'\-ـ]+',
+              ),
+            )
             .map(skeleton)
             .where((w) => w.length >= 2)
             .toList(),
@@ -118,10 +126,12 @@ class PageMatcher {
     // however often OCR noise repeats it.
     final numbers = {
       for (final m in RegExp(r'[0-9٠-٩]{1,3}').allMatches(text))
-        int.parse(m[0]!.runes
-            .map((c) => c >= 0x0660 && c <= 0x0669 ? c - 0x0660 + 0x30 : c)
-            .map(String.fromCharCode)
-            .join()),
+        int.parse(
+          m[0]!.runes
+              .map((c) => c >= 0x0660 && c <= 0x0669 ? c - 0x0660 + 0x30 : c)
+              .map(String.fromCharCode)
+              .join(),
+        ),
     };
     for (final n in numbers) {
       if (n >= _first && n <= _last && scores.containsKey(n)) {

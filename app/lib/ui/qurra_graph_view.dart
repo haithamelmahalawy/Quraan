@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +10,8 @@ import '../data/qurra_graph.dart';
 
 /// Camera coordinates, rather than a transform applied to flat UI cards.
 class QurraGraphCamera extends ChangeNotifier {
-  double yaw = -.12, pitch = .12, zoom = 1;
+  static const startYaw = -.3, startPitch = .6;
+  double yaw = startYaw, pitch = startPitch, zoom = 1;
   Offset pan = Offset.zero;
   bool rotating = false;
 
@@ -32,8 +34,8 @@ class QurraGraphCamera extends ChangeNotifier {
   }
 
   void reset() {
-    yaw = -.12;
-    pitch = .12;
+    yaw = startYaw;
+    pitch = startPitch;
     zoom = 1;
     pan = Offset.zero;
     rotating = false;
@@ -42,6 +44,13 @@ class QurraGraphCamera extends ChangeNotifier {
 }
 
 typedef GraphScreenPoint = ({Offset point, double depth, double perspective});
+
+const _cameraDistance = 18.0;
+
+/// Pixels per unit of the scene: it (radius about 5, from y -3.6 to 3.6)
+/// fits the size at zoom 1, seen from above.
+double qurraGraphUnit(Size size, double zoom) =>
+    math.max(4.0, math.min(size.width / 12.5, size.height / 11)) * zoom;
 
 /// A real yaw/pitch rotation followed by a perspective divide.
 GraphScreenPoint projectQurraPoint(
@@ -53,12 +62,11 @@ GraphScreenPoint projectQurraPoint(
   final z = -point.x * math.sin(camera.yaw) + point.z * math.cos(camera.yaw);
   final y = point.y * math.cos(camera.pitch) - z * math.sin(camera.pitch);
   final depth = point.y * math.sin(camera.pitch) + z * math.cos(camera.pitch);
-  final perspective = 7 / (7 + depth);
-  final available = math.max(40.0, math.min(size.width - 44, size.height - 95));
-  final unit = available / 7 * camera.zoom;
+  final perspective = _cameraDistance / (_cameraDistance + depth);
+  final unit = qurraGraphUnit(size, camera.zoom);
   return (
     point:
-        Offset(size.width / 2, (size.height - 40) / 2) +
+        Offset(size.width / 2, size.height / 2 - .75 * unit) +
         camera.pan +
         Offset(x, y) * unit * perspective,
     depth: depth,
@@ -78,8 +86,8 @@ Color qurraCityColor(RecitationCity? city) => switch (city) {
   null => const Color(0xFF56DAB0),
 };
 
-/// A city-grouped forest: each reader and his narrators share a small 3D
-/// stage. Edges never leave that stage, so unrelated families cannot cross.
+/// The readers on a ring around the ten qiraat, in their city's coloured
+/// sector, their narrators hanging below them: a scene that turns in 3D.
 class QurraGraphView extends StatefulWidget {
   const QurraGraphView({
     super.key,
@@ -99,11 +107,13 @@ class QurraGraphView extends StatefulWidget {
 class _QurraGraphViewState extends State<QurraGraphView>
     with SingleTickerProviderStateMixin {
   late final Ticker _ticker = createTicker(_tick);
-  final _scroll = ScrollController();
   final _pointers = <int, Offset>{};
   _TreePinchRecognizer? _pinchRecognizer;
   Duration? _lastTick;
-  bool _reduceMotion = false, _rotateDrag = false, _pinching = false;
+  bool _reduceMotion = false, _pinching = false;
+
+  /// The city whose readers and narrators stand out, the others dimmed.
+  RecitationCity? _focus;
 
   @override
   void initState() {
@@ -147,7 +157,7 @@ class _QurraGraphViewState extends State<QurraGraphView>
     _lastTick = elapsed;
     if (previous != null) {
       widget.camera.orbit(
-        math.min(.05, (elapsed - previous).inMicroseconds / 1000000) * .17,
+        math.min(.05, (elapsed - previous).inMicroseconds / 1000000) * .25,
         0,
       );
     }
@@ -162,7 +172,6 @@ class _QurraGraphViewState extends State<QurraGraphView>
   void dispose() {
     widget.camera.removeListener(_changed);
     _ticker.dispose();
-    _scroll.dispose();
     super.dispose();
   }
 
@@ -194,130 +203,61 @@ class _QurraGraphViewState extends State<QurraGraphView>
           widget.camera.pan + (next[0] + next[1] - old[0] - old[1]) / 2,
         );
       }
-    } else if (_rotateDrag) {
+    } else if (!_pinching) {
+      // The front turns with the finger; dragging down looks from above.
       final delta = event.localPosition - before;
-      widget.camera.orbit(delta.dx * .008, -delta.dy * .008);
+      widget.camera.orbit(-delta.dx * .008, delta.dy * .006);
     }
   }
 
   void _up(PointerEvent event) {
     _pointers.remove(event.pointer);
-    if (_pointers.length < 2 && _pinching) setState(() => _pinching = false);
+    if (_pointers.isEmpty && _pinching) setState(() => _pinching = false);
   }
 
-  void _reset() {
-    widget.camera.reset();
-    if (_scroll.hasClients) _scroll.jumpTo(0);
-    setState(() => _rotateDrag = false);
+  void _wheel(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      widget.camera.frame(
+        widget.camera.zoom * (event.scrollDelta.dy > 0 ? 1 / 1.1 : 1.1),
+        widget.camera.pan,
+      );
+    }
   }
+
+  bool _inFocus(QurraGraphNode n) =>
+      _focus == null ||
+      n.kind == QurraNodeKind.root ||
+      n.city == _focus ||
+      n.reader?.city == _focus;
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
-    final readers = widget.graph.nodes
-        .where((n) => n.kind == QurraNodeKind.reader)
-        .toList();
-    final cities = RecitationCity.values
-        .where((c) => readers.any((r) => r.city == c))
-        .toList();
-    final byId = {for (final n in widget.graph.nodes) n.id: n};
-    final narratorCityOwner = <RecitationCity, String>{};
-    for (final n in widget.graph.nodes.where(
-      (n) => n.kind == QurraNodeKind.narrator,
-    )) {
-      if (!cities.contains(n.city)) {
-        narratorCityOwner.putIfAbsent(n.city!, () => n.id);
-      }
-    }
-    final zoomScale = math.sqrt(widget.camera.zoom).clamp(.85, 1.7);
-    Widget citySection(RecitationCity city) => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(2, 14, 2, 10),
-          child: Row(
-            children: [
-              Flexible(
-                child: InkWell(
-                  key: ValueKey('graph-node-city-${city.name}'),
-                  onTap: () => _select(byId['city-${city.name}']!),
-                  borderRadius: BorderRadius.circular(18),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 5,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          color: qurraCityColor(city),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            city.nameAr,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: dark
-                                  ? Colors.white
-                                  : const Color(0xFF204C43),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Divider(
-                  indent: 8,
-                  endIndent: 8,
-                  color: qurraCityColor(city).withAlpha(65),
-                ),
-              ),
-              Text(
-                '${readers.where((r) => r.city == city).length}',
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            ],
-          ),
-        ),
-        for (final reader in readers.where((r) => r.city == city))
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _ReaderBranch(
-              key: ValueKey('graph-family-${reader.reader!.qiraaId}'),
-              reader: reader,
-              narrators: widget.graph.nodes
-                  .where(
-                    (n) =>
-                        n.kind == QurraNodeKind.narrator &&
-                        n.reader?.qiraaId == reader.reader!.qiraaId,
-                  )
-                  .toList(),
-              camera: widget.camera,
-              scale: scale * zoomScale,
-              dark: dark,
-              selected: widget.selected,
-              cityOwner: narratorCityOwner,
-              cityNodes: byId,
-              onSelect: _select,
-            ),
-          ),
-      ],
+    final textScale = (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(
+      1.0,
+      1.3,
     );
-    return ColoredBox(
-      color: dark ? const Color(0xFF0F2028) : const Color(0xFFF3F6F2),
+    final cities = RecitationCity.values
+        .where(
+          (c) => widget.graph.nodes.any(
+            (n) => n.kind == QurraNodeKind.city && n.city == c,
+          ),
+        )
+        .toList();
+    if (_focus != null && !cities.contains(_focus)) _focus = null;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: const Alignment(0, -.35),
+          radius: 1.15,
+          colors: dark
+              ? const [Color(0xFF1C3A44), Color(0xFF0B171D)]
+              : const [Color(0xFFFFFFFF), Color(0xFFE3ECE6)],
+        ),
+      ),
       child: Column(
         children: [
+          _legend(cities, dark),
           Expanded(
             child: Listener(
               key: const ValueKey('qurra-3d-canvas'),
@@ -326,6 +266,7 @@ class _QurraGraphViewState extends State<QurraGraphView>
               onPointerMove: _move,
               onPointerUp: _up,
               onPointerCancel: _up,
+              onPointerSignal: _wheel,
               child: RawGestureDetector(
                 gestures: {
                   _TreePinchRecognizer:
@@ -333,98 +274,9 @@ class _QurraGraphViewState extends State<QurraGraphView>
                         _TreePinchRecognizer
                       >(_TreePinchRecognizer.new, (r) => _pinchRecognizer = r),
                 },
-                child: GestureDetector(
-                  onPanUpdate: _rotateDrag ? (_) {} : null,
-                  child: Scrollbar(
-                    controller: _scroll,
-                    child: ListView(
-                      key: const PageStorageKey('qurra-organized-forest'),
-                      controller: _scroll,
-                      physics: _rotateDrag || _pinching
-                          ? const NeverScrollableScrollPhysics()
-                          : null,
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
-                      children: [
-                        if (byId['root'] case final root?)
-                          InkWell(
-                            key: const ValueKey('graph-node-root'),
-                            onTap: () => _select(root),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.account_tree_rounded,
-                                    size: 23,
-                                    color: qurraCityColor(null),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'القارئ في الأعلى • راوياه في الأسفل',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        LayoutBuilder(
-                          builder: (context, c) {
-                            final count = math.max(
-                              1,
-                              (c.maxWidth /
-                                      (310 *
-                                          zoomScale *
-                                          math.max(1.0, scale * .85)))
-                                  .floor(),
-                            );
-                            final columns = List.generate(
-                              count,
-                              (_) => <RecitationCity>[],
-                            );
-                            final weights = List.filled(count, 0);
-                            for (final city in cities) {
-                              var target = 0;
-                              for (var i = 1; i < count; i++) {
-                                if (weights[i] < weights[target]) target = i;
-                              }
-                              columns[target].add(city);
-                              weights[target] += readers
-                                  .where((r) => r.city == city)
-                                  .length;
-                            }
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                for (var i = 0; i < columns.length; i++) ...[
-                                  if (i > 0) const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        for (final city in columns[i])
-                                          citySection(city),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'بلد كل راوٍ مكتوب تحت اسمه، وقد يختلف عن بلد القارئ.',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
+                child: ClipRect(
+                  child: LayoutBuilder(
+                    builder: (context, c) => _scene(c.biggest, dark, textScale),
                   ),
                 ),
               ),
@@ -436,8 +288,302 @@ class _QurraGraphViewState extends State<QurraGraphView>
     );
   }
 
+  Widget _scene(Size size, bool dark, double textScale) {
+    final projected = {
+      for (final n in widget.graph.nodes)
+        n.id: projectQurraPoint(n.position, size, widget.camera),
+    };
+    // Far nodes first, so the near ones are drawn (and tapped) on top.
+    final nodes = [
+      ...widget.graph.nodes,
+    ]..sort((a, b) => projected[b.id]!.depth.compareTo(projected[a.id]!.depth));
+    // Cards grow with the scene, so their spacing holds on any screen.
+    final unitScale = qurraGraphUnit(size, widget.camera.zoom) / 40;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _ScenePainter(
+              graph: widget.graph,
+              projected: projected,
+              camera: widget.camera,
+              dark: dark,
+              inFocus: _inFocus,
+            ),
+          ),
+        ),
+        for (final n in nodes)
+          _placed(n, projected[n.id]!, dark, textScale * unitScale),
+      ],
+    );
+  }
+
+  Widget _placed(
+    QurraGraphNode node,
+    GraphScreenPoint p,
+    bool dark,
+    double scale,
+  ) {
+    final narrowCity =
+        node.kind == QurraNodeKind.narrator && node.city != node.reader!.city;
+    final (width, height) = switch (node.kind) {
+      QurraNodeKind.root => (80.0, 80.0),
+      QurraNodeKind.city => (100.0, 26.0),
+      QurraNodeKind.reader => (86.0, 40.0),
+      QurraNodeKind.narrator => (
+        78.0,
+        node.label.contains('\n') || narrowCity ? 40.0 : 28.0,
+      ),
+    };
+    final s = (p.perspective * scale).clamp(.45, 2.6);
+    // Nearer is brighter; a focus on one city dims the rest.
+    final fade = ((p.depth + 6) / 12).clamp(0.0, 1.0);
+    final opacity = (_inFocus(node) ? 1 - fade * .6 : .12).toDouble();
+    return Positioned(
+      left: p.point.dx - width * s / 2,
+      top: p.point.dy - height * s / 2,
+      width: width * s,
+      height: height * s,
+      child: Opacity(
+        opacity: opacity,
+        child: FittedBox(
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: _node(node, dark, narrowCity),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _node(QurraGraphNode node, bool dark, bool narrowCity) {
+    final color = qurraCityColor(
+      node.kind == QurraNodeKind.narrator ? node.reader!.city : node.city,
+    );
+    final active = widget.selected == node.id;
+    final ink = dark ? Colors.white : const Color(0xFF183F34);
+    final soft = dark ? const Color(0xFFBFD2CD) : const Color(0xFF546E62);
+    const gold = Color(0xFFC89A42);
+    Widget tappable({
+      required Widget child,
+      required ShapeBorder shape,
+      Gradient? gradient,
+      Color? fill,
+      double glow = 10,
+    }) => Semantics(
+      button: true,
+      label: node.description,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          shape: shape,
+          color: fill,
+          gradient: gradient,
+          shadows: [
+            BoxShadow(
+              color: (active ? gold : color).withAlpha(dark ? 110 : 90),
+              blurRadius: active ? glow * 1.6 : glow,
+            ),
+          ],
+        ),
+        child: Material(
+          key: ValueKey('graph-node-${node.id}'),
+          type: MaterialType.transparency,
+          shape: shape,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _select(node),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              child: Center(
+                child: FittedBox(fit: BoxFit.scaleDown, child: child),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final card = dark ? const Color(0xF2203A42) : const Color(0xF7FFFFFF);
+    switch (node.kind) {
+      case QurraNodeKind.root:
+        return tappable(
+          shape: CircleBorder(
+            side: BorderSide(color: active ? gold : Colors.white70, width: 2),
+          ),
+          gradient: const RadialGradient(
+            center: Alignment(-.35, -.4),
+            colors: [Color(0xFFF6E3A8), Color(0xFFC89A42), Color(0xFF7A5718)],
+            stops: [0, .55, 1],
+          ),
+          glow: 22,
+          child: const Text(
+            'القراءات\nالعشر',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.25,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF2A1E05),
+            ),
+          ),
+        );
+      case QurraNodeKind.city:
+        return tappable(
+          shape: StadiumBorder(
+            side: BorderSide(color: active ? gold : color, width: 1.6),
+          ),
+          gradient: LinearGradient(
+            colors: [color.withAlpha(dark ? 120 : 90), color.withAlpha(40)],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.location_on, size: 15, color: color),
+              const SizedBox(width: 3),
+              Text(
+                node.city!.nameAr,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: ink,
+                ),
+              ),
+            ],
+          ),
+        );
+      case QurraNodeKind.reader:
+        final complementary = node.reader!.group == RecitationGroup.three;
+        return tappable(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: active ? gold : color,
+              width: active ? 2.2 : 1.6,
+            ),
+          ),
+          fill: card,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                node.reader!.qiraa.shortAr,
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.2,
+                  fontWeight: FontWeight.w800,
+                  color: ink,
+                ),
+              ),
+              Text(
+                complementary ? 'من المتممين للعشرة' : 'من القراء السبعة',
+                style: TextStyle(fontSize: 8.5, color: soft),
+              ),
+            ],
+          ),
+        );
+      case QurraNodeKind.narrator:
+        final lines = node.label.split('\n');
+        return tappable(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(11),
+            side: BorderSide(
+              color: active ? gold : color.withAlpha(170),
+              width: active ? 2 : 1,
+            ),
+          ),
+          fill: card,
+          glow: 6,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                lines.first,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  height: 1.2,
+                  fontWeight: FontWeight.w700,
+                  color: ink,
+                ),
+              ),
+              if (lines.length > 1)
+                Text(lines[1], style: TextStyle(fontSize: 9, color: soft)),
+              // A narrator of another city than his reader's says so.
+              if (narrowCity)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: qurraCityColor(node.city),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      node.city!.nameAr,
+                      style: TextStyle(fontSize: 9, color: soft),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        );
+    }
+  }
+
+  /// The cities and their colours; one tapped stands out from the others.
+  Widget _legend(List<RecitationCity> cities, bool dark) => SizedBox(
+    height: 44,
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+      child: Row(
+        children: [
+          for (final c in cities)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: FilterChip(
+                key: ValueKey('graph-legend-${c.name}'),
+                visualDensity: VisualDensity.compact,
+                showCheckmark: false,
+                selected: _focus == c,
+                selectedColor: qurraCityColor(c).withAlpha(dark ? 110 : 80),
+                side: BorderSide(color: qurraCityColor(c).withAlpha(150)),
+                avatar: CircleAvatar(
+                  radius: 5,
+                  backgroundColor: qurraCityColor(c),
+                ),
+                label: Text(
+                  '${c.nameAr} ${_count(c)}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                tooltip: _focus == c
+                    ? 'إظهار كل المدن'
+                    : 'إبراز قراء ${c.nameAr} ورواتها',
+                onSelected: (_) =>
+                    setState(() => _focus = _focus == c ? null : c),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+
+  String _count(RecitationCity c) {
+    final readers = widget.graph.nodes
+        .where((n) => n.kind == QurraNodeKind.reader && n.city == c)
+        .length;
+    final narrators = widget.graph.nodes
+        .where((n) => n.kind == QurraNodeKind.narrator && n.city == c)
+        .length;
+    return readers > 0 ? '• $readers' : '• رواة $narrators';
+  }
+
   Widget _toolbar(bool dark) => Material(
-    color: dark ? const Color(0xFF182E36) : const Color(0xFFE5EDE5),
+    color: dark ? const Color(0xE6182E36) : const Color(0xE6E5EDE5),
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       child: Wrap(
@@ -446,18 +592,11 @@ class _QurraGraphViewState extends State<QurraGraphView>
         spacing: 2,
         children: [
           IconButton(
-            tooltip: _rotateDrag ? 'العودة للتصفح بالتمرير' : 'تدوير بالسحب',
-            isSelected: _rotateDrag,
-            onPressed: () => setState(() {
-              _rotateDrag = !_rotateDrag;
-              widget.camera.setRotating(false);
-            }),
-            icon: const Icon(Icons.threed_rotation),
-            selectedIcon: const Icon(Icons.swipe_vertical_rounded),
-          ),
-          IconButton(
             tooltip: 'إعادة ضبط المنظور',
-            onPressed: _reset,
+            onPressed: () => setState(() {
+              _focus = null;
+              widget.camera.reset();
+            }),
             icon: const Icon(Icons.center_focus_strong),
           ),
           IconButton(
@@ -478,12 +617,12 @@ class _QurraGraphViewState extends State<QurraGraphView>
           ),
           IconButton(
             tooltip: 'تدوير يسارًا',
-            onPressed: () => widget.camera.orbit(-.25, 0),
+            onPressed: () => widget.camera.orbit(-.35, 0),
             icon: const Icon(Icons.rotate_left),
           ),
           IconButton(
             tooltip: 'تدوير يمينًا',
-            onPressed: () => widget.camera.orbit(.25, 0),
+            onPressed: () => widget.camera.orbit(.35, 0),
             icon: const Icon(Icons.rotate_right),
           ),
           IconButton(
@@ -503,7 +642,7 @@ class _QurraGraphViewState extends State<QurraGraphView>
   );
 }
 
-// Claim a pinch before the name buttons or the scroll view can treat it as a tap.
+// Claim a pinch before the name buttons can treat it as a tap.
 class _TreePinchRecognizer extends OneSequenceGestureRecognizer {
   _TreePinchRecognizer() : super(supportedDevices: {PointerDeviceKind.touch});
   void claim() => resolve(GestureDisposition.accepted);
@@ -527,285 +666,135 @@ class _TreePinchRecognizer extends OneSequenceGestureRecognizer {
   String get debugDescription => 'reader tree pinch';
 }
 
-class _ReaderBranch extends StatelessWidget {
-  const _ReaderBranch({
-    super.key,
-    required this.reader,
-    required this.narrators,
+/// The rings of the cone, its axis and floor, and the edges, all projected.
+class _ScenePainter extends CustomPainter {
+  _ScenePainter({
+    required this.graph,
+    required this.projected,
     required this.camera,
-    required this.scale,
     required this.dark,
-    required this.selected,
-    required this.cityOwner,
-    required this.cityNodes,
-    required this.onSelect,
+    required this.inFocus,
   });
-  final QurraGraphNode reader;
-  final List<QurraGraphNode> narrators;
+  final QurraGraph graph;
+  final Map<String, GraphScreenPoint> projected;
   final QurraGraphCamera camera;
-  final double scale;
   final bool dark;
-  final String? selected;
-  final Map<RecitationCity, String> cityOwner;
-  final Map<String, QurraGraphNode> cityNodes;
-  final ValueChanged<QurraGraphNode> onSelect;
+  final bool Function(QurraGraphNode) inFocus;
 
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, c) {
-      final width = c.maxWidth;
-      final parentHeight = 90 * scale, childHeight = 90 * scale;
-      final height = parentHeight + childHeight + 65;
-      final parentWidth = math.min(width - 32, 176 * math.sqrt(scale));
-      final childWidth = narrators.length == 1
-          ? math.min(width - 32, 165.0)
-          : (width - 38) / 2;
-      final size = Size(width, height);
-      final origin = reader.position.x;
-      GraphScreenPoint project(QurraGraphNode n) => projectQurraPoint(
-        GraphPoint3(n.position.x - origin, n.position.y, n.position.z),
-        size,
-        camera,
-      );
-      final parentProjection = project(reader);
-      // Labels face the viewer, with independent lanes even at an edge-on angle.
-      // The true 3D projection drives the motion and depth within those lanes.
-      final parentLeft =
-          (width / 2 -
-                  parentWidth / 2 +
-                  (parentProjection.point.dx - width / 2).clamp(-12, 12))
-              .clamp(8.0, width - parentWidth - 8);
-      final parent = Rect.fromLTWH(parentLeft, 12, parentWidth, parentHeight);
-      final children = <Rect>[];
-      for (var i = 0; i < narrators.length; i++) {
-        final projection = project(narrators[i]);
-        final right = narrators.length > 1 && i == 0;
-        final center = narrators.length == 1
-            ? width / 2
-            : right
-            ? width * .75
-            : width * .25;
-        final rawX =
-            center -
-            childWidth / 2 +
-            (projection.point.dx - width / 2).clamp(-4, 4);
-        final minX = narrators.length == 1
-            ? 10.0
-            : right
-            ? width / 2 + 9
-            : 10.0;
-        final maxX = narrators.length == 1
-            ? width - childWidth - 10
-            : right
-            ? width - childWidth - 10
-            : width / 2 - childWidth - 9;
-        children.add(
-          Rect.fromLTWH(
-            rawX.clamp(minX, math.max(minX, maxX)),
-            parent.bottom +
-                35 +
-                (projection.point.dy - size.height / 2).clamp(-3, 3),
-            childWidth,
-            childHeight,
-          ),
-        );
-      }
-      final color = qurraCityColor(reader.city);
-      return Container(
-        height: height,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: dark ? const Color(0xFF182D35) : Colors.white,
-          border: Border.all(color: color.withAlpha(dark ? 65 : 85)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(dark ? 22 : 10),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _BranchLines(parent, children, color, dark),
-              ),
-            ),
-            Positioned.fromRect(
-              rect: parent,
-              child: _node(reader, color, parentProjection.depth, true),
-            ),
-            for (var i = 0; i < narrators.length; i++)
-              Positioned.fromRect(
-                rect: children[i],
-                child: _node(
-                  narrators[i],
-                  color,
-                  project(narrators[i]).depth,
-                  false,
-                ),
-              ),
-          ],
-        ),
-      );
-    },
-  );
-
-  Widget _node(
-    QurraGraphNode node,
-    Color branchColor,
-    double depth,
-    bool parent,
-  ) {
-    final active = selected == node.id;
-    final complementary = parent && node.reader!.group == RecitationGroup.three;
-    final ownColor = qurraCityColor(node.city);
-    final fill = dark ? const Color(0xFF243F46) : const Color(0xFFF8FBF6);
-    final border = active || complementary
-        ? const Color(0xFFC89A42)
-        : branchColor.withAlpha(parent ? 160 : 75);
-    final label = parent
-        ? node.reader!.qiraa.shortAr
-        : node.narrator!.riwaya.nameAr;
-    final city = node.city!;
-    return Semantics(
-      button: true,
-      label: node.description,
-      child: Transform(
-        alignment: Alignment.center,
-        transform: Matrix4.identity()
-          ..setEntry(3, 2, .001)
-          ..rotateX(math.sin(camera.pitch) * .08)
-          ..rotateY(math.sin(camera.yaw) * .12),
-        child: Material(
-          key: ValueKey('graph-node-${node.id}'),
-          color: fill,
-          elevation: (7 - depth).clamp(2, 12),
-          shadowColor: branchColor.withAlpha(80),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(parent ? 15 : 12),
-            side: BorderSide(color: border, width: parent ? 1.4 : 1),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => onSelect(node),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (parent)
-                    Text(
-                      complementary ? 'من المتممين للعشرة' : 'من القراء السبعة',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textScaler: TextScaler.linear(scale),
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: dark
-                            ? const Color(0xFFADC4BD)
-                            : const Color(0xFF627D71),
-                      ),
-                    ),
-                  Text(
-                    label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textScaler: TextScaler.linear(scale),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: parent ? 18 : 15,
-                      fontWeight: FontWeight.w700,
-                      height: 1.3,
-                      color: dark ? Colors.white : const Color(0xFF183F34),
-                    ),
-                  ),
-                  if (!parent) ...[
-                    const SizedBox(height: 3),
-                    InkWell(
-                      key: cityOwner[city] == node.id
-                          ? ValueKey('graph-node-city-${city.name}')
-                          : null,
-                      onTap: () => onSelect(cityNodes['city-${city.name}']!),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 3,
-                          vertical: 2,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 5,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                color: ownColor,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                city.nameAr,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textScaler: TextScaler.linear(scale),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: dark
-                                      ? const Color(0xFFBFD2CD)
-                                      : const Color(0xFF546E62),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BranchLines extends CustomPainter {
-  _BranchLines(this.parent, this.children, this.color, this.dark);
-  final Rect parent;
-  final List<Rect> children;
-  final Color color;
-  final bool dark;
   @override
   void paint(Canvas canvas, Size size) {
-    final start = parent.bottomCenter;
-    final splitY = start.dy + 17;
-    final paint = Paint()
-      ..color = color.withAlpha(dark ? 195 : 175)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final line = Path()
-      ..moveTo(start.dx, start.dy)
-      ..lineTo(start.dx, splitY);
-    for (final child in children) {
-      line.moveTo(start.dx, splitY);
-      line.lineTo(child.center.dx, splitY);
-      line.lineTo(child.center.dx, child.top);
+    Offset at(GraphPoint3 p) => projectQurraPoint(p, size, camera).point;
+    final guide = dark ? Colors.white : const Color(0xFF204C43);
+    // The floor under the cone, and its rings.
+    Path ring(double radius, double y) {
+      final path = Path();
+      for (var i = 0; i <= 72; i++) {
+        final a = i / 72 * math.pi * 2;
+        final p = at(
+          GraphPoint3(radius * math.sin(a), y, -radius * math.cos(a)),
+        );
+        i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+      }
+      return path;
     }
-    canvas.drawPath(line, paint);
-    canvas.drawCircle(Offset(start.dx, splitY), 3.3, Paint()..color = color);
+
+    final floor = ring(5.6, 3.9);
+    canvas.drawPath(
+      floor,
+      Paint()
+        ..shader = ui.Gradient.radial(
+          at(const GraphPoint3(0, 3.9, 0)),
+          math.max(
+            1,
+            (at(const GraphPoint3(5.6, 3.9, 0)) -
+                    at(const GraphPoint3(0, 3.9, 0)))
+                .distance,
+          ),
+          [guide.withAlpha(dark ? 26 : 20), guide.withAlpha(0)],
+        ),
+    );
+    final thin = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    canvas.drawPath(floor, thin..color = guide.withAlpha(dark ? 40 : 35));
+    canvas.drawPath(ring(2.3, -1.7), thin..color = guide.withAlpha(28));
+    canvas.drawPath(ring(4.3, -.2), thin..color = guide.withAlpha(22));
+    _dashed(
+      canvas,
+      at(const GraphPoint3(0, -3, 0)),
+      at(const GraphPoint3(0, 3.9, 0)),
+      thin..color = guide.withAlpha(30),
+    );
+
+    final byId = {for (final n in graph.nodes) n.id: n};
+    // Far edges first.
+    final edges = [...graph.edges]
+      ..sort(
+        (a, b) => (projected[b.from]!.depth + projected[b.to]!.depth).compareTo(
+          projected[a.from]!.depth + projected[a.to]!.depth,
+        ),
+      );
+    for (final e in edges) {
+      final from = byId[e.from]!, to = byId[e.to]!;
+      // A narrator's city is drawn only when it is not his reader's.
+      if (e.kind == QurraEdgeKind.classification &&
+          to.kind == QurraNodeKind.narrator &&
+          to.city == to.reader!.city) {
+        continue;
+      }
+      final a = projected[e.from]!, b = projected[e.to]!;
+      final fade = (((a.depth + b.depth) / 2 + 6) / 12).clamp(0.0, 1.0);
+      final focus = inFocus(from) && inFocus(to);
+      final alpha = ((focus ? 230 : 30) * (1 - fade * .55)).round();
+      final color = switch (e.kind) {
+        QurraEdgeKind.samePerson => const Color(0xFFC89A42),
+        _ when from.kind == QurraNodeKind.root => qurraCityColor(to.city),
+        _ => qurraCityColor(from.city),
+      };
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..color = color.withAlpha(alpha)
+        ..strokeWidth =
+            (e.kind == QurraEdgeKind.transmission ? 2.4 : 1.6) *
+            (a.perspective + b.perspective) /
+            2;
+      if (e.kind == QurraEdgeKind.classification &&
+              to.kind == QurraNodeKind.narrator ||
+          e.kind == QurraEdgeKind.samePerson) {
+        _dashed(canvas, a.point, b.point, paint..strokeWidth *= .7);
+      } else if (e.kind == QurraEdgeKind.transmission &&
+          to.reader!.narrators.indexOf(to.narrator!) == 1) {
+        // The second narrator hangs below the first: his branch bends
+        // around it.
+        final mid = (a.point + b.point) / 2;
+        canvas.drawPath(
+          Path()
+            ..moveTo(a.point.dx, a.point.dy)
+            ..quadraticBezierTo(
+              mid.dx + 34 * b.perspective,
+              mid.dy,
+              b.point.dx,
+              b.point.dy,
+            ),
+          paint,
+        );
+      } else {
+        canvas.drawLine(a.point, b.point, paint);
+      }
+    }
+  }
+
+  void _dashed(Canvas canvas, Offset a, Offset b, Paint paint) {
+    final length = (b - a).distance;
+    if (length < 1) return;
+    final step = (b - a) / length;
+    for (var d = 0.0; d < length; d += 9) {
+      canvas.drawLine(a + step * d, a + step * math.min(d + 5, length), paint);
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _BranchLines old) =>
-      old.parent != parent ||
-      old.children != children ||
-      old.color != color ||
-      old.dark != dark;
+  // Built anew on every camera move or focus change.
+  bool shouldRepaint(covariant _ScenePainter old) => true;
 }

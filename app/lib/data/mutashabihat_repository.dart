@@ -29,8 +29,8 @@ class MutashabihatRepository {
 
   static const empty = MutashabihatRepository._empty();
   const MutashabihatRepository._empty()
-      : _groups = const [],
-        _byWord = const {};
+    : _groups = const [],
+      _byWord = const {};
 
   static int _key(int surah, int ayah, int word) =>
       surah * 1000000 + ayah * 1000 + word;
@@ -59,8 +59,9 @@ class MutashabihatRepository {
 
   static Future<MutashabihatRepository> load([AssetBundle? bundle]) async {
     try {
-      final raw = await (bundle ?? rootBundle)
-          .loadString('assets/data/mutashabihat.json');
+      final raw = await (bundle ?? rootBundle).loadString(
+        'assets/data/mutashabihat.json',
+      );
       return parse(raw);
     } on FlutterError {
       return empty;

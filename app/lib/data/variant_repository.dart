@@ -178,9 +178,8 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
         yaqub &&
         variant.count == 1 &&
         (variant.rule == 'idgham_kabir' ||
-            RegExp(
-              'الإدغام فيما بعدها|الإدغام الكبير|إدغام كبير',
-            ).hasMatch(variant.description));
+            RegExp('الإدغام فيما بعدها|الإدغام الكبير|إدغام كبير')
+                .hasMatch(variant.description));
     for (
       var w = variant.word;
       w < variant.word + variant.count + (kabir ? 1 : 0);

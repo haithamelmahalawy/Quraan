@@ -35,22 +35,21 @@ class MutashabihatSheet extends StatefulWidget {
     required QuranRepository quran,
     required ValueChanged<int> onGo,
     Stream<int>? steps,
-  }) =>
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        barrierColor: Colors.black.withAlpha(60),
-        builder: (_) => FractionallySizedBox(
-          heightFactor: 0.88,
-          child: MutashabihatSheet(
-            places: places,
-            quran: quran,
-            onGo: onGo,
-            steps: steps,
-          ),
-        ),
-      );
+  }) => showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: Colors.black.withAlpha(60),
+    builder: (_) => FractionallySizedBox(
+      heightFactor: 0.88,
+      child: MutashabihatSheet(
+        places: places,
+        quran: quran,
+        onGo: onGo,
+        steps: steps,
+      ),
+    ),
+  );
 
   @override
   State<MutashabihatSheet> createState() => _MutashabihatSheetState();
@@ -128,9 +127,8 @@ class _MutashabihatSheetState extends State<MutashabihatSheet>
                 child: IgnorePointer(
                   child: AnimatedBuilder(
                     animation: _float,
-                    builder: (context, _) => CustomPaint(
-                      painter: _DriftingBubbles(_float.value),
-                    ),
+                    builder: (context, _) =>
+                        CustomPaint(painter: _DriftingBubbles(_float.value)),
                   ),
                 ),
               ),
@@ -149,14 +147,20 @@ class _MutashabihatSheetState extends State<MutashabihatSheet>
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                     child: Row(
                       children: [
-                        Text('المتشابهات اللفظية',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                                color: MushafColors.green,
-                                fontWeight: FontWeight.bold)),
+                        Text(
+                          'المتشابهات اللفظية',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: MushafColors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const Spacer(),
-                        Text('$count مواضع',
-                            style: theme.textTheme.labelLarge
-                                ?.copyWith(color: MushafColors.frame)),
+                        Text(
+                          '$count مواضع',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: MushafColors.frame,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -185,7 +189,8 @@ class _MutashabihatSheetState extends State<MutashabihatSheet>
                       itemBuilder: (context, i) => AnimatedBuilder(
                         animation: _pages,
                         builder: (context, child) {
-                          final page = _pages.hasClients &&
+                          final page =
+                              _pages.hasClients &&
                                   _pages.position.haveDimensions
                               ? _pages.page!
                               : _index.toDouble();
@@ -217,7 +222,9 @@ class _MutashabihatSheetState extends State<MutashabihatSheet>
                       children: [
                         IconButton.filledTonal(
                           tooltip: 'السابق',
-                          onPressed: _index > 0 ? () => _goTo(_index - 1) : null,
+                          onPressed: _index > 0
+                              ? () => _goTo(_index - 1)
+                              : null,
                           icon: const Icon(Icons.chevron_right),
                         ),
                         Expanded(
@@ -239,8 +246,9 @@ class _MutashabihatSheetState extends State<MutashabihatSheet>
                         ),
                         IconButton.filledTonal(
                           tooltip: 'التالي',
-                          onPressed:
-                              _index < count - 1 ? () => _goTo(_index + 1) : null,
+                          onPressed: _index < count - 1
+                              ? () => _goTo(_index + 1)
+                              : null,
                           icon: const Icon(Icons.chevron_left),
                         ),
                       ],
@@ -276,84 +284,87 @@ class _BubbleDiagram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      final center = Offset(c.maxWidth / 2, c.maxHeight / 2);
-      final n = places.length;
-      final bubble = n <= 6 ? 62.0 : (n <= 10 ? 52.0 : 44.0);
-      final rx = c.maxWidth / 2 - bubble / 2 - 12;
-      final ry = c.maxHeight / 2 - bubble / 2 - 6;
-      Offset at(int i) {
-        // Round the centre, starting near the top.
-        final angle = -math.pi / 2 + 2 * math.pi * i / n + math.pi / n;
-        final bob = math.sin(2 * math.pi * phase + i * 1.3) * 5;
-        return center + Offset(rx * math.cos(angle), ry * math.sin(angle) + bob);
-      }
+    return LayoutBuilder(
+      builder: (context, c) {
+        final center = Offset(c.maxWidth / 2, c.maxHeight / 2);
+        final n = places.length;
+        final bubble = n <= 6 ? 62.0 : (n <= 10 ? 52.0 : 44.0);
+        final rx = c.maxWidth / 2 - bubble / 2 - 12;
+        final ry = c.maxHeight / 2 - bubble / 2 - 6;
+        Offset at(int i) {
+          // Round the centre, starting near the top.
+          final angle = -math.pi / 2 + 2 * math.pi * i / n + math.pi / n;
+          final bob = math.sin(2 * math.pi * phase + i * 1.3) * 5;
+          return center +
+              Offset(rx * math.cos(angle), ry * math.sin(angle) + bob);
+        }
 
-      final points = [for (var i = 0; i < n; i++) at(i)];
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: CustomPaint(painter: _Threads(center, points, selected)),
-          ),
-          // Centre: the phrase they share.
-          Positioned(
-            left: center.dx - 34,
-            top: center.dy - 34 + math.sin(2 * math.pi * phase) * 3,
-            child: _Bubble(
-              size: 68,
-              color: MushafColors.green,
-              glow: true,
-              child: const Text('🔁', style: TextStyle(fontSize: 26)),
+        final points = [for (var i = 0; i < n; i++) at(i)];
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: CustomPaint(painter: _Threads(center, points, selected)),
             ),
-          ),
-          for (var i = 0; i < n; i++)
+            // Centre: the phrase they share.
             Positioned(
-              left: points[i].dx - bubble / 2,
-              top: points[i].dy - bubble / 2,
-              child: GestureDetector(
-                onTap: () => onTap(i),
-                child: AnimatedScale(
-                  scale: i == selected ? 1.22 : 1,
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutBack,
-                  child: _Bubble(
-                    size: bubble,
-                    color: i == 0 ? MushafColors.green : MushafColors.gold,
-                    glow: i == selected,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          quran.surah(places[i].surah).nameAr,
-                          maxLines: 1,
-                          overflow: TextOverflow.fade,
-                          softWrap: false,
-                          style: TextStyle(
-                            fontFamily: 'Hafs',
-                            fontSize: bubble * 0.2,
-                            height: 1.1,
-                            color: Colors.white,
+              left: center.dx - 34,
+              top: center.dy - 34 + math.sin(2 * math.pi * phase) * 3,
+              child: _Bubble(
+                size: 68,
+                color: MushafColors.green,
+                glow: true,
+                child: const Text('🔁', style: TextStyle(fontSize: 26)),
+              ),
+            ),
+            for (var i = 0; i < n; i++)
+              Positioned(
+                left: points[i].dx - bubble / 2,
+                top: points[i].dy - bubble / 2,
+                child: GestureDetector(
+                  onTap: () => onTap(i),
+                  child: AnimatedScale(
+                    scale: i == selected ? 1.22 : 1,
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutBack,
+                    child: _Bubble(
+                      size: bubble,
+                      color: i == 0 ? MushafColors.green : MushafColors.gold,
+                      glow: i == selected,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            quran.surah(places[i].surah).nameAr,
+                            maxLines: 1,
+                            overflow: TextOverflow.fade,
+                            softWrap: false,
+                            style: TextStyle(
+                              fontFamily: 'Hafs',
+                              fontSize: bubble * 0.2,
+                              height: 1.1,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${places[i].ayah}',
-                          style: TextStyle(
-                            fontSize: bubble * 0.2,
-                            height: 1.1,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                          Text(
+                            '${places[i].ayah}',
+                            style: TextStyle(
+                              fontSize: bubble * 0.2,
+                              height: 1.1,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
-      );
-    });
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -453,8 +464,8 @@ class _DriftingBubbles extends CustomPainter {
         Offset(x + math.sin(2 * math.pi * (t + seed)) * 12, y),
         r,
         Paint()
-          ..color =
-              (i.isEven ? MushafColors.gold : MushafColors.green).withAlpha(28),
+          ..color = (i.isEven ? MushafColors.gold : MushafColors.green)
+              .withAlpha(28),
       );
       canvas.drawCircle(
         Offset(x - r * 0.3, y - r * 0.3),
@@ -510,14 +521,19 @@ class _PlaceCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [accent, accent.withAlpha(170)]),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(22)),
+                gradient: LinearGradient(
+                  colors: [accent, accent.withAlpha(170)],
+                ),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(22),
+                ),
               ),
               child: Row(
                 children: [
-                  Text(isHere ? '📍' : '✨',
-                      style: const TextStyle(fontSize: 20)),
+                  Text(
+                    isHere ? '📍' : '✨',
+                    style: const TextStyle(fontSize: 20),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -542,30 +558,34 @@ class _PlaceCard extends StatelessWidget {
                   'أنت هنا',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: MushafColors.green, fontWeight: FontWeight.bold),
+                    color: MushafColors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(14),
                 child: Text.rich(
-                  TextSpan(children: [
-                    for (final part in place.parts) ...[
-                      for (final (w, word)
-                          in quran.ayah(part.surah, part.ayah).words.indexed)
-                        TextSpan(
-                          text: '$word ',
-                          style: part.words.contains(w)
-                              ? TextStyle(
-                                  color: MushafColors.green,
-                                  backgroundColor:
-                                      MushafColors.gold.withAlpha(80),
-                                )
-                              : null,
-                        ),
-                      TextSpan(text: '${_digits(part.ayah)} '),
+                  TextSpan(
+                    children: [
+                      for (final part in place.parts) ...[
+                        for (final (w, word)
+                            in quran.ayah(part.surah, part.ayah).words.indexed)
+                          TextSpan(
+                            text: '$word ',
+                            style: part.words.contains(w)
+                                ? TextStyle(
+                                    color: MushafColors.green,
+                                    backgroundColor: MushafColors.gold
+                                        .withAlpha(80),
+                                  )
+                                : null,
+                          ),
+                        TextSpan(text: '${_digits(part.ayah)} '),
+                      ],
                     ],
-                  ]),
+                  ),
                   textAlign: TextAlign.justify,
                   textDirection: TextDirection.rtl,
                   style: TextStyle(
@@ -604,17 +624,16 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-        decoration: BoxDecoration(
-          color: Colors.white.withAlpha(60),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style:
-              const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+    decoration: BoxDecoration(
+      color: Colors.white.withAlpha(60),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(
+      label,
+      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+    ),
+  );
 }
 
 String _digits(int n) => n
