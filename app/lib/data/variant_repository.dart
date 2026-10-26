@@ -282,8 +282,12 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       final next = index[VariantRepository.key(surah, ayah, word + 1)];
       found = next?.any((v) => v.isUsul && _matchesUsul(v, how)) ?? false;
     }
-    // A farsh reading the book states and the riwaya file lacks.
-    if (!found && p[6] == 'farsh') {
+    // A farsh reading the book states and the riwaya file lacks. Ibn 'Amir's
+    // files have its farsh written in, reviewed: the book's notes (stopping
+    // on the hamza, ishmam, two hamzas) are their usul, not farsh.
+    if (!found &&
+        p[6] == 'farsh' &&
+        !const {'hisham', 'ibn_dhakwan'}.contains(id)) {
       final variant = Variant(
         riwayaId: id,
         surah: surah,

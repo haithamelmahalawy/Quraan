@@ -382,6 +382,46 @@ void main() {
     },
   );
 
+  testWidgets(
+    'turning brings another city to the front, thicker and clear, with a click',
+    (t) async {
+      final sounds = <Object?>[];
+      t.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'SystemSound.play') sounds.add(call.arguments);
+          return null;
+        },
+      );
+      addTearDown(
+        () => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      await show(t);
+      final c = camera(t);
+      double opacity(String id) => t
+          .widget<Opacity>(
+            find
+                .ancestor(
+                  of: find.byKey(ValueKey('graph-node-$id')),
+                  matching: find.byType(Opacity),
+                )
+                .first,
+          )
+          .opacity;
+      // Baghdad (Khalaf) faces the screen at the start, Madinah aside.
+      expect(opacity('reader-khalaf'), greaterThan(.8));
+      expect(opacity('reader-nafi'), lessThanOrEqualTo(.5));
+      c.orbit(math.pi, 0);
+      await t.pumpAndSettle();
+      expect(sounds, isNotEmpty);
+      expect(opacity('reader-khalaf'), lessThanOrEqualTo(.5));
+      expect(t.takeException(), isNull);
+    },
+  );
+
   testWidgets('automatic rotation can be paused and manual drag stops it', (
     t,
   ) async {

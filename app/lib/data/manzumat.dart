@@ -289,6 +289,35 @@ class Manzumat {
       const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId) &&
       v.text.contains('تِّلُو');
 
+  /// Ibn 'Amir's damma for the first of two sakins before a third letter
+  /// with damma (وَلَقَدُ ٱسۡتُهۡزِئَ، فَتِيلًا ٱنظُرۡ): «وَضَمُّكَ أُولَى
+  /// السَّاكِنَيْنِ» with «وَمَحْظُوراً انْظُرْ مَعْ قَدِ اسْتُهْزِئَ»; for the
+  /// tanween, Ibn Dhakwan's kasra, in dispute in «رحمة» and «خبيثة».
+  Set<int> _ibnAmirSakinayn(Variant v) {
+    final d = v.description;
+    if (!d.contains('لالتقاء الساكنين') || !d.contains('بضم')) return {};
+    return v.riwayaId == 'ibn_dhakwan' && d.contains('التنوين')
+        ? {495, 497, 498}
+        : {495, 496};
+  }
+
+  /// Ibn 'Amir's farsh whose verse the words of the page do not find: the
+  /// verse's word is without the mushaf's prefix, or in another surah.
+  Set<int> _ibnAmirFarsh(Variant v) {
+    if (!const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId)) return {};
+    // «وَسَيُصۡلَوۡنَ» (4:10): «يَصْلَوْنَ ضُمَّ كَمْ صَفَا».
+    if (v.text.contains('يُصۡلَوۡنَ')) return {588};
+    // «وَأَحَلَّ» (4:24): «وَضَمٌّ وَكَسْرٌ فِي أَحَلَّ صِحَابُهُ».
+    if (v.surah == 4 && v.text == 'وَأَحَلَّ') return {597};
+    // «هُزُؤًا» everywhere: «وَهُزْؤاً وَكُفْؤاً في السَّوَاكِنِ فُصِّلَا
+    // وَضُمَّ لِبَاقِيهِمْ».
+    if (v.text.contains('هُزُؤ')) return {460, 461};
+    // The nun of «يسٓ» and «نٓ» merged into the waw: «وَيَاسِيْنَ أَظْهِرْ عنْ
+    // فَتًى حَقُهُ بَدَا وَنُونَ», Ibn 'Amir not among those who show it.
+    if (v.description.startsWith('بإدغام النون من «')) return {281};
+    return _ibnAmirSakinayn(v);
+  }
+
   Set<int> _ruleVerses(Poem poem, Variant v, [String hafs = '']) {
     final d = v.shownDescription;
     if (poem == Poem.shatibiyya && _anaWasl(v)) return {521};
@@ -354,6 +383,15 @@ class Manzumat {
         RegExp('^[ءأ]َ[ءؤ]ُ').hasMatch(v.usulText)) {
       return {200, 201};
     }
+    // With kasra: «وَمَدُّكَ قَبْلَ الْفَتْحِ وَالْكَسْرِ حُجَّةٌ بِهَا لُذْ وَقَبْلَ
+    // الْكَسْرِ خُلْفٌ لَهُ», but «وَفي سَبْعَةٍ لاَ خُلْفَ عَنْهُ».
+    if (v.riwayaId == 'hisham' &&
+        v.rule == 'tasheel_word' &&
+        RegExp('^[ءأ]َ[ءئإ]ِ').hasMatch(v.usulText)) {
+      return v.usulWays.length > 1 && !v.description.contains('تسهيل')
+          ? {196}
+          : {196, 197, 198};
+    }
     // Hisham stops on the last hamza as Hamza does: «وَمِثْلُهُ يَقُولُ هِشَامٌ
     // مَا تَطَرَّفَ مُسْهِلَا», with the ways of the chapter.
     if (v.rule == 'hisham_waqf') return {236, 237, 239, 242, 250, 252};
@@ -370,6 +408,10 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _ibnAmirQuttilu(v)) {
       // The last of Al 'Imran (3:195): «وَالآخِرُ كَمَّلَا دَرَاكِ».
       return v.surah == 3 && v.ayah == 195 ? {576, 577} : {576};
+    }
+    if (poem == Poem.shatibiyya) {
+      final farsh = _ibnAmirFarsh(v);
+      if (farsh.isNotEmpty) return farsh;
     }
     if (d.contains('ميم الجمع')) return {111, 112};
     return {};
@@ -394,6 +436,12 @@ class Manzumat {
     }
     if (poem == Poem.shatibiyya && _ibnAmirQuttilu(v)) {
       return verses(poem).firstWhere((b) => b.n == 576).chapter;
+    }
+    if (poem == Poem.shatibiyya) {
+      final farsh = _ibnAmirFarsh(v);
+      if (farsh.isNotEmpty) {
+        return verses(poem).firstWhere((b) => farsh.contains(b.n)).chapter;
+      }
     }
     final d = v.shownDescription;
     final topics = <String>[

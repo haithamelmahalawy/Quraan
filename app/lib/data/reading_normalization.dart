@@ -134,6 +134,15 @@ List<Unit> _units(String word) {
       ms = ms.where((m) => m != 0x06DC).toList();
       ch == 'ص' ? u.letter = 'س' : u.marks.add(0x06DC);
     }
+    // A waw with the dagger alef and no vowel of its own is the silent waw
+    // of the spelling (ٱلصَّلَوٰةَ، أَصَلَوٰتُكَ): the dagger is the alef read.
+    // With its own vowel (أَصَلَوَٰتُكَ) the waw is read, then the alef.
+    if (u.letter == 'و' &&
+        ms.contains(_dagger) &&
+        !ms.any((m) => m == _fatha || m == _damma || m == _kasra)) {
+      out.add(Unit('ا'));
+      continue;
+    }
     if (ms.contains(_dagger) && !ms.contains(_fatha)) ms.add(_fatha);
     if (ms.any((m) => m == 0x06EA || m == 0x06ED || m == 0x065C) &&
         !ms.any((m) => m == _fatha || m == _damma || m == _kasra)) {

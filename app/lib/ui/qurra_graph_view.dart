@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 import '../data/qurra_biographies.dart';
 import '../data/qurra_graph.dart';
@@ -115,6 +116,11 @@ class _QurraGraphViewState extends State<QurraGraphView>
   /// The city whose readers and narrators stand out, the others dimmed.
   RecitationCity? _focus;
 
+  /// Without a city chosen, the one facing the screen stands out as the
+  /// scene turns; a click marks each new one.
+  RecitationCity? _front;
+  Size? _size;
+
   @override
   void initState() {
     super.initState();
@@ -165,8 +171,37 @@ class _QurraGraphViewState extends State<QurraGraphView>
 
   void _changed() {
     _syncTicker();
+    final size = _size;
+    if (size != null && _focus == null) {
+      final front = _frontCity(size);
+      if (front != _front && _front != null) {
+        SystemSound.play(SystemSoundType.click);
+        HapticFeedback.selectionClick();
+      }
+      _front = front;
+    }
     setState(() {});
   }
+
+  /// The city of readers nearest the viewer.
+  RecitationCity? _frontCity(Size size) {
+    RecitationCity? front;
+    var nearest = double.infinity;
+    for (final n in widget.graph.nodes) {
+      if (n.kind != QurraNodeKind.city ||
+          !widget.graph.nodes.any(
+            (r) => r.kind == QurraNodeKind.reader && r.city == n.city,
+          )) {
+        continue;
+      }
+      final depth = projectQurraPoint(n.position, size, widget.camera).depth;
+      if (depth < nearest) (front, nearest) = (n.city, depth);
+    }
+    return front;
+  }
+
+  static bool _of(QurraGraphNode n, RecitationCity city) =>
+      n.kind == QurraNodeKind.root || n.city == city || n.reader?.city == city;
 
   @override
   void dispose() {
@@ -289,6 +324,9 @@ class _QurraGraphViewState extends State<QurraGraphView>
   }
 
   Widget _scene(Size size, bool dark, double textScale) {
+    _size = size;
+    final front = _focus == null ? _frontCity(size) : null;
+    _front ??= front;
     final projected = {
       for (final n in widget.graph.nodes)
         n.id: projectQurraPoint(n.position, size, widget.camera),
@@ -309,12 +347,13 @@ class _QurraGraphViewState extends State<QurraGraphView>
               projected: projected,
               camera: widget.camera,
               dark: dark,
-              inFocus: _inFocus,
+              focus: _focus,
+              front: front,
             ),
           ),
         ),
         for (final n in nodes)
-          _placed(n, projected[n.id]!, dark, textScale * unitScale),
+          _placed(n, projected[n.id]!, dark, textScale * unitScale, front),
       ],
     );
   }
@@ -324,6 +363,7 @@ class _QurraGraphViewState extends State<QurraGraphView>
     GraphScreenPoint p,
     bool dark,
     double scale,
+    RecitationCity? front,
   ) {
     final narrowCity =
         node.kind == QurraNodeKind.narrator && node.city != node.reader!.city;
@@ -337,9 +377,15 @@ class _QurraGraphViewState extends State<QurraGraphView>
       ),
     };
     final s = (p.perspective * scale).clamp(.45, 2.6);
-    // Nearer is brighter; a focus on one city dims the rest.
+    // Nearer is brighter; a city chosen dims the rest. Without one, the
+    // city facing the screen stays clear and the rest fades with depth, so
+    // what is behind does not cover it.
     final fade = ((p.depth + 6) / 12).clamp(0.0, 1.0);
-    final opacity = (_inFocus(node) ? 1 - fade * .6 : .12).toDouble();
+    final opacity = _focus != null
+        ? (_inFocus(node) ? 1 - fade * .6 : .12)
+        : front != null && !_of(node, front)
+        ? (.55 * (1 - fade)).clamp(.08, .5)
+        : 1 - fade * .3;
     return Positioned(
       left: p.point.dx - width * s / 2,
       top: p.point.dy - height * s / 2,
@@ -551,14 +597,23 @@ class _QurraGraphViewState extends State<QurraGraphView>
                 showCheckmark: false,
                 selected: _focus == c,
                 selectedColor: qurraCityColor(c).withAlpha(dark ? 110 : 80),
-                side: BorderSide(color: qurraCityColor(c).withAlpha(150)),
+                // The city facing the screen, while none is chosen.
+                side: BorderSide(
+                  color: qurraCityColor(c).withAlpha(_front == c ? 255 : 150),
+                  width: _focus == null && _front == c ? 2.2 : 1,
+                ),
                 avatar: CircleAvatar(
                   radius: 5,
                   backgroundColor: qurraCityColor(c),
                 ),
                 label: Text(
                   '${c.nameAr} ${_count(c)}',
-                  style: const TextStyle(fontSize: 12),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: _focus == null && _front == c
+                        ? FontWeight.w800
+                        : null,
+                  ),
                 ),
                 tooltip: _focus == c
                     ? 'إظهار كل المدن'
@@ -673,13 +728,16 @@ class _ScenePainter extends CustomPainter {
     required this.projected,
     required this.camera,
     required this.dark,
-    required this.inFocus,
+    required this.focus,
+    required this.front,
   });
   final QurraGraph graph;
   final Map<String, GraphScreenPoint> projected;
   final QurraGraphCamera camera;
   final bool dark;
-  final bool Function(QurraGraphNode) inFocus;
+
+  /// The city chosen in the legend, or else the one facing the screen.
+  final RecitationCity? focus, front;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -744,8 +802,22 @@ class _ScenePainter extends CustomPainter {
       }
       final a = projected[e.from]!, b = projected[e.to]!;
       final fade = (((a.depth + b.depth) / 2 + 6) / 12).clamp(0.0, 1.0);
-      final focus = inFocus(from) && inFocus(to);
-      final alpha = ((focus ? 230 : 30) * (1 - fade * .55)).round();
+      bool of(RecitationCity c) =>
+          _QurraGraphViewState._of(from, c) && _QurraGraphViewState._of(to, c);
+      // The chosen city's lines; else the facing city's, thicker, the others
+      // fading with depth so that crossing lines are told apart.
+      var widen = 1.0;
+      final int alpha;
+      if (focus case final c?) {
+        alpha = ((of(c) ? 230 : 30) * (1 - fade * .55)).round();
+      } else if (front case final c?) {
+        if (of(c)) widen = 2.2;
+        alpha = of(c)
+            ? (255 * (1 - fade * .3)).round()
+            : (110 * (1 - fade)).clamp(10, 110).round();
+      } else {
+        alpha = (230 * (1 - fade * .55)).round();
+      }
       final color = switch (e.kind) {
         QurraEdgeKind.samePerson => const Color(0xFFC89A42),
         _ when from.kind == QurraNodeKind.root => qurraCityColor(to.city),
@@ -757,6 +829,7 @@ class _ScenePainter extends CustomPainter {
         ..color = color.withAlpha(alpha)
         ..strokeWidth =
             (e.kind == QurraEdgeKind.transmission ? 2.4 : 1.6) *
+            widen *
             (a.perspective + b.perspective) /
             2;
       if (e.kind == QurraEdgeKind.classification &&
