@@ -6,8 +6,8 @@
 //
 //   dart run tool/build_tafsir.dart <dumpDir>
 //
-// <dumpDir> holds tafsir-book-<id>.json.gz for the books below and
-// reciters-index.json.gz.
+// <dumpDir> holds tafsir-book-<id>.json.gz and e3rab-book-<id>.json.gz for
+// the books below and reciters-index.json.gz; what it lacks is left as it is.
 //
 // Output:
 //   assets/data/tafsir/<id>.json.gz  {"id", "name", "author", "version",
@@ -25,6 +25,10 @@ import 'package:qiraat_mushaf/data/tafsir_text.dart';
 /// The books stored in the app: short and widely read.
 const offline = [2012, 2003, 272, 3, 2013];
 
+/// The books of i'rab stored in the app: the whole Quran word by word
+/// (al-Da'as), and al-Kharrat's short one.
+const offlineE3rab = [316, 180];
+
 void main(List<String> args) {
   if (args.length != 1) {
     stderr.writeln('usage: dart run tool/build_tafsir.dart <dumpDir>');
@@ -36,8 +40,12 @@ void main(List<String> args) {
           as Map<String, dynamic>;
 
   Directory('assets/data/tafsir').createSync(recursive: true);
-  for (final id in offline) {
-    final dump = read('tafsir-book-$id.json.gz');
+  for (final (kind, id) in [
+    for (final id in offline) ('tafsir', id),
+    for (final id in offlineE3rab) ('e3rab', id),
+  ]) {
+    if (!File('$dir/$kind-book-$id.json.gz').existsSync()) continue;
+    final dump = read('$kind-book-$id.json.gz');
     final book = dump['book'] as Map;
     final texts = <String>[];
     final index = <String, int>{};
@@ -68,11 +76,12 @@ void main(List<String> args) {
     );
     File('assets/data/tafsir/$id.json.gz').writeAsBytesSync(out);
     stdout.writeln(
-      'tafsir $id ${book['name']}: ${ayahs.length} ayahs, '
+      '$kind $id ${book['name']}: ${ayahs.length} ayahs, '
       '${texts.length} texts, ${(out.length / 1e6).toStringAsFixed(1)} MB',
     );
   }
 
+  if (!File('$dir/reciters-index.json.gz').existsSync()) return;
   final reciters = read('reciters-index.json.gz');
   final byRiwaya = <String, List<Map<String, Object?>>>{};
   for (final r in (reciters['data'] as List).expand((x) => x as List)) {

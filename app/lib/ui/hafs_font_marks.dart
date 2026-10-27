@@ -51,6 +51,11 @@ class HafsFontMarks extends StatelessWidget {
   static bool _lowerImala(String cluster) =>
       'بيئج'.contains(cluster[0]) && RegExp('[۪ٜ]').hasMatch(cluster);
 
+  /// The kasra of a ya with the hamza below it (وَرَآيِٕ، تِلۡقَآيِٕ): the font
+  /// draws it across the hamza; it is drawn apart, under the hamza.
+  static bool _kasraUnderHamza(String cluster) =>
+      cluster.startsWith('ي') && cluster.contains('ٕ') && cluster.contains('ِ');
+
   /// The iqlab mim drawn apart: the low one always, the high one only over
   /// a letter with a kasra (ءَايَٰتِۢ), whose anchor the font then moves into
   /// the letter. Over a letter without a vowel (مِنۢ، أَنۢبِئۡهُم) the font
@@ -68,7 +73,11 @@ class HafsFontMarks extends StatelessWidget {
     String? previous;
     for (final m in _cluster.allMatches(text)) {
       final cluster = m[0]!;
-      if (_raisedMadd(cluster, previous) || _lowerImala(cluster)) return true;
+      if (_raisedMadd(cluster, previous) ||
+          _lowerImala(cluster) ||
+          _kasraUnderHamza(cluster)) {
+        return true;
+      }
       previous = cluster;
     }
     return false;
@@ -109,6 +118,10 @@ class HafsFontMarks extends StatelessWidget {
       }
       if (_lowerImala(m[0]!)) {
         final markAt = full.indexOf(RegExp('[۪ٜ]'), m.start);
+        marks[markAt] = placed[markAt].$2;
+      }
+      if (_kasraUnderHamza(m[0]!)) {
+        final markAt = full.indexOf('ِ', m.start);
         marks[markAt] = placed[markAt].$2;
       }
       if (_iqlabApart(m[0]!)) {
@@ -186,7 +199,8 @@ class _QuranMarkPainter extends CustomPainter {
       final sakt = sign == 'ۜ';
       final imala = sign == '۪' || sign == 'ٜ';
       final low = sign == 'ۭ';
-      final below = imala;
+      final kasra = sign == 'ِ';
+      final below = imala || kasra;
       // This font draws the low mim (ۭ) like the high one, on the tatweel:
       // both are drawn as the high mim, the low one moved below the letter.
       final iqlab = sign == 'ۢ' || low;
@@ -249,6 +263,8 @@ class _QuranMarkPainter extends CustomPainter {
             font *
                 (imala
                     ? .40
+                    : kasra
+                    ? .36
                     : below
                     ? .18
                     : low

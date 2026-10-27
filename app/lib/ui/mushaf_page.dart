@@ -1112,12 +1112,19 @@ class _MushafPageState extends State<MushafPage>
   /// under its letter when read with imala.
   ({String text, String font})? _display(Ayah ayah, int w) {
     final shown = _displayWord(ayah, w, qcf: _pageQcf);
-    if (shown == null ||
-        shown.font.startsWith('QCF_') ||
-        !(_letterReadings(ayah, w)?.any(_spacedImala) ?? false)) {
-      return shown;
+    if (shown == null || shown.font.startsWith('QCF_')) return shown;
+    final text =
+        const {
+          null,
+          'hisham',
+          'ibn_dhakwan',
+        }.contains(widget.settings.displayed)
+        ? spacedAwa(shown.text)
+        : shown.text;
+    if (!(_letterReadings(ayah, w)?.any(_spacedImala) ?? false)) {
+      return (text: text, font: shown.font);
     }
-    return (text: spacedImalaSigns(shown.text), font: shown.font);
+    return (text: spacedImalaSigns(text), font: shown.font);
   }
 
   ({String text, String font})? _displayWord(
@@ -2137,7 +2144,7 @@ List<HameshEntry> _entriesOf(
         HameshEntry(
           ayah,
           w,
-          hafs,
+          spacedAwa(hafs),
           ReadingColors.ofReadings(starting) ?? m.color ?? MushafColors.ink,
           starting,
         ),
@@ -2385,10 +2392,14 @@ class _SequentialMarginPageState extends State<_SequentialMarginPage> {
   }
 
   void _onFit(Set<int> fit) {
-    if (_fit != null) return;
+    // Measured once; afterwards only fewer (a font loaded late), or a note
+    // would be shown neither beside the page nor below it.
+    if (_fit != null && fit.length >= _fit!.length) return;
     final section = widget.section;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _fit == null && widget.section == section) {
+      if (mounted &&
+          (_fit == null || fit.length < _fit!.length) &&
+          widget.section == section) {
         setState(() => _fit = fit);
       }
     });
@@ -2488,19 +2499,16 @@ class _SequentialNotesLayout extends MultiChildLayoutDelegate {
         ).height,
     };
     final placed = <int, double>{};
-    final lexical = shown.where((i) => notes[i].farsh).toList()
-      ..sort((a, b) => heights[a]!.compareTo(heights[b]!));
+    // In the order of the words: a note of the same line as the one before
+    // it (يُجَٰزَىٰٓ … ٱلۡكَفُورُ) goes just under it, not below the page.
+    final lexical = shown.where((i) => notes[i].farsh).toList()..sort();
+    var bottom = 0.0;
     for (final i in lexical) {
-      final y = tops[i];
-      if (y + heights[i]! > size.height) continue;
-      if (placed.keys.any(
-        (j) =>
-            y < placed[j]! + heights[j]! + 3 &&
-            y + heights[i]! + 3 > placed[j]!,
-      )) {
-        continue;
-      }
+      final y = math.max(tops[i], bottom);
+      // Still beside its line; farther away, below the page.
+      if (y + heights[i]! > size.height || y - tops[i] >= 64) continue;
       placed[i] = y;
+      bottom = y + heights[i]! + 3;
     }
     for (final i in shown.where((i) => !notes[i].farsh)) {
       var y = 2.0;

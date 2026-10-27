@@ -50,7 +50,17 @@ class TafsirRepository {
     TafsirBook(308, 'أضواء البيان', 'الشنقيطي'),
   ];
 
-  static TafsirBook book(int id) => books.firstWhere((b) => b.id == id);
+  /// The books of i'rab, read like the tafsir, ayah by ayah: al-Da'as's,
+  /// word by word for the whole Quran, and al-Kharrat's short one in the app.
+  static const e3rabBooks = [
+    TafsirBook(316, 'إعراب القرآن', 'الدعاس', offline: true),
+    TafsirBook(180, 'المجتبى من مشكل الإعراب', 'أحمد الخراط', offline: true),
+    TafsirBook(309, 'التبيان في إعراب القرآن', 'العكبري'),
+    TafsirBook(318, 'إعراب القرآن', 'ابن النحاس'),
+  ];
+
+  static TafsirBook book(int id) =>
+      [...books, ...e3rabBooks].firstWhere((b) => b.id == id);
 
   final AssetBundle _bundle;
   final http.Client _client;

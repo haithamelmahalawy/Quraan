@@ -339,6 +339,9 @@ class Manzumat {
     // al-Ma'ida: «يَكْسِرَانِ عُيُوناً الْعُيُونِ شُيُوخاً دَانَهُ صُحْبَهٌ مِلَا
     // جُيُوبِ مُنِيرٌ».
     if (v.riwayaId == 'ibn_dhakwan') {
+      // «وَنَآءَ» (17:83، 41:51), in the farsh of al-Isra: «نَآى أَخِّرْ مَعاً
+      // هَمْزَهُ مَلَا».
+      if (v.text.contains('نَآءَ')) return {826};
       final bare = v.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '');
       if (bare.contains('جيوب')) return {628, 629};
       if (RegExp('عيون|شيوخ').hasMatch(bare)) return {628};
@@ -350,6 +353,46 @@ class Manzumat {
         return RegExp(r'(ه|ها|ك)$').hasMatch(bare) ? {646, 647} : {646};
       }
     }
+    // «مَيۡت» light (بلد ميت، الميت), in the farsh of Al 'Imran: «وَفي بَلَدٍ
+    // مَيْتٍ مَعَ المَيْتِ خَفَّفُوا صَفَا نَفَرًا».
+    if (RegExp('مَّ?يۡتِ?[ٍَٖ]?\$').hasMatch(v.text) &&
+        v.description.contains('بإسكان الياء')) {
+      return {550};
+    }
+    // 40:26 «وَأَن» for «أَوۡ أَن»: «أَوْ أَنْ زِدِ الْهَمْزَ ثُمَّلَا»; «يَظۡهَرَ …
+    // ٱلۡفَسَادُ»: «وَاضْمُمْ بِيَظْهَرَ وَاكْسِرَنْ وَرَفْعَ الْفَسَادَ انْصِبْ».
+    if (v.surah == 40 && v.ayah == 26) {
+      if (v.text == 'وَأَن') return {1010};
+      if (v.text.contains('يَظۡهَرَ') || v.text.contains('ٱلۡفَسَادُ')) {
+        return {1011};
+      }
+    }
+    // «مِّن رِّجۡزٍ أَلِيمٍ» (34:5، 45:11), in the farsh of Saba': «وَرَفْعُ خَفْضِهِ
+    // عَمَّ مِنْ رِجْزٍ أَلِيْمٍ مَعاً وِلَا».
+    if ((v.surah == 34 || v.surah == 45) && v.text.contains('أَلِيمٍ')) {
+      return {975};
+    }
+    // 44:47 «فَٱعۡتُلُوهُ»: «وَضَمَّ اعْتِلُوهُ اكْسِرْ غِنىً».
+    if (v.surah == 44 && v.text.contains('ٱعۡتُلُوهُ')) return {1030};
+    // 43:38 «جَآءَٰنَا»: «وَحُكْمُ صِحَابٍ قَصْرُ هَمْزَةِ جَاءَنَا».
+    if (v.surah == 43 && v.ayah == 38 && v.word == 2 && !v.isImala) {
+      return {1024};
+    }
+    // «يَرۡضَهُ» (39:7), in the chapter of the pronoun ha: «وَإِسْكَانُ يَرْضَهُ
+    // يُمْنُهُ لُبْسُ طَيِّبٍ بِخُلْفِهِمَا وَالْقَصْرُ فَاذْكُرْهُ نَوْفَلَا».
+    if (v.surah == 39 && v.text.contains('يَرۡضَه')) return {164};
+    // «يَٰبُنَيِّ» with kasra (six places), in the farsh of Hud: «وَفَتْحُ يَا
+    // بُنَيِّ هُنَا نَصٌّ وَفِي الْكُلِّ عُوِّلَا».
+    if (v.text.contains('يَٰبُنَيِّ')) return {757};
+    // «أَوۡ ءَابَآؤُنَا» (37:17، 56:48), in the farsh of al-Saffat: «وَسَاكِنٌ
+    // مَعاً اَوْ آبَاؤُنَا كَيْفَ بَلَّلَا».
+    if (v.text.startsWith('أَوۡ ءَابَآؤُنَا')) return {996};
+    // «نَنۡكُسۡهُ» (36:68): «وَنَنْكُسْهُ فَاضْمُمْهُ وَحَرِّكْ لِعَاصِمٍ وَحَمْزَةَ»
+    // (the verse is written «وَتَنْكُسْهُ» in the text of the poem).
+    if (v.surah == 36 && v.text.contains('نَنۡكُسۡهُ')) return {991};
+    // «ضُعۡف» of al-Rum (30:54, three times), in the farsh of al-Anfal:
+    // «وَضُعْفاً بِفَتْحِ الضَّمِّ فَاشِيهِ نُفِّلا وِفي الرُّومِ صِفْ عَنْ خُلْفِ فَصْلٍ».
+    if (v.surah == 30 && v.text.contains('ضُعۡف')) return {722, 723};
     // «يَٰٓأَبَتَ» wherever it comes, in the farsh of Yusuf: «وَيَا أَبَتِ افْتَحْ
     // حَيْثُ جَا لاِبْنِ عَامِرٍ».
     if (v.text.contains('أَبَتَ')) return {772};
@@ -574,22 +617,39 @@ class Manzumat {
   /// The chapter of the farsh of [surah]: the one naming it, or covering it
   /// («ومن سورة الأحقاف إلى سورة الرحمن»).
   String? _surahChapter(Poem poem, int surah, List<String> surahNames) {
-    // Surah numbers named in a chapter title, in order: as whole words
-    // («الحج» is not the start of «الحجر»), or else anywhere in the title.
-    String words(String s) => s.split(RegExp(r'\s+')).map(skeleton).join(' ');
+    // Surah numbers named in a chapter title, in order: as whole words with
+    // their alefs («الحج» is not «الحجر», «الناس» not «النساء»), by the
+    // poem's own names (المؤمن، الشريعة، ن), or else anywhere in the title.
+    String words(String s) => s
+        .replaceAll(RegExp('[()]'), ' ')
+        .split(RegExp(r'\s+'))
+        .map(_letters)
+        .join(' ');
+    const poemNames = {
+      38: 'ص',
+      40: 'المؤمن',
+      45: 'الشريعة',
+      60: 'الامتحان',
+      68: 'ن',
+    };
     List<int> named(String title, {required bool whole}) {
       final t = skeleton(title);
       final spaced = ' ${words(title)} ';
       final found = <(int, int)>[];
       for (var s = 1; s <= surahNames.length; s++) {
         final k = skeleton(surahNames[s - 1]);
-        if (k.length < 2) continue;
-        final w = words(surahNames[s - 1]);
-        final at = !whole
-            ? t.indexOf(k)
-            : spaced.contains(' $w ')
-            ? spaced.indexOf(' $w ')
-            : spaced.indexOf(' و$w ');
+        var at = -1;
+        if (whole) {
+          for (final name in [surahNames[s - 1], ?poemNames[s]]) {
+            final w = words(name);
+            at = spaced.contains(' $w ')
+                ? spaced.indexOf(' $w ')
+                : spaced.indexOf(' و$w ');
+            if (at >= 0) break;
+          }
+        } else if (k.length >= 2) {
+          at = t.indexOf(k);
+        }
         if (at >= 0) found.add((at, s));
       }
       if (t.contains('ملقرن')) found.add((0, 1)); // أم القرآن
@@ -600,6 +660,11 @@ class Manzumat {
 
     for (final whole in const [true, false]) {
       for (final c in chapters(poem)) {
+        // A chapter of the usul («باب الفتح والإمالة»، «الفتح والإمالة»)
+        // names no surah.
+        if (!skeleton(c).contains('سوره') && !skeleton(c).contains('ملقرن')) {
+          continue;
+        }
         final s = named(c, whole: whole);
         if (s.isEmpty) continue;
         // «ومن سورة … إلى سورة …»: from the first up to the last, excluded.

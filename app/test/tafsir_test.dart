@@ -17,10 +17,26 @@ void main() {
     expect(muyassar, startsWith('أبتدئ قراءة القرآن باسم الله'));
   });
 
+  test(
+    'offline books of i\'rab are in the app, the ayah word by word',
+    () async {
+      final tafsir = TafsirRepository();
+      for (final book in TafsirRepository.e3rabBooks.where((b) => b.offline)) {
+        expect(await tafsir.text(book, 2, 255), isNotEmpty, reason: book.name);
+      }
+      final daas = await tafsir.text(TafsirRepository.book(316), 2, 2);
+      expect(daas, contains('مبتدأ'));
+      // The next ayah has its own i'rab (the recitation goes on to it).
+      expect(await tafsir.text(TafsirRepository.book(316), 2, 7), isNotEmpty);
+    },
+  );
+
   test('the book HTML becomes text', () {
     expect(
-      tafsirText('<span class="book-ayah">﴿اللَّهُ﴾</span> الحي<br />\r'
-          'القيوم&nbsp;&quot;الدائم&quot;'),
+      tafsirText(
+        '<span class="book-ayah">﴿اللَّهُ﴾</span> الحي<br />\r'
+        'القيوم&nbsp;&quot;الدائم&quot;',
+      ),
       '﴿اللَّهُ﴾ الحي\nالقيوم "الدائم"',
     );
   });

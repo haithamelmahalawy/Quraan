@@ -91,6 +91,14 @@ class ReaderSettings extends ChangeNotifier {
   int get tafsirBook => _get('tafsir') as int? ?? 2012;
   set tafsirBook(int id) => _set('tafsir', id);
 
+  /// The book of i'rab shown first (a Quranpedia book id): al-Da'as's.
+  int get e3rabBook => _get('e3rab') as int? ?? 316;
+  set e3rabBook(int id) => _set('e3rab', id);
+
+  /// Beside the ayah: its tafsir (false) or its i'rab (true).
+  bool get showE3rab => _get('showE3rab') as bool? ?? false;
+  set showE3rab(bool value) => _set('showE3rab', value);
+
   /// The riwaya whose text the mushaf shows, when not Hafs: one of the
   /// selected riwayat (chosen in the riwayat menu), or the single one in
   /// the "replace" mode. The other selected riwayat are compared with it.

@@ -169,6 +169,7 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
       marginText: v.length > 8
           ? madinahScript((v[8] as Map)['marginText'] as String? ?? '')
           : '',
+      ownWays: v.length > 8 && (v[8] as Map)['ownWays'] == true,
       omission: v.length > 8 && (v[8] as Map)['omission'] == true,
       usulText: v.length > 8 ? (v[8] as Map)['context'] as String? ?? '' : '',
       usulWays: v.length > 8

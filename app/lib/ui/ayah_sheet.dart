@@ -402,7 +402,8 @@ class _AyahSheetState extends State<AyahSheet> {
   }
 }
 
-/// The tafsir of the ayah: a book to choose, and its text.
+/// The tafsir of the ayah, or its i'rab: a book to choose, and its text,
+/// following the ayah as the recitation goes on.
 class _Tafsir extends StatefulWidget {
   const _Tafsir({required this.ayah, required this.settings});
 
@@ -415,25 +416,39 @@ class _Tafsir extends StatefulWidget {
 
 class _TafsirState extends State<_Tafsir> {
   late Future<String?> _text = _load();
-  late int _book = widget.settings.tafsirBook;
+
+  ReaderSettings get s => widget.settings;
+  bool get _e3rab => s.showE3rab;
+  int get _book => _e3rab ? s.e3rabBook : s.tafsirBook;
 
   @override
   void didUpdateWidget(_Tafsir old) {
     super.didUpdateWidget(old);
-    // The sheikh went on to the next ayah: its tafsir.
+    // The sheikh went on to the next ayah: its tafsir, or its i'rab.
     if (old.ayah != widget.ayah) _text = _load();
   }
 
   Future<String?> _load() => AyahSheet._tafsir.text(
-    TafsirRepository.book(widget.settings.tafsirBook),
+    TafsirRepository.book(_book),
     widget.ayah.surah,
     widget.ayah.number,
   );
 
   void _choose(int id) {
-    widget.settings.tafsirBook = id;
+    if (_e3rab) {
+      s.e3rabBook = id;
+    } else {
+      s.tafsirBook = id;
+    }
     setState(() {
-      _book = id;
+      _text = _load();
+    });
+  }
+
+  void _show({required bool e3rab}) {
+    if (e3rab == _e3rab) return;
+    s.showE3rab = e3rab;
+    setState(() {
       _text = _load();
     });
   }
@@ -441,21 +456,35 @@ class _TafsirState extends State<_Tafsir> {
   @override
   Widget build(BuildContext context) {
     final book = TafsirRepository.book(_book);
+    Widget tab(String label, IconData icon, {required bool e3rab}) {
+      final on = e3rab == _e3rab;
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(end: 8),
+        child: ChoiceChip(
+          key: ValueKey(e3rab ? 'e3rab-tab' : 'tafsir-tab'),
+          avatar: Icon(icon, size: 18, color: MushafColors.green),
+          label: Text(
+            label,
+            style: TextStyle(
+              fontWeight: on ? FontWeight.bold : FontWeight.normal,
+              color: MushafColors.green,
+              fontSize: 15,
+            ),
+          ),
+          selected: on,
+          selectedColor: MushafColors.goldLight,
+          onSelected: (_) => _show(e3rab: e3rab),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            Icon(Icons.menu_book_rounded, color: MushafColors.green),
-            const SizedBox(width: 8),
-            Text(
-              'التفسير',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: MushafColors.green,
-                fontSize: 16,
-              ),
-            ),
+            tab('التفسير', Icons.menu_book_rounded, e3rab: false),
+            tab('الإعراب', Icons.account_tree_rounded, e3rab: true),
           ],
         ),
         const SizedBox(height: 8),
@@ -464,7 +493,10 @@ class _TafsirState extends State<_Tafsir> {
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              for (final b in TafsirRepository.books)
+              for (final b
+                  in _e3rab
+                      ? TafsirRepository.e3rabBooks
+                      : TafsirRepository.books)
                 Padding(
                   padding: const EdgeInsetsDirectional.only(end: 6),
                   child: ChoiceChip(
@@ -515,7 +547,10 @@ class _TafsirState extends State<_Tafsir> {
                   ),
                   const SizedBox(height: 8),
                   if (text == null)
-                    const Text('لا يوجد في هذا الكتاب تفسير لهذه الآية.')
+                    Text(
+                      'لا يوجد في هذا الكتاب ${_e3rab ? 'إعراب' : 'تفسير'} '
+                      'لهذه الآية.',
+                    )
                   else
                     SelectableText.rich(
                       _styled(text),

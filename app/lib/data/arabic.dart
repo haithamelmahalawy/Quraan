@@ -167,6 +167,11 @@ String spacedImalaSigns(String text) => text.replaceAllMapped(
   (m) => '${m[1]}${String.fromCharCode(0x2009)}',
 );
 
+/// For drawing only: «أَوَءَابَآؤُنَا» (37:17، 56:48), one word of the text,
+/// shown as the two it is read as, «أَوَ ءَابَآؤُنَا», as the riwayat with
+/// «أَوۡ» write it beside it.
+String spacedAwa(String word) => word.replaceFirst(RegExp('^أَوَءَ'), 'أَوَ ءَ');
+
 /// [word] with the imala sign under the letters [reading] marks with it
 /// (رٜءٜا: the ra and the hamza, Shu'bah's رَءَا كَوۡكَبٗا); null when the
 /// reading marks none or its letters are not the word's.

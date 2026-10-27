@@ -133,6 +133,12 @@ bool _lexical(Variant v) =>
     !v.isMarginNote &&
     !v.readsAsHafs;
 
+/// Ibn 'Amir's idgham across two words is told in the usul: it does not
+/// join a farsh of one of its words into one note (وَلَقَد صَّدَقَ beside
+/// «صَدَقَ بتخفيف الدال»).
+bool _ibnAmirIdgham(Variant v) =>
+    _writtenIdgham(v) && const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId);
+
 List<Variant> _rows(
   VariantRepository repository,
   String? id,
@@ -185,6 +191,7 @@ Iterable<Variant> _bookWordDifferences(Variant v, Ayah ayah) sync* {
       stopOnly: v.stopOnly,
       stopText: v.stopText,
       marginText: v.marginText,
+      ownWays: v.ownWays,
       omission: v.omission,
       usulText: v.usulText,
       usulWays: v.usulWays,
@@ -296,11 +303,17 @@ List<Variant> compareReadings({
   var from = word, to = word + 1;
   var expanded = true;
   final narrators = {displayed ?? 'hafs', ...ids};
+  bool joinsFarsh(Variant v) =>
+      _ibnAmirIdgham(v) &&
+      _rows(repository, v.riwayaId, ayah, v.word, v.word + v.count).any(
+        (o) => o != v && _lexical(o) && !_writtenIdgham(o),
+      );
   while (expanded) {
     expanded = false;
     for (final id in narrators) {
       for (final v in _rows(repository, id, ayah, from, to).where(_lexical)) {
         if (v.word < 0 || v.word + v.count > ayah.words.length) continue;
+        if (joinsFarsh(v)) continue;
         if (v.word < from) {
           from = v.word;
           expanded = true;
@@ -314,7 +327,13 @@ List<Variant> compareReadings({
   }
   final lexical = {
     for (final id in narrators)
-      id: _rows(repository, id, ayah, from, to).where(_lexical).toList(),
+      id: _rows(repository, id, ayah, from, to)
+          .where(_lexical)
+          .where(
+            (v) =>
+                !joinsFarsh(v) || v.word >= from && v.word + v.count <= to,
+          )
+          .toList(),
   };
   if (lexical.values.every((rows) => rows.isEmpty)) return result;
   final baseKey = _lexicalKey(

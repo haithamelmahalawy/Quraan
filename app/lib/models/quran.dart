@@ -60,6 +60,7 @@ class Variant {
     this.stopOnly = false,
     this.stopText = '',
     this.marginText = '',
+    this.ownWays = false,
     this.omission = false,
     this.usulText = '',
     this.usulWays = const [],
@@ -121,6 +122,10 @@ class Variant {
   /// How the margin writes the reading when the page keeps the rasm form
   /// (أَاءِنَّا beside the page's أَٰءِنَّا); empty otherwise.
   final String marginText;
+
+  /// The note tells the riwaya's ways itself: the certified source's ways
+  /// (when they belong to another word of the place) are not added.
+  final bool ownWays;
 
   /// An explicitly reviewed lexical omission, rather than an empty annotation.
   final bool omission;
@@ -190,10 +195,11 @@ class Variant {
     bookHow: how,
     bookFarsh: farsh,
     // Retain an explicitly reviewed ordering/wording of the book's faces.
-    bookWujuh: bookWujuh.isNotEmpty ? bookWujuh : wujuh,
+    bookWujuh: bookWujuh.isNotEmpty || ownWays ? bookWujuh : wujuh,
     stopOnly: stopOnly,
     stopText: stopText,
     marginText: marginText,
+    ownWays: ownWays,
     omission: omission,
     usulText: usulText,
     usulWays: usulWays,
