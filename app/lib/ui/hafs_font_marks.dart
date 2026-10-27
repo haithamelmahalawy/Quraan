@@ -49,12 +49,18 @@ class HafsFontMarks extends StatelessWidget {
   }
 
   static bool _lowerImala(String cluster) =>
-      'بيئج'.contains(cluster[0]) && RegExp('[۪ٜ]').hasMatch(cluster);
+      'بيئج'.contains(cluster[0]) && RegExp('[۪ٜ]').hasMatch(cluster) ||
+      // عِمۡرٰ۪نَ: the font puts the sign on the ra's tail.
+      cluster.startsWith('ر') && cluster.contains('ٰ') && cluster.contains('۪');
 
-  /// The kasra of a ya with the hamza below it (وَرَآيِٕ، تِلۡقَآيِٕ): the font
-  /// draws it across the hamza; it is drawn apart, under the hamza.
+  /// The kasra (or kasratan) of a ya or waw with the hamza below it
+  /// (وَرَآيِٕ، ٱللُّؤۡلُوِٕ، ٱمۡرِيٕٖ): the font draws it across the hamza; it
+  /// is drawn apart, under the hamza.
+  static final _kasras = RegExp('[ٍِٖ]');
   static bool _kasraUnderHamza(String cluster) =>
-      cluster.startsWith('ي') && cluster.contains('ٕ') && cluster.contains('ِ');
+      (cluster.startsWith('ي') || cluster.startsWith('و')) &&
+      cluster.contains('ٕ') &&
+      _kasras.hasMatch(cluster);
 
   /// The iqlab mim drawn apart: the low one always, the high one only over
   /// a letter with a kasra (ءَايَٰتِۢ), whose anchor the font then moves into
@@ -90,6 +96,17 @@ class HafsFontMarks extends StatelessWidget {
     ];
     final source = chars.map((p) => p.$1).join();
     for (final m in _tanween.allMatches(source)) {
+      // The offset fathatan (ikhfa', idgham: شَرّٗا يَرَهُۥ) stays on the
+      // letter before the alef, as the mushaf writes it: the font has no
+      // place for it on the alef.
+      if ((m[1] ?? source[m.start + 1]) == 'ٗ') {
+        if (m[1] == null) {
+          final alef = chars[m.start];
+          chars[m.start] = chars[m.start + 1];
+          chars[m.start + 1] = alef;
+        }
+        continue;
+      }
       final color = chars[m.start].$2;
       chars[m.start] = ('ا', chars[m.start + (m[1] == null ? 0 : 1)].$2);
       chars[m.start + 1] = ('ً', color);
@@ -121,7 +138,7 @@ class HafsFontMarks extends StatelessWidget {
         marks[markAt] = placed[markAt].$2;
       }
       if (_kasraUnderHamza(m[0]!)) {
-        final markAt = full.indexOf('ِ', m.start);
+        final markAt = full.indexOf(_kasras, m.start);
         marks[markAt] = placed[markAt].$2;
       }
       if (_iqlabApart(m[0]!)) {
@@ -199,7 +216,7 @@ class _QuranMarkPainter extends CustomPainter {
       final sakt = sign == 'ۜ';
       final imala = sign == '۪' || sign == 'ٜ';
       final low = sign == 'ۭ';
-      final kasra = sign == 'ِ';
+      final kasra = HafsFontMarks._kasras.hasMatch(sign);
       final below = imala || kasra;
       // This font draws the low mim (ۭ) like the high one, on the tatweel:
       // both are drawn as the high mim, the low one moved below the letter.
@@ -262,9 +279,15 @@ class _QuranMarkPainter extends CustomPainter {
             mark.computeLineMetrics().single.baseline +
             font *
                 (imala
-                    ? .40
+                    // Just under the ra's tail.
+                    ? (source.startsWith('ر', at) ? .16 : .40)
                     : kasra
-                    ? .36
+                    // The hamza hangs lower under the waw's tail.
+                    ? (source.startsWith('و', at)
+                          ? .50
+                          : sign == 'ِ'
+                          ? .36
+                          : .44)
                     : below
                     ? .18
                     : low

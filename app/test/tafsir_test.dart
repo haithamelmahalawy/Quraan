@@ -1,4 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qiraat_mushaf/data/e3rab_text.dart';
+import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/recitations.dart';
 import 'package:qiraat_mushaf/data/tafsir_repository.dart';
 import 'package:qiraat_mushaf/data/tafsir_text.dart';
@@ -30,6 +34,30 @@ void main() {
       expect(await tafsir.text(TafsirRepository.book(316), 2, 7), isNotEmpty);
     },
   );
+
+  test('al-Da\'as\'s i\'rab of one ayah, word by word', () async {
+    final quran = await QuranRepository.load();
+    final tafsir = TafsirRepository();
+    final book = TafsirRepository.book(316);
+    Future<List<({String word, String e3rab})>> of(int s, int a) async {
+      final to = math.min(quran.surah(s).ayahCount, a + 2);
+      final texts = await tafsir.textsOf(book, s, math.max(1, a - 8), to);
+      return e3rabWords(texts, [
+        for (var n = math.max(1, a - 20); n <= to; n++)
+          (n, quran.ayah(s, n).words),
+      ], a);
+    }
+
+    // Its text of 2:1-5 together: only the words of 2:2.
+    final dhalika = await of(2, 2);
+    expect(dhalika, hasLength(6));
+    expect(dhalika.first.word, 'ذلِكَ');
+    expect(dhalika.first.e3rab, startsWith('ذا اسم إشارة'));
+    // The entry of 2:255 begins with the end of 2:254's i'rab.
+    final kursi = await of(2, 255);
+    expect(kursi.first.e3rab, 'لفظ الجلالة مبتدأ');
+    expect(kursi.last.word, 'الْعَظِيمُ');
+  });
 
   test('the book HTML becomes text', () {
     expect(

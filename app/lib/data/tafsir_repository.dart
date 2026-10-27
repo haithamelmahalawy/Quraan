@@ -97,6 +97,22 @@ class TafsirRepository {
     return _online[key] = text.isEmpty ? null : text;
   }
 
+  /// The book's texts of the ayahs [from] to [to] of [surah], each once and
+  /// in order: a text the book gives to several ayahs together is one.
+  Future<List<String>> textsOf(
+    TafsirBook book,
+    int surah,
+    int from,
+    int to,
+  ) async {
+    final texts = <String>[];
+    for (var ayah = from; ayah <= to; ayah++) {
+      final text = await this.text(book, surah, ayah);
+      if (text != null && !texts.contains(text)) texts.add(text);
+    }
+    return texts;
+  }
+
   Future<Map<int, String>> _load(int id) async {
     final data = await _bundle.load('assets/data/tafsir/$id.json.gz');
     return compute(

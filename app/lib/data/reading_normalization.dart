@@ -134,6 +134,9 @@ List<Unit> _units(String word) {
       ms = ms.where((m) => m != 0x06DC).toList();
       ch == 'ص' ? u.letter = 'س' : u.marks.add(0x06DC);
     }
+    // Small low seen (ٱلۡمُصۣـَيۡطِرُونَ): the sad is read, the seen is a
+    // second way.
+    if (ch == 'ص') ms = ms.where((m) => m != 0x06E3).toList();
     // A waw with the dagger alef and no vowel of its own is the silent waw
     // of the spelling (ٱلصَّلَوٰةَ، أَصَلَوٰتُكَ): the dagger is the alef read.
     // With its own vowel (أَصَلَوَٰتُكَ) the waw is read, then the alef.

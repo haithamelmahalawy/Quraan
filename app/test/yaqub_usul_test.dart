@@ -427,7 +427,10 @@ void main() {
         isEmpty,
         reason: 'negative lam is not interrogative lim',
       );
-      expect(rules(d, 'ha_silah', 25, 69).single[6], matches(RegExp('(بلا|دون) صلة')));
+      expect(
+        rules(d, 'ha_silah', 25, 69).single[6],
+        matches(RegExp('(بلا|دون) صلة')),
+      );
       expect(rules(d, 'ha_damir', 1, 7), isNotEmpty);
     }
   });
@@ -473,9 +476,9 @@ void main() {
     },
   );
   test('every Rawh large-idgham span also covers both words', () {
-    final rows = (load('rawh')['variants'] as List)
-        .cast<List>()
-        .where((v) => v.length > 7 && v[7] == 'idgham_kabir');
+    final rows = (load('rawh')['variants'] as List).cast<List>().where(
+      (v) => v.length > 7 && v[7] == 'idgham_kabir',
+    );
     expect(rows, hasLength(3));
     expect(rows.every((v) => v[3] == 2), isTrue);
   });

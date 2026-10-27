@@ -25,8 +25,10 @@ void main() {
   test('two blinks', () async {
     final g = await run([
       (open, open, 400),
-      (shut, shut, 120), (open, open, 200),
-      (shut, shut, 120), (open, open, 400),
+      (shut, shut, 120),
+      (open, open, 200),
+      (shut, shut, 120),
+      (open, open, 400),
     ]);
     expect(g.single, isA<DoubleBlink>());
   });
@@ -34,29 +36,38 @@ void main() {
   test('two slower blinks, 0.7 s apart', () async {
     final g = await run([
       (open, open, 400),
-      (shut, shut, 200), (open, open, 700),
-      (shut, shut, 200), (open, open, 400),
+      (shut, shut, 200),
+      (open, open, 700),
+      (shut, shut, 200),
+      (open, open, 400),
     ]);
     expect(g.single, isA<DoubleBlink>());
   });
 
   test('one blink does nothing', () async {
-    expect(await run([(open, open, 400), (shut, shut, 120), (open, open, 400)]),
-        isEmpty);
+    expect(
+      await run([(open, open, 400), (shut, shut, 120), (open, open, 400)]),
+      isEmpty,
+    );
   });
 
   test('three blinks do nothing', () async {
     final g = await run([
       (open, open, 400),
-      (shut, shut, 120), (open, open, 200),
-      (shut, shut, 120), (open, open, 200),
-      (shut, shut, 120), (open, open, 400),
+      (shut, shut, 120),
+      (open, open, 200),
+      (shut, shut, 120),
+      (open, open, 200),
+      (shut, shut, 120),
+      (open, open, 400),
     ]);
     expect(g, isEmpty);
   });
 
   test('a wink does nothing', () async {
-    expect(await run([(open, open, 400), (shut, open, 300), (open, open, 400)]),
-        isEmpty);
+    expect(
+      await run([(open, open, 400), (shut, open, 300), (open, open, 400)]),
+      isEmpty,
+    );
   });
 }

@@ -11,9 +11,7 @@ import 'package:qiraat_mushaf/ui/mushaf_page.dart';
 import 'package:qiraat_mushaf/ui/mutashabihat_sheet.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
-const fonts = {
-  'Hafs': 'hafs.18',
-};
+const fonts = {'Hafs': 'hafs.18'};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -170,18 +168,32 @@ void main() {
   testWidgets('page 4 full screen: no bands at the sides', tags: 'golden', (
     t,
   ) async {
-    await shot(t, 4, ReaderSettings.memory(), 'p4_full_screen', fullScreen: true);
+    await shot(
+      t,
+      4,
+      ReaderSettings.memory(),
+      'p4_full_screen',
+      fullScreen: true,
+    );
   });
 
   testWidgets('page 1, Hafs only', tags: 'golden', (t) async {
     await shot(t, 1, ReaderSettings.memory(), 'p1_hafs');
   });
 
-  testWidgets('Shamarly page 42: header over two lines, Nafi in the hamesh',
-      tags: 'golden', (t) async {
-    await shot(t, 42, ReaderSettings.memory(selected: {'warsh', 'qalun'}),
-        'shamarly_p42', mushaf: shamarly);
-  });
+  testWidgets(
+    'Shamarly page 42: header over two lines, Nafi in the hamesh',
+    tags: 'golden',
+    (t) async {
+      await shot(
+        t,
+        42,
+        ReaderSettings.memory(selected: {'warsh', 'qalun'}),
+        'shamarly_p42',
+        mushaf: shamarly,
+      );
+    },
+  );
 
   testWidgets('page 3, Hafs only: the 15 printed lines', tags: 'golden', (
     t,

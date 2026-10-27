@@ -69,11 +69,18 @@ class VariantRepository {
     final book = await (_book ??= _bundle
         .loadString('assets/data/kharouf.json')
         .then<String?>((s) => s, onError: (_) => null));
-    _loaded[id] = await compute(_index, (id, raw, book));
+    final quran = await (_quran ??= _bundle
+        .loadString('assets/data/quran.json')
+        .then<String?>((s) => s, onError: (_) => null));
+    _loaded[id] = await compute(_index, (id, raw, book, quran));
   }
 
   /// The certified source (assets/data/kharouf.json), read once.
   Future<String?>? _book;
+
+  /// The Hafs text (assets/data/quran.json), read once: the word after each
+  /// reading, which the tanween at its end is written for.
+  Future<String?>? _quran;
 
   /// Complete Quran text, independent of annotations. Empty means an actual
   /// source omission/joined continuation; null means no complete source loaded.
@@ -124,9 +131,24 @@ Map<int, String> _indexSourceText(String raw) {
 /// Indexes a riwaya file by every Hafs word each variant covers, with
 /// what the certified source says of the riwaya ([book]): its readings
 /// marked certified, and those it states but the file lacks added.
-Map<int, List<Variant>> _index((String, String, String?) input) {
-  final (id, raw, book) = input;
+Map<int, List<Variant>> _index((String, String, String?, String?) input) {
+  final (id, raw, book, quran) = input;
   final json = jsonDecode(raw) as Map<String, dynamic>;
+  // The Hafs words of each ayah (surah * 1000 + ayah).
+  final hafs = <int, List<String>>{
+    if (quran != null)
+      for (final a in (jsonDecode(quran) as Map)['ayahs'] as List)
+        (a[0] as int) * 1000 + (a[1] as int): (a[4] as String).split(' '),
+  };
+  // The Hafs word after [count] words from [word]; at the end of a surah the
+  // basmala, which the mushaf joins it to (مُّؤۡصَدَةُۢ); null without the text.
+  String? after(int surah, int ayah, int word, int count) {
+    final words = hafs[surah * 1000 + ayah];
+    if (words == null) return null;
+    if (word + count < words.length) return words[word + count];
+    return hafs[surah * 1000 + ayah + 1]?.first ?? 'بِسۡمِ';
+  }
+
   final index = <int, List<Variant>>{};
   // Ya'qub's riwayat (Ruways, Rawh) only: their reviewed rules below.
   final yaqub = id == 'ruways' || id == 'rawh';
@@ -156,8 +178,12 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
       ayah: v[1] as int,
       word: v[2] as int,
       count: v[3] as int,
-      // Read in the script of the Madinah page around it.
-      text: madinahScript(v[4] as String),
+      // Read in the script of the Madinah page around it, the tanween as
+      // it is written before the next word.
+      text: tanweenBefore(
+        madinahScript(v[4] as String),
+        after(v[0] as int, v[1] as int, v[2] as int, v[3] as int),
+      ),
       kind: VariantKind.fromCode(v[5] as String),
       description: v.length > 6 ? v[6] as String : '',
       rule: v.length > 7 ? v[7] as String : '',
@@ -167,7 +193,10 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
           ? madinahScript((v[8] as Map)['stopText'] as String? ?? '')
           : '',
       marginText: v.length > 8
-          ? madinahScript((v[8] as Map)['marginText'] as String? ?? '')
+          ? tanweenBefore(
+              madinahScript((v[8] as Map)['marginText'] as String? ?? ''),
+              after(v[0] as int, v[1] as int, v[2] as int, v[3] as int),
+            )
           : '',
       ownWays: v.length > 8 && (v[8] as Map)['ownWays'] == true,
       omission: v.length > 8 && (v[8] as Map)['omission'] == true,

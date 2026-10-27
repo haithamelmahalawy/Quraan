@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../data/quran_repository.dart';
 import '../data/audio_numbering.dart';
+import '../data/e3rab_text.dart';
 import '../data/reading_comparison.dart';
 import '../data/variant_repository.dart';
 import '../data/recitations.dart';
@@ -231,7 +234,7 @@ class _AyahSheetState extends State<AyahSheet> {
           const SizedBox(height: 14),
           _listen(),
           const SizedBox(height: 18),
-          _Tafsir(ayah: ayah, settings: s),
+          _Tafsir(ayah: ayah, settings: s, quran: widget.quran),
         ],
       ),
     );
@@ -402,20 +405,29 @@ class _AyahSheetState extends State<AyahSheet> {
   }
 }
 
+/// A book's text of the ayah, and its i'rab word by word when the book
+/// gives it so.
+typedef _Shown = ({String? text, List<({String word, String e3rab})> words});
+
 /// The tafsir of the ayah, or its i'rab: a book to choose, and its text,
 /// following the ayah as the recitation goes on.
 class _Tafsir extends StatefulWidget {
-  const _Tafsir({required this.ayah, required this.settings});
+  const _Tafsir({
+    required this.ayah,
+    required this.settings,
+    required this.quran,
+  });
 
   final Ayah ayah;
   final ReaderSettings settings;
+  final QuranRepository quran;
 
   @override
   State<_Tafsir> createState() => _TafsirState();
 }
 
 class _TafsirState extends State<_Tafsir> {
-  late Future<String?> _text = _load();
+  late Future<_Shown> _text = _load();
 
   ReaderSettings get s => widget.settings;
   bool get _e3rab => s.showE3rab;
@@ -428,11 +440,29 @@ class _TafsirState extends State<_Tafsir> {
     if (old.ayah != widget.ayah) _text = _load();
   }
 
-  Future<String?> _load() => AyahSheet._tafsir.text(
-    TafsirRepository.book(_book),
-    widget.ayah.surah,
-    widget.ayah.number,
-  );
+  Future<_Shown> _load() async {
+    final book = TafsirRepository.book(_book);
+    final (surah, ayah) = (widget.ayah.surah, widget.ayah.number);
+    final text = await AyahSheet._tafsir.text(book, surah, ayah);
+    // Al-Da'as's i'rab, word by word: the words of this ayah, each on its
+    // line, out of the text he gives to several ayahs together.
+    if (!_e3rab || book.id != 316 || text == null) {
+      return (text: text, words: const <({String word, String e3rab})>[]);
+    }
+    final last = widget.quran.surah(surah).ayahCount;
+    final to = math.min(last, ayah + 2);
+    final texts = await AyahSheet._tafsir.textsOf(
+      book,
+      surah,
+      math.max(1, ayah - 8),
+      to,
+    );
+    final ayahs = [
+      for (var n = math.max(1, ayah - 20); n <= to; n++)
+        (n, widget.quran.ayah(surah, n).words),
+    ];
+    return (text: text, words: e3rabWords(texts, ayahs, ayah));
+  }
 
   void _choose(int id) {
     if (_e3rab) {
@@ -518,7 +548,7 @@ class _TafsirState extends State<_Tafsir> {
         const SizedBox(height: 10),
         Raised(
           padding: const EdgeInsets.all(14),
-          child: FutureBuilder<String?>(
+          child: FutureBuilder<_Shown>(
             future: _text,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done) {
@@ -534,7 +564,7 @@ class _TafsirState extends State<_Tafsir> {
                   style: TextStyle(color: MushafColors.rose),
                 );
               }
-              final text = snapshot.data;
+              final (:text, :words) = snapshot.data!;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -550,6 +580,31 @@ class _TafsirState extends State<_Tafsir> {
                     Text(
                       'لا يوجد في هذا الكتاب ${_e3rab ? 'إعراب' : 'تفسير'} '
                       'لهذه الآية.',
+                    )
+                  else if (words.isNotEmpty)
+                    SelectableText.rich(
+                      key: const ValueKey('e3rab-words'),
+                      TextSpan(
+                        children: [
+                          for (final (i, w) in words.indexed) ...[
+                            if (i > 0) const TextSpan(text: '\n'),
+                            TextSpan(
+                              text: w.word,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: MushafColors.green,
+                              ),
+                            ),
+                            TextSpan(text: ' : ${w.e3rab}'),
+                          ],
+                        ],
+                      ),
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.8,
+                        color: MushafColors.ink,
+                      ),
                     )
                   else
                     SelectableText.rich(

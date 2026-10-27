@@ -305,9 +305,13 @@ List<Variant> compareReadings({
   final narrators = {displayed ?? 'hafs', ...ids};
   bool joinsFarsh(Variant v) =>
       _ibnAmirIdgham(v) &&
-      _rows(repository, v.riwayaId, ayah, v.word, v.word + v.count).any(
-        (o) => o != v && _lexical(o) && !_writtenIdgham(o),
-      );
+      _rows(
+        repository,
+        v.riwayaId,
+        ayah,
+        v.word,
+        v.word + v.count,
+      ).any((o) => o != v && _lexical(o) && !_writtenIdgham(o));
   while (expanded) {
     expanded = false;
     for (final id in narrators) {
@@ -330,8 +334,7 @@ List<Variant> compareReadings({
       id: _rows(repository, id, ayah, from, to)
           .where(_lexical)
           .where(
-            (v) =>
-                !joinsFarsh(v) || v.word >= from && v.word + v.count <= to,
+            (v) => !joinsFarsh(v) || v.word >= from && v.word + v.count <= to,
           )
           .toList(),
   };

@@ -170,7 +170,48 @@ String spacedImalaSigns(String text) => text.replaceAllMapped(
 /// For drawing only: «أَوَءَابَآؤُنَا» (37:17، 56:48), one word of the text,
 /// shown as the two it is read as, «أَوَ ءَابَآؤُنَا», as the riwayat with
 /// «أَوۡ» write it beside it.
-String spacedAwa(String word) => word.replaceFirst(RegExp('^أَوَءَ'), 'أَوَ ءَ');
+String spacedAwa(String word) =>
+    word.replaceFirst(RegExp('^أَوَءَ'), 'أَوَ ءَ');
+
+final _tanween = RegExp('[ًٌٍٖٗٞ]');
+
+/// The tanween of each word of [text] written as the Madinah mushaf writes
+/// it before the word after it ([next] after the last one; unchanged when
+/// none is known): stacked (ً ٌ ٍ) before a throat letter or hamzat al-wasl,
+/// where it is shown; the iqlab mim (َۢ ُۢ ِۭ) before the ba; offset (ٗ ٞ ٖ)
+/// before the other letters, hidden in them or merged.
+String tanweenBefore(String text, String? next) {
+  final words = text.split(' ');
+  for (var i = 0; i < words.length; i++) {
+    final after = i + 1 < words.length ? words[i + 1] : next;
+    // Written after the alef or alef maqsura (قِيَماً): put on the letter
+    // before it, as the Madinah text does (قِيَمٗا).
+    words[i] = words[i].replaceAllMapped(
+      RegExp('([اى])([ًٗ])'),
+      (m) => '${m[2]}${m[1]}',
+    );
+    final mark = _tanween.allMatches(words[i]).lastOrNull;
+    final letter = after == null
+        ? null
+        : RegExp('[ء-يٱ]').firstMatch(after)?[0];
+    // Already written with the iqlab mim (نُشۡرَۢا).
+    if (mark == null || letter == null || RegExp('[ۭۢ]').hasMatch(words[i])) {
+      continue;
+    }
+    final kind = switch (mark[0]) {
+      'ً' || 'ٗ' => 0,
+      'ٌ' || 'ٞ' => 1,
+      _ => 2,
+    };
+    final form = 'ءأإآؤئعحغخهاٱ'.contains(letter)
+        ? const ['ً', 'ٌ', 'ٍ'][kind]
+        : letter == 'ب'
+        ? const ['َۢ', 'ُۢ', 'ِۭ'][kind]
+        : const ['ٗ', 'ٞ', 'ٖ'][kind];
+    words[i] = words[i].replaceRange(mark.start, mark.end, form);
+  }
+  return words.join(' ');
+}
 
 /// [word] with the imala sign under the letters [reading] marks with it
 /// (رٜءٜا: the ra and the hamza, Shu'bah's رَءَا كَوۡكَبٗا); null when the

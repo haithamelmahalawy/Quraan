@@ -28,9 +28,16 @@ void main() {
   });
 
   test('fathatan is placed on the final alif with its own colour', () {
-    for (final before in ['فِرَٰشٗا', 'فِرَٰشاٗ', 'فِرَٰشًا', 'فِرَٰشاً']) {
+    // Stacked (izhar) on the alef; offset (ikhfa', idgham) on the letter
+    // before it, as the mushaf writes it.
+    for (final (before, after) in [
+      ('فِرَٰشٗا', 'فِرَٰشٗا'),
+      ('فِرَٰشاٗ', 'فِرَٰشٗا'),
+      ('فِرَٰشًا', 'فِرَٰشاً'),
+      ('فِرَٰشاً', 'فِرَٰشاً'),
+    ]) {
       final parts = HafsFontMarks.positionedParts([(before, Colors.green)]);
-      expect(parts.map((p) => p.$1).join(), 'فِرَٰشاً');
+      expect(parts.map((p) => p.$1).join(), after);
       expect(parts.every((p) => p.$2 == Colors.green), isTrue);
     }
   });

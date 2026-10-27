@@ -8,10 +8,10 @@ void main() {
 
   /// Where each text line of [page] starts: "surah:ayah:word".
   List<String> starts(QuranRepository q, int page) => [
-        for (final l in q.lines(page)!)
-          if (l is TextLine && l.words.isNotEmpty)
-            '${l.words.first.$1.surah}:${l.words.first.$1.number}:${l.words.first.$2}',
-      ];
+    for (final l in q.lines(page)!)
+      if (l is TextLine && l.words.isNotEmpty)
+        '${l.words.first.$1.surah}:${l.words.first.$1.number}:${l.words.first.$2}',
+  ];
 
   test('the Shamarly pages: 2 to 522, 15 lines, every word once', () {
     final q = mushafs.shamarly;
@@ -43,8 +43,14 @@ void main() {
     expect((lines[header] as SurahNameLine).surah, 3);
     expect(lines[header].span, 2);
     expect(lines[header + 1], isA<BasmalaLine>());
-    expect(starts(q, 42).skip(6).take(6),
-        ['3:1:0', '3:3:3', '3:4:2', '3:4:13', '3:5:8', '3:6:7']);
+    expect(starts(q, 42).skip(6).take(6), [
+      '3:1:0',
+      '3:3:3',
+      '3:4:2',
+      '3:4:13',
+      '3:5:8',
+      '3:6:7',
+    ]);
     expect(q.surah(3).startPage, 42);
     // A page that starts inside an ayah (2:16, word 5).
     expect(starts(q, 5).first, '2:16:5');
@@ -53,9 +59,15 @@ void main() {
 
   test('the place read carries over between the mushafs', () {
     // Al Imran opens page 50 of the Madinah mushaf, page 42 of the Shamarly.
-    expect(mushafs.convert(50, MushafEdition.madani, MushafEdition.shamarly), 42);
+    expect(
+      mushafs.convert(50, MushafEdition.madani, MushafEdition.shamarly),
+      42,
+    );
     // Back: page 42 opens with 2:286 (from its 2nd line), on Madinah page 49.
-    expect(mushafs.convert(42, MushafEdition.shamarly, MushafEdition.madani), 49);
+    expect(
+      mushafs.convert(42, MushafEdition.shamarly, MushafEdition.madani),
+      49,
+    );
     expect(mushafs.convert(1, MushafEdition.madani, MushafEdition.shamarly), 2);
   });
 }

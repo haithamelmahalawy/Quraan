@@ -176,6 +176,15 @@ void main() {
     'letters, vowels and tanween are compared without font spelling noise',
     () {
       expect(readingTextKey('هَدۡيَۢا'), readingTextKey('هَدْياَۢ'));
+      // The seen under the sad: read with the sad; over it: with the seen.
+      expect(
+        readingTextKey('ٱلۡمُصَۣيۡطِرُونَ'),
+        readingTextKey('ٱلۡمُصَيۡطِرُونَ'),
+      );
+      expect(
+        readingTextKey('ٱلۡمُصَۜيۡطِرُونَ'),
+        isNot(readingTextKey('ٱلۡمُصَۣيۡطِرُونَ')),
+      );
       expect(
         readingTextKey('ملِكِ', baseline: 'مَٰلِكِ'),
         readingTextKey('مَلِكِ'),

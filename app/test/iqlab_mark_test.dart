@@ -127,4 +127,29 @@ void main() {
       );
     },
   );
+
+  testWidgets('the kasra under the hamza of a ya or waw is drawn apart', (
+    t,
+  ) async {
+    for (final word in ['ٱللُّؤۡلُوِٕ', 'وَرَآيِٕ', 'ٱمۡرِيٕٖ']) {
+      await t.pumpWidget(
+        MaterialApp(
+          home: Center(
+            child: InkText(
+              word,
+              style: const TextStyle(fontFamily: 'Hafs', fontSize: 40),
+            ),
+          ),
+        ),
+      );
+      expect(
+        find.descendant(
+          of: find.byType(HafsFontMarks),
+          matching: find.byType(CustomPaint),
+        ),
+        findsOneWidget,
+        reason: word,
+      );
+    }
+  });
 }

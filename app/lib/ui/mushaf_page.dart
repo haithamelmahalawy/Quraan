@@ -2502,12 +2502,40 @@ class _SequentialNotesLayout extends MultiChildLayoutDelegate {
     // In the order of the words: a note of the same line as the one before
     // it (يُجَٰزَىٰٓ … ٱلۡكَفُورُ) goes just under it, not below the page.
     final lexical = shown.where((i) => notes[i].farsh).toList()..sort();
+    final order = <int>[];
     var bottom = 0.0;
     for (final i in lexical) {
-      final y = math.max(tops[i], bottom);
+      var y = math.max(tops[i], bottom);
+      // Too far below its line (نتقبل … أحسن … ونتجاوز on one line): the
+      // notes stacked just above it rise into the free room above them,
+      // each still within a line of its own.
+      final need = y - tops[i] - 63;
+      if (need > 0) {
+        // How far each note above must move: what the gap under it
+        // cannot absorb.
+        final moves = <int, double>{};
+        var rise = need;
+        var edge = y;
+        var fits = true;
+        for (final j in order.reversed) {
+          rise -= edge - (placed[j]! + heights[j]! + 3);
+          if (rise <= 0) break;
+          if (rise > placed[j]! - math.max(0.0, tops[j] - 63)) {
+            fits = false;
+            break;
+          }
+          moves[j] = rise;
+          edge = placed[j]!;
+        }
+        if (fits) {
+          moves.forEach((j, d) => placed[j] = placed[j]! - d);
+          y -= need;
+        }
+      }
       // Still beside its line; farther away, below the page.
       if (y + heights[i]! > size.height || y - tops[i] >= 64) continue;
       placed[i] = y;
+      order.add(i);
       bottom = y + heights[i]! + 3;
     }
     for (final i in shown.where((i) => !notes[i].farsh)) {

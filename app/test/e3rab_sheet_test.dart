@@ -73,6 +73,14 @@ void main() {
       ),
       findsOneWidget,
     );
+    // Each word of the ayah on its line, its i'rab after it.
+    final lines = tester
+        .widget<SelectableText>(find.byKey(const ValueKey('e3rab-words')))
+        .textSpan!
+        .toPlainText()
+        .split('\n');
+    expect(lines.first, startsWith('ذلِكَ : ذا اسم إشارة'));
+    expect(lines, hasLength(6));
     // The books of i'rab replace those of the tafsir.
     expect(find.text('المجتبى من مشكل الإعراب'), findsOneWidget);
     expect(find.text('التفسير الميسر'), findsNothing);
