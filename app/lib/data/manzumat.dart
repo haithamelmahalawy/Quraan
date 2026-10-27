@@ -335,6 +335,27 @@ class Manzumat {
     // Ibn Dhakwan's «أَدۡر۪ىٰكَ», imala or fath: «وَبَصْرٍ وَهُمْ أَدْرَى
     // وَبِالْخُلْفِ مُثِّلَا».
     if (v.riwayaId == 'ibn_dhakwan' && v.text.contains('أَدۡر۪')) return {740};
+    // Ibn Dhakwan's kasra of «عِيُون، شِيُوخ، جِيُوب», in the farsh of
+    // al-Ma'ida: «يَكْسِرَانِ عُيُوناً الْعُيُونِ شُيُوخاً دَانَهُ صُحْبَهٌ مِلَا
+    // جُيُوبِ مُنِيرٌ».
+    if (v.riwayaId == 'ibn_dhakwan') {
+      final bare = v.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '');
+      if (bare.contains('جيوب')) return {628, 629};
+      if (RegExp('عيون|شيوخ').hasMatch(bare)) return {628};
+      // «رَأَى» in the farsh of al-An'am: «وَحَرْفَيْ رَأَى كُلاًّ أَمِلْ مُزْنَ»;
+      // with a pronoun in two ways, «وَخُلْفٌ فِيهِماَ مَعَ مُضْمِرٍ»; before a
+      // sakin on stopping, «وَقِفْ فِيهِ كَالأُولَى».
+      if (v.isImala && RegExp(r'^[وف]?رء?ا(ه|ها|ك)?$').hasMatch(bare)) {
+        if (v.stopOnly) return {648, 649};
+        return RegExp(r'(ه|ها|ك)$').hasMatch(bare) ? {646, 647} : {646};
+      }
+    }
+    // «يَٰٓأَبَتَ» wherever it comes, in the farsh of Yusuf: «وَيَا أَبَتِ افْتَحْ
+    // حَيْثُ جَا لاِبْنِ عَامِرٍ».
+    if (v.text.contains('أَبَتَ')) return {772};
+    // «فَزَعِ يَوۡمِئِذٍ» (27:89), in the farsh of Hud: «وَيَوْمَئِذٍ مَعْ سَالَ
+    // فَافْتَحْ أَتَى رِضاً وَفِي النَّمْلِ حِصْنٌ قَبْلَهُ النُّونُ ثُمِّلاَ».
+    if (v.surah == 27 && v.text.contains('يَوۡمِئِذٍ')) return {761};
     // «قُل رَّبِّ» for Hafs's «قال» (21:4، 21:112): «وَقُلْ قَالَ عَنْ شُهْدٍ
     // وَآخِرُهَا عَلاَ».
     if (v.surah == 21 && v.text.startsWith('قُل ر')) return {887};
@@ -428,7 +449,19 @@ class Manzumat {
     if (v.riwayaId == 'hisham' &&
         v.rule == 'tasheel_word' &&
         RegExp('^[ءأ]َ[ءئإ]ِ').hasMatch(v.usulText)) {
-      return v.usulWays.length > 1 && !v.description.contains('تسهيل')
+      // The seven: مريم، حرفا الأعراف، الشعراء، حرفا الصافات، فصلت.
+      const seven = {
+        '19:66',
+        '7:81',
+        '7:113',
+        '26:41',
+        '37:52',
+        '37:86',
+        '41:9',
+      };
+      return v.usulWays.length > 1 && !v.description.contains('تسهيل') ||
+              !seven.contains('${v.surah}:${v.ayah}') &&
+                  !v.description.contains('تسهيل')
           ? {196}
           : {196, 197, 198};
     }

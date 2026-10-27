@@ -702,6 +702,7 @@ class _MushafPageState extends State<MushafPage>
       widget.quran.edition,
       size.width,
       size.height,
+      widget.settings.fontSize,
       for (final e in entries)
         '${e.ayah.number}:${e.word}:${e.readings.length}',
     ].join('|');
@@ -893,7 +894,10 @@ class _MushafPageState extends State<MushafPage>
 
   /// Called by the side hamesh after layout with how many notes fit.
   void _setSplit(String signature, int fit) {
-    if (signature != _splitFor || _split != null) return;
+    // Measured once; afterwards only fewer (a font loaded late makes the
+    // notes taller), or the notes between the margin and the box below
+    // would be shown in neither.
+    if (signature != _splitFor || _split != null && fit >= _split!) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && signature == _splitFor && _split != fit) {
         setState(() => _split = fit);

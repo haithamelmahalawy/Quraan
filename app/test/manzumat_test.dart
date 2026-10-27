@@ -259,6 +259,86 @@ void main() {
     expect(r.mention, isNot(contains(223)));
   });
 
+  test('Ibn Dhakwan عيون، شيوخ، جيوب cite «يَكْسِرَانِ عُيُوناً»', () {
+    for (final (surah, ayah, text, hafs, verses) in [
+      (26, 57, 'وَعِيُونٖ', 'وَعُيُونٖ', {628}),
+      (36, 34, 'ٱلۡعِيُونِ', 'ٱلۡعُيُونِ', {628}),
+      (40, 67, 'شِيُوخٗا', 'شُيُوخٗا', {628}),
+      (24, 31, 'جِيُوبِهِنَّ', 'جُيُوبِهِنَّۖ', {628, 629}),
+    ]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: 'ibn_dhakwan',
+          surah: surah,
+          ayah: ayah,
+          word: 0,
+          count: 1,
+          text: text,
+          kind: VariantKind.farsh,
+          description: 'بكسر العين',
+        ),
+        hafs,
+        surah,
+        surahs,
+      );
+      expect(r.mention, verses, reason: '$surah:$ayah');
+      expect(skeleton(r.chapter), contains('لمده'));
+    }
+  });
+
+  test('Ibn Dhakwan رأى cites the farsh of al-An\'am', () {
+    for (final (text, stop, verses) in [
+      ('ر۪ء۪اهَا', false, {646, 647}),
+      ('ر۪ء۪ا', false, {646}),
+      ('ر۪ء۪ا', true, {648, 649}),
+    ]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: 'ibn_dhakwan',
+          surah: 27,
+          ayah: 10,
+          word: 3,
+          count: 1,
+          text: text,
+          kind: VariantKind.usul,
+          description: 'بإمالة الراء والهمزة',
+          stopOnly: stop,
+        ),
+        'رَءَاهَا',
+        27,
+        surahs,
+      );
+      expect(r.mention, verses, reason: '$text $stop');
+    }
+  });
+
+  test('Ibn Amir يا أبت and فزع يومئذ cite their verses', () {
+    for (final id in ['hisham', 'ibn_dhakwan']) {
+      for (final (surah, ayah, text, hafs, verse, chapter) in [
+        (19, 42, 'يَٰٓأَبَتَ', 'يَٰٓأَبَتِ', 772, 'يوسف'),
+        (28, 26, 'يَٰٓأَبَتَ', 'يَٰٓأَبَتِ', 772, 'يوسف'),
+        (27, 89, 'فَزَعِ يَوۡمِئِذٍ', 'فَزَعٖ يَوۡمَئِذٍ', 761, 'هود'),
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: surah,
+            ayah: ayah,
+            word: 0,
+            count: 1,
+            text: text,
+            kind: VariantKind.farsh,
+          ),
+          hafs,
+          surah,
+          surahs,
+        );
+        expect(r.mention, {verse}, reason: '$id $surah:$ayah');
+        expect(skeleton(r.chapter), contains(skeleton(chapter)));
+      }
+    }
+  });
+
   test('Ibn Amir قل رب, لؤلؤ and سواء cite their verses', () {
     for (final id in ['hisham', 'ibn_dhakwan']) {
       for (final (surah, ayah, text, hafs, verse) in [
