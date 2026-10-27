@@ -59,6 +59,7 @@ class Variant {
     this.bookWujuh = '',
     this.stopOnly = false,
     this.stopText = '',
+    this.marginText = '',
     this.omission = false,
     this.usulText = '',
     this.usulWays = const [],
@@ -117,6 +118,10 @@ class Variant {
   /// Reviewed stopping form, shown in the margin without changing wasl text.
   final String stopText;
 
+  /// How the margin writes the reading when the page keeps the rasm form
+  /// (أَاءِنَّا beside the page's أَٰءِنَّا); empty otherwise.
+  final String marginText;
+
   /// An explicitly reviewed lexical omission, rather than an empty annotation.
   final bool omission;
 
@@ -155,9 +160,11 @@ class Variant {
     if (surah == 1 && ayah == 4 && word == 0 && text == 'مَلِكِ') {
       return 'بحذف الألف';
     }
+    final own = description.isNotEmpty ? description : bookHow;
+    // Ways the riwaya's own note already tells are not told again.
     return [
-      description.isNotEmpty ? description : bookHow,
-      bookWujuh,
+      own,
+      if (!own.contains('بوجهين')) bookWujuh,
     ].where((s) => s.isNotEmpty).join('، ');
   }
 
@@ -186,6 +193,7 @@ class Variant {
     bookWujuh: bookWujuh.isNotEmpty ? bookWujuh : wujuh,
     stopOnly: stopOnly,
     stopText: stopText,
+    marginText: marginText,
     omission: omission,
     usulText: usulText,
     usulWays: usulWays,

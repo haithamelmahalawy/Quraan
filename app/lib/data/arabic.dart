@@ -154,6 +154,19 @@ String withImalaSign(String word, [String? reading]) {
   return String.fromCharCodes(clusters.expand((c) => c));
 }
 
+final _imalaRaBeforeHamza = RegExp(
+  '(ر[ً-ْۡ]*۪[ً-ْۡ]*)'
+  '(?=ء[ً-ْۡ]*۪)',
+);
+
+/// For drawing only: a thin space between a ra and a hamza both read with
+/// imala (رَ۪ءَ۪اكَ). The ra's tail runs under the hamza, so its sign falls
+/// under the hamza and the hamza's sign on the tail: one dot is seen.
+String spacedImalaSigns(String text) => text.replaceAllMapped(
+  _imalaRaBeforeHamza,
+  (m) => '${m[1]}${String.fromCharCode(0x2009)}',
+);
+
 /// [word] with the imala sign under the letters [reading] marks with it
 /// (رٜءٜا: the ra and the hamza, Shu'bah's رَءَا كَوۡكَبٗا); null when the
 /// reading marks none or its letters are not the word's.

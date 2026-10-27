@@ -256,6 +256,8 @@ class _MushafPageState extends State<MushafPage>
           ),
         ),
     ];
+    // As in the organised layout: the words of one rule with the same ways in
+    // one group, the ways written once under them.
     final merged = <String, _UsulGroup>{};
     for (final source in _usulNotes(
       words,
@@ -264,13 +266,11 @@ class _MushafPageState extends State<MushafPage>
       widget.quran,
     )) {
       final group = merged.putIfAbsent(
-        source.label,
-        () => _UsulGroup(source.label, source.color),
+        '${source.label}:${source.ways.join("|")}',
+        () => _UsulGroup(source.label, source.color)..ways.addAll(source.ways),
       );
       for (final item in source.items.values) {
-        item.ways.addAll(source.ways);
-        final key =
-            '${item.stopOnly}:${item.text}:${item.replacement}:${source.ways.join("|")}';
+        final key = '${item.stopOnly}:${item.text}:${item.replacement}';
         final existing = group.items.putIfAbsent(key, () => item);
         if (existing != item) {
           existing.riwayat.addAll(item.riwayat);
@@ -1047,10 +1047,11 @@ class _MushafPageState extends State<MushafPage>
         // Each distinct reading once, at the first word it covers.
         final seen = <String>{};
         for (final v in m.shown.where((v) => v.word == w)) {
-          if (!seen.add(v.text)) continue;
+          final text = v.marginText.isNotEmpty ? v.marginText : v.text;
+          if (!seen.add(text)) continue;
           out.add(
             TextSpan(
-              text: ' ${v.text.isEmpty ? '—' : v.text}',
+              text: ' ${text.isEmpty ? '—' : text}',
               recognizer: tap,
               style: TextStyle(
                 fontFamily: riwayaById(v.riwayaId).fontFamily ?? 'Hafs',
@@ -1106,7 +1107,13 @@ class _MushafPageState extends State<MushafPage>
   /// given only as a description keep the Hafs word, with the imala sign
   /// under its letter when read with imala.
   ({String text, String font})? _display(Ayah ayah, int w) {
-    return _displayWord(ayah, w, qcf: _pageQcf);
+    final shown = _displayWord(ayah, w, qcf: _pageQcf);
+    if (shown == null ||
+        shown.font.startsWith('QCF_') ||
+        !(_letterReadings(ayah, w)?.any(_spacedImala) ?? false)) {
+      return shown;
+    }
+    return (text: spacedImalaSigns(shown.text), font: shown.font);
   }
 
   ({String text, String font})? _displayWord(
@@ -1413,8 +1420,10 @@ class _MushafPageState extends State<MushafPage>
         mark(lam < 0 ? null : lam, ReadingColors.naql);
       }
       if (v.isImala) {
-        final at = letters.indexWhere((l) => l.contains(imalaSign));
-        mark(at < 0 ? null : at, MushafColors.green);
+        // Every letter with the sign (رَ۪ءَ۪ا: the ra and the hamza).
+        for (final (i, l) in letters.indexed) {
+          if (l.contains(imalaSign)) mark(i, MushafColors.green);
+        }
       }
       if (RegExp('إبدال|ابدال|تسهيل|تخفيف الهمزة').hasMatch(d)) {
         final hafs = lettersOf(ayah.words[w]);
@@ -1443,8 +1452,17 @@ class _MushafPageState extends State<MushafPage>
         final at = letters.lastIndexWhere((l) => l.startsWith(base));
         mark(at < 0 ? null : at, ReadingColors.silah);
       }
-      if (RegExp('إدغام|ادغام').hasMatch(d) && letters.first.contains('ّ')) {
-        mark(0, ReadingColors.idgham);
+      if (RegExp('إدغام|ادغام').hasMatch(d)) {
+        final merged = const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId)
+            ? _mergedLetters(d, letters)
+            : null;
+        if (merged != null) {
+          for (final i in merged) {
+            mark(i, ReadingColors.idgham);
+          }
+        } else if (letters.first.contains('ّ')) {
+          mark(0, ReadingColors.idgham);
+        }
       }
     }
     if (colors.isEmpty) return null;
@@ -1693,6 +1711,73 @@ class _MushafPageState extends State<MushafPage>
     return r;
   }
 }
+
+const _letterNames = {
+  'باء': 'ب',
+  'تاء': 'ت',
+  'ثاء': 'ث',
+  'جيم': 'ج',
+  'دال': 'د',
+  'ذال': 'ذ',
+  'راء': 'ر',
+  'زاي': 'ز',
+  'سين': 'س',
+  'شين': 'ش',
+  'صاد': 'ص',
+  'ضاد': 'ض',
+  'طاء': 'ط',
+  'ظاء': 'ظ',
+  'فاء': 'ف',
+  'قاف': 'ق',
+  'كاف': 'ك',
+  'لام': 'ل',
+  'ميم': 'م',
+  'نون': 'ن',
+  'واو': 'و',
+  'ياء': 'ي',
+};
+
+/// The letters of an idgham told «بإدغام التاء في الصاد»: the merged letter
+/// (the last of its word, or the one before the other with shadda) and the
+/// word it is merged in, as the next word is coloured whole: «لَّهُدِّمَت
+/// صَّوَٰمِعُ» colours the ta and «صَّوَٰمِعُ», not the lam of Hafs's own
+/// idgham. Null when not told so.
+List<int>? _mergedLetters(String description, List<String> letters) {
+  final m = RegExp(r'إدغام (?:ال)?(\S+) (?:في|ب) ?(?:ال)?(\S+)')
+      .firstMatch(description);
+  final x = _letterNames[m?[1]], y = _letterNames[m?[2]];
+  if (x == null || y == null) return null;
+  // The letters without the space between two words read as one.
+  final at = [
+    for (final (i, l) in letters.indexed)
+      if (l.trim().isNotEmpty) i,
+  ];
+  bool merges(int j) =>
+      letters[at[j]].startsWith(y) && letters[at[j]].contains('ّ');
+  final out = <int>[];
+  for (var j = 0; j < at.length; j++) {
+    if (!letters[at[j]].startsWith(x)) continue;
+    if (at[j] == letters.length - 1) out.add(at[j]);
+    if (j + 1 < at.length && merges(j + 1)) {
+      out.add(at[j]);
+      // The next word, when both are drawn as one.
+      if (at[j + 1] > at[j] + 1) {
+        for (
+          var i = at[j + 1];
+          i < letters.length && letters[i].trim().isNotEmpty;
+          i++
+        ) {
+          out.add(i);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/// Ibn Dhakwan's imala of the ra and the hamza (رَ۪ءَ۪اكَ), drawn apart so
+/// that both signs are seen ([spacedImalaSigns]).
+bool _spacedImala(Variant v) => v.riwayaId == 'ibn_dhakwan' && v.isImala;
 
 /// The readings of the riwaya the mushaf shows ([ReaderSettings.displayed])
 /// at a Hafs word; none when it shows Hafs.
@@ -2770,7 +2855,13 @@ class _UsulBox extends StatelessWidget {
             textDirection: TextDirection.rtl,
             style: style,
           );
-    if (item.replacement == null) return text(item.text);
+    if (item.replacement == null) {
+      return text(
+        item.readings.any(_spacedImala)
+            ? spacedImalaSigns(item.text)
+            : item.text,
+      );
+    }
     final start = item.text.lastIndexOf(' ') + 1;
     final tasheel = item.replacement!.isEmpty;
     final second =
@@ -2990,7 +3081,11 @@ class _EntryView extends StatelessWidget {
               _Reading(
                 [(name, color)],
                 font,
-                v.text,
+                v.marginText.isNotEmpty
+                    ? v.marginText
+                    : _spacedImala(v)
+                    ? spacedImalaSigns(v.text)
+                    : v.text,
                 _brief(v),
                 key,
                 imala: v.isImala,

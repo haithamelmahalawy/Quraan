@@ -184,6 +184,7 @@ Iterable<Variant> _bookWordDifferences(Variant v, Ayah ayah) sync* {
       bookFarsh: v.bookFarsh,
       stopOnly: v.stopOnly,
       stopText: v.stopText,
+      marginText: v.marginText,
       omission: v.omission,
       usulText: v.usulText,
       usulWays: v.usulWays,

@@ -312,10 +312,49 @@ class Manzumat {
     // «هُزُؤًا» everywhere: «وَهُزْؤاً وَكُفْؤاً في السَّوَاكِنِ فُصِّلَا
     // وَضُمَّ لِبَاقِيهِمْ».
     if (v.text.contains('هُزُؤ')) return {460, 461};
+    // The ya made sakin that Hafs opens in «وَلِيَ نَعۡجَةٌ»، «مَا كَانَ لِيَ»
+    // (twice) and «مَعِيَ» (eight places): «وَلِيْ نَعْجَةٌ مَا كَانَ لِيْ اثْنَيْنِ
+    // مَعْ مَعِيْ ثَمَانٍ عُلاً».
+    if (v.description.contains('إسكان') &&
+        (v.text == 'مَعِى' ||
+            v.text == 'لِى' &&
+                const {'14:22', '38:69'}.contains('${v.surah}:${v.ayah}') ||
+            v.text == 'وَلِى' && v.surah == 38 && v.ayah == 23)) {
+      return {417};
+    }
     // The nun of «يسٓ» and «نٓ» merged into the waw: «وَيَاسِيْنَ أَظْهِرْ عنْ
     // فَتًى حَقُهُ بَدَا وَنُونَ», Ibn 'Amir not among those who show it.
     if (v.description.startsWith('بإدغام النون من «')) return {281};
+    // The dhal of «أَخَذتُّمۡ / ٱتَّخَذتُّمُ» merged into the ta: «فَازَ اتَخَذْتُمْ
+    // أَخَذْتُمْ وَفِي الإِفْرَادِ عاشَرَ دَغْفَلَا».
+    if (v.rule == 'idgham_saghir' &&
+        v.description.contains('الذال في التاء') &&
+        v.text.contains('خَذت')) {
+      return {283};
+    }
+    // Ibn Dhakwan's «أَدۡر۪ىٰكَ», imala or fath: «وَبَصْرٍ وَهُمْ أَدْرَى
+    // وَبِالْخُلْفِ مُثِّلَا».
+    if (v.riwayaId == 'ibn_dhakwan' && v.text.contains('أَدۡر۪')) return {740};
+    // «قُل رَّبِّ» for Hafs's «قال» (21:4، 21:112): «وَقُلْ قَالَ عَنْ شُهْدٍ
+    // وَآخِرُهَا عَلاَ».
+    if (v.surah == 21 && v.text.startsWith('قُل ر')) return {887};
+    // «وَلُؤۡلُؤٖ» (al-Hajj and Fatir) and «سَوَآءٌ» (22:25): «وَمَعْ فَاطِرِ
+    // انْصِبْ لُؤْلُؤاً نَظْمُ أُلْفَةٍ وَرَفْعَ سَوَاءً غَيْرُ حَفْصٍ».
+    if (v.text.contains('لُؤۡلُؤٖ') ||
+        v.surah == 22 && v.ayah == 25 && v.text.startsWith('سَوَآءٌ')) {
+      return {895};
+    }
     return _ibnAmirSakinayn(v);
+  }
+
+  /// The ishmam of «قِيلَ، غِيضَ، جِيٓءَ» (447) or of «حِيلَ، سِيقَ، سِيٓءَ،
+  /// سِيٓـَٔتۡ» (448), both in the farsh of al-Baqara whatever the surah.
+  Set<int> _ishmamVerses(Variant v, [String hafs = '']) {
+    final word = '$hafs ${v.usulText} ${v.description}'.replaceAll(
+      RegExp('[ً-ٰٟۖ-ۭـ]'),
+      '',
+    );
+    return RegExp('حيل|سيق|سي[ءئ]|السين|الحاء').hasMatch(word) ? {448} : {447};
   }
 
   Set<int> _ruleVerses(Poem poem, Variant v, [String hafs = '']) {
@@ -375,7 +414,8 @@ class Manzumat {
     }
     if (v.rule == 'sakt') return {227, 228, 229};
     // «وَقِيلَ وَغِيضَ ثُمَّ جِيءَ يُشِمُّهَا ... لَدَى كَسْرِهَا ضَمًّا رِجَالٌ لِتَكْمُلَا».
-    if (v.rule == 'ishmam') return {447};
+    // «وَحِيلَ بِإِشْمَامٍ وَسِيقَ كَمَا رَسَا وَسِيءَ وَسِيئَتْ كَانَ رَاوِيهِ أَنْبَلَا».
+    if (v.rule == 'ishmam') return _ishmamVerses(v, hafs);
     // Hisham's hamza with damma after one with fatha: «وَمَدُّكَ قَبْلَ الضَّمِّ
     // لَبَّى حَبِيبُهُ بِخُلْفهِمَا ... وَفي آلِ عِمْرَانَ رَووْا لِهِشَامِهِمْ كَحَفْصٍ».
     if (v.riwayaId == 'hisham' &&
@@ -403,6 +443,11 @@ class Manzumat {
       final words = hafs.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '').split(' ');
       if (words.any(RegExp('^[وفل]?[شج][اآ]ء').hasMatch)) return {319};
       if (words.any(RegExp('^[وف]?ز[اآ]د').hasMatch)) return {319, 320};
+      // «حِمَارِكَ وَالمِحْرَابِ إِكْرَاهِهِنَّ وَالْحِمَارِ وَفي الإِكْرَامِ عِمْرَانَ
+      // مُثِّلَا، وَكُلٌّ بِخُلْفٍ لاِبْنِ ذَكْوَانَ غَيْرَ مَا يُجَرُّ مِنَ الْمِحْرَابِ».
+      if (words.any(RegExp('حمار|محراب|إكراه|إكرام|عمر[اٰ]?ن').hasMatch)) {
+        return {332, 333};
+      }
     }
     if (poem == Poem.shatibiyya && _ibnDhakwanTawrat(v)) return {546};
     if (poem == Poem.shatibiyya && _ibnAmirQuttilu(v)) {
@@ -431,6 +476,10 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _anaWasl(v)) {
       return verses(poem).firstWhere((b) => b.n == 521).chapter;
     }
+    if (poem == Poem.shatibiyya && v.rule == 'ishmam') {
+      final ishmam = _ishmamVerses(v);
+      return verses(poem).firstWhere((b) => ishmam.contains(b.n)).chapter;
+    }
     if (poem == Poem.shatibiyya && _ibnDhakwanTawrat(v)) {
       return verses(poem).firstWhere((b) => b.n == 546).chapter;
     }
@@ -445,6 +494,8 @@ class Manzumat {
     }
     final d = v.shownDescription;
     final topics = <String>[
+      // Before the hamza topics its ways name (تسهيلها، إبدالها).
+      if (v.rule == 'hisham_waqf') 'وقف حمزة وهشام',
       if (v.rule == 'ya_zaida') 'الزوائد',
       if (v.rule == 'ya_idafa') 'الإضافة',
       if (const {'rasm_stop', 'waqf_rasm', 'ha_sakt'}.contains(v.rule))
@@ -490,14 +541,22 @@ class Manzumat {
   /// The chapter of the farsh of [surah]: the one naming it, or covering it
   /// («ومن سورة الأحقاف إلى سورة الرحمن»).
   String? _surahChapter(Poem poem, int surah, List<String> surahNames) {
-    // Surah numbers named in a chapter title, in order.
-    List<int> named(String title) {
+    // Surah numbers named in a chapter title, in order: as whole words
+    // («الحج» is not the start of «الحجر»), or else anywhere in the title.
+    String words(String s) => s.split(RegExp(r'\s+')).map(skeleton).join(' ');
+    List<int> named(String title, {required bool whole}) {
       final t = skeleton(title);
+      final spaced = ' ${words(title)} ';
       final found = <(int, int)>[];
       for (var s = 1; s <= surahNames.length; s++) {
         final k = skeleton(surahNames[s - 1]);
         if (k.length < 2) continue;
-        final at = t.indexOf(k);
+        final w = words(surahNames[s - 1]);
+        final at = !whole
+            ? t.indexOf(k)
+            : spaced.contains(' $w ')
+            ? spaced.indexOf(' $w ')
+            : spaced.indexOf(' و$w ');
         if (at >= 0) found.add((at, s));
       }
       if (t.contains('ملقرن')) found.add((0, 1)); // أم القرآن
@@ -506,15 +565,17 @@ class Manzumat {
       return [for (final f in found) f.$2];
     }
 
-    for (final c in chapters(poem)) {
-      final s = named(c);
-      if (s.isEmpty) continue;
-      // «ومن سورة … إلى سورة …»: from the first up to the last, excluded.
-      final range = c.replaceAll(RegExp('[ً-ْٰ]'), '').contains('إلى');
-      if (range && s.length >= 2 && surah >= s.first && surah < s.last) {
-        return c;
+    for (final whole in const [true, false]) {
+      for (final c in chapters(poem)) {
+        final s = named(c, whole: whole);
+        if (s.isEmpty) continue;
+        // «ومن سورة … إلى سورة …»: from the first up to the last, excluded.
+        final range = c.replaceAll(RegExp('[ً-ْٰ]'), '').contains('إلى');
+        if (range && s.length >= 2 && surah >= s.first && surah < s.last) {
+          return c;
+        }
+        if (!range && s.contains(surah)) return c;
       }
-      if (!range && s.contains(surah)) return c;
     }
     return null;
   }

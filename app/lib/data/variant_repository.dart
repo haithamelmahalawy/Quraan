@@ -166,6 +166,9 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
       stopText: v.length > 8
           ? madinahScript((v[8] as Map)['stopText'] as String? ?? '')
           : '',
+      marginText: v.length > 8
+          ? madinahScript((v[8] as Map)['marginText'] as String? ?? '')
+          : '',
       omission: v.length > 8 && (v[8] as Map)['omission'] == true,
       usulText: v.length > 8 ? (v[8] as Map)['context'] as String? ?? '' : '',
       usulWays: v.length > 8
@@ -206,8 +209,14 @@ Map<int, List<Variant>> _index((String, String, String?) input) {
 void _certify(String id, Map<int, List<Variant>> index, String book) {
   final json = jsonDecode(book) as Map<String, dynamic>;
   // Farsh the book says this riwaya reads as Hafs: the file's farsh
-  // readings there are not shown (the book is the certified source).
-  for (final e in json['entries'] as List) {
+  // readings there are not shown (the book is the certified source). Not
+  // for Ibn 'Amir: his files are reviewed word by word, and the book's one
+  // comparison of a word (the ayn of «وَعُيُونٍ») would hide another of its
+  // readings (the tanween before «ٱدۡخُلُوهَا»).
+  for (final e
+      in const {'hisham', 'ibn_dhakwan'}.contains(id)
+          ? const []
+          : json['entries'] as List) {
     if (e[4] != 'farsh') continue;
     final readings = (e[5] as List).cast<List>();
     bool reads(List g) =>

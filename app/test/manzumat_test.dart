@@ -135,6 +135,9 @@ void main() {
       expect(mention('شَآءَ'), {319});
       expect(mention('جَآءَهُمۡ'), {319});
       expect(mention('وَزَادَهُۥ'), {319, 320});
+      expect(mention('عِمۡرَٰنَ'), {332, 333});
+      expect(mention('ٱلۡإِكۡرَامِ'), {332, 333});
+      expect(mention('حِمَارِكَ'), {332, 333});
     },
   );
 
@@ -206,6 +209,107 @@ void main() {
         surahs,
       );
       expect(r.mention, {588});
+    }
+  });
+
+  test('al-Hajj and al-Naba are not taken for al-Hijr and al-Anbiya', () {
+    String chapter(int surah) => manzumat
+        .referenceOf(
+          Variant(
+            riwayaId: 'hisham',
+            surah: surah,
+            ayah: 1,
+            word: 0,
+            count: 1,
+            text: '',
+            kind: VariantKind.farsh,
+          ),
+          '',
+          surah,
+          surahs,
+        )
+        .chapter;
+    expect(skeleton(chapter(22)), contains('لحج'));
+    expect(skeleton(chapter(22)), isNot(contains('لحجر')));
+    expect(skeleton(chapter(15)), contains('لحجر'));
+    expect(skeleton(chapter(78)), contains('لنب'));
+    expect(skeleton(chapter(21)), contains('لنبي'));
+  });
+
+  test('Hisham stopping on the hamza cites its own chapter', () {
+    final r = manzumat.referenceOf(
+      Variant(
+        riwayaId: 'hisham',
+        surah: 52,
+        ayah: 24,
+        word: 5,
+        count: 1,
+        text: '',
+        kind: VariantKind.usul,
+        description: 'وقفًا: إبدالها واوًا ساكنة، أو تسهيلها بالروم',
+        rule: 'hisham_waqf',
+        stopOnly: true,
+      ),
+      'لُؤۡلُؤٞ',
+      52,
+      surahs,
+    );
+    expect(skeleton(r.chapter), contains('وقف'));
+    expect(r.mention, contains(236));
+    expect(r.mention, isNot(contains(223)));
+  });
+
+  test('Ibn Amir قل رب, لؤلؤ and سواء cite their verses', () {
+    for (final id in ['hisham', 'ibn_dhakwan']) {
+      for (final (surah, ayah, text, hafs, verse) in [
+        (21, 4, 'قُل رَّبِّي', 'قَالَ رَبِّي', 887),
+        (21, 112, 'قُل رَّبِّ', 'قَٰلَ رَبِّ', 887),
+        (22, 23, 'وَلُؤۡلُؤٖاْ', 'وَلُؤۡلُؤٗاۖ', 895),
+        (35, 33, 'وَلُؤۡلُؤٖاْ', 'وَلُؤۡلُؤٗاۖ', 895),
+        (22, 25, 'سَوَآءٌ', 'سَوَآءً', 895),
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: surah,
+            ayah: ayah,
+            word: 0,
+            count: 1,
+            text: text,
+            kind: VariantKind.farsh,
+          ),
+          hafs,
+          surah,
+          surahs,
+        );
+        expect(r.mention, {verse}, reason: '$id $surah:$ayah');
+      }
+    }
+  });
+
+  test('Ibn Amir أشدد وأشركه cite «وَشَامٍ قَطْعُ أَشْدُدْ»', () {
+    for (final id in ['hisham', 'ibn_dhakwan']) {
+      for (final (ayah, text, hafs, description) in [
+        (31, 'أَشۡدُدۡ', 'ٱشۡدُدۡ', 'بهمزة قطع مفتوحة'),
+        (32, 'وَأُشۡرِكۡهُ', 'وَأَشۡرِكۡهُ', 'بضم الهمزة'),
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 20,
+            ayah: ayah,
+            word: 0,
+            count: 1,
+            text: text,
+            kind: VariantKind.farsh,
+            description: description,
+          ),
+          hafs,
+          20,
+          surahs,
+        );
+        expect(r.mention, {873}, reason: '$id $text');
+      }
     }
   });
 
@@ -354,6 +458,89 @@ void main() {
         surahs,
       );
       expect(r.mention, {281}, reason: id);
+    }
+  });
+
+  test(
+    'ishmam cites «وَقِيلَ وَغِيضَ» or «وَحِيلَ… وَسِيءَ» in every surah',
+    () {
+      Set<int> mention(String id, int surah, int ayah, String hafs, String d) =>
+          manzumat
+              .referenceOf(
+                Variant(
+                  riwayaId: id,
+                  surah: surah,
+                  ayah: ayah,
+                  word: 0,
+                  count: 1,
+                  text: '',
+                  kind: VariantKind.usul,
+                  description: d,
+                  rule: 'ishmam',
+                ),
+                hafs,
+                surah,
+                surahs,
+              )
+              .mention;
+      const qaf = 'بإشمام كسرة القاف ضمًّا', sin = 'بإشمام كسرة السين ضمًّا';
+      expect(mention('hisham', 2, 11, 'قِيلَ', qaf), {447});
+      expect(mention('hisham', 4, 61, 'قِيلَ', qaf), {447});
+      expect(mention('hisham', 11, 44, 'وَغِيضَ', 'بإشمام كسرة الغين ضمًّا'), {
+        447,
+      });
+      expect(mention('ibn_dhakwan', 39, 71, 'وَسِيقَ', sin), {448});
+      expect(mention('ibn_dhakwan', 11, 77, 'سِيٓءَ', sin), {448});
+    },
+  );
+
+  test('Ibn Amir أخذتم cites «فَازَ اتَخَذْتُمْ أَخَذْتُمْ»', () {
+    for (final (id, s, a, text) in [
+      ('hisham', 2, 51, 'ٱتَّخَذتُّمُ'),
+      ('ibn_dhakwan', 3, 81, 'وَأَخَذتُّمۡ'),
+    ]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: s,
+          ayah: a,
+          word: 0,
+          count: 1,
+          text: text,
+          kind: VariantKind.usul,
+          description: 'بإدغام الذال في التاء',
+          rule: 'idgham_saghir',
+        ),
+        text,
+        s,
+        surahs,
+      );
+      expect(r.mention, {283}, reason: id);
+    }
+  });
+
+  test('Ibn Amir لي and معي cite «مَا كَانَ لِيْ اثْنَيْنِ مَعْ مَعِيْ»', () {
+    for (final (s, a, text) in [
+      (14, 22, 'لِى'),
+      (38, 23, 'وَلِى'),
+      (7, 105, 'مَعِى'),
+    ]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: 'hisham',
+          surah: s,
+          ayah: a,
+          word: 0,
+          count: 1,
+          text: text,
+          kind: VariantKind.farsh,
+          description: 'بإسكان الياء',
+        ),
+        text,
+        s,
+        surahs,
+      );
+      expect(r.mention, {417}, reason: '$s:$a');
     }
   });
 

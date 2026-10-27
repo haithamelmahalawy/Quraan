@@ -27,6 +27,33 @@ void main() {
     expect(readings.any((v) => v.rule == 'ghunna'), isTrue);
   });
 
+  test('Ibn Dhakwan أءذا ما مت: his two ways told once', () {
+    final v = compareReadings(
+      repository: repository,
+      ayah: quran.ayah(19, 66),
+      word: 2,
+      displayed: null,
+      selected: ['ibn_dhakwan'],
+    ).singleWhere((v) => v.riwayaId == 'ibn_dhakwan');
+    expect('بوجهين'.allMatches(v.shownDescription), hasLength(1));
+    expect(v.shownDescription, contains('على الإخبار'));
+  });
+
+  test('Hisham أءنا: written alef in the margin, dagger alef on the page', () {
+    final hisham = compareReadings(
+      repository: repository,
+      ayah: quran.ayah(17, 98),
+      word: 10,
+      displayed: null,
+      selected: ['hisham'],
+    ).singleWhere((v) => v.riwayaId == 'hisham');
+    expect(hisham.marginText, 'أَاءِنَّا');
+    expect(
+      readingText(repository, 'hisham', quran.ayah(17, 98), 10, 11),
+      contains('ٰ'),
+    );
+  });
+
   test('page 74 book context only colours the actual Warsh difference', () {
     final ayah = quran.ayah(3, 181);
     for (var w = 11; w <= 18; w++) {
