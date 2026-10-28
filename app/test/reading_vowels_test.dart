@@ -52,12 +52,13 @@ void main() {
       );
       final rows = (d['variants'] as List).cast<List>();
       final fear = rows.firstWhere(
-        (v) => v[0] == 2 && v[1] == 38 && v[2] == 11,
+        (v) => v[0] == 2 && v[1] == 38 && v[2] == 12,
       );
       final accept = rows.firstWhere(
         (v) => v[0] == 2 && v[1] == 48 && v[2] == 9,
       );
-      expect(madinahScript(fear[4] as String), 'فَلَا خَوۡفَ عَلَيۡهُمۡ');
+      // Only the words read otherwise than Hafs («فَلَا» is not).
+      expect(madinahScript(fear[4] as String), 'خَوۡفَ عَلَيۡهُمۡ');
       expect(madinahScript(accept[4] as String), 'تُقۡبَلُ');
     }
   });

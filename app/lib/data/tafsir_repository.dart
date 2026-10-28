@@ -9,12 +9,21 @@ import 'tafsir_text.dart';
 
 /// A book of tafsir.
 class TafsirBook {
-  const TafsirBook(this.id, this.name, this.author, {this.offline = false});
+  const TafsirBook(
+    this.id,
+    this.name,
+    this.author, {
+    this.offline = false,
+    this.source = TafsirRepository.source,
+  });
 
-  /// Quranpedia's book id.
+  /// Quranpedia's book id (90000 and above: the app's own).
   final int id;
   final String name;
   final String author;
+
+  /// Where its text is from.
+  final String source;
 
   /// Stored in the app (`assets/data/tafsir/<id>.json.gz`); otherwise read
   /// from Quranpedia, ayah by ayah.
@@ -59,8 +68,20 @@ class TafsirRepository {
     TafsirBook(318, 'إعراب القرآن', 'ابن النحاس'),
   ];
 
+  /// The books of the reasons of the readings (توجيه القراءات), in the app
+  /// (built by `tool/build_tawjih.dart`).
+  static const tawjihBooks = [
+    TafsirBook(
+      90001,
+      'حجة القراءات',
+      'ابن زنجلة',
+      offline: true,
+      source: 'مشروع OpenITI (نص المكتبة الشاملة)',
+    ),
+  ];
+
   static TafsirBook book(int id) =>
-      [...books, ...e3rabBooks].firstWhere((b) => b.id == id);
+      [...books, ...e3rabBooks, ...tawjihBooks].firstWhere((b) => b.id == id);
 
   final AssetBundle _bundle;
   final http.Client _client;

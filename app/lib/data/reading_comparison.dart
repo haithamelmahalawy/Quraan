@@ -39,7 +39,15 @@ String readingTextKey(String text, {String? baseline}) {
                       letters[i + 1].letter == 'ء'
                   ? 'ا'
                   : u.letter;
-              final fill = !u.vocalized && h?.letter == letter;
+              // A bare nun or mim inside the word is sakin, hidden in the
+              // letter after it (يَغُرَّنكَ): not Hafs's vowel (يَغُرَّنَّكَ).
+              // A word written without vowels (ونقول) tells nothing by it.
+              final hidden =
+                  (letter == 'ن' || letter == 'م') &&
+                  i > 0 &&
+                  i + 1 < letters.length &&
+                  letters.any((l) => l.vocalized);
+              final fill = !u.vocalized && !hidden && h?.letter == letter;
               return '$letter:${(fill ? h!.vowel : u.vowel) ?? ''}:'
                   '${(fill ? h!.tanween : u.tanween) ?? ''}:'
                   '${i > 0 && (fill ? h!.shadda : u.shadda) ? 'ّ' : ''}:'

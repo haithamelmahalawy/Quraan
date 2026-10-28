@@ -9,6 +9,7 @@ import '../data/reading_comparison.dart';
 import '../data/variant_repository.dart';
 import '../data/recitations.dart';
 import '../data/tafsir_repository.dart';
+import '../data/tawjih_text.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../services/ayah_player.dart';
@@ -283,6 +284,7 @@ class _AyahSheetState extends State<AyahSheet> {
                 ),
               ),
               const Spacer(),
+              RecitationSpeedButton(player: player),
               Raised(
                 circle: true,
                 color: MushafColors.green,
@@ -409,8 +411,8 @@ class _AyahSheetState extends State<AyahSheet> {
 /// gives it so.
 typedef _Shown = ({String? text, List<({String word, String e3rab})> words});
 
-/// The tafsir of the ayah, or its i'rab: a book to choose, and its text,
-/// following the ayah as the recitation goes on.
+/// The tafsir of the ayah, its i'rab, or the reasons of its readings: a book
+/// to choose, and its text, following the ayah as the recitation goes on.
 class _Tafsir extends StatefulWidget {
   const _Tafsir({
     required this.ayah,
@@ -429,9 +431,25 @@ class _Tafsir extends StatefulWidget {
 class _TafsirState extends State<_Tafsir> {
   late Future<_Shown> _text = _load();
 
+  /// The whole passage of the reasons, not only the chosen riwayat's.
+  bool _whole = false;
+
   ReaderSettings get s => widget.settings;
-  bool get _e3rab => s.showE3rab;
-  int get _book => _e3rab ? s.e3rabBook : s.tafsirBook;
+  BesideAyah get _beside => s.besideAyah;
+  bool get _e3rab => _beside == BesideAyah.e3rab;
+  List<TafsirBook> get _books => switch (_beside) {
+    BesideAyah.tafsir => TafsirRepository.books,
+    BesideAyah.e3rab => TafsirRepository.e3rabBooks,
+    BesideAyah.tawjih => TafsirRepository.tawjihBooks,
+  };
+  int get _book => switch (_beside) {
+    BesideAyah.tafsir => s.tafsirBook,
+    BesideAyah.e3rab => s.e3rabBook,
+    BesideAyah.tawjih => TafsirRepository.tawjihBooks.first.id,
+  };
+
+  /// The riwayat whose readings are explained: Hafs's, and those chosen.
+  Set<String> get _riwayat => {'hafs', ...s.selected, ?s.displayed};
 
   @override
   void didUpdateWidget(_Tafsir old) {
@@ -465,19 +483,22 @@ class _TafsirState extends State<_Tafsir> {
   }
 
   void _choose(int id) {
-    if (_e3rab) {
-      s.e3rabBook = id;
-    } else {
-      s.tafsirBook = id;
+    switch (_beside) {
+      case BesideAyah.tafsir:
+        s.tafsirBook = id;
+      case BesideAyah.e3rab:
+        s.e3rabBook = id;
+      case BesideAyah.tawjih:
+        return;
     }
     setState(() {
       _text = _load();
     });
   }
 
-  void _show({required bool e3rab}) {
-    if (e3rab == _e3rab) return;
-    s.showE3rab = e3rab;
+  void _show(BesideAyah beside) {
+    if (beside == _beside) return;
+    s.besideAyah = beside;
     setState(() {
       _text = _load();
     });
@@ -486,12 +507,12 @@ class _TafsirState extends State<_Tafsir> {
   @override
   Widget build(BuildContext context) {
     final book = TafsirRepository.book(_book);
-    Widget tab(String label, IconData icon, {required bool e3rab}) {
-      final on = e3rab == _e3rab;
+    Widget tab(String label, IconData icon, BesideAyah beside) {
+      final on = beside == _beside;
       return Padding(
         padding: const EdgeInsetsDirectional.only(end: 8),
         child: ChoiceChip(
-          key: ValueKey(e3rab ? 'e3rab-tab' : 'tafsir-tab'),
+          key: ValueKey('${beside.name}-tab'),
           avatar: Icon(icon, size: 18, color: MushafColors.green),
           label: Text(
             label,
@@ -503,19 +524,28 @@ class _TafsirState extends State<_Tafsir> {
           ),
           selected: on,
           selectedColor: MushafColors.goldLight,
-          onSelected: (_) => _show(e3rab: e3rab),
+          onSelected: (_) => _show(beside),
         ),
       );
     }
 
+    final body = TextStyle(fontSize: 16, height: 1.8, color: MushafColors.ink);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            tab('التفسير', Icons.menu_book_rounded, e3rab: false),
-            tab('الإعراب', Icons.account_tree_rounded, e3rab: true),
-          ],
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              tab('التفسير', Icons.menu_book_rounded, BesideAyah.tafsir),
+              tab('الإعراب', Icons.account_tree_rounded, BesideAyah.e3rab),
+              tab(
+                'توجيه القراءات',
+                Icons.record_voice_over_rounded,
+                BesideAyah.tawjih,
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -523,10 +553,7 @@ class _TafsirState extends State<_Tafsir> {
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              for (final b
-                  in _e3rab
-                      ? TafsirRepository.e3rabBooks
-                      : TafsirRepository.books)
+              for (final b in _books)
                 Padding(
                   padding: const EdgeInsetsDirectional.only(end: 6),
                   child: ChoiceChip(
@@ -565,6 +592,20 @@ class _TafsirState extends State<_Tafsir> {
                 );
               }
               final (:text, :words) = snapshot.data!;
+              final tawjih = _beside == BesideAyah.tawjih;
+              // The reasons of the chosen riwayat's readings only, unless
+              // the whole passage is asked for.
+              final shown = tawjih && text != null && !_whole
+                  ? tawjihOf(text, _riwayat)
+                  : text;
+              final untreated = [
+                for (final q in qiraat)
+                  for (final r in q.riwayat)
+                    if (tawjih &&
+                        _riwayat.contains(r.id) &&
+                        !tawjihNames.containsKey(r.id))
+                      r.nameAr,
+              ];
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -578,8 +619,11 @@ class _TafsirState extends State<_Tafsir> {
                   const SizedBox(height: 8),
                   if (text == null)
                     Text(
-                      'لا يوجد في هذا الكتاب ${_e3rab ? 'إعراب' : 'تفسير'} '
-                      'لهذه الآية.',
+                      tawjih
+                          ? 'لا يذكر الكتاب خلافاً بين القراء السبعة في هذه '
+                                'الآية.'
+                          : 'لا يوجد في هذا الكتاب '
+                                '${_e3rab ? 'إعراب' : 'تفسير'} لهذه الآية.',
                     )
                   else if (words.isNotEmpty)
                     SelectableText.rich(
@@ -600,25 +644,46 @@ class _TafsirState extends State<_Tafsir> {
                         ],
                       ),
                       textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontSize: 16,
-                        height: 1.8,
-                        color: MushafColors.ink,
-                      ),
+                      style: body,
+                    )
+                  else if (shown!.isEmpty)
+                    const Text(
+                      'لا يذكر الكتاب في هذه الآية قراءة الروايات المختارة.',
                     )
                   else
                     SelectableText.rich(
-                      _styled(text),
+                      key: tawjih ? const ValueKey('tawjih-text') : null,
+                      _styled(shown),
                       textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontSize: 16,
-                        height: 1.8,
-                        color: MushafColors.ink,
+                      style: body,
+                    ),
+                  if (tawjih && text != null)
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton.icon(
+                        key: const ValueKey('tawjih-whole'),
+                        onPressed: () => setState(() => _whole = !_whole),
+                        icon: Icon(
+                          _whole
+                              ? Icons.filter_alt_rounded
+                              : Icons.unfold_more_rounded,
+                        ),
+                        label: Text(
+                          _whole
+                              ? 'توجيه الروايات المختارة فقط'
+                              : 'التوجيه كاملاً لكل القراء',
+                        ),
                       ),
+                    ),
+                  if (untreated.isNotEmpty)
+                    Text(
+                      'الكتاب في القراءات السبع، فليس فيه توجيه قراءة: '
+                      '${untreated.join('، ')}.',
+                      style: TextStyle(color: MushafColors.frame, fontSize: 12),
                     ),
                   const SizedBox(height: 10),
                   Text(
-                    'المصدر: ${TafsirRepository.source}',
+                    'المصدر: ${book.source}',
                     style: TextStyle(color: MushafColors.frame, fontSize: 11),
                   ),
                 ],

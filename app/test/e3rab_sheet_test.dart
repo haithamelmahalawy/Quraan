@@ -85,4 +85,64 @@ void main() {
     expect(find.text('المجتبى من مشكل الإعراب'), findsOneWidget);
     expect(find.text('التفسير الميسر'), findsNothing);
   });
+
+  testWidgets('the reasons of the chosen riwayat\'s readings', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    late QuranRepository quran;
+    late Recitations recitations;
+    await tester.runAsync(() async {
+      (quran, recitations) = await (
+        QuranRepository.load(),
+        Recitations.load(),
+      ).wait;
+    });
+    final player = AyahPlayer.withPlayer(TestAudio(), AudioNumbering.load);
+    addTearDown(player.dispose);
+    final settings = ReaderSettings.memory(selected: {'hisham', 'ruways'});
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: PrimaryScrollController(
+              controller: ScrollController(),
+              child: AyahSheet(
+                ayah: quran.ayah(4, 5),
+                quran: quran,
+                settings: settings,
+                player: player,
+                recitations: recitations,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Future<void> settle() async {
+      for (var i = 0; i < 5; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 200)),
+        );
+        await tester.pump();
+      }
+    }
+
+    await settle();
+    await tester.tap(find.byKey(const ValueKey('tawjih-tab')));
+    await settle();
+    expect(settings.besideAyah, BesideAyah.tawjih);
+    expect(find.text('حجة القراءات — ابن زنجلة'), findsOneWidget);
+    String shown() => tester
+        .widget<SelectableText>(find.byKey(const ValueKey('tawjih-text')))
+        .textSpan!
+        .toPlainText();
+    // Ibn Amir (Hisham) is named; Hafs is of «الباقون».
+    expect(shown(), contains('قرأ نافع وابن عامر'));
+    expect(shown(), contains('الباقون'));
+    // Ya'qub (Ruways) is not in the book of the seven.
+    expect(find.textContaining('ليس فيه توجيه قراءة: رويس'), findsOneWidget);
+  });
 }

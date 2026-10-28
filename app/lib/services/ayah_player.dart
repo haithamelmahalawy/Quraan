@@ -59,6 +59,19 @@ class AyahPlayer extends ChangeNotifier {
   bool continuous = true;
   Object? error;
 
+  /// The speeds a recitation can be heard at.
+  static const speeds = [1.0, 1.25, 1.5, 1.75, 2.0, 2.5];
+
+  /// The speed of every recitation, kept from one ayah to the next.
+  double get speed => _speed;
+  double _speed = 1.0;
+
+  Future<void> setSpeed(double speed) async {
+    _speed = speed;
+    notifyListeners();
+    await _player.setSpeed(speed);
+  }
+
   bool get playing => _player.playing && current != null;
   bool get loading =>
       current != null &&

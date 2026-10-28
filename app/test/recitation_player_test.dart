@@ -132,6 +132,35 @@ void main() {
       expect(audio.playing, isTrue);
       expect(audio.urls, hasLength(1));
 
+      // The speed, from the player at the foot of every screen, one step
+      // down or up.
+      final speed = find.descendant(
+        of: find.byKey(const ValueKey('mini-recitation-player')),
+        matching: find.byKey(const ValueKey('recitation-speed')),
+      );
+      expect(find.descendant(of: speed, matching: find.text('1×')), findsOne);
+      Future<void> tap(String key) async {
+        await tester.tap(
+          find.descendant(of: speed, matching: find.byKey(ValueKey(key))),
+        );
+        await tester.pump();
+      }
+
+      final seen = <String>[];
+      for (var i = 0; i < 6; i++) {
+        await tap('recitation-faster');
+        seen.add(RecitationSpeedButton.label(player.speed));
+      }
+      expect(seen, ['1.25×', '1.5×', '1.75×', '2×', '2.5×', '2.5×']);
+      expect(audio.speed, 2.5);
+      await tap('recitation-slower');
+      await tap('recitation-slower');
+      expect(audio.speed, 1.75);
+      expect(
+        find.descendant(of: speed, matching: find.text('1.75×')),
+        findsOne,
+      );
+
       await tester.tap(find.byTooltip('إغلاق المشغّل'));
       await tester.pump();
       expect(audio.playing, isFalse);

@@ -99,6 +99,7 @@ class _RecitationPlayerHostState extends State<RecitationPlayerHost> {
                             ),
                           ),
                         ),
+                        RecitationSpeedButton(player: player),
                         IconButton(
                           tooltip: 'فتح الاستماع والتفسير',
                           onPressed: widget.onOpen,
@@ -128,6 +129,54 @@ class _RecitationPlayerHostState extends State<RecitationPlayerHost> {
         },
       ),
     ],
+  );
+}
+
+/// The speed of the recitation, one step down or up: 1×, 1.25×, 1.5×,
+/// 1.75×, 2× or 2.5×.
+class RecitationSpeedButton extends StatelessWidget {
+  const RecitationSpeedButton({super.key, required this.player});
+
+  final AyahPlayer player;
+
+  static String label(double speed) =>
+      '${speed.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '')}×';
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: player,
+    builder: (context, _) {
+      const speeds = AyahPlayer.speeds;
+      final at = speeds.indexOf(player.speed);
+      Widget step(int by, IconData icon, String tooltip) => IconButton(
+        key: ValueKey(by > 0 ? 'recitation-faster' : 'recitation-slower'),
+        tooltip: tooltip,
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        iconSize: 20,
+        onPressed: at + by < 0 || at + by >= speeds.length
+            ? null
+            : () => player.setSpeed(speeds[at + by]),
+        icon: Icon(icon),
+      );
+      return Row(
+        key: const ValueKey('recitation-speed'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          step(-1, Icons.remove_rounded, 'إبطاء التلاوة'),
+          Tooltip(
+            message: 'سرعة التلاوة',
+            child: Text(
+              label(player.speed),
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          step(1, Icons.add_rounded, 'تسريع التلاوة'),
+        ],
+      );
+    },
   );
 }
 

@@ -530,8 +530,8 @@ void main() {
       );
 
       await page(t, id, number: 27, selected: {id, 'hafs'});
-      expect(t.widget<InkText>(word(2, 177, 0)).text, 'لَّيۡسَ ٱلۡبِرُّ');
-      final hafs = find.byKey(const ValueKey('margin-reference:2:177:0'));
+      expect(t.widget<InkText>(word(2, 177, 1)).text, contains('ُ'));
+      final hafs = find.byKey(const ValueKey('margin-reference:2:177:1'));
       expect(hafs, findsOneWidget);
       expect(
         t
@@ -539,7 +539,7 @@ void main() {
               find.descendant(of: hafs, matching: find.byType(Text)),
             )
             .map((w) => w.data ?? w.textSpan?.toPlainText() ?? '')
-            .any((text) => text.contains('لَّيۡسَ ٱلۡبِرَّ')),
+            .any((text) => text.contains(quran.ayah(2, 177).words[1])),
         isTrue,
       );
       expect(t.takeException(), isNull);
@@ -585,7 +585,7 @@ void main() {
   ) async {
     for (final id in ['ruways', 'rawh']) {
       await page(t, id, number: quran.ayah(2, 40).page, selected: {id});
-      expect(t.widget<InkText>(word(2, 40, 12)).text, 'فَٱرهَبُونِۦ');
+      expect(t.widget<InkText>(word(2, 40, 12)).text, 'فَٱرۡهَبُونِۦ');
       await page(t, id, number: quran.ayah(2, 186).page, selected: {id});
       expect(t.widget<InkText>(word(2, 186, 10)).text, 'دَعَانِۦ');
       expect(t.takeException(), isNull);

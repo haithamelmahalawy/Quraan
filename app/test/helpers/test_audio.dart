@@ -63,6 +63,12 @@ class TestAudio extends Fake implements AudioPlayer {
   }
 
   @override
+  double speed = 1.0;
+
+  @override
+  Future<void> setSpeed(double speed) async => this.speed = speed;
+
+  @override
   Future<void> pause() async {
     playing = false;
     states.add(PlayerState(playing, processingState));

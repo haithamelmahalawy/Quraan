@@ -95,9 +95,16 @@ class ReaderSettings extends ChangeNotifier {
   int get e3rabBook => _get('e3rab') as int? ?? 316;
   set e3rabBook(int id) => _set('e3rab', id);
 
-  /// Beside the ayah: its tafsir (false) or its i'rab (true).
-  bool get showE3rab => _get('showE3rab') as bool? ?? false;
-  set showE3rab(bool value) => _set('showE3rab', value);
+  /// Beside the ayah: its tafsir, its i'rab, or the reasons of its readings.
+  BesideAyah get besideAyah =>
+      BesideAyah.values.asNameMap()[_get('beside')] ??
+      (_get('showE3rab') == true ? BesideAyah.e3rab : BesideAyah.tafsir);
+  set besideAyah(BesideAyah value) => _set('beside', value.name);
+
+  /// The i'rab shown beside the ayah.
+  bool get showE3rab => besideAyah == BesideAyah.e3rab;
+  set showE3rab(bool value) =>
+      besideAyah = value ? BesideAyah.e3rab : BesideAyah.tafsir;
 
   /// The riwaya whose text the mushaf shows, when not Hafs: one of the
   /// selected riwayat (chosen in the riwayat menu), or the single one in
@@ -266,6 +273,9 @@ class ReaderSettings extends ChangeNotifier {
     notifyListeners();
   }
 }
+
+/// What the ayah sheet shows beside the ayah.
+enum BesideAyah { tafsir, e3rab, tawjih }
 
 /// The ways the words that differ from Hafs can move («تنبيه الاختلافات»).
 enum DiffAlert {

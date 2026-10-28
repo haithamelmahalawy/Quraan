@@ -97,7 +97,7 @@ void main() {
     testWidgets('$riwaya: 2:177 «ليس البرُّ» on the page', (t) async {
       await page(t, riwaya, quran.ayah(2, 177).page);
       // Raf': a damma on the ra (with its shadda, in either order).
-      final text = drawn(t, 2, 177, 0);
+      final text = drawn(t, 2, 177, 1);
       final ra = text.indexOf('ر');
       expect(ra, greaterThan(0));
       expect(text.substring(ra, ra + 3), contains('ُ'));
@@ -125,11 +125,9 @@ void main() {
     });
   }
 
-  testWidgets('Hafs compared: «لَّيۡسَ ٱلۡبِرَّ» in full, with its vowels', (
-    t,
-  ) async {
+  testWidgets('Hafs compared: «البرَّ» with its vowels', (t) async {
     await page(t, 'rawh', quran.ayah(2, 177).page, compareHafs: true);
-    final hafs = quran.ayah(2, 177).words.sublist(0, 2).join(' ');
+    final hafs = quran.ayah(2, 177).words[1];
     expect(find.textContaining(hafs, findRichText: true), findsWidgets);
   });
 

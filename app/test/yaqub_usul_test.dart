@@ -315,9 +315,11 @@ void main() {
       );
       expect(tara.sublist(2, 5), [17, 1, 'تَرَى']);
       final birr = (d['variants'] as List).cast<List>().singleWhere(
-        (v) => v[0] == 2 && v[1] == 177 && v[2] == 0,
+        (v) => v[0] == 2 && v[1] == 177 && v[2] == 1,
       );
-      expect(birr.sublist(2, 5), [0, 2, 'لَّيۡسَ ٱلۡبِرُّ']);
+      // «لَّيۡسَ» is read as Hafs: only «ٱلۡبِرُّ», with its damma.
+      expect(birr.sublist(2, 4), [1, 1]);
+      expect(birr[4], contains('ُ'));
     }
   });
   test('all Yaqub replacement quotations carry the source vowel marks', () {
@@ -404,7 +406,7 @@ void main() {
         );
       }
       expect(rules(load(id), 'ya_zaida', 2, 186)[1][4], 'دَعَانِۦ');
-      expect(rules(load(id), 'ya_zaida', 2, 40).single[4], 'فَٱرهَبُونِۦ');
+      expect(rules(load(id), 'ya_zaida', 2, 40).single[4], 'فَٱرۡهَبُونِۦ');
     }
   });
   test('stop annotations do not replace continuous text', () {
