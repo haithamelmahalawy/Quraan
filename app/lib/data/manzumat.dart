@@ -121,7 +121,9 @@ class Manzumat {
     List<String> surahNames, {
     Iterable<KharoufEntry> entries = const [],
   }) {
-    final poem = Poem.of(reading.riwayaId);
+    final poem = _yaqubShatibiyya(reading) != null
+        ? Poem.shatibiyya
+        : Poem.of(reading.riwayaId);
     var chapter =
         _usulChapter(poem, reading) ??
         _surahChapter(poem, surah, surahNames) ??
@@ -503,13 +505,42 @@ class Manzumat {
     return RegExp('حيل|سيق|سي[ءئ]|السين|الحاء').hasMatch(word) ? {448} : {447};
   }
 
+  /// Where the Durrah is silent, Ya'qub reads with his base, Abu Amr, as the
+  /// Shatibiyya states it: 28:32 «وَصُحْبَةٌ كَهْفُ ضَمِّ الرَّهْبِ وَاسْكِنْهُ
+  /// ذُبَّلَا» (the others, Abu Amr among them, open both).
+  static const _yaqubInShatibiyya = {
+    '28:32:13': {947},
+  };
+
+  Set<int>? _yaqubShatibiyya(Variant v) =>
+      const {'ruways', 'rawh'}.contains(v.riwayaId)
+      ? _yaqubInShatibiyya['${v.surah}:${v.ayah}:${v.word}']
+      : null;
+
   Set<int> _ruleVerses(Poem poem, Variant v, [String hafs = '']) {
+    final yaqub = _yaqubShatibiyya(v);
+    if (yaqub != null) return yaqub;
     final d = v.shownDescription;
     if (poem == Poem.shatibiyya && _anaWasl(v)) return {521};
     if (poem == Poem.durrah) {
       // 14:2 Ruways's «ٱللَّهُ» when starting: «وَطِبْ رَفْعَ أَللهِ ابْتِدَاءً».
       if (v.riwayaId == 'ruways' && v.surah == 14 && v.ayah == 2) {
         if (v.word == 0) return {138};
+      }
+      // 28:82 Ya'qub stops on the kaf of وَيۡكَأَنَّ as Abu Amr:
+      // «...مَعْ وَيْكَأَنَّهْ وَيْكَأَنَّ كَذَا تَلَا».
+      if (const {'ruways', 'rawh'}.contains(v.riwayaId) &&
+          v.rule == 'rasm_stop' &&
+          v.surah == 28 &&
+          v.ayah == 82) {
+        return {51};
+      }
+      // 28:34 «وَيُصَدِّقْ فِه»: the book's entry begins two words before.
+      if (const {'ruways', 'rawh'}.contains(v.riwayaId) &&
+          v.surah == 28 &&
+          v.ayah == 34 &&
+          v.word == 9) {
+        return {176};
       }
       if (const {'ruways', 'rawh'}.contains(v.riwayaId)) {
         final specific = switch (v.rule) {

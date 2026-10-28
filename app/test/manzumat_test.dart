@@ -509,6 +509,71 @@ void main() {
     },
   );
 
+  test('Yaqub الرهب (28:32) cites the Shatibiyya, the Durrah being silent', () {
+    for (final id in ['ruways', 'rawh']) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 28,
+          ayah: 32,
+          word: 13,
+          count: 1,
+          text: 'الرَّهَبِ',
+          kind: VariantKind.farsh,
+          description: 'بفتح الراء والهاء',
+        ),
+        'ٱلرَّهۡبِ',
+        28,
+        surahs,
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, {947}, reason: id);
+    }
+  });
+
+  test('Yaqub stopping on the kaf of ويكأن (28:82) cites the Durrah', () {
+    for (final id in ['ruways', 'rawh']) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 28,
+          ayah: 82,
+          word: 6,
+          count: 1,
+          text: '',
+          kind: VariantKind.usul,
+          description: 'بالوقف على الكاف',
+          rule: 'rasm_stop',
+        ),
+        'وَيۡكَأَنَّ',
+        28,
+        surahs,
+      );
+      expect(r.mention, {51}, reason: id);
+    }
+  });
+
+  test('Yaqub يصدقني (28:34) cites «وَيُصَدِّقْ فِه»', () {
+    for (final id in ['ruways', 'rawh']) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 28,
+          ayah: 34,
+          word: 9,
+          count: 1,
+          text: 'يُصَدِّقۡنِي',
+          kind: VariantKind.farsh,
+          description: 'بإسكان القاف',
+        ),
+        'يُصَدِّقُنِيٓۖ',
+        28,
+        surahs,
+      );
+      expect(r.mention, {176}, reason: id);
+    }
+  });
+
   test('Ibn Amir قل رب, لؤلؤ and سواء cite their verses', () {
     for (final id in ['hisham', 'ibn_dhakwan']) {
       for (final (surah, ayah, text, hafs, verse) in [

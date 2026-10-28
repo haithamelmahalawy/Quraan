@@ -736,6 +736,19 @@ void main() {
     },
   );
 
+  testWidgets('bal before Yaqub adraka takes its sukun, not Hafs kasra', (
+    t,
+  ) async {
+    for (final id in ['ruways', 'rawh']) {
+      await page(t, id, number: 383, selected: {id});
+      expect(t.widget<InkText>(word(27, 66, 0)).text, 'بَلۡ');
+      expect(t.widget<InkText>(word(27, 66, 1)).text, 'أَدۡرَكَ');
+    }
+    await page(t, null, number: 383, selected: {'ruways'});
+    expect(t.widget<InkText>(word(27, 66, 0)).text, 'بَلِ');
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('Yaqub lahab keeps the rasm with a circled ya on its hamza', (
     t,
   ) async {

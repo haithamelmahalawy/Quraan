@@ -132,7 +132,9 @@ class QuranRepository {
                   number: a[1] as int,
                   page: a[2] as int,
                   juz: a[3] as int,
-                  words: (a[4] as String).split(' '),
+                  // The sajda overline (ۤ) is not drawn across the word by
+                  // the Hafs font, only as a stray dash after it.
+                  words: (a[4] as String).replaceAll('ۤ', '').split(' '),
                 )
                 ..rubStart = starts[(a[0], a[1])]
                 ..juzStart = previousJuz != a[3];

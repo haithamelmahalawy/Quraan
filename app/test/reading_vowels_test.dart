@@ -41,6 +41,8 @@ void main() {
         'فَلَا خَوۡفَ عَلَيۡهُمۡ',
       );
       expect(completeReadingVowels('تُقبل', 'يُقۡبَلُ'), 'تُقۡبَلُ');
+      // The silent lam of ٱل before a sun letter takes no vowel.
+      expect(completeReadingVowels('ٱللَّهُ', 'لِلَّهِ'), 'ٱللَّهُ');
       expect(completeReadingVowels('إِنِّي', 'إِنِّيٓ'), 'إِنِّي');
       expect(completeReadingVowels('مَن رَّاقٍ', 'مَنۡ رَاقٍ'), 'مَن رَّاقٍ');
     },

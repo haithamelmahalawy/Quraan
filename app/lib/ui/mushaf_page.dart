@@ -1178,11 +1178,21 @@ class _MushafPageState extends State<MushafPage>
       ayah,
       w,
     ).where((v) => ruwaysHasratiMaddText(v, ayah.words[w]) != null).firstOrNull;
+    // Hafs's kasra for two sakins before a hamzat wasl (بَلِ ٱدَّٰرَكَ) is a
+    // sukun again when the riwaya shown reads a hamzat qat' (بَلۡ أَدۡرَكَ).
+    final clashKasra =
+        widget.settings.displayed != null &&
+        w + 1 < ayah.words.length &&
+        nextWord.startsWith('ٱ') &&
+        RegExp(r'ِ[ۖ-ۭ]*$').hasMatch(ayah.words[w]) &&
+        RegExp('^[أإآ]')
+            .hasMatch(_writtenDisplayWord(ayah, w + 1, qcf: false)?.text ?? '');
     final shown = _writtenDisplayWord(
       ayah,
       w,
       qcf:
           qcf &&
+          !clashKasra &&
           !shortMadd &&
           stoppingMadd == null &&
           ownKabir == null &&
@@ -1210,6 +1220,7 @@ class _MushafPageState extends State<MushafPage>
           previousAyah.words[previousWord];
       text = ruwaysKabirText(previousKabir, previous, text)?.second ?? text;
     }
+    if (clashKasra) text = text.replaceFirst(RegExp(r'ِ(?=[ۖ-ۭ]*$)'), 'ۡ');
     if (stoppingMadd != null) {
       return (
         text: ruwaysHasratiMaddText(stoppingMadd, text)!,

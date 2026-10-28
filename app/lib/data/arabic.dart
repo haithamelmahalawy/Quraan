@@ -509,10 +509,18 @@ String completeReadingVowels(String text, String baseline) {
                 i > 0 &&
                 'يى'.contains(own[i][0]) &&
                 own[i - 1].contains('ِ');
+            // The lam of ٱل before a doubled (sun) letter is silent
+            // (ٱللَّهُ for Hafs's لِلَّهِ): not Hafs's kasra.
+            final sunLam =
+                own[i] == 'ل' &&
+                i > 0 &&
+                own[i - 1][0] == 'ٱ' &&
+                next.contains('ّ');
             if (!explicit.hasMatch(own[i]) &&
                 !assimilated &&
                 !hidden &&
-                !maddYa) {
+                !maddYa &&
+                !sunLam) {
               for (final m in marks.allMatches(source[j])) {
                 if (!own[i].contains(m[0]!)) own[i] += m[0]!;
               }
