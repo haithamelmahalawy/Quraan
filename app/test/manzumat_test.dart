@@ -487,6 +487,28 @@ void main() {
     }
   });
 
+  test(
+    'Ruways «ٱللَّهُ» when starting (14:2) cites «وَطِبْ رَفْعَ أَللهِ»',
+    () {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: 'ruways',
+          surah: 14,
+          ayah: 2,
+          word: 0,
+          count: 1,
+          text: '',
+          kind: VariantKind.farsh,
+          description: 'بالرفع «ٱللَّهُ» ابتداءً، وبالخفض وصلاً كحفص',
+        ),
+        'ٱللَّهِ',
+        14,
+        surahs,
+      );
+      expect(r.mention, {138});
+    },
+  );
+
   test('Ibn Amir قل رب, لؤلؤ and سواء cite their verses', () {
     for (final id in ['hisham', 'ibn_dhakwan']) {
       for (final (surah, ayah, text, hafs, verse) in [

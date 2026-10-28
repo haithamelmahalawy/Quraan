@@ -736,6 +736,31 @@ void main() {
     },
   );
 
+  testWidgets('Yaqub lahab keeps the rasm with a circled ya on its hamza', (
+    t,
+  ) async {
+    for (final id in ['ruways', 'rawh']) {
+      await page(t, id, number: 306, selected: {id});
+      final m = t.widget<HamzaReplacementMark>(
+        find.ancestor(
+          of: word(19, 19, 5),
+          matching: find.byType(HamzaReplacementMark),
+        ),
+      );
+      expect(m.letter, 'ي');
+      expect(m.originalHamza, startsWith('أ'));
+      expect(m.offset, 'لِ'.length);
+      expect(t.takeException(), isNull);
+    }
+  });
+
+  test('ha of tanbih and ya of nida lose their joined separated madd', () {
+    expect(withoutJoinedSeparatedMaddSign('هَٰٓؤُلَآءِ'), 'هَٰؤُلَآءِ');
+    expect(withoutJoinedSeparatedMaddSign('يَٰٓأَيُّهَا'), 'يَٰأَيُّهَا');
+    expect(withoutJoinedSeparatedMaddSign('يَٰٓـَٔادَمُ'), 'يَٰـَٔادَمُ');
+    expect(withoutJoinedSeparatedMaddSign('ٱلۡمَلَٰٓئِكَةِ'), 'ٱلۡمَلَٰٓئِكَةِ');
+  });
+
   test('shortening removes only the separated madd at the word end', () {
     expect(withoutSeparatedMaddSign('بِمَآ'), 'بِمَا');
     expect(withoutSeparatedMaddSign('جَآءُوٓاْ'), 'جَآءُواْ');

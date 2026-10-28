@@ -2,6 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+/// A note of the book without its references to its own pages («انظر ص
+/// ٣٣٢»): the margin tells each word itself, not where else to look.
+String withoutPageReference(String note) =>
+    note.replaceAll(RegExp(r'[،,]?\s*و?انظر ص\s*[٠-٩0-9]+[.،]?'), '').trim();
+
 /// One way a word is read, as «التسهيل لقراءات التنزيل» states it.
 class KharoufReading {
   const KharoufReading({
@@ -99,13 +104,16 @@ class Kharouf {
               text: g[0] as String,
               riwayat: (g[1] as List).cast<String>(),
               disputed: (g[2] as List).cast<String>(),
-              how: g[3] as String,
+              how: withoutPageReference(g[3] as String),
               stopOnly: g[4] as bool,
               taqlil: g.length > 5 && g[5] == true,
               notes: [
                 if (g.length > 6)
                   for (final n in g[6] as List)
-                    (n[0] as String, (n[1] as List).cast<String>()),
+                    (
+                      withoutPageReference(n[0] as String),
+                      (n[1] as List).cast<String>(),
+                    ),
               ],
             ),
         ],

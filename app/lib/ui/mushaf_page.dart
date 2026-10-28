@@ -1165,6 +1165,7 @@ class _MushafPageState extends State<MushafPage>
         isYaqub &&
         ((RegExp(r'^[ءأإؤئآ]').hasMatch(nextWord) &&
                 withoutSeparatedMaddSign(ayah.words[w]) != ayah.words[w]) ||
+            withoutJoinedSeparatedMaddSign(ayah.words[w]) != ayah.words[w] ||
             _baseAt(
               widget.variants,
               widget.settings,
@@ -1216,7 +1217,9 @@ class _MushafPageState extends State<MushafPage>
       );
     }
     return (
-      text: shortMadd ? withoutSeparatedMaddSign(text) : text,
+      text: shortMadd
+          ? withoutJoinedSeparatedMaddSign(withoutSeparatedMaddSign(text))
+          : text,
       font: shown.font,
     );
   }
@@ -1246,7 +1249,8 @@ class _MushafPageState extends State<MushafPage>
     final v = base.where((v) => v.canReplaceText).firstOrNull;
     if (v != null) {
       if (v.word != w || v.text.isEmpty) return null;
-      if (s.displayed == 'ruways' && _replacementAt(ayah, w) != null) {
+      if (const {'ruways', 'rawh'}.contains(s.displayed) &&
+          _replacementAt(ayah, w) != null) {
         return (text: ayah.words[w], font: 'Hafs');
       }
       return (text: withNaqlVowel(v.text, ayah.words[w]), font: 'Hafs');
@@ -1326,7 +1330,7 @@ class _MushafPageState extends State<MushafPage>
   }
 
   Variant? _replacementAt(Ayah ayah, int w) =>
-      !const {'warsh', 'ruways'}.contains(widget.settings.displayed)
+      !const {'warsh', 'ruways', 'rawh'}.contains(widget.settings.displayed)
       ? null
       : [
               ..._baseAt(widget.variants, widget.settings, ayah, w),
@@ -1596,9 +1600,11 @@ class _MushafPageState extends State<MushafPage>
     final drawn = parts?.map((p) => p.$1).join() ?? shown.text;
     Widget word = ink(drawn);
     if (replacement != null) {
+      final h = _hamzaLetter(ayah.words[w]);
       word = HamzaReplacementMark(
         text: drawn,
-        originalHamza: lettersOf(ayah.words[w]).first,
+        offset: lettersOf(drawn).take(h).join().length,
+        originalHamza: lettersOf(ayah.words[w])[h],
         letter: replacement.hamzaReplacement!,
         color: ReadingColors.of(replacement),
         style: TextStyle(fontFamily: 'Hafs', fontSize: fontSize, height: 1),
@@ -1606,10 +1612,17 @@ class _MushafPageState extends State<MushafPage>
       );
     } else if (roundedTasheel || ruwaysTasheel != null) {
       final second = ruwaysTasheel?.rule != 'tasheel_pair';
+      // The hamza eased, as Hafs writes it; or as the riwaya does, where
+      // Hafs has none there (أَئِنَّكُمۡ for إِنَّكُمۡ).
+      final hafsHamza = lettersOf(ayah.words[w])
+          .elementAtOrNull(second ? 1 : 0);
       word = HamzaReplacementMark(
         text: drawn,
         offset: second ? lettersOf(drawn).first.length : 0,
-        originalHamza: lettersOf(ayah.words[w])[second ? 1 : 0],
+        originalHamza:
+            hafsHamza != null && RegExp('[ءأإآؤئ]').hasMatch(hafsHamza)
+            ? hafsHamza
+            : lettersOf(drawn).elementAtOrNull(second ? 1 : 0),
         letter: '',
         color: ReadingColors.hamza,
         style: TextStyle(fontFamily: 'Hafs', fontSize: fontSize, height: 1),
@@ -2807,6 +2820,21 @@ class _UsulBox extends StatelessWidget {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               _usulWord(i, g.color),
+                              // How the ya is read (يَدِي: بإسكان الياء).
+                              if (i.readings.any((v) => v.rule == 'ya_idafa'))
+                                Text(
+                                  i.readings.any(
+                                        (v) =>
+                                            v.rule == 'ya_idafa' &&
+                                            v.description.contains('فتح'),
+                                      )
+                                      ? ' (بفتح الياء)'
+                                      : ' (بإسكان الياء)',
+                                  style: TextStyle(
+                                    fontSize: 9 * scale,
+                                    color: g.color,
+                                  ),
+                                ),
                               if (i.stopOnly)
                                 Text(
                                   ' (وقفًا فقط)',
@@ -2907,21 +2935,28 @@ class _UsulBox extends StatelessWidget {
     final second =
         tasheel && !item.readings.any((v) => v.rule == 'tasheel_pair');
     var markedText = item.text;
-    if (!tasheel && item.readings.any((v) => v.riwayaId == 'ruways')) {
+    final hafs = lettersOf(item.ayah.words[item.word]);
+    // The hamza replaced is not always the first letter (لِأَهَبَ).
+    final h = tasheel
+        ? (second ? 1 : 0)
+        : _hamzaLetter(item.ayah.words[item.word]);
+    final before = lettersOf(item.text.substring(start)).take(h).join().length;
+    if (!tasheel &&
+        item.readings.any(
+          (v) => const {'ruways', 'rawh'}.contains(v.riwayaId),
+        )) {
       // Keep the original alif/ya/waw seat; the circled letter replaces its
       // hamza rather than adding a second, full-size replacement letter.
       markedText = markedText.replaceRange(
-        start,
-        start + 1,
-        lettersOf(item.ayah.words[item.word]).first[0],
+        start + before,
+        start + before + 1,
+        hafs[h][0],
       );
     }
     return HamzaReplacementMark(
       text: markedText,
-      originalHamza: lettersOf(item.ayah.words[item.word])[second ? 1 : 0],
-      offset:
-          start +
-          (second ? lettersOf(item.text.substring(start)).first.length : 0),
+      originalHamza: hafs[h],
+      offset: start + before,
       letter: item.replacement!,
       style: style,
       color: color,
@@ -3214,4 +3249,11 @@ class _Dots extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The letter whose hamza a replacement circle stands for: the first hamza
+/// of the Hafs word (its first letter when it has none).
+int _hamzaLetter(String word) {
+  final i = lettersOf(word).indexWhere((l) => RegExp('[ءأإآؤئ]').hasMatch(l));
+  return i < 0 ? 0 : i;
 }

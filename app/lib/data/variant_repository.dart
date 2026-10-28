@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../models/quran.dart';
 import 'arabic.dart';
+import 'kharouf.dart';
 import 'book_readings.dart';
 
 /// Loads the per-riwaya difference files from `assets/data/qiraat/` and
@@ -273,8 +274,8 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       p[2] as int,
       p[3] as int,
     );
-    final how = p[5] as String;
-    final wujuh = p.length > 7 ? p[7] as String : '';
+    final how = withoutPageReference(p[5] as String);
+    final wujuh = withoutPageReference(p.length > 7 ? p[7] as String : '');
     // A note without written text or an explanation cannot establish a lexical
     // omission. E.g. a margin reminder of Warsh's badal on رؤوف at 24:20.
     if ((p[4] as String).isEmpty && how.isEmpty && wujuh.isEmpty) continue;

@@ -120,6 +120,16 @@ bool showYaqubMimExample(Variant reading, String hafs) {
 String withoutSeparatedMaddSign(String text) =>
     text.replaceFirst(RegExp(r'ٓ(?=[ً-ٰٟۖ-ۭ]*(?:ا[ْ۟۠][ً-ٰٟۖ-ۭ]*)?$)'), '');
 
+/// Ha of tanbih and ya of nida joined in the rasm to a hamza (هَٰٓؤُلَآءِ،
+/// هَٰٓأَنتُمۡ، يَٰٓأَيُّهَا، يَٰٓـَٔادَمُ) carry a separated madd within one word.
+final _joinedSeparatedMadd = RegExp(
+  r'^((?:[أوف]َ)?[هي]َٰ)ٓ'
+  r'(?=ـ?[ءأإؤئٔ])',
+);
+
+String withoutJoinedSeparatedMaddSign(String text) =>
+    text.replaceFirstMapped(_joinedSeparatedMadd, (m) => m[1]!);
+
 /// The source's bare initial alif records the ibdal face. A long ibdal before
 /// a sakin needs its madd sign; a facilitated/retained hamza must stay intact.
 String? hamzaPairMaddText(Variant reading, String source) {

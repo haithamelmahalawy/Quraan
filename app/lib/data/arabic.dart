@@ -502,7 +502,17 @@ String completeReadingVowels(String text, String baseline) {
                 own[i] == 'ن' &&
                 next.isNotEmpty &&
                 'تثجدذزسشصضطظفقك'.contains(next[0]);
-            if (!explicit.hasMatch(own[i]) && !assimilated && !hidden) {
+            // A bare last ya after a kasra is the madd ya, the ya of idafa
+            // read sakin (لِي، بَيۡتِي): not Hafs's fatha (لِيَ).
+            final maddYa =
+                i == own.length - 1 &&
+                i > 0 &&
+                'يى'.contains(own[i][0]) &&
+                own[i - 1].contains('ِ');
+            if (!explicit.hasMatch(own[i]) &&
+                !assimilated &&
+                !hidden &&
+                !maddYa) {
               for (final m in marks.allMatches(source[j])) {
                 if (!own[i].contains(m[0]!)) own[i] += m[0]!;
               }

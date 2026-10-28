@@ -16,6 +16,35 @@ void main() {
     await repository.ensureLoaded(repository.available);
   });
 
+  test('Ruways shown, Hafs compared: his sakin ya is no difference', () {
+    for (final (s, a, w) in [(6, 14, 13), (6, 15, 1), (2, 30, 23)]) {
+      for (final displayed in ['ruways', 'rawh']) {
+        expect(
+          compareReadings(
+            repository: repository,
+            ayah: quran.ayah(s, a),
+            word: w,
+            displayed: displayed,
+            selected: {'hafs', displayed},
+          ),
+          isEmpty,
+          reason: '$displayed $s:$a:$w',
+        );
+      }
+    }
+    // Against Warsh, who opens it (إِنِّيَ أَعۡلَمُ), it still is.
+    expect(
+      compareReadings(
+        repository: repository,
+        ayah: quran.ayah(2, 30),
+        word: 23,
+        displayed: 'ruways',
+        selected: {'warsh', 'ruways'},
+      ),
+      isNotEmpty,
+    );
+  });
+
   test('explicit ghunna rules remain available for word details', () {
     final readings = compareReadings(
       repository: repository,

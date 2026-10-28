@@ -250,6 +250,17 @@ String readingText(
   return _apply(ayah, _rows(repository, id, ayah, from, to), from, to);
 }
 
+/// How Hafs reads the last ya of the word [w]: 'fath' (وَجۡهِيَ) or 'sukun'
+/// (إِنِّيٓ); null without one.
+String? _hafsYa(Ayah ayah, int w) {
+  if (w < 0 || w >= ayah.words.length) return null;
+  final word = ayah.words[w].replaceAll(RegExp('[ۖ-ۜ]'), '');
+  final at = word.lastIndexOf('ي');
+  if (at < 0) return null;
+  final marks = RegExp('^[ً-ٰٟ۟-ۭ]*').firstMatch(word.substring(at + 1))![0]!;
+  return marks.contains('َ') ? 'fath' : 'sukun';
+}
+
 String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
   final unresolved = [
     for (final v in rows.where(_lexical)) ...[
@@ -257,7 +268,10 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
         '${v.word - from}:${v.count}:${_descriptionKey(v.shownDescription)}',
       if (v.bookWujuh.isNotEmpty)
         '${v.word - from}:${_descriptionKey(v.bookWujuh)}',
-      if (_yaIdafa(v) case final ya?) '${v.word - from}:ya:$ya',
+      // Read as Hafs reads it (إِنِّيٓ sakin, وَجۡهِيَ open), the ya is no
+      // difference from him; it still is from those who read it otherwise.
+      if (_yaIdafa(v) case final ya? when ya != _hafsYa(ayah, v.word))
+        '${v.word - from}:ya:$ya',
     ],
   ]..sort();
   return '${readingTextKey(_apply(ayah, rows.where((v) => !v.stopOnly).toList(), from, to), baseline: ayah.words.sublist(from, to).join(' '))}#${unresolved.join(';')}';

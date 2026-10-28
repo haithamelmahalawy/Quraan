@@ -164,7 +164,12 @@ class _ReplacementPainter extends CustomPainter {
           fontSize *
               (hamza.startsWith('ء')
                   ? -0.12
-                  : HamzaReplacementMark.isBelow(hamza)
+                  : HamzaReplacementMark.isBelow(hamza) ||
+                        // The eased hamza with its kasra (أَئِنَّكُمۡ): under
+                        // the seat, as the kasra is.
+                        letter.isEmpty &&
+                            hamza.startsWith('ئ') &&
+                            hamza.contains('ِ')
                   ? 0.15
                   : letter.isEmpty && RegExp('^[ؤئ]').hasMatch(hamza)
                   ? -.48

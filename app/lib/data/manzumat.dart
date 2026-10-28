@@ -507,6 +507,10 @@ class Manzumat {
     final d = v.shownDescription;
     if (poem == Poem.shatibiyya && _anaWasl(v)) return {521};
     if (poem == Poem.durrah) {
+      // 14:2 Ruways's «ٱللَّهُ» when starting: «وَطِبْ رَفْعَ أَللهِ ابْتِدَاءً».
+      if (v.riwayaId == 'ruways' && v.surah == 14 && v.ayah == 2) {
+        if (v.word == 0) return {138};
+      }
       if (const {'ruways', 'rawh'}.contains(v.riwayaId)) {
         final specific = switch (v.rule) {
           'ishmam' when v.riwayaId == 'ruways' => <int>{62, 63},
