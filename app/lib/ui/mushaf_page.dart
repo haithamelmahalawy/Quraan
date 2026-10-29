@@ -20,6 +20,7 @@ import 'kharouf_section.dart' show readersAr;
 import 'mushaf_lines.dart';
 import 'mushaf_zoom.dart';
 import 'hamza_replacement_mark.dart';
+import 'letter_above_mark.dart';
 import 'hafs_font_marks.dart';
 import 'quran_word_text.dart';
 import 'partition_marker.dart';
@@ -1136,7 +1137,7 @@ class _MushafPageState extends State<MushafPage>
       'ruways',
       'rawh',
     }.contains(widget.settings.displayed);
-    final ownKabir = widget.settings.displayed == 'ruways'
+    final ownKabir = isYaqub
         ? _baseAt(
             widget.variants,
             widget.settings,
@@ -1150,8 +1151,7 @@ class _MushafPageState extends State<MushafPage>
         ? widget.quran.ayah(ayah.surah, ayah.number - 1)
         : null;
     final previousWord = w > 0 ? w - 1 : (previousAyah?.words.length ?? 0) - 1;
-    final previousKabir =
-        widget.settings.displayed == 'ruways' && previousAyah != null
+    final previousKabir = isYaqub && previousAyah != null
         ? _baseAt(widget.variants, widget.settings, previousAyah, previousWord)
               .where((v) => v.word == previousWord && v.rule == 'idgham_kabir')
               .firstOrNull
@@ -1187,12 +1187,36 @@ class _MushafPageState extends State<MushafPage>
         RegExp(r'ِ[ۖ-ۭ]*$').hasMatch(ayah.words[w]) &&
         RegExp('^[أإآ]')
             .hasMatch(_writtenDisplayWord(ayah, w + 1, qcf: false)?.text ?? '');
+    // Read without Hafs's sakt (مَّرۡقَدِنَاۜ): its small sin is not written.
+    final noSakt =
+        widget.settings.displayed != null &&
+        _baseAt(
+          widget.variants,
+          widget.settings,
+          ayah,
+          w,
+        ).any((v) => v.word == w && v.rule == 'no_sakt');
+    // Without the sakt, its idgham (مَن رَّاقٖ، بَل رَّانَ): the first word's
+    // last letter bare, the next word's first letter doubled.
+    bool saktIdgham(Ayah a, int i) =>
+        i >= 0 &&
+        widget.settings.displayed != null &&
+        _baseAt(widget.variants, widget.settings, a, i).any(
+          (v) =>
+              v.word == i &&
+              v.rule == 'no_sakt' &&
+              v.description.contains('إدغام'),
+        );
+    final ownSaktIdgham = saktIdgham(ayah, w);
+    final previousSaktIdgham = w > 0 && saktIdgham(ayah, w - 1);
     final shown = _writtenDisplayWord(
       ayah,
       w,
       qcf:
           qcf &&
           !clashKasra &&
+          !noSakt &&
+          !previousSaktIdgham &&
           !shortMadd &&
           stoppingMadd == null &&
           ownKabir == null &&
@@ -1219,6 +1243,11 @@ class _MushafPageState extends State<MushafPage>
           _writtenDisplayWord(previousAyah, previousWord, qcf: false)?.text ??
           previousAyah.words[previousWord];
       text = ruwaysKabirText(previousKabir, previous, text)?.second ?? text;
+    }
+    if (noSakt) text = text.replaceAll('ۜ', '');
+    if (ownSaktIdgham) text = text.replaceFirst(RegExp(r'[ْۡ](?=[ۖ-ۜ]*$)'), '');
+    if (previousSaktIdgham && !RegExp('^.ّ').hasMatch(text)) {
+      text = '${text[0]}ّ${text.substring(1)}';
     }
     if (clashKasra) text = text.replaceFirst(RegExp(r'ِ(?=[ۖ-ۭ]*$)'), 'ۡ');
     if (stoppingMadd != null) {
@@ -1262,6 +1291,9 @@ class _MushafPageState extends State<MushafPage>
       if (v.word != w || v.text.isEmpty) return null;
       if (const {'ruways', 'rawh'}.contains(s.displayed) &&
           _replacementAt(ayah, w) != null) {
+        return (text: ayah.words[w], font: 'Hafs');
+      }
+      if (_dadAsZa(ayah, w) != null) {
         return (text: ayah.words[w], font: 'Hafs');
       }
       return (text: withNaqlVowel(v.text, ayah.words[w]), font: 'Hafs');
@@ -1355,6 +1387,29 @@ class _MushafPageState extends State<MushafPage>
                   widget.settings.kinds.contains(v.kind),
             )
             .firstOrNull;
+
+  /// The displayed riwaya reads the word's dad as a za' (بِظَنِينٖ for
+  /// بِضَنِينٖ): the index of that letter, written as the rasm's dad with a
+  /// small za' over it.
+  int? _dadAsZa(Ayah ayah, int w) {
+    if (widget.settings.displayed == null) return null;
+    final v = _baseAt(
+      widget.variants,
+      widget.settings,
+      ayah,
+      w,
+    ).where((v) => v.word == w && v.count == 1 && v.canReplaceText).firstOrNull;
+    if (v == null) return null;
+    final hafs = lettersOf(ayah.words[w]), own = lettersOf(v.text);
+    if (hafs.length != own.length) return null;
+    int? at;
+    for (var i = 0; i < hafs.length; i++) {
+      if (hafs[i][0] == own[i][0]) continue;
+      if (at != null || hafs[i][0] != 'ض' || own[i][0] != 'ظ') return null;
+      at = i;
+    }
+    return at;
+  }
 
   Variant? _ruwaysTasheelAt(Ayah ayah, int w) =>
       widget.settings.displayed != 'ruways'
@@ -1638,6 +1693,17 @@ class _MushafPageState extends State<MushafPage>
         color: ReadingColors.hamza,
         style: TextStyle(fontFamily: 'Hafs', fontSize: fontSize, height: 1),
         builder: ink,
+      );
+    }
+    final za = _dadAsZa(ayah, w);
+    if (za != null) {
+      word = LetterAboveMark(
+        text: drawn,
+        offset: lettersOf(drawn).take(za).join().length,
+        letter: 'ظ',
+        style: TextStyle(fontFamily: 'Hafs', fontSize: fontSize, height: 1),
+        color: m.color ?? MushafColors.ink,
+        child: word,
       );
     }
     if (m.mutashabih) {
@@ -2109,6 +2175,11 @@ List<String> _usulOf(Variant v) {
     ];
   }
   if (v.rule == 'ha_antum') return ['همزة هأنتم'];
+  // Ya'qub's naql (عَادٗا ٱلُّاولَىٰ) is told in its own chapter only, though its
+  // note names the merged tanween.
+  if (v.rule == 'naql' && const {'ruways', 'rawh'}.contains(v.riwayaId)) {
+    return ['النقل'];
+  }
   if (v.rule == 'hamza_wasl') {
     return ['همزة الاستفهام مع همزة الوصل', if (d.contains('نقل')) 'النقل'];
   }

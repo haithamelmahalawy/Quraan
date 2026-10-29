@@ -274,7 +274,36 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
         '${v.word - from}:ya:$ya',
     ],
   ]..sort();
-  return '${readingTextKey(_apply(ayah, rows.where((v) => !v.stopOnly).toList(), from, to), baseline: ayah.words.sublist(from, to).join(' '))}#${unresolved.join(';')}';
+  final applied = _apply(
+    ayah,
+    rows.where((v) => !v.stopOnly).toList(),
+    from,
+    to,
+  );
+  // Hafs's alif marked ۠ (ٱلظُّنُونَا۠) is dropped in wasl only: a reading
+  // without it at all (ٱلظُّنُونَ) differs from him when stopping.
+  final ownWords = applied.split(' ');
+  final noStopAlif = [
+    for (var w = from; w < to; w++)
+      if (RegExp(r'ا[ً-ٰ]*۠[ۖ-ۭ]*$').hasMatch(ayah.words[w]) &&
+          w - from < ownWords.length &&
+          !RegExp(r'ا[ً-ٰ۠-ۭ]*$').hasMatch(ownWords[w - from]))
+        '${w - from}:no-stop-alif',
+    // A letter of the rasm left unread (رَءُو۟فٞ: its waw) where Hafs reads it.
+    for (var w = from; w < to; w++)
+      if (w - from < ownWords.length &&
+          '۟'.allMatches(ownWords[w - from]).length >
+              '۟'.allMatches(ayah.words[w]).length)
+        '${w - from}:unread-letter',
+    // Hafs's sad with the small sin (ٱلۡمُصَۣيۡطِرُونَ) is read with either; a
+    // plain sad is that one way only.
+    for (var w = from; w < to; w++)
+      if (RegExp('ص[ً-ْ]*[ۣۜ]').hasMatch(ayah.words[w]) &&
+          w - from < ownWords.length &&
+          RegExp('ص(?![ً-ْ]*[ۣۜ])').hasMatch(ownWords[w - from]))
+        '${w - from}:sad-only',
+  ];
+  return '${readingTextKey(applied, baseline: ayah.words.sublist(from, to).join(' '))}#${[...unresolved, ...noStopAlif].join(';')}';
 }
 
 /// Compare each selected narrator with the displayed narrator. A missing

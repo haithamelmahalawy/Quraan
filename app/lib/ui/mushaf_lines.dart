@@ -108,10 +108,11 @@ class MushafLines extends StatelessWidget {
                       style: _style(fontSize, 'Hafs'),
                     ),
                   ),
-                  TextLine(:final words) => _textLine(
+                  TextLine(:final words, centered: final short) => _textLine(
                     words,
                     fontSize,
                     constraints.maxWidth,
+                    short,
                   ),
                 },
               ),
@@ -121,10 +122,16 @@ class MushafLines extends StatelessWidget {
     );
   }
 
-  Widget _textLine(List<(Ayah, int)> words, double pageSize, double width) {
+  Widget _textLine(
+    List<(Ayah, int)> words,
+    double pageSize,
+    double width, [
+    bool short = false,
+  ]) {
     // Every word and line shares the page's font size. The longest line
     // has already constrained that size in _fitFontSize.
     final fontSize = pageSize;
+    final centered = this.centered || short;
     final kashida = centered
         ? const <int, int>{}
         : _kashida(words, fontSize, width);

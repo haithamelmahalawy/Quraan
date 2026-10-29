@@ -267,7 +267,7 @@ class QuranRepository {
           case 'e':
             out.add(const TextLine([]));
           case 'a':
-            final ref = l.skip(1).cast<int>().toList();
+            final ref = l.skip(1).take(6).cast<int>().toList();
             out.add(
               TextLine(
                 _words(
@@ -275,6 +275,8 @@ class QuranRepository {
                   (ref[0], ref[1], ref[2]),
                   (ref[3], ref[4], ref[5]),
                 ),
+                // A short last line of a surah, centred as in the print.
+                centered: l.length > 7 && l[7] == 'c',
               ),
             );
         }
@@ -328,10 +330,14 @@ class BasmalaLine extends MushafLine {
 }
 
 class TextLine extends MushafLine {
-  const TextLine(this.words);
+  const TextLine(this.words, {this.centered = false});
 
   /// The Hafs words on the line, in reading order.
   final List<(Ayah, int)> words;
+
+  /// Centred with the words' own spacing (القارعة، الكوثر… end so), not
+  /// drawn out to the width.
+  final bool centered;
 }
 
 /// The printed mushafs the app shows, with the same Hafs text.

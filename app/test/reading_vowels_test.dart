@@ -43,6 +43,15 @@ void main() {
       expect(completeReadingVowels('تُقبل', 'يُقۡبَلُ'), 'تُقۡبَلُ');
       // The silent lam of ٱل before a sun letter takes no vowel.
       expect(completeReadingVowels('ٱللَّهُ', 'لِلَّهِ'), 'ٱللَّهُ');
+      // The plural waw before the silent alif stays bare.
+      expect(
+        completeReadingVowels('لِتُرۡبُواْ', 'لِّيَرۡبُوَاْ'),
+        'لِتُرۡبُواْ',
+      );
+      // A kashida carries no vowel of its own.
+      expect(completeReadingVowels('ٱلَّـٰٓيِٕ', 'ٱلَّٰٓـِٔي'), 'ٱلَّـٰٓيِٕ');
+      // A madd waw after a damma takes no sukun from Hafs.
+      expect(completeReadingVowels('فَرُوحٞ', 'فَرَوۡحٞ'), 'فَرُوحٞ');
       expect(completeReadingVowels('إِنِّي', 'إِنِّيٓ'), 'إِنِّي');
       expect(completeReadingVowels('مَن رَّاقٍ', 'مَنۡ رَاقٍ'), 'مَن رَّاقٍ');
     },

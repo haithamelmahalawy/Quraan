@@ -466,6 +466,10 @@ void main() {
             second = lettersOf(example.last);
         if (v.surah == 27 && v.ayah == 36) {
           expect(example.first, contains('وٓنّ'));
+        } else if (v.surah == 53 && v.ayah == 55) {
+          expect(example.first, 'رَبِّكَ');
+          expect(second[0], 'ت');
+          expect(second[1], contains('ّ'));
         } else if (v.surah == 34 && v.ayah == 46) {
           expect(example.first, 'ثُمَّ');
           expect(second[0], 'ت');

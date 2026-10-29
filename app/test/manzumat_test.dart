@@ -553,6 +553,28 @@ void main() {
     }
   });
 
+  test('Yaqub الظنون and her sisters cite the Shatibiyya (Abu Amr)', () {
+    for (final (a, w) in [(10, 15), (66, 10), (67, 7)]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: 'rawh',
+          surah: 33,
+          ayah: a,
+          word: w,
+          count: 1,
+          text: 'ٱلظُّنُونَ',
+          kind: VariantKind.farsh,
+          description: 'بحذف الألف وصلاً ووقفًا',
+        ),
+        'ٱلظُّنُونَا۠',
+        33,
+        surahs,
+      );
+      expect(r.poem, Poem.shatibiyya, reason: '33:$a');
+      expect(r.mention, {969}, reason: '33:$a');
+    }
+  });
+
   test('Yaqub يصدقني (28:34) cites «وَيُصَدِّقْ فِه»', () {
     for (final id in ['ruways', 'rawh']) {
       final r = manzumat.referenceOf(

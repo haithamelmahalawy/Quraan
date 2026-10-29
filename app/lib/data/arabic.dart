@@ -203,7 +203,10 @@ String tanweenBefore(String text, String? next) {
       'ٌ' || 'ٞ' => 1,
       _ => 2,
     };
-    final form = 'ءأإآؤئعحغخهاٱ'.contains(letter)
+    // The naql into the lam before a bare alif (عَادٗا ٱلُّاولَىٰ): the tanween
+    // merges into the lam (not ٱلَّذِينَ, whose wasla takes the tanween).
+    final merged = after != null && RegExp('^ٱلّ[ًَ-ِ]?ا').hasMatch(after);
+    final form = !merged && 'ءأإآؤئعحغخهاٱ'.contains(letter)
         ? const ['ً', 'ٌ', 'ٍ'][kind]
         : letter == 'ب'
         ? const ['َۢ', 'ُۢ', 'ِۭ'][kind]
@@ -516,11 +519,31 @@ String completeReadingVowels(String text, String baseline) {
                 i > 0 &&
                 own[i - 1][0] == 'ٱ' &&
                 next.contains('ّ');
-            if (!explicit.hasMatch(own[i]) &&
+            // A bare waw after a damma before the last (silent) alif is the
+            // waw of the plural (لِتُرۡبُواْ): not the fatha of Hafs's singular
+            // (لِّيَرۡبُوَاْ).
+            final pluralWaw =
+                own[i] == 'و' &&
+                i > 0 &&
+                i + 2 == own.length &&
+                own[i - 1].contains('ُ') &&
+                own[i + 1][0] == 'ا';
+            // A kashida (ٱلَّـٰٓيِٕ) carries no vowel of its own.
+            // A bare waw after a damma is the madd waw (فَرُوحٞ for Hafs's
+            // فَرَوۡحٞ): it takes no sukun from Hafs (still his fatha: هُوَ).
+            final maddWaw =
+                own[i] == 'و' &&
+                i > 0 &&
+                own[i - 1].contains('ُ') &&
+                RegExp('^[ْۡ]+\$').hasMatch(source[j].substring(1));
+            if (own[i][0] != 'ـ' &&
+                !maddWaw &&
+                !explicit.hasMatch(own[i]) &&
                 !assimilated &&
                 !hidden &&
                 !maddYa &&
-                !sunLam) {
+                !sunLam &&
+                !pluralWaw) {
               for (final m in marks.allMatches(source[j])) {
                 if (!own[i].contains(m[0]!)) own[i] += m[0]!;
               }

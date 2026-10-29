@@ -45,14 +45,15 @@ bool showYaqubYaIdafaExample(Variant reading, String reference) {
   return own.last.contains('َ') != other.last.contains('َ');
 }
 
-/// Writes Ruways's chosen idgham face without adding a sukun to the first
+/// Writes Ya'qub's chosen idgham face without adding a sukun to the first
 /// consonant. Both page words and the margin use this same transformation.
 ({String first, String second})? ruwaysKabirText(
   Variant reading,
   String first,
   String second,
 ) {
-  if (reading.riwayaId != 'ruways' || reading.rule != 'idgham_kabir') {
+  if (!const {'ruways', 'rawh'}.contains(reading.riwayaId) ||
+      reading.rule != 'idgham_kabir') {
     return null;
   }
   final a = lettersOf(first), b = lettersOf(second);
@@ -71,8 +72,10 @@ bool showYaqubYaIdafaExample(Variant reading, String reference) {
     if (waw >= 0 && !a[waw].contains('ٓ')) a[waw] += 'ٓ';
     return (first: a.join(), second: second);
   }
-  if (reading.surah == 34 && reading.ayah == 46) {
-    // The doubled consonants are the two tas in تتفكروا, not ثم's mim.
+  if (reading.surah == 34 && reading.ayah == 46 ||
+      reading.surah == 53 && reading.ayah == 55) {
+    // The doubled consonants are the two tas in تتفكروا، تتمارى, not the
+    // first word's last letter.
     if (b.length >= 2 && b[0].startsWith('ت') && b[1].startsWith('ت')) {
       b[0] = 'ت';
       b[1] = doubled(b[1]);

@@ -9,6 +9,7 @@ import 'package:qiraat_mushaf/data/reading_comparison.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
 import 'package:qiraat_mushaf/ui/hamza_replacement_mark.dart';
+import 'package:qiraat_mushaf/ui/letter_above_mark.dart';
 import 'package:qiraat_mushaf/ui/quran_word_text.dart';
 import 'package:qiraat_mushaf/ui/mushaf_page.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
@@ -735,6 +736,20 @@ void main() {
       }
     },
   );
+
+  testWidgets('Ruways bi-zanin keeps the dad with a small za over it', (
+    t,
+  ) async {
+    await page(t, 'ruways', number: 586, selected: {'ruways'});
+    final word = find.byKey(const ValueKey('word:81:24:4'));
+    expect(t.widget<InkText>(word).text, contains('ض'));
+    final mark = t.widget<LetterAboveMark>(
+      find.ancestor(of: word, matching: find.byType(LetterAboveMark)),
+    );
+    expect(mark.letter, 'ظ');
+    expect(mark.text[mark.offset], 'ض');
+    expect(t.takeException(), isNull);
+  });
 
   testWidgets('bal before Yaqub adraka takes its sukun, not Hafs kasra', (
     t,

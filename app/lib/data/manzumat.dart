@@ -508,8 +508,13 @@ class Manzumat {
   /// Where the Durrah is silent, Ya'qub reads with his base, Abu Amr, as the
   /// Shatibiyya states it: 28:32 «وَصُحْبَةٌ كَهْفُ ضَمِّ الرَّهْبِ وَاسْكِنْهُ
   /// ذُبَّلَا» (the others, Abu Amr among them, open both).
+  /// 33:10، 66، 67 «...وَهْوَ فِي الْوَقْفِ فِي حُلَا» (the Durrah's «وَالظُّنُونَ
+  /// قِفْ مَعَ اخْتَيْهِ مَدًّا فُقْ» is Khalaf's).
   static const _yaqubInShatibiyya = {
     '28:32:13': {947},
+    '33:10:15': {969},
+    '33:66:10': {969},
+    '33:67:7': {969},
   };
 
   Set<int>? _yaqubShatibiyya(Variant v) =>
