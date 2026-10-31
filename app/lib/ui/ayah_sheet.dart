@@ -441,11 +441,13 @@ class _TafsirState extends State<_Tafsir> {
     BesideAyah.tafsir => TafsirRepository.books,
     BesideAyah.e3rab => TafsirRepository.e3rabBooks,
     BesideAyah.tawjih => TafsirRepository.tawjihBooks,
+    BesideAyah.waqf => TafsirRepository.waqfBooks,
   };
   int get _book => switch (_beside) {
     BesideAyah.tafsir => s.tafsirBook,
     BesideAyah.e3rab => s.e3rabBook,
     BesideAyah.tawjih => TafsirRepository.tawjihBooks.first.id,
+    BesideAyah.waqf => TafsirRepository.waqfBooks.first.id,
   };
 
   /// The riwayat whose readings are explained: Hafs's, and those chosen.
@@ -489,6 +491,7 @@ class _TafsirState extends State<_Tafsir> {
       case BesideAyah.e3rab:
         s.e3rabBook = id;
       case BesideAyah.tawjih:
+      case BesideAyah.waqf:
         return;
     }
     setState(() {
@@ -533,19 +536,23 @@ class _TafsirState extends State<_Tafsir> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              tab('التفسير', Icons.menu_book_rounded, BesideAyah.tafsir),
-              tab('الإعراب', Icons.account_tree_rounded, BesideAyah.e3rab),
-              tab(
-                'توجيه القراءات',
-                Icons.record_voice_over_rounded,
-                BesideAyah.tawjih,
-              ),
-            ],
-          ),
+        // All four in sight, on two lines on a narrow screen.
+        Wrap(
+          runSpacing: 6,
+          children: [
+            tab('التفسير', Icons.menu_book_rounded, BesideAyah.tafsir),
+            tab('الإعراب', Icons.account_tree_rounded, BesideAyah.e3rab),
+            tab(
+              'توجيه القراءات',
+              Icons.record_voice_over_rounded,
+              BesideAyah.tawjih,
+            ),
+            tab(
+              'الوقف والابتداء',
+              Icons.pause_circle_outline_rounded,
+              BesideAyah.waqf,
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -622,6 +629,8 @@ class _TafsirState extends State<_Tafsir> {
                       tawjih
                           ? 'لا يذكر الكتاب خلافاً بين القراء السبعة في هذه '
                                 'الآية.'
+                          : _beside == BesideAyah.waqf
+                          ? 'لا يذكر الداني وقفاً في هذه الآية.'
                           : 'لا يوجد في هذا الكتاب '
                                 '${_e3rab ? 'إعراب' : 'تفسير'} لهذه الآية.',
                     )
@@ -652,7 +661,11 @@ class _TafsirState extends State<_Tafsir> {
                     )
                   else
                     SelectableText.rich(
-                      key: tawjih ? const ValueKey('tawjih-text') : null,
+                      key: tawjih
+                          ? const ValueKey('tawjih-text')
+                          : _beside == BesideAyah.waqf
+                          ? const ValueKey('waqf-text')
+                          : null,
                       _styled(shown),
                       textDirection: TextDirection.rtl,
                       style: body,

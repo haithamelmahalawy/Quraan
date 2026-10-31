@@ -314,7 +314,19 @@ int? badalLetter(List<String> letters) {
     }
   }
   final naql = naqlLetter(letters);
-  if (naql != null) return letters[naql].contains('ٰ') ? naql : naql + 1;
+  if (naql != null) {
+    if (letters[naql].contains('ٰ')) return naql;
+    // The hamza's seat left bare before the madd ya or waw (بِالِايمَٰنِ):
+    // the madd is that letter, not the seat.
+    final seat = naql + 1;
+    if (seat + 1 < letters.length &&
+        letters[seat] == 'ا' &&
+        'يو'.contains(letters[seat + 1][0]) &&
+        !RegExp('[ً-ْۡ]').hasMatch(letters[seat + 1])) {
+      return seat + 1;
+    }
+    return seat;
+  }
   if (letters.isNotEmpty && _alefs.contains(letters.first[0])) return 0;
   return null;
 }

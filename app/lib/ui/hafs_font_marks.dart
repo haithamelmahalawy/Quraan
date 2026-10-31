@@ -57,8 +57,11 @@ class HafsFontMarks extends StatelessWidget {
   /// (وَرَآيِٕ، ٱللُّؤۡلُوِٕ، ٱمۡرِيٕٖ): the font draws it across the hamza; it
   /// is drawn apart, under the hamza.
   static final _kasras = RegExp('[ٍِٖ]');
+  // Also on a kashida (Warsh's اَ۬لنَّبِيٓـِٕۧنَ): its hamza hangs below it.
   static bool _kasraUnderHamza(String cluster) =>
-      (cluster.startsWith('ي') || cluster.startsWith('و')) &&
+      (cluster.startsWith('ي') ||
+          cluster.startsWith('و') ||
+          cluster.startsWith('ـ')) &&
       cluster.contains('ٕ') &&
       _kasras.hasMatch(cluster);
 

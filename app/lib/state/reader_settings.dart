@@ -275,7 +275,7 @@ class ReaderSettings extends ChangeNotifier {
 }
 
 /// What the ayah sheet shows beside the ayah.
-enum BesideAyah { tafsir, e3rab, tawjih }
+enum BesideAyah { tafsir, e3rab, tawjih, waqf }
 
 /// The ways the words that differ from Hafs can move («تنبيه الاختلافات»).
 enum DiffAlert {

@@ -15,7 +15,6 @@ import 'package:qiraat_mushaf/state/reader_settings.dart';
 import 'package:qiraat_mushaf/ui/hamza_replacement_mark.dart';
 import 'package:qiraat_mushaf/ui/hafs_font_marks.dart';
 import 'package:qiraat_mushaf/ui/quran_word_text.dart';
-import 'package:qiraat_mushaf/ui/stopping_taqlil_mark.dart';
 import 'package:qiraat_mushaf/ui/mushaf_page.dart';
 import 'package:qiraat_mushaf/ui/mushaf_lines.dart';
 import 'package:qiraat_mushaf/ui/reading_colors.dart';
@@ -473,46 +472,56 @@ void main() {
     tags: 'golden',
   );
 
-  testWidgets('page 31 leaves khayrin uncoloured and keeps khayra orange', (
-    t,
-  ) async {
-    for (final displayed in [null, 'warsh']) {
-      await page(
-        t,
-        31,
-        settings: ReaderSettings.memory(selected: {'warsh'})
-          ..displayed = displayed,
-      );
-      final kasra = t.widget<InkText>(
-        find.byKey(const ValueKey('word:2:197:18')),
-      );
-      final fatha = t.widget<InkText>(
-        find.byKey(const ValueKey('word:2:197:23')),
-      );
-      expect(kasra.style.color, MushafColors.ink);
-      expect(fatha.style.color, MushafColors.rule);
-      expect(
-        find.byKey(const ValueKey('usul-reference:ترقيق الراء:2:197:18:warsh')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const ValueKey('usul-reference:ترقيق الراء:2:197:23:warsh')),
-        findsOneWidget,
-      );
-      expect(t.takeException(), isNull);
-      await expectLater(
-        find.byType(MushafPage),
-        matchesGoldenFile(
-          displayed == null
-              ? 'goldens/p31_hafs_warsh_tarqiq.png'
-              : 'goldens/p31_warsh_tarqiq.png',
-        ),
-      );
-    }
-  }, tags: 'golden');
+  testWidgets(
+    'page 31 leaves khayrin uncoloured and keeps the ra of khayra orange',
+    (t) async {
+      for (final displayed in [null, 'warsh']) {
+        await page(
+          t,
+          31,
+          settings: ReaderSettings.memory(selected: {'warsh'})
+            ..displayed = displayed,
+        );
+        final kasra = t.widget<InkText>(
+          find.byKey(const ValueKey('word:2:197:18')),
+        );
+        final fatha = t.widget<InkText>(
+          find.byKey(const ValueKey('word:2:197:23')),
+        );
+        expect(kasra.style.color, MushafColors.ink);
+        expect(kasra.parts?.where((p) => p.$2 != null), anyOf(isNull, isEmpty));
+        // Only the ra of خَيۡرٖ is orange; the rest of the word is in ink.
+        expect(fatha.style.color, MushafColors.ink);
+        final orange = fatha.parts!.where((p) => p.$2 == MushafColors.rule);
+        expect(orange.map((p) => p.$1[0]), ['ر']);
+        expect(
+          find.byKey(
+            const ValueKey('usul-reference:ترقيق الراء:2:197:18:warsh'),
+          ),
+          findsNothing,
+        );
+        expect(
+          find.byKey(
+            const ValueKey('usul-reference:ترقيق الراء:2:197:23:warsh'),
+          ),
+          findsOneWidget,
+        );
+        expect(t.takeException(), isNull);
+        await expectLater(
+          find.byType(MushafPage),
+          matchesGoldenFile(
+            displayed == null
+                ? 'goldens/p31_hafs_warsh_tarqiq.png'
+                : 'goldens/p31_warsh_tarqiq.png',
+          ),
+        );
+      }
+    },
+    tags: 'golden',
+  );
 
   testWidgets(
-    'stopping taqlil colours and glows only final alif with a circled dot',
+    'stopping taqlil colours and glows only final alif, with no sign under it',
     (t) async {
       for (final displayed in [null, 'warsh']) {
         for (final (p, a, w) in [(33, 213, 32), (35, 222, 5), (2, 2, 5)]) {
@@ -532,11 +541,8 @@ void main() {
           expect(ink.glowFinalAlif, isTrue);
           expect(ink.glowStrength, greaterThan(0));
           expect(
-            find.ancestor(
-              of: target,
-              matching: find.byType(StoppingTaqlilMark),
-            ),
-            findsOneWidget,
+            find.ancestor(of: target, matching: find.byType(CustomPaint)),
+            findsWidgets,
           );
           final glowing = [
             for (final text in t.widgetList<Text>(
@@ -558,13 +564,6 @@ void main() {
           expect(example, findsOneWidget);
           expect(
             find.descendant(of: example, matching: find.text(' (وقفًا فقط)')),
-            findsOneWidget,
-          );
-          expect(
-            find.descendant(
-              of: example,
-              matching: find.byType(StoppingTaqlilMark),
-            ),
             findsOneWidget,
           );
           expect(t.takeException(), isNull);

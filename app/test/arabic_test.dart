@@ -166,4 +166,10 @@ void main() {
     expect(kashidaSlots(lettersOf('دَارُ')), isEmpty);
     expect(kashidaSlots(lettersOf('لَا')), isEmpty);
   });
+  test('badal after naql colours the madd ya, not the bare hamza seat', () {
+    int? at(String w) => badalLetter(lettersOf(w));
+    expect(lettersOf('بِالِايمَٰنِ')[at('بِالِايمَٰنِ')!], 'ي');
+    // The alif itself is the madd after a fatha (اَ۬لَاخِرَةِ).
+    expect(lettersOf('اَ۬لَاخِرَةِ')[at('اَ۬لَاخِرَةِ')!], 'ا');
+  });
 }

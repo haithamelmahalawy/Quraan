@@ -144,5 +144,21 @@ void main() {
     expect(shown(), contains('الباقون'));
     // Ya'qub (Ruways) is not in the book of the seven.
     expect(find.textContaining('ليس فيه توجيه قراءة: رويس'), findsOneWidget);
+
+    // The stops of the ayah, beside them (الوقف والابتداء).
+    await tester.tap(find.byKey(const ValueKey('waqf-tab')));
+    await settle();
+    expect(settings.besideAyah, BesideAyah.waqf);
+    expect(
+      find.text('المكتفى في الوقف والابتدا — أبو عمرو الداني'),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<SelectableText>(find.byKey(const ValueKey('waqf-text')))
+          .textSpan!
+          .toPlainText(),
+      'ومثله ﴿معروفا﴾ [أي: كاف]',
+    );
   });
 }

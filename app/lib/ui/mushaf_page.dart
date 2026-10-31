@@ -27,7 +27,6 @@ import 'partition_marker.dart';
 import 'reference_sheet.dart';
 import 'reading_colors.dart';
 import 'theme.dart';
-import 'stopping_taqlil_mark.dart';
 
 typedef WordTap = void Function(Ayah ayah, int word);
 
@@ -1277,6 +1276,11 @@ class _MushafPageState extends State<MushafPage>
       w,
     );
     final base = _baseAt(widget.variants, s, ayah, w);
+    if (source != null &&
+        s.displayed == 'warsh' &&
+        _ruwaysTasheelAt(ayah, w) != null) {
+      return (text: ayah.words[w], font: 'Hafs');
+    }
     if (source != null) {
       final marked = base
           .map((v) => hamzaPairMaddText(v, source))
@@ -1328,7 +1332,6 @@ class _MushafPageState extends State<MushafPage>
   List<Variant>? _letterReadings(Ayah ayah, int w) {
     final s = widget.settings;
     final base = _baseAt(widget.variants, s, ayah, w);
-    final lexicalBase = base.any((v) => v.inHamesh);
     final readings =
         [
               ...base.where((v) => v.isUsul),
@@ -1360,13 +1363,14 @@ class _MushafPageState extends State<MushafPage>
         lexical && !readings.any((v) => v.isTarqiqOrTaghliz)) {
       return null;
     }
-    if (readings.every((v) => v.isTarqiqOrTaghliz) && !lexicalBase ||
-        (readings.any((v) => v.isImala && !v.isStoppingTaqlil) &&
-            readings.every(
-              (v) =>
-                  (v.isImala || v.isBadal) &&
-                  !RegExp('همز|نقل|صلة|إدغام|ادغام').hasMatch(v.description),
-            ))) {
+    // Tarqiq and taghliz colour their ra or lam alone, the rest of the word
+    // in ink (the whole word glows when differences are alerted).
+    if ((readings.any((v) => v.isImala && !v.isStoppingTaqlil) &&
+        readings.every(
+          (v) =>
+              (v.isImala || v.isBadal) &&
+              !RegExp('همز|نقل|صلة|إدغام|ادغام').hasMatch(v.description),
+        ))) {
       return null;
     }
     return readings;
@@ -1411,14 +1415,24 @@ class _MushafPageState extends State<MushafPage>
     return at;
   }
 
+  /// Ruways's eased hamza, and Warsh's second hamza of two words (شُهَدَآءَ
+  /// إِذۡ), drawn on Hafs's hamza with the circle; Warsh's own text writes it
+  /// as a bare alif.
   Variant? _ruwaysTasheelAt(Ayah ayah, int w) =>
-      widget.settings.displayed != 'ruways'
+      !const {'ruways', 'warsh'}.contains(widget.settings.displayed)
       ? null
       : _baseAt(widget.variants, widget.settings, ayah, w)
             .where(
               (v) =>
                   v.word == w &&
-                  const {'tasheel_word', 'tasheel_pair'}.contains(v.rule) &&
+                  (widget.settings.displayed == 'warsh'
+                      // Not where his text writes the ibdal face (ٱلسَّمَآءَ آن).
+                      ? v.rule == 'tasheel_pair' &&
+                            !v.usulWays.any((w) => w.contains('إبدال'))
+                      : const {
+                          'tasheel_word',
+                          'tasheel_pair',
+                        }.contains(v.rule)) &&
                   v.description.contains('تسهيل') &&
                   widget.settings.kinds.contains(v.kind),
             )
@@ -1653,14 +1667,9 @@ class _MushafPageState extends State<MushafPage>
               builder: (_, _) => draw(Curves.easeInOut.transform(_alert.value)),
             )
           : draw(0);
-      return stopping
-          ? StoppingTaqlilMark(
-              text: drawn,
-              style: style,
-              color: MushafColors.green,
-              child: child,
-            )
-          : child;
+      // Read so only when stopping: the letter's colour tells it, with no
+      // sign under it.
+      return child;
     }
 
     final drawn = parts?.map((p) => p.$1).join() ?? shown.text;
@@ -2982,14 +2991,7 @@ class _UsulBox extends StatelessWidget {
       color: color,
     );
     Widget text(String shown, [int? hiddenHamza]) => hiddenHamza == null
-        ? item.readings.any((v) => v.isStoppingTaqlil)
-              ? StoppingTaqlilMark(
-                  text: shown,
-                  style: style,
-                  color: color,
-                  child: QuranWordText(shown, style: style),
-                )
-              : QuranWordText(shown, style: style)
+        ? QuranWordText(shown, style: style)
         : Text.rich(
             TextSpan(
               children: [

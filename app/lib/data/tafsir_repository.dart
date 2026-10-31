@@ -80,8 +80,24 @@ class TafsirRepository {
     ),
   ];
 
-  static TafsirBook book(int id) =>
-      [...books, ...e3rabBooks, ...tawjihBooks].firstWhere((b) => b.id == id);
+  /// The books of stopping and starting (الوقف والابتداء), in the app
+  /// (built by `tool/build_waqf.dart`).
+  static const waqfBooks = [
+    TafsirBook(
+      90002,
+      'المكتفى في الوقف والابتدا',
+      'أبو عمرو الداني',
+      offline: true,
+      source: 'مشروع OpenITI (نص المكتبة الشاملة)',
+    ),
+  ];
+
+  static TafsirBook book(int id) => [
+    ...books,
+    ...e3rabBooks,
+    ...tawjihBooks,
+    ...waqfBooks,
+  ].firstWhere((b) => b.id == id);
 
   final AssetBundle _bundle;
   final http.Client _client;

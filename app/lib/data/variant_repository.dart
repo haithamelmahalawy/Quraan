@@ -390,6 +390,13 @@ bool _matchesUsul(Variant v, String how) {
     return true;
   }
   if (v.isImala && RegExp('تقليل|إمالة').hasMatch(how)) return true;
+  // Warsh's lam made heavy (ٱلصَّلَوٰةَ) or ra made light: told by its rule, not
+  // again as farsh («بتفخيم اللام حيث وقعت»). «ولا ترقق راؤه» still tells.
+  if (v.isTarqiqOrTaghliz &&
+      RegExp('تفخيم اللام|تغليظ|غلظ|ترقيق الراء|رقق').hasMatch(how) &&
+      !how.contains('لا ترقق')) {
+    return true;
+  }
   return false;
 }
 
