@@ -809,9 +809,23 @@ void main() {
     }
   }, tags: 'golden');
 
-  testWidgets('imala colours its letter alone, in the farsh colour', (
-    t,
-  ) async {
+  test('a sakin hamza after a wasl alif is read by the vowel before it', () {
+    // يَٰصَٰلِحُ ٱئۡتِنَا: a waw after the damma, a ya when begun with.
+    expect(
+      rule(7, 77, 8, 'ibdal_waw').description,
+      'بإبدال الهمزة واوًا وصلاً، وياءً ابتداءً',
+    );
+    // ٱلَّذِي ٱؤۡتُمِنَ: a ya after the kasra.
+    expect(rule(2, 283, 15, 'ibdal_ya').hamzaReplacement, 'ي');
+    expect(rule(8, 32, 16, 'ibdal_ya').description, 'بإبدال الهمزة ياءً');
+    // ٱلۡهُدَى ٱئۡتِنَا: an alif after the fatha.
+    expect(
+      rule(6, 71, 28, 'ibdal_single').description,
+      'بإبدال الهمزة ألفًا وصلاً، وياءً ابتداءً',
+    );
+  });
+
+  testWidgets('imala colours its letter alone, in the farsh colour', (t) async {
     List<(String, Color?)> coloured(String key) => [
       for (final (s, c) in t.widget<InkText>(find.byKey(ValueKey(key))).parts!)
         if (c != null) (s, c),

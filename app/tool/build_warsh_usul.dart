@@ -436,15 +436,31 @@ Map<String, int> correctWarshUsul(
           tag(p, 'naql_source', 'بنقل حركة الهمزة إليها');
         }
       }
-    } else if (w.surah == 2 && w.ayah == 283 && w.text == 'ٱؤۡتُمِنَ') {
-      // In wasl the hamza follows the kasra of ٱلَّذِي's dhal: a ya; begun
-      // with, after the damma, a waw.
+    } else if (previous != null &&
+        _waslSakinHamza(w.text) &&
+        _waslVowel(previous.text) != null) {
+      // ٱئۡتِنَا، ٱؤۡتُمِنَ: in wasl the hamza follows the vowel ending the
+      // word before, and is read by it (يَٰصَٰلِحُ وتِنَا، ٱلَّذِيتُمِنَ،
+      // ٱلۡهُدَاتِنَا); begun with, by the alif's own vowel.
+      final vowel = _waslVowel(previous.text);
+      final begun = w.text.contains('ؤ') ? 'واوًا' : 'ياءً';
+      final read = switch (vowel) {
+        'ُ' => 'واوًا',
+        'ِ' => 'ياءً',
+        _ => 'ألفًا',
+      };
       tag(
         v,
-        'ibdal_ya',
-        'بإبدال الهمزة ياءً وصلاً، وواوًا ابتداءً',
-        context: 'ٱلَّذِي ٱؤۡتُمِنَ',
-        ways: ['إبدال الهمزة ياءً وصلاً'],
+        switch (vowel) {
+          'ُ' => 'ibdal_waw',
+          'ِ' => 'ibdal_ya',
+          _ => 'ibdal_single',
+        },
+        read == begun
+            ? 'بإبدال الهمزة $read'
+            : 'بإبدال الهمزة $read وصلاً، و$begun ابتداءً',
+        context: '${previous.text} ${w.text}',
+        ways: ['إبدال الهمزة $read وصلاً'],
       );
     } else if (_singleIbdal(w.text, v[4] as String, how)
         case final String refined) {
@@ -649,6 +665,21 @@ String _farshOnly(String description) {
   );
   s = s.replaceAll(RegExp(r'^[بو\s،]+|[و\s،]+$'), '').trim();
   return s.isEmpty ? '' : 'ب$s';
+}
+
+/// A word begun with a wasl alif before a hamza with sukun (ٱئۡتِنَا).
+bool _waslSakinHamza(String word) => RegExp('^ٱ[ؤئأ]ۡ').hasMatch(word);
+
+/// The vowel ending [word] in wasl, before a sakin: its last letter's, or
+/// the one before a madd letter that drops (قَالُواْ، ٱلۡهُدَى، لِقَآءَنَا).
+String? _waslVowel(String word) {
+  final letters = lettersOf(word.replaceAll(RegExp('[ۖ-ۭ]'), ''));
+  for (final l in letters.reversed) {
+    final v = RegExp('[َُِ]').firstMatch(l)?[0];
+    if (v != null) return v;
+    if (!RegExp('^[اىوي]').hasMatch(l)) return null;
+  }
+  return null;
 }
 
 /// [own] differs from Hafs's [hafs] before its last letter: a farsh, not
