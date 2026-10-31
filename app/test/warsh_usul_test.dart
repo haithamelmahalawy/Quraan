@@ -809,6 +809,48 @@ void main() {
     }
   }, tags: 'golden');
 
+  testWidgets('imala colours its letter alone, in the farsh colour', (
+    t,
+  ) async {
+    List<(String, Color?)> coloured(String key) => [
+      for (final (s, c) in t.widget<InkText>(find.byKey(ValueKey(key))).parts!)
+        if (c != null) (s, c),
+    ];
+    // فَأَحۡيَٰكُمۡ: the ya and its sign green, the rest in ink.
+    for (final displayed in [null, 'warsh']) {
+      await page(
+        t,
+        5,
+        settings: ReaderSettings.memory(selected: {'warsh'})
+          ..displayed = displayed,
+      );
+      final green = coloured('word:2:28:5');
+      expect(green.map((p) => p.$1[0]).join(), 'ي');
+      expect(green.single.$1, contains(imalaSign));
+      expect(green.single.$2, MushafColors.green);
+    }
+    // يَٰبُشۡرَىٰ, farsh in Hafs's view: the ra green, the rest in the farsh
+    // colour; Warsh's own text alone: the ra green, the rest in ink.
+    for (final displayed in [null, 'warsh']) {
+      await page(
+        t,
+        237,
+        settings: ReaderSettings.memory(selected: {'warsh'})
+          ..displayed = displayed,
+      );
+      final parts = coloured('word:12:19:7');
+      expect(
+        parts.where((p) => p.$2 == MushafColors.green).map((p) => p.$1[0]),
+        ['ر'],
+      );
+      expect(
+        parts.where((p) => p.$2 != MushafColors.green),
+        displayed == null ? isNotEmpty : isEmpty,
+      );
+    }
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('page 55 yahya keeps imala clear of ya dots', (t) async {
     await page(
       t,

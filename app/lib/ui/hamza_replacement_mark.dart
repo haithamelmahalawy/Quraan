@@ -224,9 +224,14 @@ class _ReplacementPainter extends CustomPainter {
         textDirection: TextDirection.rtl,
       )..layout();
       final baseline = mark.computeLineMetrics().single.baseline;
-      // A fatha or damma over the small tasheel circle stands clear of it
-      // (a damma touching it reads as a waw: أَءُلۡقِيَ).
-      final gap = !below && letter.isEmpty ? .17 : .10;
+      // A fatha or damma stands clear of the circle: of the small tasheel
+      // one (a damma touching it reads as a waw: أَءُلۡقِيَ), and of the one
+      // with the ya or waw of ibdal (ٱلنِّسَآءِ أَوِ).
+      final gap = below
+          ? .10
+          : letter.isEmpty
+          ? .17
+          : .30;
       final inkY =
           center.dy + (below ? 1 : -1) * (diameter / 2 + fontSize * gap);
       mark.paint(

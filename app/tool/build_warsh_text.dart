@@ -49,9 +49,17 @@ Map<String, Object> buildWarshText(Map base, List<Map> source) {
         anchors[start].ayah,
         [
           for (var i = start; i < end; i++)
-            withKafMaddApart(
-              withHafsHamzaAbove(
-                withHafsDaggerAlif(slots[i], anchors[i].text),
+            withYaDaggerApart(
+              withNaqlDamma(
+                withKafMaddApart(
+                  withHafsHamzaAbove(
+                    withHafsFullAlif(
+                      withHafsDaggerAlif(slots[i], anchors[i].text),
+                      anchors[i].text,
+                    ),
+                    anchors[i].text,
+                  ),
+                ),
                 anchors[i].text,
               ),
             ),
@@ -139,6 +147,46 @@ String withHafsDaggerAlif(String warsh, String hafs) {
   return out.join();
 }
 
+/// Where the source writes a dagger alif and Hafs's rasm a full one in the
+/// same word (ٱلۡعِظَٰمَ for ٱلۡعِظَامَ), the full alif is written, with the
+/// marks the dagger alif carried (its madd): a dagger alif only stands for
+/// an alif Hafs's rasm has as one, or adds to it.
+String withHafsFullAlif(String warsh, String hafs) {
+  if (!warsh.contains('ٰ')) return warsh;
+  // The source's letters, a dagger alif after its letter counted apart.
+  final w = <String>[];
+  for (final c in _clusters(warsh)) {
+    final at = c.indexOf('ٰ');
+    if (at > 0 && c[0] != 'ا' && c[0] != 'ـ') {
+      w
+        ..add(c.substring(0, at))
+        ..add(c.substring(at));
+    } else {
+      w.add(c);
+    }
+  }
+  final h = _clusters(hafs);
+  if (w.length != h.length) return warsh;
+  String base(String c) => c[0].replaceAll(RegExp('[ٱأإآ]'), 'ا');
+  final full = <int>{};
+  for (var i = 0; i < w.length; i++) {
+    if (w[i].startsWith('ٰ') && h[i][0] == 'ا' && !h[i].contains('ٰ')) {
+      full.add(i);
+    } else if (w[i].startsWith('ٰ') ||
+        base(h[i]) != base(w[i]) &&
+            !(RegExp('[يى]').hasMatch(h[i][0]) &&
+                RegExp('[يى]').hasMatch(w[i][0]))) {
+      if (w[i].startsWith('ٰ')) continue;
+      return warsh;
+    }
+  }
+  if (full.isEmpty) return warsh;
+  return [
+    for (var i = 0; i < w.length; i++)
+      full.contains(i) ? 'ا${w[i].substring(1)}' : w[i],
+  ].join();
+}
+
 /// The source writes the hamza on a kashida below it, with the kasra
 /// (خَٰسِـِٕينَ، أَفْـِٕدَةٗ); where Hafs's rasm writes it above (خَٰسِـِٔينَ) it is
 /// written above, the kasra under the kashida as usual.
@@ -146,6 +194,20 @@ String withHafsHamzaAbove(String warsh, String hafs) =>
     hafs.contains('ـِٔ') || hafs.contains('ـِٔ')
     ? warsh.replaceAll('ـِٕ', 'ـِٔ')
     : warsh;
+
+/// The alif of a hamza with damma whose vowel goes to the word before
+/// (فَإِنُ اُحْصِرْتُمْ): the source marks it unread (ا۟), but the alif takes
+/// the damma, as it takes the fatha and kasra (قَدَ اَفْلَحَ، قُلِ اِنَّ).
+String withNaqlDamma(String warsh, String hafs) =>
+    hafs.startsWith('أُ') && RegExp('^ا۟(?![ً-ْ])').hasMatch(warsh)
+    ? 'اُ${warsh.substring(2)}'
+    : warsh;
+
+/// The dagger alif after a ya read with imala, on a kashida between it and
+/// the next letter (دِي۪ـٰرِهِمْ): over the ya's own stroke the font stands it
+/// on the ya, where Hafs's fatha (دِيَٰرِهِمۡ) moves it beside.
+String withYaDaggerApart(String warsh) =>
+    warsh.replaceAll(RegExp('يٰ۪(?=[ء-ي])'), 'ي۪ـٰ');
 
 /// The dagger alif with its madd on a kashida after the kaf of مِيكَٰٓئِلَ:
 /// over the kaf's own stroke the madd stood apart from the alif.

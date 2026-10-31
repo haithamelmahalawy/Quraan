@@ -56,6 +56,11 @@ void correctWarshLexicalBadal(Map quran, List variants, {Map? sourceText}) {
           if (('ءأإؤئ'.contains(h[i][0]) || h[i].contains('ٔ')) &&
               r[i].startsWith('ا')) {
             r[i] = h[i];
+            // And the letter after it as Hafs marks it: the unread waw of
+            // أُوْلَٰٓئِكَ (اُوْلَٰٓئِكَ, its damma moved) is no madd.
+            if (i + 1 < h.length && h[i + 1][0] == r[i + 1][0]) {
+              r[i + 1] = h[i + 1];
+            }
           }
         }
         probe = r.join();

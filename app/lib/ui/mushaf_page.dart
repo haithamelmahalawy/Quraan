@@ -1334,7 +1334,8 @@ class _MushafPageState extends State<MushafPage>
     final base = _baseAt(widget.variants, s, ayah, w);
     final readings =
         [
-              ...base.where((v) => v.isUsul),
+              // And the shown riwaya's own farsh read with imala (يَٰبُشۡرٰ۪يَ).
+              ...base.where((v) => v.isUsul || v.isImala && _farshImala(v)),
               ..._readingsAt(widget.variants, s, ayah, w).shown,
             ]
             .where(
@@ -1360,19 +1361,19 @@ class _MushafPageState extends State<MushafPage>
     final lexical = readings.any((v) => !v.isUsul);
     if (readings.isEmpty ||
         readings.any((v) => v.isUsul && !targeted(v)) ||
-        lexical && !readings.any((v) => v.isTarqiqOrTaghliz)) {
+        lexical &&
+            !readings.any(
+              (v) =>
+                  v.isTarqiqOrTaghliz ||
+                  v.isImala && _farshImala(v) ||
+                  // وَٱلنَّبِيٓـِٕۧنَ: a farsh word with a badal of its own.
+                  v.isBadal,
+            )) {
       return null;
     }
-    // Tarqiq and taghliz colour their ra or lam alone, the rest of the word
-    // in ink (the whole word glows when differences are alerted).
-    if ((readings.any((v) => v.isImala && !v.isStoppingTaqlil) &&
-        readings.every(
-          (v) =>
-              (v.isImala || v.isBadal) &&
-              !RegExp('همز|نقل|صلة|إدغام|ادغام').hasMatch(v.description),
-        ))) {
-      return null;
-    }
+    // Tarqiq, taghliz and imala colour their letter alone, the rest of the
+    // word in ink, or in the colour of its farsh (the whole word glows when
+    // differences are alerted).
     return readings;
   }
 
@@ -1445,8 +1446,11 @@ class _MushafPageState extends State<MushafPage>
     final letters = lettersOf(text);
     final colors = <int, Color>{};
     final priorities = <int, int>{};
+    // The shown riwaya's own farsh is its text: in ink, unless compared.
     final farshColor = ReadingColors.ofReadings(
-      readings.where((v) => !v.isUsul).toList(),
+      readings
+          .where((v) => !v.isUsul && v.riwayaId != widget.settings.displayed)
+          .toList(),
     );
     if (farshColor != null) {
       for (var i = 0; i < letters.length; i++) {
@@ -1463,8 +1467,19 @@ class _MushafPageState extends State<MushafPage>
     }
 
     for (final v in readings) {
-      if (!v.isUsul) continue;
       priority = v.riwayaId == widget.settings.displayed ? 1 : 0;
+      if (!v.isUsul) {
+        // A farsh word read with imala: its letter green, in the farsh's
+        // colour.
+        if (v.isImala && _farshImala(v)) {
+          for (final (i, l) in letters.indexed) {
+            if (l.contains(imalaSign) && !l.startsWith('ا')) {
+              mark(i, MushafColors.green);
+            }
+          }
+        }
+        continue;
+      }
       if (v.rule == 'ishmam' || v.rule == 'ishmam_sad') {
         // The letter whose kasra is given a touch of damma: the qaf of
         // وَقِيلَ, not the waw before it.
@@ -1496,7 +1511,12 @@ class _MushafPageState extends State<MushafPage>
       }
       final kind = v.isBadal ? null : _naqlKind(v);
       final i = v.isBadal
-          ? badalLetter(letters)
+          // Not in Hafs's word without the hamza (ٱلنَّبِيِّـۧنَ); the
+          // riwaya's own may have lost it to naql (اِ۬لَاخِرِ).
+          ? (widget.settings.displayed != null ||
+                    RegExp('[ءأإؤئٕٔ]').hasMatch(text)
+                ? badalLetter(letters)
+                : null)
           : kind == _Naql.alef
           ? 0
           : kind == _Naql.dropped
@@ -1884,6 +1904,11 @@ List<int>? _mergedLetters(String description, List<String> letters) {
   }
   return out;
 }
+
+/// A usul imala, or a farsh word read with it (يَٰبُشۡرٰ۪يَ بالتقليل); not the
+/// sign under a wasl alif begun with kasra (اَ۪تَّخَذتُّمُ).
+bool _farshImala(Variant v) =>
+    v.isUsul || RegExp('إمالة|الإمالة|تقليل|التقليل').hasMatch(v.description);
 
 /// Ibn Dhakwan's imala of the ra and the hamza (رَ۪ءَ۪اكَ), drawn apart so
 /// that both signs are seen ([spacedImalaSigns]).

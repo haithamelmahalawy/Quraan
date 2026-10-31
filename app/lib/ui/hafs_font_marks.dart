@@ -276,14 +276,30 @@ class _QuranMarkPainter extends CustomPainter {
         ),
         textDirection: TextDirection.rtl,
       )..layout();
+      // The madd of a lam-alif (إِلَّآ) over its alif, clear of the lam's
+      // shadda and vowel.
+      final lamAlif =
+          sign == 'ٓ' &&
+          source.startsWith('ا', at) &&
+          RegExp(r'ل[ً-ْ]*$').hasMatch(source.substring(0, at));
       final origin = Offset(
-        (box.left + box.right) / 2 - mark.width / 2,
+        (box.left + box.right) / 2 -
+            mark.width / 2 -
+            (lamAlif ? font * .22 : 0),
         line.baseline -
             mark.computeLineMetrics().single.baseline +
             font *
                 (imala
-                    // Just under the ra's tail.
-                    ? (source.startsWith('ر', at) ? .16 : .40)
+                    // Just under the ra's tail; close under the dotless ya
+                    // of the dagger alif (دِيٰ۪رِهِمْ), below a dotted one's
+                    // dots.
+                    ? (source.startsWith('ر', at)
+                          ? .28
+                          : source.startsWith('ي', at) &&
+                                (source.substring(at, end).contains('ٰ') ||
+                                    source.startsWith('ـٰ', end))
+                          ? .22
+                          : .40)
                     : kasra
                     // The hamza hangs lower under the waw's tail.
                     ? (source.startsWith('و', at)
@@ -297,8 +313,15 @@ class _QuranMarkPainter extends CustomPainter {
                     ? .72
                     : iqlab
                     ? -.45
+                    // The dagger alif on a final ى (عَلَىٰٓ) stands low.
+                    : source.startsWith('ى', at) &&
+                          source.substring(at, end).contains('ٰ')
+                    ? .06
+                    // Over the dagger alif: higher on the ra and waw, whose
+                    // dagger alif stands higher (إِسۡرَٰٓءِيلَ، ٱلرِّبَوٰٓاْ), close
+                    // on the others (يَٰٓأَيُّهَا، هَٰٓؤُلَآءِ).
                     : source.substring(at, end).contains('ٰ')
-                    ? -.28
+                    ? (RegExp('[رزو]').hasMatch(source[at]) ? -.22 : -.12)
                     : -.12),
       );
       // Some font engines hide a mark when its carrier is transparent.

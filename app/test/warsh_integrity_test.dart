@@ -26,6 +26,10 @@ void main() {
   late List<Map> source;
   late Map sourceAsset;
   String compact(String s) => s.replaceAll(RegExp(r'\s+'), '');
+  // The alif of a damma hamza after naql: the source's unread ا۟ (its waw
+  // then written with sukun, ا۟وْلَٰٓئِكَ) is written with the damma
+  // (اُولَٰٓئِكَ, tool/build_warsh_text.dart): the same letters, either way.
+  String naqlDamma(String t) => t.replaceAll('اُ', 'ا').replaceAll('اوۡ', 'او');
   String expectedSurah(int s) {
     final text = source
         .where((a) => a['sura_no'] == s)
@@ -111,14 +115,30 @@ void main() {
       // A full alif of the source is written as Hafs's dagger alif where his
       // rasm has one (إِسْرَٰٓءِيلَ), and a hamza below the kashida above it
       // (خَٰسِـِٔينَ), a kashida apart (مِيكَـٰٓئِلَ): the same letters, either way.
-      String alif(String t) =>
-          t.replaceAll('ٰ', 'ا').replaceAll('ٕ', 'ٔ').replaceAll('ـ', '');
+      String alif(String t) => naqlDamma(
+        t.replaceAll('ٰ', 'ا').replaceAll('ٕ', 'ٔ').replaceAll('ـ', ''),
+      );
       expect(
         alif(compact(madinahScript(actual))),
         alif(expectedSurah(s)),
         reason: 'surah $s',
       );
     }
+  });
+
+  test('Warsh words written as the Madinah rasm writes them', () {
+    String word(int s, int a, int w) =>
+        ((sourceAsset['ayahs'] as List).firstWhere(
+                  (x) => x[0] == s && x[1] == a,
+                )[2]
+                as List)[w]
+            as String;
+    // The damma of the hamza moved by naql, on its alif.
+    expect(word(2, 196, 5), startsWith('اُحْ'));
+    // A full alif where Hafs's rasm has one, not a dagger alif.
+    expect(word(2, 259, 50), contains('عِظَامِ'));
+    // The dagger alif after a ya read with imala, beside it.
+    expect(word(2, 246, 41), contains('ي۪ـٰ'));
   });
 
   test('native Warsh verse boundaries match every KFGQPC source verse', () {
@@ -324,15 +344,19 @@ void main() {
       }
       for (var s = 1; s <= 114; s++) {
         expect(
-          compact(actual[s].toString())
-              .replaceAll('ٰ', 'ا')
-              .replaceAll('ٕ', 'ٔ')
-              .replaceAll('ـ', ''),
+          naqlDamma(
+            compact(actual[s].toString())
+                .replaceAll('ٰ', 'ا')
+                .replaceAll('ٕ', 'ٔ')
+                .replaceAll('ـ', ''),
+          ),
           // As above: dagger alif and hamza above as Hafs writes them.
-          expectedSurah(s)
-              .replaceAll('ٰ', 'ا')
-              .replaceAll('ٕ', 'ٔ')
-              .replaceAll('ـ', ''),
+          naqlDamma(
+            expectedSurah(s)
+                .replaceAll('ٰ', 'ا')
+                .replaceAll('ٕ', 'ٔ')
+                .replaceAll('ـ', ''),
+          ),
           reason: 'rendered surah $s',
         );
       }

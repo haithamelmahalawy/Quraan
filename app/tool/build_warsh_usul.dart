@@ -417,8 +417,35 @@ Map<String, int> correctWarshUsul(
           p[3] == 1 &&
           RegExp(r'^(ب(فتح|كسر|ضم) (ال)?[ء-ي]+|بنقل حركة الهمزة إليها)$')
               .hasMatch(p[6] as String)) {
-        tag(p, 'naql_source', 'بنقل حركة الهمزة إليها');
+        // A farsh of its own before its last letter (بِرُبْوَةٍ): it keeps
+        // its row, and the naql is told apart.
+        if (p[5] == 'f' && _farshBeforeEnd(previous.text, p[4] as String)) {
+          tag(
+            at[key(previous)]
+                    ?.where(
+                      (x) =>
+                          x.length > 7 && x[7] == 'naql_source' && x[4] == '',
+                    )
+                    .firstOrNull ??
+                add(previous),
+            'naql_source',
+            'بنقل حركة الهمزة إليها',
+            context: pair,
+          );
+        } else {
+          tag(p, 'naql_source', 'بنقل حركة الهمزة إليها');
+        }
       }
+    } else if (w.surah == 2 && w.ayah == 283 && w.text == 'ٱؤۡتُمِنَ') {
+      // In wasl the hamza follows the kasra of ٱلَّذِي's dhal: a ya; begun
+      // with, after the damma, a waw.
+      tag(
+        v,
+        'ibdal_ya',
+        'بإبدال الهمزة ياءً وصلاً، وواوًا ابتداءً',
+        context: 'ٱلَّذِي ٱؤۡتُمِنَ',
+        ways: ['إبدال الهمزة ياءً وصلاً'],
+      );
     } else if (_singleIbdal(w.text, v[4] as String, how)
         case final String refined) {
       tag(
@@ -622,6 +649,17 @@ String _farshOnly(String description) {
   );
   s = s.replaceAll(RegExp(r'^[بو\s،]+|[و\s،]+$'), '').trim();
   return s.isEmpty ? '' : 'ب$s';
+}
+
+/// [own] differs from Hafs's [hafs] before its last letter: a farsh, not
+/// only the vowel naql gives the last letter (مِّنَ for مِّنۡ).
+bool _farshBeforeEnd(String hafs, String own) {
+  final h = lettersOf(hafs), o = lettersOf(madinahScript(own));
+  if (h.length != o.length) return true;
+  for (var i = 0; i < h.length - 1; i++) {
+    if (h[i] != o[i]) return true;
+  }
+  return false;
 }
 
 bool _hamza(String cluster) =>

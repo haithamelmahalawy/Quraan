@@ -149,7 +149,13 @@ void main() {
         lessThan(
           150 +
               measure.computeLineMetrics().single.baseline -
-              40 * (sample.contains('ٰ') ? .95 : .78),
+              // Over the low dagger alif of a final ى, just clear of it.
+              40 *
+                  (sample.contains('ىٰ')
+                      ? .6
+                      : sample.contains('ٰ')
+                      ? .8
+                      : .78),
         ),
       );
       raster!.dispose();
