@@ -41,7 +41,8 @@ void correctWarshLexicalBadal(Map quran, List variants, {Map? sourceText}) {
   final remove = <List>{};
   for (final entry in changed.entries) {
     final (v, own) = entry.value;
-    var probe = madinahScript(own);
+    // A kashida drawing out the dagger alif (اُ۬لَٰـنَ) is no letter.
+    var probe = madinahScript(own.replaceAll('ٰـ', 'ٰ'));
     final naql = (at[entry.key] ?? const <List>[]).where(
       (p) => p.length > 7 && p[7] == 'naql',
     );

@@ -151,7 +151,8 @@ void main() {
               measure.computeLineMetrics().single.baseline -
               // Over the low dagger alif of a final ى, just clear of it.
               40 *
-                  (sample.contains('ىٰ')
+                  // And over a lam's, low beside its stem (مَلَٰٓئِكَةُ).
+                  (sample.contains('ىٰ') || sample.contains('لَٰ')
                       ? .6
                       : sample.contains('ٰ')
                       ? .8

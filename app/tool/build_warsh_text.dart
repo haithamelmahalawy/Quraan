@@ -49,19 +49,40 @@ Map<String, Object> buildWarshText(Map base, List<Map> source) {
         anchors[start].ayah,
         [
           for (var i = start; i < end; i++)
-            withYaDaggerApart(
-              withNaqlDamma(
-                withKafMaddApart(
-                  withHafsHamzaAbove(
-                    withHafsFullAlif(
-                      withHafsDaggerAlif(slots[i], anchors[i].text),
-                      anchors[i].text,
+            withHafsStops(
+              withHafsForms(
+                withLowIqlab(
+                  withNaqisIdgham(
+                    withEasedAlifDagger(
+                      withYaDaggerApart(
+                        withNaqlDamma(
+                          withKafMaddApart(
+                            withHafsHamzaAbove(
+                              withHafsFullAlif(
+                                withHafsLamShadda(
+                                  withSakinHamzaAlif(
+                                    withHafsDaggerAlif(
+                                      slots[i],
+                                      anchors[i].text,
+                                    ),
+                                    anchors[i].text,
+                                  ),
+                                  anchors[i].text,
+                                ),
+                                anchors[i].text,
+                              ),
+                              anchors[i].text,
+                            ),
+                          ),
+                          anchors[i].text,
+                        ),
+                      ),
                     ),
-                    anchors[i].text,
                   ),
                 ),
                 anchors[i].text,
               ),
+              anchors[i].text,
             ),
         ],
       ]);
@@ -166,20 +187,26 @@ String withHafsFullAlif(String warsh, String hafs) {
     }
   }
   final h = _clusters(hafs);
-  if (w.length != h.length) return warsh;
   String base(String c) => c[0].replaceAll(RegExp('[ٱأإآ]'), 'ا');
+  bool same(String a, String b) =>
+      base(a) == base(b) ||
+      RegExp('[يى]').hasMatch(a[0]) && RegExp('[يى]').hasMatch(b[0]);
+  // In step with Hafs's letters; a dagger alif opposite none of his is
+  // one he does not write (the second alif of رِسَٰلَٰتِهِۦ): it stays.
   final full = <int>{};
+  var j = 0;
   for (var i = 0; i < w.length; i++) {
-    if (w[i].startsWith('ٰ') && h[i][0] == 'ا' && !h[i].contains('ٰ')) {
-      full.add(i);
-    } else if (w[i].startsWith('ٰ') ||
-        base(h[i]) != base(w[i]) &&
-            !(RegExp('[يى]').hasMatch(h[i][0]) &&
-                RegExp('[يى]').hasMatch(w[i][0]))) {
-      if (w[i].startsWith('ٰ')) continue;
-      return warsh;
+    if (w[i].startsWith('ٰ')) {
+      if (j < h.length && h[j][0] == 'ا' && !h[j].contains('ٰ')) {
+        full.add(i);
+        j++;
+      }
+      continue;
     }
+    if (j >= h.length || !same(h[j], w[i])) return warsh;
+    j++;
   }
+  if (j != h.length) return warsh;
   if (full.isEmpty) return warsh;
   return [
     for (var i = 0; i < w.length; i++)
@@ -199,9 +226,105 @@ String withHafsHamzaAbove(String warsh, String hafs) =>
 /// (فَإِنُ اُحْصِرْتُمْ): the source marks it unread (ا۟), but the alif takes
 /// the damma, as it takes the fatha and kasra (قَدَ اَفْلَحَ، قُلِ اِنَّ).
 String withNaqlDamma(String warsh, String hafs) =>
-    hafs.startsWith('أُ') && RegExp('^ا۟(?![ً-ْ])').hasMatch(warsh)
+    RegExp('^[أإ]').hasMatch(hafs) && RegExp('^ا۟(?![ً-ْ])').hasMatch(warsh)
     ? 'اُ${warsh.substring(2)}'
     : warsh;
+
+/// The stop signs of the Madinah mushaf, Hafs's at this word (يَسْمَعُونَۘ):
+/// the source has one sign for every stop of the Maghribi print (ۖ), at
+/// each ayah's end too.
+/// The sakin hamza after a fatha read as an alif (يَسۡتَـٔۡخِرُونَ read
+/// يَسْتَاخِرُونَ): a full alif in the word, where the source writes a dagger
+/// one on the letter before.
+String withSakinHamzaAlif(String warsh, String hafs) {
+  // On a kashida (يَسۡتَـٔۡذِنُكَ) or an alif (يَسۡتَأۡخِرُونَ).
+  final m = RegExp(r'(\S)َ(?:ـٔ|أ)ۡ').firstMatch(hafs);
+  // Not where the source writes that alif in full already, and the dagger
+  // alif is Hafs's own (يَاتِيَٰنِهَا).
+  if (m == null || warsh.contains('${m[1]}َا')) return warsh;
+  return warsh.replaceFirst('${m[1]}َٰ', '${m[1]}َا');
+}
+
+/// The lam of the article written once for two (ٱلَّذِينَ، ٱلَّيۡلِ): the
+/// Madinah rasm marks it with the shadda and its fatha, where the Maghribi
+/// source writes it bare (اَ۬لذِينَ).
+String withHafsLamShadda(String warsh, String hafs) {
+  final h = _clusters(hafs), w = _clusters(warsh);
+  int? lamAfterAlif(List<String> cs, String alif) {
+    for (var i = 1; i < cs.length && i < 4; i++) {
+      if (cs[i].startsWith('ل') && cs[i - 1].startsWith(alif)) return i;
+    }
+    return null;
+  }
+
+  final hi = lamAfterAlif(h, 'ٱ'), wi = lamAfterAlif(w, 'ا');
+  if (hi == null ||
+      wi == null ||
+      !h[hi].contains('ّ') ||
+      w[wi].contains('ّ') ||
+      hi + 1 >= h.length ||
+      wi + 1 >= w.length ||
+      h[hi + 1][0] != w[wi + 1][0]) {
+    return warsh;
+  }
+  w[wi] = h[hi];
+  return w.join();
+}
+
+/// The question's two hamzas with the alif after them (ءَآمَنتُمۡ): the
+/// second eased, marked as the Madinah mushaf marks it (ءَا۬), and the
+/// alif after it a dagger alif before the mim, not on the eased alif.
+String withEasedAlifDagger(String warsh) => warsh.replaceAll('ءَاٰ۬', 'ءَا۬ـٰ');
+
+String withHafsStops(String warsh, String hafs) {
+  final stops = RegExp('[ۖ-ۛ]');
+  return warsh.replaceAll(stops, '') +
+      stops.allMatches(hafs).map((m) => m[0]).join();
+}
+
+/// Words read as Hafs reads them, written as his rasm writes them: the
+/// small ya after the doubled one (وَلِـِّۧيَ for the source's وَلِيِّيَ), and
+/// the alif of أَنَا۠ not read in wasl with its rectangular zero, where the
+/// source writes it bare (أَنَا before إِلَّا); read with the madd before a
+/// hamza (أَنَآ), it stays.
+String withHafsForms(String warsh, String hafs) {
+  // The small ya counted as the letter it is, before the marks go.
+  String bare(String s) => s
+      .replaceAll('\u06E7', 'ي')
+      .replaceAll(RegExp('[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]'), '');
+  // With the same doubling: not where the source marks an idgham Hafs's
+  // word does not (مَن يُّحْيِ).
+  int shaddas(String s) => '\u0651'.allMatches(s).length;
+  if (hafs.contains('\u06E7') &&
+      bare(warsh) == bare(hafs) &&
+      shaddas(warsh) == shaddas(hafs)) {
+    return hafs.replaceAll(RegExp('[ۖ-ۛ]'), '');
+  }
+  if (hafs.contains('نَا۠') && warsh.endsWith('نَا')) {
+    return '$warsh۠';
+  }
+  // The ya Warsh adds to حَيَّ (حَيِيَ) small on its tooth, as Hafs writes
+  // يُحۡـِۧيَ: حَـِۧيَ.
+  if (warsh == 'حَيِيَ') return 'حَـِۧيَ';
+  // The eased hamza of أَئِمَّةَ on its tooth, the easing dot in place of
+  // the ya's two dots and the kasra under it: أَىِ۪مَّةَ.
+  if (warsh == 'أَي۪مَّةَ') {
+    return 'أَىِ۪مَّةَ';
+  }
+  return warsh;
+}
+
+/// The iqlab mim of a tanween with kasra under its letter (بِيسِۭ بِمَا), as
+/// the Madinah rasm writes it; the source writes it above (ۢ).
+String withLowIqlab(String warsh) => warsh.replaceAll('ِۢ', 'ِۭ');
+
+/// The ta merged into after a ta' or za' keeping its emphasis (بَسَطتَ،
+/// أَحَطتُ), written as the Madinah rasm writes it: the ta' without sukun,
+/// the ta with its vowel only, not the source's shadda (بَسَطْتَّ).
+String withNaqisIdgham(String warsh) => warsh.replaceAllMapped(
+  RegExp('([طظ])[ْۡ]ت([ًٌٍَُِ]?)ّ([ًٌٍَُِ]?)'),
+  (m) => '${m[1]}ت${m[2]}${m[3]}',
+);
 
 /// The dagger alif after a ya read with imala, on a kashida between it and
 /// the next letter (دِي۪ـٰرِهِمْ): over the ya's own stroke the font stands it

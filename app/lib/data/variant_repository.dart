@@ -293,14 +293,43 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
           // Written naql examples remain usul; a duplicate lexical row
           // would colour the whole word and hide its separate badal.
           if (v.rule == 'naql' &&
-              v.word == word &&
-              v.count == count &&
+              // Its own word, or within the words the book quotes
+              // (تُبۡتُ ٱلۡـَٰٔنَ «بالنقل»).
+              v.word >= word &&
+              v.word + v.count <= word + count &&
               RegExp(r'^ب?النقل(?: في الحالين)?$')
                   .hasMatch(how.replaceAll(RegExp('[ً-ٰٟ]'), '').trim())) {
             found = true;
           }
           // Do not duplicate an existing rule as a lexical book variant.
           if ((p[4] as String).isEmpty && _matchesUsul(v, how)) found = true;
+          // Nor the riwaya's own hamza turned to a letter, which the book
+          // writes out (يُوَدِّهِ، تَامَنْهُ): told in the usul.
+          if (const {
+                'ibdal_single',
+                'ibdal_waw',
+                'ibdal_ya',
+              }.contains(v.rule) &&
+              // One word, though the book quotes the next with it
+              // (نُوتِهِ مِنۡهَا).
+              (v.count == count || !(p[4] as String).contains(' ')) &&
+              _bare(v.text) == _bare(p[4] as String)) {
+            found = true;
+          }
+          // Or its word among the words the book quotes (إلا أن تاتيهم).
+          final quoted = (p[4] as String).trim().split(RegExp(r'\s+'));
+          if (const {
+                'ibdal_single',
+                'ibdal_waw',
+                'ibdal_ya',
+              }.contains(v.rule) &&
+              v.count == 1 &&
+              quoted.length == count &&
+              v.word - word >= 0 &&
+              v.word - word < count &&
+              _bare(v.text) == _bare(quoted[v.word - word])) {
+            found = true;
+          }
           continue;
         }
         found = true;
@@ -349,6 +378,10 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
     }
   }
 }
+
+/// The letters of [text], without vowels and marks.
+String _bare(String text) =>
+    text.replaceAll(RegExp('[ً-ٰۖ-ۭـ]'), '').replaceAll('ٱ', 'ا');
 
 /// Whether a generated rule already covers the book's general-rule note.
 bool _matchesUsul(Variant v, String how) {

@@ -209,13 +209,26 @@ Map<String, int> correctWarshUsul(
     if ((w.surah == 7 && w.ayah == 123 && w.word == 2) ||
         (w.surah == 20 && w.ayah == 71 && w.word == 1) ||
         (w.surah == 26 && w.ayah == 49 && w.word == 1)) {
-      v ??= add(w);
-      v[4] = w.text.replaceFirst('ءَا', 'ءَاٰ۬');
-      v[5] = 'h';
+      // The question's hamza added: a farsh of its own, with the word; the
+      // eased hamza (ءَا۬) and the alif after it apart (ـٰ) as the Madinah
+      // mushaf writes them.
+      final farsh = at[key(w)]?.where((x) => x[5] == 'f').firstOrNull ?? add(w);
+      farsh
+        ..[4] = w.text.replaceFirst('ءَا', 'ءَا\u06EC\u0640\u0670')
+        ..[5] = 'f'
+        ..[6] = 'بزيادة همزة الاستفهام';
+      final rule =
+          at[key(w)]
+              ?.where((x) => x.length > 7 && x[7] == 'tasheel_word')
+              .firstOrNull ??
+          add(w);
+      rule
+        ..[4] = ''
+        ..[5] = 'h';
       const ways = [
         'تحقيق الأولى وتسهيل الثانية بلا إدخال مع ثلاثة البدل؛ ولا إبدال للثانية',
       ];
-      tag(v, 'tasheel_word', ways.single, context: w.text, ways: ways);
+      tag(rule, 'tasheel_word', ways.single, context: w.text, ways: ways);
       continue;
     }
     if (RegExp(r'^هَٰٓأَنتُم').hasMatch(w.text)) {
@@ -479,6 +492,34 @@ Map<String, int> correctWarshUsul(
     } else if (how.contains('إبدال الهمزة') && !how.contains('استفهام')) {
       tag(v, 'ibdal_single', how, context: w.text);
     }
+  }
+
+  // The book's easing of the second of two hamzas of a word (أَئِنَّكُمۡ،
+  // أَئِمَّةٗ «بالتسهيل من غير إدخال»), where the source writes the hamza.
+  final byKey = {for (final w in words) key(w): w};
+  for (final p in ((book['riwayat'] as Map)['warsh'] as List).cast<List>()) {
+    final how = p[5] as String;
+    if ((p[4] as String).isNotEmpty ||
+        p[3] != 1 ||
+        !how.contains('تسهيل') ||
+        !RegExp('(من غير|بلا) إدخال').hasMatch(how)) {
+      continue;
+    }
+    final w = byKey['${p[0]}:${p[1]}:${p[2]}'];
+    if (w == null) continue;
+    final cs = lettersOf(w.text);
+    if (cs.length < 2 || !_hamza(cs[0]) || !_hamza(cs[1])) continue;
+    if (at[key(w)]?.any((v) => v.length > 7 && v[7] == 'tasheel_word') ??
+        false) {
+      continue;
+    }
+    tag(
+      add(w),
+      'tasheel_word',
+      'بتسهيل الهمزة الثانية بلا إدخال',
+      context: w.text,
+      ways: ['تسهيل الهمزة الثانية بلا إدخال'],
+    );
   }
 
   // The source represents a facilitated second hamza on waw/ya with a

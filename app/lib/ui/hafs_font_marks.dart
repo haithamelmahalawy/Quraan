@@ -32,7 +32,10 @@ class HafsFontMarks extends StatelessWidget {
       cluster.contains('ٓ') &&
       (cluster.contains('ٰ') ||
           cluster.contains('َ') ||
-          cluster.startsWith('ا') && (previous?.contains('َ') ?? false));
+          cluster.startsWith('ا') && (previous?.contains('َ') ?? false) ||
+          // Over the hamza of a lam-alif after the lam's sukun (ٱلۡأٓخِرَةِ):
+          // the font squeezes it into a dash, a fatha to the eye.
+          cluster.startsWith('أ') && (previous?.startsWith('ل') ?? false));
 
   // A separate paint span for each code point breaks the font's hamza/vowel
   // shaping. Keep adjacent characters of the same colour in one shaping run.
@@ -49,7 +52,7 @@ class HafsFontMarks extends StatelessWidget {
   }
 
   static bool _lowerImala(String cluster) =>
-      'بيئج'.contains(cluster[0]) && RegExp('[۪ٜ]').hasMatch(cluster) ||
+      'بيئجك'.contains(cluster[0]) && RegExp('[۪ٜ]').hasMatch(cluster) ||
       // عِمۡرٰ۪نَ: the font puts the sign on the ra's tail.
       cluster.startsWith('ر') && cluster.contains('ٰ') && cluster.contains('۪');
 
@@ -60,15 +63,36 @@ class HafsFontMarks extends StatelessWidget {
   // Also on a kashida (Warsh's اَ۬لنَّبِيٓـِٕۧنَ): its hamza hangs below it.
   static bool _kasraUnderHamza(String cluster) =>
       (cluster.startsWith('ي') ||
-          cluster.startsWith('و') ||
-          cluster.startsWith('ـ')) &&
-      cluster.contains('ٕ') &&
-      _kasras.hasMatch(cluster);
+              cluster.startsWith('و') ||
+              cluster.startsWith('ـ')) &&
+          cluster.contains('ٕ') &&
+          _kasras.hasMatch(cluster) ||
+      // The eased hamza's tooth with the tasheel dot under it (أَىِ۪مَّةَ).
+      cluster.startsWith('ى') &&
+          cluster.contains('۪') &&
+          _kasras.hasMatch(cluster);
 
   /// The iqlab mim drawn apart: the low one always, the high one only over
   /// a letter with a kasra (ءَايَٰتِۢ), whose anchor the font then moves into
   /// the letter. Over a letter without a vowel (مِنۢ، أَنۢبِئۡهُم) the font
   /// places it whole itself; drawn apart, its lower half was clipped.
+  /// The stop sign over an alif with the tanween (قَلِيلاًۖ، عَلِيمًاۗ): the
+  /// font sets it on the tanween; it is raised clear of it.
+  static final _waqf = RegExp('[ۖ-ۛ]');
+  static bool _waqfOverTanween(String cluster) =>
+      cluster.startsWith('ا') &&
+      cluster.contains('ً') &&
+      _waqf.hasMatch(cluster);
+
+  /// The dagger alif after an eased hamza's alif (ءَا۬ـٰمَنتُم): drawn on its
+  /// own between the alif and the next letter, without the kashida that
+  /// carries it in the text.
+  static bool _daggerApart(String cluster, String? previous) =>
+      cluster.startsWith('ـ') &&
+      cluster.contains('ٰ') &&
+      (previous?.startsWith('ا') ?? false) &&
+      previous!.contains('۬');
+
   static bool _iqlabApart(String cluster) =>
       cluster.contains('ۭ') || cluster.contains('ۢ') && cluster.contains('ِ');
 
@@ -84,7 +108,9 @@ class HafsFontMarks extends StatelessWidget {
       final cluster = m[0]!;
       if (_raisedMadd(cluster, previous) ||
           _lowerImala(cluster) ||
-          _kasraUnderHamza(cluster)) {
+          _kasraUnderHamza(cluster) ||
+          _waqfOverTanween(cluster) ||
+          _daggerApart(cluster, previous)) {
         return true;
       }
       previous = cluster;
@@ -130,6 +156,7 @@ class HafsFontMarks extends StatelessWidget {
     ];
     final full = placed.map((p) => p.$1).join();
     final marks = <int, Color?>{};
+    final thin = <int>{};
     String? previous;
     for (final m in _cluster.allMatches(full)) {
       if (_raisedMadd(m[0]!, previous)) {
@@ -144,9 +171,18 @@ class HafsFontMarks extends StatelessWidget {
         final markAt = full.indexOf(_kasras, m.start);
         marks[markAt] = placed[markAt].$2;
       }
+      if (_waqfOverTanween(m[0]!)) {
+        final markAt = full.indexOf(_waqf, m.start);
+        marks[markAt] = placed[markAt].$2;
+      }
       if (_iqlabApart(m[0]!)) {
         final markAt = full.indexOf(RegExp('[ۭۢ]'), m.start);
         marks[markAt] = placed[markAt].$2;
+      }
+      if (_daggerApart(m[0]!, previous)) {
+        final markAt = full.indexOf('ٰ', m.start);
+        marks[markAt] = placed[markAt].$2;
+        thin.add(m.start);
       }
       previous = m[0]!;
     }
@@ -165,7 +201,8 @@ class HafsFontMarks extends StatelessWidget {
       }
       offsets[i] = chars.length;
       if (i < placed.length && !marks.containsKey(i) && !sakt.containsKey(i)) {
-        chars.add(placed[i]);
+        // The kashida under a dagger alif drawn apart: a thin space.
+        chars.add(thin.contains(i) ? (' ', placed[i].$2) : placed[i]);
       }
     }
     for (final entry in marks.entries) {
@@ -278,14 +315,43 @@ class _QuranMarkPainter extends CustomPainter {
       )..layout();
       // The madd of a lam-alif (إِلَّآ) over its alif, clear of the lam's
       // shadda and vowel.
+      final lamHamza =
+          sign == 'ٓ' &&
+          source.startsWith('أ', at) &&
+          RegExp(r'ل[ً-ْۡ]*$').hasMatch(source.substring(0, at));
       final lamAlif =
           sign == 'ٓ' &&
           source.startsWith('ا', at) &&
           RegExp(r'ل[ً-ْ]*$').hasMatch(source.substring(0, at));
+      // The madd of a lam's dagger alif (أُوْلَٰٓئِكَ، مَلَٰٓئِكَةُ) over the
+      // dagger alif, which stands low beside the lam's stem, not over it.
+      final dagger = sign == 'ٓ' && source.substring(at, end).contains('ٰ');
+      final lamDagger = dagger && source.startsWith('ل', at);
+      // So on a ra (أَرَٰٓيْتَكُمْ، إِسۡرَٰٓءِيلَ): over its dagger alif, past
+      // the ra's fatha.
+      final raDagger = dagger && source.startsWith('ر', at);
+      // On the others with a fatha (أَتُحَٰٓجُّوٓنِّي، هَٰٓأَنتُمۡ) the dagger
+      // alif stands after it, to its left: so its madd.
+      final fathaDagger =
+          dagger &&
+          !source.startsWith('ى', at) &&
+          source.substring(at, end).contains('َ');
       final origin = Offset(
         (box.left + box.right) / 2 -
             mark.width / 2 -
-            (lamAlif ? font * .22 : 0),
+            (lamAlif
+                ? font * .22
+                : lamDagger
+                ? font * .16
+                : raDagger
+                ? font * .12
+                : fathaDagger
+                ? font * .08
+                // The dagger alif of a final ى (عَلَىٰٓ) stands at its left,
+                // past the fatha of the letter before.
+                : dagger && source.startsWith('ى', at)
+                ? font * .12
+                : 0),
         line.baseline -
             mark.computeLineMetrics().single.baseline +
             font *
@@ -295,6 +361,9 @@ class _QuranMarkPainter extends CustomPainter {
                     // dots.
                     ? (source.startsWith('ر', at)
                           ? .28
+                          // Under the kaf's body (كٰ۪فِرِينَ), not its dagger alif.
+                          : source.startsWith('ك', at)
+                          ? .10
                           : source.startsWith('ي', at) &&
                                 (source.substring(at, end).contains('ٰ') ||
                                     source.startsWith('ـٰ', end))
@@ -304,6 +373,9 @@ class _QuranMarkPainter extends CustomPainter {
                     // The hamza hangs lower under the waw's tail.
                     ? (source.startsWith('و', at)
                           ? .50
+                          // Under the tasheel dot on its tooth (أَىِ۪مَّةَ).
+                          : source.startsWith('ى', at)
+                          ? .30
                           : sign == 'ِ'
                           ? .36
                           : .44)
@@ -313,6 +385,10 @@ class _QuranMarkPainter extends CustomPainter {
                     ? .72
                     : iqlab
                     ? -.45
+                    // The dagger alif standing apart (ءَاٰ۬مَنتُم): low, beside
+                    // the letters.
+                    : sign == 'ٰ'
+                    ? .42
                     // The dagger alif on a final ى (عَلَىٰٓ) stands low.
                     : source.startsWith('ى', at) &&
                           source.substring(at, end).contains('ٰ')
@@ -321,7 +397,16 @@ class _QuranMarkPainter extends CustomPainter {
                     // dagger alif stands higher (إِسۡرَٰٓءِيلَ، ٱلرِّبَوٰٓاْ), close
                     // on the others (يَٰٓأَيُّهَا، هَٰٓؤُلَآءِ).
                     : source.substring(at, end).contains('ٰ')
-                    ? (RegExp('[رزو]').hasMatch(source[at]) ? -.22 : -.12)
+                    ? (lamDagger
+                          ? .02
+                          : raDagger
+                          ? -.10
+                          : RegExp('[رزو]').hasMatch(source[at])
+                          ? -.22
+                          : -.12)
+                    // Above the hamza of the lam-alif (ٱلۡأٓخِرَةِ).
+                    : lamHamza
+                    ? -.30
                     : -.12),
       );
       // Some font engines hide a mark when its carrier is transparent.
@@ -340,7 +425,12 @@ class _QuranMarkPainter extends CustomPainter {
               ? size.height + font
               : origin.dy +
                     mark.computeLineMetrics().single.baseline -
-                    font * (iqlab ? .22 : .68),
+                    font *
+                        (low
+                            ? .12
+                            : iqlab
+                            ? .22
+                            : .68),
         ),
       );
       mark.paint(canvas, origin);

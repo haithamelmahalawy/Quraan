@@ -809,6 +809,66 @@ void main() {
     }
   }, tags: 'golden');
 
+  test('taghliz after an alif after sad or ta, with its two ways', () {
+    for (final (s, a, w) in [(2, 233, 35), (4, 128, 12), (21, 44, 5)]) {
+      expect(
+        rule(s, a, w, 'taghliz').description,
+        'بتغليظ اللام وترقيقها، والتغليظ مقدَّم',
+      );
+    }
+    // Its lam, after the alif (طَالَ), and in Hafs's word (يُصۡلِحَا).
+    expect(lamLetter(lettersOf('طَالَ')), 2);
+    expect(lamLetter(lettersOf('يُصۡلِحَا')), isNull);
+    expect(lamLetter(lettersOf('يُصۡلِحَا'), anyVowel: true), 2);
+  });
+
+  test('the book writing out a hamza turned to waw is no farsh', () {
+    // يُؤَدِّهِۦٓ: «يُوَدِّهِ» in the book's farsh is Warsh's ibdal, in the usul.
+    for (final w in [7, 15]) {
+      final at = variants.at(['warsh'], 3, 75, w);
+      expect(at.where((v) => v.inHamesh), isEmpty, reason: '3:75:$w');
+      expect(at.any((v) => v.rule == 'ibdal_single'), isTrue);
+    } // نُؤۡتِهِۦ: the book quotes it with مِنۡهَا.
+    for (final w in [14, 20]) {
+      expect(
+        variants.at(['warsh'], 3, 145, w).where((v) => v.inHamesh),
+        isEmpty,
+        reason: '3:145:$w',
+      );
+    }
+  });
+
+  test('two hamzas of a word eased as the book says, no farsh', () {
+    // أَئِنَّكُمۡ (6:19), أَئِمَّةٗ (21:73), أَءِلَٰهٞ after naql (27:61).
+    for (final (s, a, w) in [(6, 19, 18), (21, 73, 1), (27, 61, 14)]) {
+      final at = variants.at(['warsh'], s, a, w);
+      expect(at.any((v) => v.rule == 'tasheel_word'), isTrue, reason: '$s:$a');
+      expect(at.where((v) => v.inHamesh), isEmpty, reason: '$s:$a');
+    }
+    // إِنِّيٓ أُمِرۡتُ: the ya opened, its own farsh; أُمِرۡتُ no difference.
+    expect(
+      variants
+          .at(['warsh'], 6, 14, 13)
+          .where((v) => v.inHamesh)
+          .single
+          .description,
+      'بفتح الياء',
+    );
+    expect(variants.at(['warsh'], 6, 14, 14), isEmpty);
+  });
+
+  test('a word with a hamza added is farsh wherever it is', () {
+    // زَكَرِيَّآءُ ٱلۡمِحۡرَابَ, without a quotation of the book, as the one
+    // before it in the ayah.
+    for (final w in [8, 12]) {
+      expect(
+        variants.at(['warsh'], 3, 37, w).single.inHamesh,
+        isTrue,
+        reason: '3:37:$w',
+      );
+    }
+  });
+
   test('a sakin hamza after a wasl alif is read by the vowel before it', () {
     // يَٰصَٰلِحُ ٱئۡتِنَا: a waw after the damma, a ya when begun with.
     expect(
@@ -823,6 +883,29 @@ void main() {
       rule(6, 71, 28, 'ibdal_single').description,
       'بإبدال الهمزة ألفًا وصلاً، وياءً ابتداءً',
     );
+    // An alif in the circle on its seat.
+    expect(rule(6, 71, 28, 'ibdal_single').hamzaReplacement, 'ا');
+  });
+
+  testWidgets('a farsh word with its ibdal: farsh colour, the ibdal letter', (
+    t,
+  ) async {
+    // نُوتِيهِمُ (4:152, يُؤۡتِيهِمۡ): بالنون, and the hamza a waw.
+    await page(
+      t,
+      102,
+      settings: ReaderSettings.memory(selected: {'warsh'})
+        ..displayed = 'warsh'
+        ..compareHafs = true,
+    );
+    final parts = t
+        .widget<InkText>(find.byKey(const ValueKey('word:4:152:11')))
+        .parts!;
+    expect(parts.where((p) => p.$2 == ReadingColors.hamza).map((p) => p.$1), [
+      'و',
+    ]);
+    expect(parts.first.$2, isNot(anyOf(isNull, ReadingColors.hamza)));
+    expect(t.takeException(), isNull);
   });
 
   testWidgets('imala colours its letter alone, in the farsh colour', (t) async {
@@ -1691,7 +1774,8 @@ void main() {
       expect(example('عَلَيۡهِمُۥ'), findsOneWidget);
       expect(example('عَذَابٌ اَلِيمُۢ'), findsOneWidget);
       expect(example('خَلَوِاْ اِلَىٰ'), findsOneWidget);
-      expect(example('يُومِنُونَۖ'), findsOneWidget);
+      // Hafs's stop signs: none at the ayah's end (يُؤۡمِنُونَ).
+      expect(example('يُومِنُونَ'), findsOneWidget);
       expect(example('عَذَابٌ أَلِيمُۢ'), findsNothing);
       expect(t.takeException(), isNull);
     }

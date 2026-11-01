@@ -1357,18 +1357,15 @@ class _MushafPageState extends State<MushafPage>
             v.isImala ||
             v.isTarqiqOrTaghliz ||
             _naqlKind(v) != null ||
-            RegExp('همز|صلة|إدغام|ادغام').hasMatch(v.description));
+            RegExp('همز|تسهيل|صلة|إدغام|ادغام').hasMatch(v.description));
     final lexical = readings.any((v) => !v.isUsul);
     if (readings.isEmpty ||
         readings.any((v) => v.isUsul && !targeted(v)) ||
+        // A farsh word alone is coloured whole; with a rule of its own
+        // (نُوتِيهِمُ: its ibdal; وَٱلنَّبِيٓـِٕۧنَ: its badal) the rule's letter
+        // takes the rule's colour, the rest the farsh colour.
         lexical &&
-            !readings.any(
-              (v) =>
-                  v.isTarqiqOrTaghliz ||
-                  v.isImala && _farshImala(v) ||
-                  // وَٱلنَّبِيٓـِٕۧنَ: a farsh word with a badal of its own.
-                  v.isBadal,
-            )) {
+            !readings.any((v) => v.isUsul || v.isImala && _farshImala(v))) {
       return null;
     }
     // Tarqiq, taghliz and imala colour their letter alone, the rest of the
@@ -1505,16 +1502,19 @@ class _MushafPageState extends State<MushafPage>
         continue;
       }
       if (v.isTarqiqOrTaghliz) {
-        final i = v.rule == 'tarqiq' ? raLetter(letters) : lamLetter(letters);
+        // In Hafs's word the lam may read otherwise (يُصۡلِحَا for يَصَّٰلَحَا).
+        final i = v.rule == 'tarqiq'
+            ? raLetter(letters)
+            : lamLetter(letters) ?? lamLetter(letters, anyVowel: true);
         mark(i, MushafColors.rule);
         continue;
       }
       final kind = v.isBadal ? null : _naqlKind(v);
-      final i = v.isBadal
+      var i = v.isBadal
           // Not in Hafs's word without the hamza (ٱلنَّبِيِّـۧنَ); the
           // riwaya's own may have lost it to naql (اِ۬لَاخِرِ).
           ? (widget.settings.displayed != null ||
-                    RegExp('[ءأإؤئٕٔ]').hasMatch(text)
+                    RegExp('[ءأإؤئٕٔ]').hasMatch(text)
                 ? badalLetter(letters)
                 : null)
           : kind == _Naql.alef
@@ -1522,6 +1522,15 @@ class _MushafPageState extends State<MushafPage>
           : kind == _Naql.dropped
           ? null
           : naqlLetter(letters, last: kind == _Naql.last);
+      // The eased hamza's alif (ءَا۬ـٰمَنتُم): the badal is the dagger alif
+      // after it.
+      if (v.isBadal &&
+          i != null &&
+          i + 1 < letters.length &&
+          letters[i].contains('۬') &&
+          letters[i + 1].contains('ٰ')) {
+        i++;
+      }
       if (v.isBadal || kind != null) {
         mark(
           i,
@@ -1571,10 +1580,15 @@ class _MushafPageState extends State<MushafPage>
         final merged = const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId)
             ? _mergedLetters(d, letters)
             : null;
+        final into = _idghamLetters(d);
         if (merged != null) {
           for (final i in merged) {
             mark(i, ReadingColors.idgham);
           }
+        } else if (into != null && letters.last.startsWith(into.$1)) {
+          // Into the next word (حُرِّمَت ظُّهُورُهَا): this word's last
+          // letter; the next word colours its first.
+          mark(letters.length - 1, ReadingColors.idgham);
         } else if (letters.first.contains('ّ')) {
           mark(0, ReadingColors.idgham);
         }
@@ -1584,6 +1598,35 @@ class _MushafPageState extends State<MushafPage>
     // The displayed narrator owns overlapping letters. Within that narrator,
     // badal retains its agreed priority over naql independently of row order.
     return [for (final (i, l) in letters.indexed) (l, colors[i])];
+  }
+
+  /// The word the word before is merged into (حُرِّمَت ظُّهُورُهَا، قَد
+  /// ضَّلُّواْ): its first letter in the idgham's colour, the rest in ink.
+  List<(String, Color?)>? _idghamInto(Ayah ayah, int w, String text) {
+    if (w == 0) return null;
+    final s = widget.settings;
+    final before = [
+      ..._baseAt(widget.variants, s, ayah, w - 1).where((v) => v.isUsul),
+      ..._readingsAt(widget.variants, s, ayah, w - 1).shown,
+    ];
+    final letters = lettersOf(text);
+    final into = before
+        .where(
+          (v) =>
+              v.word == w - 1 &&
+              v.count == 1 &&
+              v.isUsul &&
+              s.kinds.contains(v.kind) &&
+              RegExp('إدغام|ادغام').hasMatch(v.description),
+        )
+        .map((v) => _idghamLetters(v.description))
+        .where((xy) => xy != null && letters.first.startsWith(xy.$2))
+        .firstOrNull;
+    if (into == null) return null;
+    return [
+      for (final (i, l) in letters.indexed)
+        (l, i == 0 ? ReadingColors.idgham : null),
+    ];
   }
 
   /// [parts] (or [text] whole) drawn out by [kashida] tatweels.
@@ -1630,7 +1673,9 @@ class _MushafPageState extends State<MushafPage>
     final shown = _display(ayah, w)!;
     // Not the page glyphs of the Madinah print: letters to colour and draw out.
     final hafsFont = !shown.font.startsWith('QCF_');
-    final coloured = hafsFont ? _letterParts(ayah, w, shown.text) : null;
+    final coloured = hafsFont
+        ? _letterParts(ayah, w, shown.text) ?? _idghamInto(ayah, w, shown.text)
+        : null;
     final parts = hafsFont ? _stretched(shown.text, coloured, kashida) : null;
     // Kashida groups may contain several base characters. Repainting a
     // stripped hamza seat must preserve their expanded colour alignment.
@@ -1866,6 +1911,14 @@ const _letterNames = {
   'واو': 'و',
   'ياء': 'ي',
 };
+
+/// The two letters an idgham names («بإدغام الدال في الضاد»: د and ض).
+(String, String)? _idghamLetters(String description) {
+  final m = RegExp(r'إدغام (?:ال)?(\S+) (?:في|ب) ?(?:ال)?(\S+)')
+      .firstMatch(description);
+  final x = _letterNames[m?[1]], y = _letterNames[m?[2]];
+  return x == null || y == null ? null : (x, y);
+}
 
 /// The letters of an idgham told «بإدغام التاء في الصاد»: the merged letter
 /// (the last of its word, or the one before the other with shadda) and the

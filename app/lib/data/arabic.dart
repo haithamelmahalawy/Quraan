@@ -398,11 +398,15 @@ bool hasWarshTarqiq(String word) {
 
 /// The lam read with taghliz among [letters]: a lam with a fatha after a
 /// ص, ط or ظ (ٱلصَّلَوٰة, ظَلَمُواْ).
-int? lamLetter(List<String> letters) {
+int? lamLetter(List<String> letters, {bool anyVowel = false}) {
   for (var i = 1; i < letters.length; i++) {
+    // Right after the letter, or after an alif after it (طَالَ، فِصَالًا).
+    final before = letters[i - 1][0] == 'ا' && i > 1
+        ? letters[i - 2][0]
+        : letters[i - 1][0];
     if (letters[i].startsWith('ل') &&
-        'صطظ'.contains(letters[i - 1][0]) &&
-        RegExp('[\u064E\u064B\u0657]').hasMatch(letters[i])) {
+        'صطظ'.contains(before) &&
+        (anyVowel || RegExp('[\u064E\u064B\u0657]').hasMatch(letters[i]))) {
       return i;
     }
   }

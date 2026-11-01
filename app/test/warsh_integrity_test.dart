@@ -29,7 +29,29 @@ void main() {
   // The alif of a damma hamza after naql: the source's unread ا۟ (its waw
   // then written with sukun, ا۟وْلَٰٓئِكَ) is written with the damma
   // (اُولَٰٓئِكَ, tool/build_warsh_text.dart): the same letters, either way.
-  String naqlDamma(String t) => t.replaceAll('اُ', 'ا').replaceAll('اوۡ', 'او');
+  // So the ta merged after a ta' (بَسَطۡتَّ written بَسَطتَ).
+  String naqlDamma(String t) => t
+      // And the stop signs, Hafs's in place of the source's (ۖ).
+      .replaceAll(RegExp('[ۖ-ۛ]'), '')
+      // And the iqlab mim of a kasra written below (بِيسِۭ).
+      .replaceAll('ۭ', 'ۢ')
+      // And Hafs's forms of his own words: the small ya (وَلِـِّۧيَ) and
+      // the rectangular zero of أَنَا۠.
+      .replaceAll('حَِۧ', 'حَيِ') // حَـِۧيَ
+      .replaceAll('ىِ۪', 'ي۪') // أَىِ۪مَّةَ
+      .replaceAll('ۧ', 'ي')
+      .replaceAll('۠', '')
+      // And the article's lam marked as Hafs marks it (ٱلَّذِينَ).
+      .replaceAllMapped(
+        RegExp('([اٱ][ًٌٍَُِْ۪ۡ۬]*ل)[َّ]+ا?(?=[ذتي])'),
+        (m) => m[1]!,
+      )
+      .replaceAll('اُ', 'ا')
+      .replaceAll('اوۡ', 'او')
+      .replaceAllMapped(
+        RegExp('([طظ])[ْۡ]?ت([ًٌٍَُِ]?)ّ?([ًٌٍَُِ]?)'),
+        (m) => '${m[1]}ت${m[2]}${m[3]}',
+      );
   String expectedSurah(int s) {
     final text = source
         .where((a) => a['sura_no'] == s)
@@ -163,7 +185,9 @@ void main() {
       final expected = madinahScript(
         sourceWords(row['aya_text'] as String).join(' '),
       );
-      if (skeleton(actual) != skeleton(expected)) {
+      // Hafs's small ya (إِبۡرَٰهِـۧمَ) is the source's ya.
+      String ya(String t) => t.replaceAll('ۧ', 'ي');
+      if (skeleton(ya(actual)) != skeleton(ya(expected))) {
         mismatches.add('Warsh $s:$n: ${range.first}–${range.last}');
       }
     }

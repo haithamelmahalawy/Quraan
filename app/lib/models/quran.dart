@@ -139,6 +139,9 @@ class Variant {
   String? get hamzaReplacement => switch (rule) {
     'ibdal_waw' => 'و',
     'ibdal_ya' => 'ي',
+    // ٱلۡهُدَى ٱئۡتِنَا: after the fatha, an alif in wasl.
+    'ibdal_single' when description.startsWith('بإبدال الهمزة ألفًا وصلاً') =>
+      'ا',
     'tasheel_pair'
         when riwayaId == 'warsh' &&
             usulText.contains(' ') &&
