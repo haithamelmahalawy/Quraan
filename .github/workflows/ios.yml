@@ -54,6 +54,32 @@ jobs:
       - name: Build number
         run: echo "BUILD_NUMBER=${{ github.run_number }}" >> "$GITHUB_ENV"
 
+      # ---- CocoaPods ---------------------------------------------------
+      # The pods (ML Kit, SwiftyTesseract) are fetched from the network and a
+      # git clone sometimes times out on the runner ("RPC failed; curl 56").
+      # Cache them, and retry pod install before the build itself.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods/repos
+            app/ios/Pods
+          key: pods-${{ runner.os }}-${{ hashFiles('app/pubspec.lock') }}
+          restore-keys: pods-${{ runner.os }}-
+
+      - name: Pods
+        run: |
+          git config --global http.postBuffer 524288000
+          git config --global http.lowSpeedLimit 1000
+          git config --global http.lowSpeedTime 120
+          for i in 1 2 3; do
+            # --config-only writes the Podfile and runs pod install, no build.
+            flutter build ios --config-only --release --no-codesign && exit 0
+            echo "pod install failed (attempt $i), retrying"
+            sleep 20
+          done
+          exit 1
+
       # ---- Unsigned build (always) -------------------------------------
       - name: Build (unsigned)
         if: env.HAS_SIGNING != 'true'
