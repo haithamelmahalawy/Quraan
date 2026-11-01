@@ -160,5 +160,18 @@ void main() {
           .toPlainText(),
       'ومثله ﴿معروفا﴾ [أي: كاف]',
     );
+    // The ayah after it, and its book with it; then back.
+    String waqf() => tester
+        .widget<SelectableText>(find.byKey(const ValueKey('waqf-text')))
+        .textSpan!
+        .toPlainText();
+    await tester.tap(find.byKey(const ValueKey('next-ayah')));
+    await settle();
+    expect(find.textContaining('الآية 6'), findsOneWidget);
+    expect(waqf(), startsWith('ومثله ﴿أن يكبروا﴾'));
+    await tester.tap(find.byKey(const ValueKey('previous-ayah')));
+    await settle();
+    expect(find.textContaining('الآية 5'), findsOneWidget);
+    expect(waqf(), 'ومثله ﴿معروفا﴾ [أي: كاف]');
   });
 }

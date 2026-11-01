@@ -162,6 +162,32 @@ class _AyahSheetState extends State<AyahSheet> {
 
   ReaderSettings get s => widget.settings;
 
+  /// The ayah [delta] (±1) from the one shown, across surahs; null past the
+  /// first ayah of the Quran or its last.
+  Ayah? _neighbour(int delta) {
+    var (surah, number) = (_ayah.surah, _ayah.number + delta);
+    if (number < 1) {
+      if (surah == 1) return null;
+      surah--;
+      number = widget.quran.surah(surah).ayahCount;
+    } else if (number > widget.quran.surah(surah).ayahCount) {
+      if (surah == widget.quran.surahs.length) return null;
+      surah++;
+      number = 1;
+    }
+    return widget.quran.ayah(surah, number);
+  }
+
+  /// Shows the ayah [delta] from this one, and its books below.
+  void _step(int delta) {
+    final next = _neighbour(delta);
+    if (next == null) return;
+    setState(() {
+      _ayah = next;
+      _word = 0;
+    });
+  }
+
   /// Hafs and the selected riwayat that have a recording.
   /// The riwaya listened to: the one chosen here, else the one the mushaf
   /// shows, else (with only Hafs) Hafs.
@@ -220,17 +246,40 @@ class _AyahSheetState extends State<AyahSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            _text,
-            key: const ValueKey('selected-verse-text'),
-            textAlign: TextAlign.center,
+          // The ayah between the ones before and after it: the listening,
+          // the tafsir and the other books below follow the one shown.
+          Row(
             textDirection: TextDirection.rtl,
-            style: TextStyle(
-              fontFamily: 'Hafs',
-              fontSize: 23,
-              height: 1.9,
-              color: MushafColors.ink,
-            ),
+            children: [
+              IconButton(
+                key: const ValueKey('previous-ayah'),
+                tooltip: 'الآية السابقة',
+                onPressed: _neighbour(-1) == null ? null : () => _step(-1),
+                icon: const Icon(Icons.chevron_right_rounded, size: 32),
+                color: MushafColors.green,
+              ),
+              Expanded(
+                child: Text(
+                  _text,
+                  key: const ValueKey('selected-verse-text'),
+                  textAlign: TextAlign.center,
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    fontFamily: 'Hafs',
+                    fontSize: 23,
+                    height: 1.9,
+                    color: MushafColors.ink,
+                  ),
+                ),
+              ),
+              IconButton(
+                key: const ValueKey('next-ayah'),
+                tooltip: 'الآية التالية',
+                onPressed: _neighbour(1) == null ? null : () => _step(1),
+                icon: const Icon(Icons.chevron_left_rounded, size: 32),
+                color: MushafColors.green,
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           _listen(),

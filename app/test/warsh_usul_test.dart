@@ -177,6 +177,39 @@ void main() {
     expect(variants.at(['warsh'], 2, 187, 23).every((v) => v.isUsul), isTrue);
   });
 
+  test('laraufun on page 268 is madd al-badal only, no farsh', () {
+    expect(quran.pageOf(16, 7), 268);
+    for (final (a, w) in [(7, 12), (47, 6)]) {
+      final readings = variants.at(['warsh'], 16, a, w).toList();
+      expect(readings.single.rule, 'badal', reason: '16:$a:$w');
+      expect(readings.single.isUsul, isTrue);
+    }
+  });
+
+  test('yuhda on page 271 is one farsh with its description', () {
+    expect(quran.pageOf(16, 37), 271);
+    final farsh = {
+      for (final w in [6, 7])
+        ...variants.at(['warsh'], 16, 37, w).where((v) => !v.isUsul),
+    };
+    expect(farsh.single.description, 'بضم الياء وإبدال الياء ألفًا مقصورة');
+  });
+
+  test('yuha on page 272 is farsh with its description', () {
+    expect(quran.pageOf(16, 43), 272);
+    final farsh = variants.at(['warsh'], 16, 43, 6).where((v) => !v.isUsul);
+    expect(
+      farsh.single.description,
+      'بالياء وإبدال الياء ألفًا مقصورة مع المد',
+    );
+  });
+
+  test('yuakhidhu on page 273 is the ibdal usul only, no farsh', () {
+    expect(quran.pageOf(16, 61), 273);
+    final readings = variants.at(['warsh'], 16, 61, 1).toList();
+    expect(readings.single.rule, 'ibdal_single');
+  });
+
   test('extra ya is an independent usul with wasl and waqf faces', () {
     for (final w in [8, 10]) {
       final readings = variants.at(['warsh'], 2, 186, w).toList();
@@ -423,6 +456,108 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'yaslaha on page 284 has taqlil and its two faces in the hamesh',
+    (t) async {
+      final v = variants.at(['warsh'], 17, 18, 15).single;
+      expect(v.isUsul, isTrue);
+      expect(v.isImala, isTrue);
+      expect(v.text, contains('۪'));
+      expect(v.description, contains('تغليظ اللام مع الفتح'));
+      for (final displayed in [null, 'warsh']) {
+        await page(
+          t,
+          284,
+          settings: ReaderSettings.memory(selected: {'warsh'})
+            ..displayed = displayed
+            ..compareHafs = displayed != null,
+        );
+        expect(
+          find.textContaining('ترقيقها مع التقليل', findRichText: true),
+          findsWidgets,
+          reason: '$displayed',
+        );
+      }
+      expect(t.takeException(), isNull);
+    },
+  );
+
+  testWidgets('lattakhadhta on page 302 is farsh with its idgham coloured', (
+    t,
+  ) async {
+    final v = variants.at(['warsh'], 18, 77, 21).single;
+    expect(v.kind, VariantKind.farsh);
+    expect(v.description, 'بإدغام الذال في التاء');
+    for (final displayed in [null, 'warsh']) {
+      await page(
+        t,
+        302,
+        settings: ReaderSettings.memory(selected: {'warsh'})
+          ..displayed = displayed
+          ..compareHafs = displayed != null,
+      );
+      final word = t.widget<InkText>(
+        find.byKey(const ValueKey('word:18:77:21')),
+      );
+      // Coloured whole, in the farsh colour.
+      expect(word.style.color, isNot(MushafColors.ink), reason: '$displayed');
+    }
+    expect(t.takeException(), isNull);
+  });
+
+  test('atbaa on pages 302-303 is farsh told in the hamesh', () {
+    for (final (a, w) in [(85, 0), (89, 1), (92, 1)]) {
+      final v = variants.at(['warsh'], 18, a, w).single;
+      expect(v.kind, VariantKind.farsh);
+      expect(v.inHamesh, isTrue);
+      expect(v.description, 'بإبدال همزة القطع همزة وصل وتشديد التاء وفتحها');
+    }
+    expect(variants.at(['warsh'], 18, 58, 18), isEmpty);
+  });
+
+  test('sayyiatan on page 285 and liyasu on page 282', () {
+    expect(
+      variants.at(['warsh'], 17, 38, 3).single.description,
+      'بفتح الهمزة وإبدال الهاء تاءً منونة مفتوحة',
+    );
+    expect(
+      variants.sourceTextAt('warsh', 17, 7, 11),
+      '\u0644\u0650\u064a\u064e\u0633\u064f\u0640\u06e5\u0653\u0640\u0640\u0654\u064f\u0648\u0627\u0652',
+    );
+    expect(variants.at(['warsh'], 17, 7, 1).map((v) => v.rule), ['naql']);
+  });
+
+  testWidgets('a damma before a hamzat wasl colours the two letters', (
+    t,
+  ) async {
+    for (final displayed in [null, 'warsh']) {
+      await page(
+        t,
+        156,
+        settings: ReaderSettings.memory(selected: {'warsh'})
+          ..displayed = displayed
+          ..compareHafs = displayed != null,
+      );
+      // بِرَحۡمَةٍ ٱدۡخُلُواْ: the ta of the tanween, the wasl alif.
+      final first = t.widget<InkText>(
+        find.byKey(const ValueKey('word:7:49:6')),
+      );
+      final second = t.widget<InkText>(
+        find.byKey(const ValueKey('word:7:49:7')),
+      );
+      final coloured = [
+        for (final (l, c) in first.parts!)
+          if (c != null) l,
+      ];
+      expect(coloured, hasLength(1), reason: '$displayed ${first.parts}');
+      expect(coloured.single, startsWith('ة'));
+      expect(second.parts!.first.$2, isNotNull);
+      expect(second.parts!.first.$1, startsWith('ٱ'));
+      expect(second.parts!.skip(1).every((p) => p.$2 == null), isTrue);
+    }
+    expect(t.takeException(), isNull);
+  });
 
   testWidgets(
     'page 30 naql colours both tanween and hamza with Hafs displayed',

@@ -201,6 +201,7 @@ Map<int, List<Variant>> _index((String, String, String?, String?) input) {
           : '',
       ownWays: v.length > 8 && (v[8] as Map)['ownWays'] == true,
       omission: v.length > 8 && (v[8] as Map)['omission'] == true,
+      hamesh: v.length > 8 && (v[8] as Map)['hamesh'] == true,
       usulText: v.length > 8 ? (v[8] as Map)['context'] as String? ?? '' : '',
       usulWays: v.length > 8
           ? ((v[8] as Map)['ways'] as List? ?? const []).cast<String>()
@@ -261,7 +262,12 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
     if (!asHafs || other) continue;
     for (var w = e[2] as int; w < (e[2] as int) + (e[3] as int); w++) {
       index[VariantRepository.key(e[0] as int, e[1] as int, w)]?.removeWhere(
-        (v) => v.kind == VariantKind.farsh && v.rule.isEmpty,
+        (v) =>
+            v.kind == VariantKind.farsh &&
+            v.rule.isEmpty &&
+            // Warsh's idgham in the word (لَتَّخَذتَّ): the book tells it
+            // apart from the word's farsh, which it reads as Hafs.
+            !(id == 'warsh' && v.description.startsWith('بإدغام')),
       );
     }
   }
@@ -385,6 +391,8 @@ String _bare(String text) =>
 
 /// Whether a generated rule already covers the book's general-rule note.
 bool _matchesUsul(Variant v, String how) {
+  // The ishmam the riwaya's rule tells (سِيٓءَ «بإشمام كسرة السين الضم»).
+  if (v.rule == 'ishmam' && how.contains('إشمام')) return true;
   if (v.isLinHamz) {
     final plain = how.replaceAll(RegExp('[ً-ٰٟ]'), '').trim();
     // The book also records madd faces in its farsh section. They are
@@ -419,7 +427,7 @@ bool _matchesUsul(Variant v, String how) {
         'ha_antum',
         'hamza_wasl',
       }.contains(v.rule) &&
-      RegExp('تسهيل|إبدالها').hasMatch(how)) {
+      RegExp('تسهيل|سهلها|إبدالها').hasMatch(how)) {
     return true;
   }
   if (v.isImala && RegExp('تقليل|إمالة').hasMatch(how)) return true;

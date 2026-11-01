@@ -49,36 +49,44 @@ Map<String, Object> buildWarshText(Map base, List<Map> source) {
         anchors[start].ayah,
         [
           for (var i = start; i < end; i++)
-            withHafsStops(
-              withHafsForms(
-                withLowIqlab(
-                  withNaqisIdgham(
-                    withEasedAlifDagger(
-                      withYaDaggerApart(
-                        withNaqlDamma(
-                          withKafMaddApart(
-                            withHafsHamzaAbove(
-                              withHafsFullAlif(
-                                withHafsLamShadda(
-                                  withSakinHamzaAlif(
-                                    withHafsDaggerAlif(
-                                      slots[i],
+            withHafsYaAlif(
+              withHafsMuqattaat(
+                withHafsStops(
+                  withHafsForms(
+                    withSmallNunApart(
+                      withLowIqlab(
+                        withNaqisIdgham(
+                          withEasedAlifDagger(
+                            withYaDaggerApart(
+                              withNaqlDamma(
+                                withKafMaddApart(
+                                  withHafsHamzaAbove(
+                                    withHafsFullAlif(
+                                      withHafsLamShadda(
+                                        withSakinHamzaAlif(
+                                          withHafsDaggerAlif(
+                                            slots[i],
+                                            anchors[i].text,
+                                          ),
+                                          anchors[i].text,
+                                        ),
+                                        anchors[i].text,
+                                      ),
                                       anchors[i].text,
                                     ),
                                     anchors[i].text,
                                   ),
-                                  anchors[i].text,
                                 ),
                                 anchors[i].text,
                               ),
-                              anchors[i].text,
                             ),
                           ),
-                          anchors[i].text,
                         ),
                       ),
                     ),
+                    anchors[i].text,
                   ),
+                  anchors[i].text,
                 ),
                 anchors[i].text,
               ),
@@ -306,6 +314,39 @@ String withHafsForms(String warsh, String hafs) {
   // The ya Warsh adds to حَيَّ (حَيِيَ) small on its tooth, as Hafs writes
   // يُحۡـِۧيَ: حَـِۧيَ.
   if (warsh == 'حَيِيَ') return 'حَـِۧيَ';
+  // تِلۡقَآيِٕ (يونس 15), read as Hafs reads it: written as he writes it, not
+  // the source's تِلْقَآءِےْ with its seat ya after the hamza.
+  if (hafs.startsWith('تِلۡقَآيٕ')) {
+    return hafs.replaceAll(RegExp('[ۖ-ۛ]'), '');
+  }
+  // So too وَإِيتَآيِٕ، وَرَآيِٕ، ءَانَآيِٕ: the hamza on Hafs's ya, not the
+  // source's ya after it, which reads as an added ya.
+  const seat = '\u0627\u0653\u064a\u0655\u0650';
+  const after = '\u0627\u0653\u0621\u0650\u06d2\u0652';
+  if (hafs.endsWith(seat) && warsh.endsWith(after)) {
+    return warsh.substring(0, warsh.length - after.length) + seat;
+  }
+  // لِيَسُـۥٓـُٔواْ (الإسراء 7): after the sin the small waw of the madd with
+  // its madd sign, then the hamza on the kashida between the sin and the
+  // waw, near the waw; the source follows Hafs's لِيَسُـُٔواْ.
+  if (warsh ==
+      '\u0644\u0650\u064a\u064e\u0633\u064f\u0640\u0654\u064f\u0648\u0627\u0652') {
+    return '\u0644\u0650\u064a\u064e\u0633\u064f\u0640\u06e5\u0653\u0640\u0640\u0654\u064f'
+        '\u0648\u0627\u0652';
+  }
+  // يَصْل۪يٰهَا (الإسراء 18) with the taqlil the hamesh tells beside the
+  // source's taghliz (يَصْلَيٰهَا): either face may be read.
+  if (warsh ==
+      '\u064a\u064e\u0635\u0652\u0644\u064e\u064a\u0670\u0647\u064e\u0627') {
+    return '\u064a\u064e\u0635\u0652\u0644\u06ea\u064a\u0670\u0647\u064e\u0627';
+  }
+  // لِأَبَآئِهِمۡ (الكهف 5): the hamza with its fatha over the lam-alif,
+  // without the madd, as Hafs's word is written.
+  const lamHamza = '\u0644\u0650\u0623\u0653';
+  const lamHamzaApart = '\u0644\u0650\u0623\u064e';
+  if (warsh.startsWith(lamHamza) && hafs.startsWith(lamHamzaApart)) {
+    return lamHamzaApart + warsh.substring(lamHamza.length);
+  }
   // The eased hamza of أَئِمَّةَ on its tooth, the easing dot in place of
   // the ya's two dots and the kasra under it: أَىِ۪مَّةَ.
   if (warsh == 'أَي۪مَّةَ') {
@@ -335,3 +376,27 @@ String withYaDaggerApart(String warsh) =>
 /// The dagger alif with its madd on a kashida after the kaf of مِيكَٰٓئِلَ:
 /// over the kaf's own stroke the madd stood apart from the alif.
 String withKafMaddApart(String warsh) => warsh.replaceAll('كَٰٓ', 'كَـٰٓ');
+
+/// The small nun after a nun with damma (فَنُۨجِے), on a kashida beside the
+/// damma as the Madinah rasm writes it (نُـۨجِي); the font sets it over the
+/// damma.
+String withSmallNunApart(String warsh) => warsh.replaceAll('نُۨ', 'نُـۨ');
+
+/// The letters «الٓر» and «الٓمٓر» as the Madinah rasm writes them, with the
+/// taqlil sign under the ra alone; the source writes them vowelled
+/// (أَلَٓمِّٓر۪ۚ).
+String withHafsMuqattaat(String warsh, String hafs) =>
+    RegExp(r'^الٓ(?:مٓ)?رۚ$').hasMatch(hafs) && warsh.contains('ر۪')
+    ? hafs.replaceFirst('ر', 'ر۪')
+    : warsh;
+
+/// The ya with the alif after it as Hafs writes it (بِأَيَّىٰمِ), the source
+/// writing two ya's (بِأَييَّٰمِ): the same reading.
+String withHafsYaAlif(String warsh, String hafs) =>
+    warsh.replaceAll(
+          '\u064a\u064a\u0651\u064e\u0670',
+          '\u064a\u0651\u064e\u0649\u0670',
+        ) ==
+        hafs
+    ? hafs
+    : warsh;

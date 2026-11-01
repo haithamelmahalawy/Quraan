@@ -33,6 +33,14 @@ void main() {
   String naqlDamma(String t) => t
       // And the stop signs, Hafs's in place of the source's (ۖ).
       .replaceAll(RegExp('[ۖ-ۛ]'), '')
+      // And «الٓر», «الٓمٓر» as Hafs writes them, the source vowelling them
+      // (أَلَٓمِّٓر۪).
+      .replaceAllMapped(
+        RegExp('أ[َ]ل[َٓ]+(م[ِّٓ]+)?ر۪'),
+        (m) => m[1] == null ? 'الٓر۪' : 'الٓمٓر۪',
+      )
+      // And بِأَيَّىٰمِ as Hafs writes it, the source's بِأَييَّٰمِ.
+      .replaceAll('يَّىا', 'ييَّا')
       // And the iqlab mim of a kasra written below (بِيسِۭ).
       .replaceAll('ۭ', 'ۢ')
       // And Hafs's forms of his own words: the small ya (وَلِـِّۧيَ) and
@@ -41,6 +49,29 @@ void main() {
       .replaceAll('ىِ۪', 'ي۪') // أَىِ۪مَّةَ
       .replaceAll('ۧ', 'ي')
       .replaceAll('۠', '')
+      // تِلۡقَآيِٕ as Hafs writes it, the source's تِلْقَآءِےْ.
+      .replaceAll('قَآئِ', 'قَآءِى')
+      // So too وَإِيتَآيِٕ، وَرَآيِٕ، ءَانَآيِٕ, the source's ...آءِےْ.
+      .replaceAllMapped(
+        RegExp('(يتَ|رَ|نَ)\u0627\u0653\u064a\u0654\u0650(?=ذِى|حِجَ|[اٱ])'),
+        (m) => '${m[1]}آءِى',
+      )
+
+      // And يَصْل۪يٰهَا with the taqlil of its second face.
+      .replaceAll(
+        '\u064a\u064e\u0635\u06e1\u0644\u06ea\u0649',
+        '\u064a\u064e\u0635\u06e1\u0644\u064e\u0649',
+      )
+      // And لِأَبَآئِهِمۡ without the madd, the source's لِأٓبَآئِهِمْ.
+      .replaceAll(
+        '\u0644\u0650\u0623\u064e\u0628',
+        '\u0644\u0650\u0623\u0653\u0628',
+      )
+      // And لِيَسُـۥٓـُٔواْ with the small waw of its madd.
+      .replaceAll(
+        RegExp('\u0633\u064f\u0640?\u06e5(\u064f?)\u0653'),
+        '\u0633\u064f',
+      )
       // And the article's lam marked as Hafs marks it (ٱلَّذِينَ).
       .replaceAllMapped(
         RegExp('([اٱ][ًٌٍَُِْ۪ۡ۬]*ل)[َّ]+ا?(?=[ذتي])'),
@@ -186,7 +217,13 @@ void main() {
         sourceWords(row['aya_text'] as String).join(' '),
       );
       // Hafs's small ya (إِبۡرَٰهِـۧمَ) is the source's ya.
-      String ya(String t) => t.replaceAll('ۧ', 'ي');
+      // And the small waw of لِيَسُـۥٓـُٔواْ, which the source does not write.
+      String ya(String t) => t
+          .replaceAll('ۧ', 'ي')
+          .replaceAll(
+            RegExp('\u0633\u064f\u0640?\u06e5\u0653'),
+            '\u0633\u064f',
+          );
       if (skeleton(ya(actual)) != skeleton(ya(expected))) {
         mismatches.add('Warsh $s:$n: ${range.first}–${range.last}');
       }

@@ -1320,7 +1320,9 @@ class _MushafPageState extends State<MushafPage>
       return (text: ayah.words[w], font: 'Hafs');
     }
     // Nor letters coloured apart.
-    if (_letterReadings(ayah, w) != null) {
+    if (_letterReadings(ayah, w) != null ||
+        _waslDammColor(ayah, w) != null ||
+        w > 0 && _waslDammColor(ayah, w - 1) != null) {
       return (text: ayah.words[w], font: 'Hafs');
     }
     if (glyph != null) return (text: glyph, font: QcfFonts.family(widget.page));
@@ -1353,6 +1355,7 @@ class _MushafPageState extends State<MushafPage>
         (v.isBadal ||
             v.rule == 'ishmam' ||
             v.rule == 'ishmam_sad' ||
+            v.rule == 'ya_zaida' ||
             v.isLinHamz ||
             v.isImala ||
             v.isTarqiqOrTaghliz ||
@@ -1455,6 +1458,7 @@ class _MushafPageState extends State<MushafPage>
       }
     }
     var priority = 0;
+    (int, Color)? zaida;
     void mark(int? i, Color color, {bool badal = false}) {
       if (i == null || i < 0 || i >= letters.length) return;
       final rank = priority * 2 + (badal ? 1 : 0);
@@ -1487,6 +1491,17 @@ class _MushafPageState extends State<MushafPage>
             ? 0
             : kasra;
         mark(at, ReadingColors.of(v));
+        continue;
+      }
+      if (v.rule == 'ya_zaida') {
+        // The added ya alone (دُعَآءِۦ); in Hafs's word, without it, the
+        // letter it follows.
+        final at = letters.lastIndexWhere((l) => l.contains('ۦ'));
+        if (at >= 0 && priority >= (priorities[at] ?? 0)) {
+          zaida = (at, ReadingColors.of(v));
+        } else {
+          mark(letters.length - 1, ReadingColors.of(v));
+        }
         continue;
       }
       if (v.isStoppingTaqlil) {
@@ -1538,6 +1553,15 @@ class _MushafPageState extends State<MushafPage>
           badal: v.isBadal,
         );
       }
+      // The waw of the madd with its alif (لِيَسُـۥٓـُٔواْ).
+      if (v.isBadal &&
+          i != null &&
+          text.contains('ۥٓـ') &&
+          letters[i].startsWith('و') &&
+          i + 1 < letters.length &&
+          letters[i + 1] == 'اْ') {
+        mark(i + 1, MushafColors.green, badal: true);
+      }
       final d = v.description;
       if (v.rule == 'hamza_wasl' && d.contains('نقل')) {
         final lam = letters.indexWhere((l) => l.startsWith('ل'));
@@ -1561,8 +1585,16 @@ class _MushafPageState extends State<MushafPage>
                 v.rule == 'ibdal_ya' ||
                 v.rule == 'tasheel_pair'
             ? 0
+            // The second hamza, after the first (ءَآللَّهُ); the riwaya's own
+            // text may write the two as one alif (آٰللَّهُ).
             : v.rule == 'tasheel_word' || v.rule == 'hamza_wasl'
-            ? 1
+            ? (letters.first.startsWith('ا') &&
+                          letters.first.contains('ٰ') &&
+                          letters.first.contains('ٓ') ||
+                      // Or the second written as a dot after the first (أَ۟ذَا).
+                      letters.first.contains('۟')
+                  ? 0
+                  : 1)
             : hamzas
                       .where(
                         (i) => i < variant.length && !_hamzaCluster(variant[i]),
@@ -1594,10 +1626,17 @@ class _MushafPageState extends State<MushafPage>
         }
       }
     }
-    if (colors.isEmpty) return null;
+    if (colors.isEmpty && zaida == null) return null;
     // The displayed narrator owns overlapping letters. Within that narrator,
     // badal retains its agreed priority over naql independently of row order.
-    return [for (final (i, l) in letters.indexed) (l, colors[i])];
+    return [
+      for (final (i, l) in letters.indexed)
+        if (i == zaida?.$1) ...[
+          (l.substring(0, l.indexOf('ۦ')), colors[i]),
+          (l.substring(l.indexOf('ۦ')), zaida!.$2),
+        ] else
+          (l, colors[i]),
+    ];
   }
 
   /// The word the word before is merged into (حُرِّمَت ظُّهُورُهَا، قَد
@@ -1627,6 +1666,52 @@ class _MushafPageState extends State<MushafPage>
       for (final (i, l) in letters.indexed)
         (l, i == 0 ? ReadingColors.idgham : null),
     ];
+  }
+
+  /// A sakin or tanween read with a damma before a hamzat wasl (بِرَحۡمَةٍ
+  /// ٱدۡخُلُواْ، أَنِ ٱقۡتُلُوٓاْ): the word's last letter and the wasl alif of
+  /// the next word in the farsh's colour, the rest in ink.
+  List<(String, Color?)>? _waslDamm(Ayah ayah, int w, String text) {
+    final letters = lettersOf(text);
+    final own = _waslDammColor(ayah, w);
+    final into = w > 0 && RegExp('^[ٱا]').hasMatch(text)
+        ? _waslDammColor(ayah, w - 1)
+        : null;
+    if (own == null && into == null) return null;
+    return [
+      for (final (i, l) in letters.indexed)
+        (
+          l,
+          i == letters.length - 1 && own != null
+              ? own
+              : i == 0
+              ? into
+              : null,
+        ),
+    ];
+  }
+
+  Color? _waslDammColor(Ayah ayah, int w) {
+    if (w + 1 >= ayah.words.length ||
+        !ayah.words[w + 1].startsWith('ٱ') ||
+        !RegExp(r'[ٍِ][ۖ-ۭ]*$').hasMatch(ayah.words[w])) {
+      return null;
+    }
+    final s = widget.settings;
+    final shown = _readingsAt(
+      widget.variants,
+      s,
+      ayah,
+      w,
+    ).shown.where((v) => v.word == w && !v.isUsul && s.kinds.contains(v.kind));
+    final damm = [
+      ..._baseAt(widget.variants, s, ayah, w),
+      ...shown,
+    ].any((v) => v.word == w && !v.isUsul && v.description.contains('ضم'));
+    if (!damm) return null;
+    return ReadingColors.ofReadings(
+      shown.where((v) => v.riwayaId != s.displayed).toList(),
+    );
   }
 
   /// [parts] (or [text] whole) drawn out by [kashida] tatweels.
@@ -1674,7 +1759,9 @@ class _MushafPageState extends State<MushafPage>
     // Not the page glyphs of the Madinah print: letters to colour and draw out.
     final hafsFont = !shown.font.startsWith('QCF_');
     final coloured = hafsFont
-        ? _letterParts(ayah, w, shown.text) ?? _idghamInto(ayah, w, shown.text)
+        ? _waslDamm(ayah, w, shown.text) ??
+              _letterParts(ayah, w, shown.text) ??
+              _idghamInto(ayah, w, shown.text)
         : null;
     final parts = hafsFont ? _stretched(shown.text, coloured, kashida) : null;
     // Kashida groups may contain several base characters. Repainting a

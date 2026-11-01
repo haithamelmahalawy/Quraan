@@ -2,13 +2,17 @@ import 'arabic.dart';
 
 /// A sakin waw/ya after a fatha, immediately before a hamza in the same
 /// word. Includes Uthmani hamzas carried by a tatweel and Maghribi ya forms.
+/// An alif written and not read between them (تَاْيۡـَٔسُواْ) is passed over.
 List<int> linHamzLetters(String word) {
   final letters = lettersOf(word);
+  bool fathaBefore(int i) =>
+      letters[i - 1].contains('َ') ||
+      i > 1 && letters[i - 1] == 'اْ' && letters[i - 2].contains('َ');
   return [
     for (var i = 1; i + 1 < letters.length; i++)
       if ('ويىے'.contains(letters[i][0]) &&
           !RegExp('[ًٌٍَُِّ]').hasMatch(letters[i]) &&
-          letters[i - 1].contains('َ') &&
+          fathaBefore(i) &&
           ('ءأإؤئ'.contains(letters[i + 1][0]) || letters[i + 1].contains('ٔ')))
         i,
   ];
@@ -46,9 +50,9 @@ enum LinHamz {
     final plain = word
         .replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), '')
         .replaceAll('ٱ', 'ا');
-    if (plain == 'الموءودة' || plain == 'الموءدة' || plain == 'موئلا') {
-      return exception;
-    }
+    // مَوۡئِلٗا is read short, as Hafs reads it: nothing to tell.
+    if (plain == 'موئلا') return null;
+    if (plain == 'الموءودة' || plain == 'الموءدة') return exception;
     if (plain.contains('سوءات') || plain.contains('سوءت')) return sawat;
     return regular;
   }

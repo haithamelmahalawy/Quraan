@@ -93,6 +93,26 @@ class HafsFontMarks extends StatelessWidget {
       (previous?.startsWith('ا') ?? false) &&
       previous!.contains('۬');
 
+  /// The fatha moved onto a bare alif by the naql (إِنَ اَنَا۠): the font sets
+  /// it on the alif's head, against the fatha of the word before; it is
+  /// raised over it.
+  static bool _naqlFatha(String cluster) =>
+      cluster.startsWith('ا') &&
+      cluster.contains('َ') &&
+      !cluster.contains('ٰ') &&
+      !cluster.contains('ٓ');
+
+  /// The second hamza eased after the first (أَ۟ذَا، أَ۟نَّكَ): Warsh's text
+  /// writes it as a ringed dot; the tasheel dot alone takes its place.
+  static bool _easedDot(String cluster) =>
+      RegExp('^[أإ]').hasMatch(cluster) && cluster.contains('۟');
+
+  /// The small waw of a madd on a kashida (لِيَسُـۥٓـُٔواْ): the font joins
+  /// nothing across it and sets it on the line. The kashida and the waw are
+  /// left out, the sin joined to the hamza's seat, and the waw with its madd
+  /// drawn high over where they join.
+  static bool _smallWawApart(String cluster) => cluster == 'ـۥٓ';
+
   static bool _iqlabApart(String cluster) =>
       cluster.contains('ۭ') || cluster.contains('ۢ') && cluster.contains('ِ');
 
@@ -110,6 +130,9 @@ class HafsFontMarks extends StatelessWidget {
           _lowerImala(cluster) ||
           _kasraUnderHamza(cluster) ||
           _waqfOverTanween(cluster) ||
+          _naqlFatha(cluster) ||
+          _easedDot(cluster) ||
+          _smallWawApart(cluster) ||
           _daggerApart(cluster, previous)) {
         return true;
       }
@@ -157,6 +180,10 @@ class HafsFontMarks extends StatelessWidget {
     final full = placed.map((p) => p.$1).join();
     final marks = <int, Color?>{};
     final thin = <int>{};
+    final dots = <int>{};
+    // The kashida carrying a small waw drawn apart, with the waw's colour.
+    final waws = <int, Color?>{};
+    final dropped = <int>{};
     String? previous;
     for (final m in _cluster.allMatches(full)) {
       if (_raisedMadd(m[0]!, previous)) {
@@ -175,6 +202,16 @@ class HafsFontMarks extends StatelessWidget {
         final markAt = full.indexOf(_waqf, m.start);
         marks[markAt] = placed[markAt].$2;
       }
+      if (_naqlFatha(m[0]!) && !_easedDot(m[0]!)) {
+        final markAt = full.indexOf('َ', m.start);
+        marks[markAt] = placed[markAt].$2;
+      }
+      if (_easedDot(m[0]!)) dots.add(full.indexOf('۟', m.start));
+      if (_smallWawApart(m[0]!)) {
+        // Kept by the seat after it, drawn at its join with the sin.
+        waws[m.end] = placed[m.start + 1].$2;
+        dropped.addAll([m.start, m.start + 1, m.start + 2]);
+      }
       if (_iqlabApart(m[0]!)) {
         final markAt = full.indexOf(RegExp('[ۭۢ]'), m.start);
         marks[markAt] = placed[markAt].$2;
@@ -187,7 +224,7 @@ class HafsFontMarks extends StatelessWidget {
       previous = m[0]!;
     }
     final sakt = {for (final m in _boundarySakt.allMatches(full)) m.start: m};
-    if (marks.isEmpty && sakt.isEmpty) {
+    if (marks.isEmpty && sakt.isEmpty && dots.isEmpty && waws.isEmpty) {
       return preserveText(builder(_joined(placed)));
     }
     final insertions = {for (final m in sakt.values) m.end: placed[m.start].$2};
@@ -200,7 +237,14 @@ class HafsFontMarks extends StatelessWidget {
         chars.add(('\u2009', insertions[i]));
       }
       offsets[i] = chars.length;
-      if (i < placed.length && !marks.containsKey(i) && !sakt.containsKey(i)) {
+      if (dots.contains(i)) {
+        // The ringed dot's room, for the dot painted alone.
+        targets.add((chars.length, placed[i].$2, '•'));
+        chars.add((' ', placed[i].$2));
+      } else if (i < placed.length &&
+          !dropped.contains(i) &&
+          !marks.containsKey(i) &&
+          !sakt.containsKey(i)) {
         // The kashida under a dagger alif drawn apart: a thin space.
         chars.add(thin.contains(i) ? (' ', placed[i].$2) : placed[i]);
       }
@@ -211,6 +255,9 @@ class HafsFontMarks extends StatelessWidget {
           targets.add((offsets[m.start]!, entry.value, full[entry.key]));
         }
       }
+    }
+    for (final MapEntry(:key, :value) in waws.entries) {
+      targets.add((offsets[key]!, value, 'ۥ'));
     }
     final rendered = _joined(chars);
     return preserveText(
@@ -226,6 +273,12 @@ class HafsFontMarks extends StatelessWidget {
     );
   }
 }
+
+/// How high the small waw of a madd stands over the line, in font sizes.
+const smallWawRise = .55;
+
+/// How far its madd stands over the waw's baseline, in font sizes.
+const smallWawMaddLift = -.45;
 
 class _QuranMarkPainter extends CustomPainter {
   _QuranMarkPainter(this.parts, this.targets, this.style, this.scaler);
@@ -272,6 +325,60 @@ class _QuranMarkPainter extends CustomPainter {
       final line = text.computeLineMetrics().firstWhere(
         (l) => l.baseline >= box.top && l.baseline <= box.bottom,
       );
+      if (sign == '•') {
+        canvas.drawCircle(
+          Offset((box.left + box.right) / 2, line.baseline - font * .10),
+          font * .10,
+          Paint()..color = color ?? style.color ?? Colors.black,
+        );
+        continue;
+      }
+      if (sign == 'ۥ') {
+        // The waw, then its madd over it from an alif whose ink is clipped
+        // away, as the other marks are drawn.
+        TextPainter painter(String text) => TextPainter(
+          text: TextSpan(
+            text: text,
+            style: TextStyle(
+              fontFamily: 'Hafs',
+              fontSize: font,
+              height: 1,
+              color: color ?? style.color,
+            ),
+          ),
+          textDirection: TextDirection.rtl,
+        )..layout();
+        final waw = painter('ۥ'), madd = painter('آ');
+        final baseline = line.baseline - font * smallWawRise;
+        waw.paint(
+          canvas,
+          Offset(
+            (box.left + box.right - waw.width) / 2,
+            baseline - waw.computeLineMetrics().single.baseline,
+          ),
+        );
+        final maddBaseline = baseline - font * smallWawMaddLift;
+        canvas.save();
+        canvas.clipRect(
+          Rect.fromLTRB(
+            -font,
+            -font * 2,
+            size.width + font,
+            maddBaseline - font * .70,
+          ),
+        );
+        madd.paint(
+          canvas,
+          Offset(
+            (box.left + box.right - madd.width) / 2,
+            maddBaseline - madd.computeLineMetrics().single.baseline,
+          ),
+        );
+        canvas.restore();
+        waw.dispose();
+        madd.dispose();
+        continue;
+      }
       if (sakt) {
         final mark = TextPainter(
           text: TextSpan(
@@ -368,6 +475,9 @@ class _QuranMarkPainter extends CustomPainter {
                                 (source.substring(at, end).contains('ٰ') ||
                                     source.startsWith('ـٰ', end))
                           ? .22
+                          // Close under the ba's dot (صَبّ۪ارٖ).
+                          : source.startsWith('ب', at)
+                          ? .28
                           : .40)
                     : kasra
                     // The hamza hangs lower under the waw's tail.
@@ -401,9 +511,16 @@ class _QuranMarkPainter extends CustomPainter {
                           ? .02
                           : raDagger
                           ? -.10
+                          // Over a dagger alif on a full alif (آٰللَّهُ), which
+                          // stands at the alif's top.
+                          : source.startsWith('ا', at)
+                          ? -.42
                           : RegExp('[رزو]').hasMatch(source[at])
                           ? -.22
                           : -.12)
+                    // The naql's fatha, over the alif's head.
+                    : sign == 'َ'
+                    ? -.16
                     // Above the hamza of the lam-alif (ٱلۡأٓخِرَةِ).
                     : lamHamza
                     ? -.30

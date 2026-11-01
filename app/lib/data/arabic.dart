@@ -311,6 +311,16 @@ int? badalLetter(List<String> letters) {
         return i;
       }
       if (madd(i + 1)) return i + 1;
+      // The hamza over a lam-alif, the madd alif after it unwritten
+      // (ٱلۡأَخِرَةِ، لِأَبَآئِهِمۡ): the hamza carries the madd.
+      if (l.startsWith('أ') &&
+          l.contains('َ') &&
+          i > 0 &&
+          letters[i - 1].startsWith('ل') &&
+          i + 1 < letters.length &&
+          RegExp('[ًٌٍَُِ]').hasMatch(letters[i + 1])) {
+        return i;
+      }
     }
   }
   final naql = naqlLetter(letters);
@@ -452,7 +462,15 @@ List<String> withKashida(List<String> letters, int count) {
   for (var k = 0; k < count; k++) {
     final full = k ~/ kashidaPerJoin;
     final i = full < slots.length ? slots[full] : slots[k % slots.length];
-    out[i] = '${out[i]}$tatweel';
+    // A hamza on a kashida after a bare one (لِيَسُـۥٓـــُٔواْ) stays by
+    // the letter after it: drawn out before it.
+    out[i] =
+        i > 0 &&
+            out[i].startsWith(tatweel) &&
+            out[i].contains('ٔ') &&
+            RegExp('^$tatweel+\$').hasMatch(letters[i - 1])
+        ? '$tatweel${out[i]}'
+        : '${out[i]}$tatweel';
   }
   return out;
 }

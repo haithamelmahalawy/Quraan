@@ -56,7 +56,13 @@ void correctWarshLexicalBadal(Map quran, List variants, {Map? sourceText}) {
         for (var i = 0; i < h.length; i++) {
           if (('ءأإؤئ'.contains(h[i][0]) || h[i].contains('ٔ')) &&
               r[i].startsWith('ا')) {
-            r[i] = h[i];
+            // Hafs's hamza with the alif after it left unwritten (ٱلۡأَخِرَةِ):
+            // the riwaya's bare alif is that madd; it stays after the hamza.
+            final unwrittenAlif =
+                r[i] == 'ا' &&
+                hafs.contains('لۡأَخِر');
+            r[i] = unwrittenAlif ? '${h[i]}ا' : h[i];
+            if (unwrittenAlif) continue;
             // And the letter after it as Hafs marks it: the unread waw of
             // أُوْلَٰٓئِكَ (اُوْلَٰٓئِكَ, its damma moved) is no madd.
             if (i + 1 < h.length && h[i + 1][0] == r[i + 1][0]) {
@@ -72,7 +78,16 @@ void correctWarshLexicalBadal(Map quran, List variants, {Map? sourceText}) {
       } else if (lam != null &&
           r.length > lam + 1 &&
           r[lam + 1].startsWith('ا')) {
-        r[lam + 1] = h[lam + 1];
+        // Hafs's hamza on a kashida before the alif (ٱلۡـَٔاخِرَةِ): the
+        // hamza back before the madd alif, which stays.
+        if (h.length > lam + 2 &&
+            h[lam + 1].startsWith('ـ') &&
+            h[lam + 1].contains('ٔ') &&
+            h[lam + 2].startsWith('ا')) {
+          r.insert(lam + 1, h[lam + 1]);
+        } else {
+          r[lam + 1] = h[lam + 1];
+        }
         probe = r.join();
       } else if (r.isNotEmpty &&
           r.first.startsWith('ا') &&

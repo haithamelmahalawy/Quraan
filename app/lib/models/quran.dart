@@ -64,6 +64,7 @@ class Variant {
     this.omission = false,
     this.usulText = '',
     this.usulWays = const [],
+    this.hamesh = false,
   });
 
   final String riwayaId;
@@ -136,6 +137,11 @@ class Variant {
   /// The accepted ways of this general rule, shown once in its margin key.
   final List<String> usulWays;
 
+  /// A general rule with a reviewed note of its faces, told in the hamesh
+  /// as well as by its colour (يَصۡلَىٰهَا: taghliz with fath, or tarqiq
+  /// with taqlil).
+  final bool hamesh;
+
   String? get hamzaReplacement => switch (rule) {
     'ibdal_waw' => 'و',
     'ibdal_ya' => 'ي',
@@ -156,6 +162,7 @@ class Variant {
   bool get inHamesh =>
       rule == 'comparison' ||
       rule == 'reviewed_farsh' ||
+      hamesh ||
       !isUsul &&
           !(rule.isNotEmpty && rule != 'kharouf') &&
           (bookFarsh || (!isUsul && (certified || kind == VariantKind.farsh)));
@@ -206,6 +213,7 @@ class Variant {
     omission: omission,
     usulText: usulText,
     usulWays: usulWays,
+    hamesh: hamesh,
   );
 
   /// A reading with imala (or taqlil, the lesser imala).
@@ -237,9 +245,10 @@ class Variant {
 
   /// A source reminder of a rule's exception, not a difference from Hafs.
   bool get isMarginNote =>
+      hamesh ||
       riwayaId == 'warsh' &&
-      text.isEmpty &&
-      RegExp('لا ترقق راؤه.*أعجمي').hasMatch('$description $bookHow');
+          text.isEmpty &&
+          RegExp('لا ترقق راؤه.*أعجمي').hasMatch('$description $bookHow');
 
   /// Written and read as Hafs on the page: Khalaf's idgham without ghunna
   /// in the waw and the ya is all that differs. Told only in the readings
