@@ -57,6 +57,60 @@ void main() {
     }
   });
 
+  test('the main chapters are divided into their kinds', () {
+    Set<String> kinds(String label) => {
+      for (final v in usulOfRiwaya(variants, quran, 'warsh')[label]!)
+        usulKindOf(
+          label,
+          v,
+          quran.ayah(v.surah, v.ayah).words[v.word],
+          changedHamza: variants
+              .at(['warsh'], v.surah, v.ayah, v.word)
+              .any((o) => o.rule == 'naql'),
+          lastOfAyah: v.word == quran.ayah(v.surah, v.ayah).words.length - 1,
+        ),
+    };
+    expect(kinds('مد البدل'), isNot(contains('صور أخرى')));
+    expect(
+      kinds('مد البدل'),
+      containsAll([
+        'حرف المد الألف بعد همز ثابت',
+        'حرف المد الواو بعد همز ثابت',
+        'حرف المد الياء بعد همز ثابت',
+        'حرف المد الألف بعد همز مغيَّر بالنقل',
+      ]),
+    );
+    expect(
+      kinds('النقل'),
+      containsAll([
+        'إلى لام التعريف',
+        'إلى التنوين قبلها',
+        'إلى الحرف الساكن آخر الكلمة قبلها',
+      ]),
+    );
+    expect(
+      kinds('تغليظ اللام'),
+      containsAll(['بعد الصاد المفتوحة', 'بعد الطاء المفتوحة']),
+    );
+    expect(
+      kinds('ترقيق الراء'),
+      containsAll(['بعد ياء ساكنة أو مدية', 'بعد كسرة لازمة']),
+    );
+    expect(
+      kinds('التقليل'),
+      containsAll([
+        'ذوات الراء',
+        'الألف قبل راء مكسورة',
+        'رؤوس الآي',
+        'عند الوقف فقط',
+      ]),
+    );
+    expect(
+      kinds('مد اللين المهموز'),
+      containsAll(['اللين بالياء', 'اللين بالواو']),
+    );
+  });
+
   testWidgets('مد البدل of Warsh is explained, with examples and its verses', (
     t,
   ) async {

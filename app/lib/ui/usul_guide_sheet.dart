@@ -185,15 +185,31 @@ class _RiwayaSection extends StatelessWidget {
   final Kharouf book;
 
   /// How many kinds, and how many examples of each, are shown.
-  static const _kinds = 10, _examples = 6;
+  static const _kinds = 10, _examples = 6, _rulings = 4;
 
   @override
   Widget build(BuildContext context) {
     final rows = usulOfRiwaya(variants, quran, riwaya)[label] ?? const [];
     final kinds = <String, List<Variant>>{};
     for (final v in rows) {
-      (kinds[v.description] ??= []).add(v);
+      final ayah = quran.ayah(v.surah, v.ayah);
+      final kind = usulKindOf(
+        label,
+        v,
+        ayah.words[v.word],
+        changedHamza: variants
+            .at([riwaya], v.surah, v.ayah, v.word)
+            .any((o) => o.rule == 'naql'),
+        lastOfAyah: v.word == ayah.words.length - 1,
+      );
+      (kinds[kind] ??= []).add(v);
     }
+    // How the riwaya reads it, when the kinds do not already say.
+    final rulings = {
+      for (final v in rows)
+        if (v.description.isNotEmpty && !kinds.containsKey(v.description))
+          v.description,
+    }.take(_rulings).toList();
     final ordered = kinds.entries.toList()
       ..sort((a, b) => b.value.length.compareTo(a.value.length));
     final shown = ordered.take(_kinds).toList();
@@ -244,9 +260,21 @@ class _RiwayaSection extends StatelessWidget {
             'عدد المواضع المسجلة: ${arabicNumber(rows.length)}',
             style: TextStyle(color: MushafColors.frame, fontSize: 12),
           ),
+          for (final ruling in rulings)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                ruling,
+                style: TextStyle(
+                  height: 1.6,
+                  fontWeight: FontWeight.w600,
+                  color: MushafColors.ink,
+                ),
+              ),
+            ),
           for (final kind in shown)
             _Kind(
-              description: kind.key,
+              description: '${kind.key} (${arabicNumber(kind.value.length)})',
               rows: kind.value,
               color: color,
               examples: _examples,
@@ -312,6 +340,7 @@ class _Kind extends StatelessWidget {
     required this.quran,
   });
 
+  /// The kind's name.
   final String description;
   final List<Variant> rows;
   final Color color;
@@ -342,9 +371,7 @@ class _Kind extends StatelessWidget {
   /// [count] of [rows], spread across the mushaf.
   static List<Variant> _spread(List<Variant> rows, int count) {
     if (rows.length <= count) return rows;
-    return [
-      for (var i = 0; i < count; i++) rows[i * rows.length ~/ count],
-    ];
+    return [for (var i = 0; i < count; i++) rows[i * rows.length ~/ count]];
   }
 
   Widget _example(Variant v) {
@@ -424,9 +451,7 @@ class RiwayaUsulScreen extends StatelessWidget {
                     backgroundColor: ReadingColors.forLabel(label),
                   ),
                   title: Text(label),
-                  subtitle: Text(
-                    '${arabicNumber(usul[label]!.length)} موضعًا',
-                  ),
+                  subtitle: Text('${arabicNumber(usul[label]!.length)} موضعًا'),
                   onTap: () => UsulGuideSheet.show(
                     context,
                     label: label,

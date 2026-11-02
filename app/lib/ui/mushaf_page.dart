@@ -3098,6 +3098,10 @@ class _UsulBox extends StatelessWidget {
                                   fontSize: 9 * scale,
                                   fontWeight: FontWeight.bold,
                                   color: g.color,
+                                  decoration: onGuide == null
+                                      ? null
+                                      : TextDecoration.underline,
+                                  decorationColor: g.color,
                                 ),
                               ),
                             ),
