@@ -6,6 +6,7 @@ import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/manzumat.dart';
 import 'package:qiraat_mushaf/data/kharouf.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
+import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/quran.dart';
 
 void main() {
@@ -43,6 +44,155 @@ void main() {
     surah,
     surahs,
   );
+
+  test('an isri quotes bayt 765 of the book for Warsh', () {
+    const v = Variant(
+      riwayaId: 'warsh',
+      surah: 20,
+      ayah: 77,
+      word: 4,
+      count: 2,
+      text: 'أَنِ اِ۪سْرِ',
+      kind: VariantKind.farsh,
+      description:
+          'بوصل الهمزة، ويلزم منه كسر النون وصلاً، والابتداء بهمزة مكسورة',
+      rule: '',
+    );
+    final r = manzumat.referenceOf(
+      v,
+      'أَنۡ أَسۡرِ',
+      20,
+      surahs,
+      entries: book.at(20, 77, 4),
+    );
+    expect(r.fromBook, isTrue);
+    expect(r.mention, {765});
+  });
+
+  test('fa-sri and an isri quote bayt 765, the bab of dhikran bayt 346', () {
+    for (final (surah, ayah, word) in [
+      (11, 81, 8),
+      (15, 65, 0),
+      (44, 23, 0),
+      (26, 52, 3),
+    ]) {
+      final v = Variant(
+        riwayaId: 'warsh',
+        surah: surah,
+        ayah: ayah,
+        word: word,
+        count: 1,
+        text: 'فَاسْرِ',
+        kind: VariantKind.farsh,
+        description: 'بوصل الهمزة',
+        rule: '',
+      );
+      final r = manzumat.referenceOf(
+        v,
+        'فَأَسۡرِ',
+        surah,
+        surahs,
+        entries: book.at(surah, ayah, word),
+      );
+      expect(r.mention, {765}, reason: '$surah:$ayah');
+    }
+    final ra = ref(
+      'warsh',
+      20,
+      'ذِكۡرٗا',
+      description: 'بوجهين: تفخيم الراء وترقيقها',
+      rule: 'tarqiq',
+      kind: VariantKind.usul,
+    );
+    expect(ra.mention, {346});
+  });
+
+  test(
+    'every araayta of the question is Warsh usul quoting bayt 638',
+    () async {
+      final quran = await QuranRepository.load();
+      final variants = await VariantRepository.discover();
+      await variants.ensureLoaded(['warsh']);
+      final question = RegExp('^أَ(فَ)?رَءَيۡت');
+      var seen = 0;
+      for (final surah in quran.surahs) {
+        for (var a = 1; a <= surah.ayahCount; a++) {
+          for (final (w, word) in quran.ayah(surah.number, a).words.indexed) {
+            if (!question.hasMatch(word)) continue;
+            seen++;
+            final farsh = variants
+                .at(['warsh'], surah.number, a, w)
+                .singleWhere((v) => v.rule == 'tasheel_word');
+            expect(farsh.isUsul, isTrue);
+            expect(farsh.usulWays, hasLength(2));
+            expect(
+              farsh.description,
+              contains('تسهيل الهمزة الثانية، أو إبدالها ألفًا'),
+            );
+            final r = manzumat.referenceOf(
+              farsh,
+              word,
+              surah.number,
+              surahs,
+              entries: book.at(surah.number, a, w),
+            );
+            expect(r.mention, contains(638), reason: '${surah.number}:$a');
+          }
+        }
+      }
+      expect(seen, 34);
+    },
+  );
+
+  test('yuha of al-Anbiya quotes bayt 783 for Warsh', () {
+    for (final (ayah, word) in [(7, 5), (25, 7)]) {
+      final v = Variant(
+        riwayaId: 'warsh',
+        surah: 21,
+        ayah: ayah,
+        word: word,
+        count: 1,
+        text: 'يُوح۪ىٰٓ',
+        kind: VariantKind.farsh,
+        description: 'بالياء وتقليل الحاء وإبدال الياء ألفًا مقصورة مع المد',
+        rule: '',
+      );
+      expect(v.isUsul, isFalse);
+      final r = manzumat.referenceOf(
+        v,
+        'نُوحِيٓ',
+        21,
+        surahs,
+        entries: book.at(21, ayah, word),
+      );
+      expect(r.mention, contains(783), reason: '21:$ayah');
+    }
+  });
+
+  test('wa-ana and fa-ana before hamza quote bayt 521 for Warsh', () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['warsh']);
+    for (final (surah, ayah, word) in [
+      (6, 163, 5),
+      (7, 143, 38),
+      (40, 42, 10),
+      (43, 81, 5),
+      (60, 1, 35),
+    ]) {
+      final v = variants
+          .at(['warsh'], surah, ayah, word)
+          .singleWhere((r) => r.description == 'بالمد');
+      final r = manzumat.referenceOf(
+        v,
+        quran.ayah(surah, ayah).words[word],
+        surah,
+        surahs,
+        entries: book.at(surah, ayah, word),
+      );
+      expect(r.mention, {521}, reason: '$surah:$ayah');
+    }
+  });
 
   test('ana before hamza points to bayt 521 in Baqarah with book priority', () {
     for (final id in ['warsh', 'qalun']) {

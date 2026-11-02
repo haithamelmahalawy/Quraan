@@ -207,12 +207,26 @@ String same(String s) => s
 void main() {
   final quran =
       jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
+  // The rules go by the source's rasm: the app writes the madd over a
+  // lam-alif's hamza (ٱلۡأٓخِرَةِ) with a fatha only.
+  final rasm = <String, String>{
+    for (final a in (jsonDecode(
+      File('../tools/source/hafsData_v18.json')
+          .readAsStringSync()
+          .replaceFirst('\uFEFF', ''),
+    ) as List))
+      for (final (w, text) in (a['aya_text'] as String).split(' ').indexed)
+        if (text.contains('\u0623\u0653')) '${a['sora']}:${a['aya_no']}:$w': text,
+  };
   final ayahs = [
     for (final a in quran['ayahs'] as List)
       (
         surah: a[0] as int,
         ayah: a[1] as int,
-        words: (a[4] as String).split(' '),
+        words: [
+          for (final (w, text) in (a[4] as String).split(' ').indexed)
+            rasm['${a[0]}:${a[1]}:$w'] ?? text,
+        ],
       ),
   ];
   final words = {for (final a in ayahs) '${a.surah}:${a.ayah}': a.words};

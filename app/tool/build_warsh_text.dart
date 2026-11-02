@@ -241,12 +241,12 @@ String withNaqlDamma(String warsh, String hafs) =>
 /// The stop signs of the Madinah mushaf, Hafs's at this word (يَسْمَعُونَۘ):
 /// the source has one sign for every stop of the Maghribi print (ۖ), at
 /// each ayah's end too.
-/// The sakin hamza after a fatha read as an alif (يَسۡتَـٔۡخِرُونَ read
-/// يَسْتَاخِرُونَ): a full alif in the word, where the source writes a dagger
-/// one on the letter before.
+/// The sakin hamza after a fatha read as an alif, where Hafs seats it on an
+/// alif (يَسۡتَأۡخِرُونَ read يَسْتَاخِرُونَ): a full alif in the word, where the
+/// source writes a dagger one on the letter before. Seated on a kashida
+/// (يَسۡتَـٔۡخِرُونَ) Hafs's rasm has no alif, and the dagger one stays.
 String withSakinHamzaAlif(String warsh, String hafs) {
-  // On a kashida (يَسۡتَـٔۡذِنُكَ) or an alif (يَسۡتَأۡخِرُونَ).
-  final m = RegExp(r'(\S)َ(?:ـٔ|أ)ۡ').firstMatch(hafs);
+  final m = RegExp(r'(\S)َأۡ').firstMatch(hafs);
   // Not where the source writes that alif in full already, and the dagger
   // alif is Hafs's own (يَاتِيَٰنِهَا).
   if (m == null || warsh.contains('${m[1]}َا')) return warsh;
@@ -334,23 +334,33 @@ String withHafsForms(String warsh, String hafs) {
     return '\u0644\u0650\u064a\u064e\u0633\u064f\u0640\u06e5\u0653\u0640\u0640\u0654\u064f'
         '\u0648\u0627\u0652';
   }
+  // ٱلشَّفَٰعَةَ (مريم 87، طه 109، سبأ 23): the sun letter doubled as Hafs
+  // writes it; the source leaves the shin bare (اَ۬لشَفَٰعَةَ).
+  if (hafs.contains('\u0644\u0634\u0651\u064e\u0641\u064e\u0670\u0639') &&
+      warsh.contains('\u0644\u0634\u064e\u0641\u064e\u0670\u0639')) {
+    return warsh.replaceFirst('\u0644\u0634\u064e', '\u0644\u0634\u0651\u064e');
+  }
   // يَصْل۪يٰهَا (الإسراء 18) with the taqlil the hamesh tells beside the
   // source's taghliz (يَصْلَيٰهَا): either face may be read.
   if (warsh ==
       '\u064a\u064e\u0635\u0652\u0644\u064e\u064a\u0670\u0647\u064e\u0627') {
     return '\u064a\u064e\u0635\u0652\u0644\u06ea\u064a\u0670\u0647\u064e\u0627';
   }
-  // لِأَبَآئِهِمۡ (الكهف 5): the hamza with its fatha over the lam-alif,
-  // without the madd, as Hafs's word is written.
-  const lamHamza = '\u0644\u0650\u0623\u0653';
-  const lamHamzaApart = '\u0644\u0650\u0623\u064e';
-  if (warsh.startsWith(lamHamza) && hafs.startsWith(lamHamzaApart)) {
-    return lamHamzaApart + warsh.substring(lamHamza.length);
+  // The hamza over a lam-alif (لِأَبَآئِهِمۡ، لَأَيَةٗ) with its fatha, without
+  // the source's madd, as Hafs's word is written.
+  if (warsh.contains('أٓ') && hafs.contains('أَ')) {
+    return warsh.replaceFirst('أٓ', 'أَ');
   }
   // The eased hamza of أَئِمَّةَ on its tooth, the easing dot in place of
   // the ya's two dots and the kasra under it: أَىِ۪مَّةَ.
   if (warsh == 'أَي۪مَّةَ') {
     return 'أَىِ۪مَّةَ';
+  }
+  // And the words the source writes with the hamza (أَئِمَّةٗ، أَئِنَّ، اَئِنَّكُمْ):
+  // the same tooth and dot.
+  final eased = RegExp('^[أا]َئِ').firstMatch(warsh);
+  if (eased != null) {
+    return '${warsh.substring(0, 2)}ىِ۪${warsh.substring(4)}';
   }
   return warsh;
 }
@@ -385,10 +395,19 @@ String withSmallNunApart(String warsh) => warsh.replaceAll('نُۨ', 'نُـۨ')
 /// The letters «الٓر» and «الٓمٓر» as the Madinah rasm writes them, with the
 /// taqlil sign under the ra alone; the source writes them vowelled
 /// (أَلَٓمِّٓر۪ۚ).
-String withHafsMuqattaat(String warsh, String hafs) =>
-    RegExp(r'^الٓ(?:مٓ)?رۚ$').hasMatch(hafs) && warsh.contains('ر۪')
-    ? hafs.replaceFirst('ر', 'ر۪')
-    : warsh;
+String withHafsMuqattaat(String warsh, String hafs) {
+  if (RegExp(r'^الٓ(?:مٓ)?رۚ$').hasMatch(hafs) && warsh.contains('ر۪')) {
+    return hafs.replaceFirst('ر', 'ر۪');
+  }
+  // The letters read as Hafs reads them (الٓمٓ، طسٓمٓ، يسٓ، صٓ): as he writes
+  // them, without the source's vowels.
+  final letters = hafs.replaceAll(RegExp('[\u06d6-\u06db]'), '');
+  return RegExp(
+        '^[\u0627\u0644\u0645\u0637\u0633\u064a\u0635\u0639\u0642\u0653]+\$',
+      ).hasMatch(letters)
+      ? hafs
+      : warsh;
+}
 
 /// The ya with the alif after it as Hafs writes it (بِأَيَّىٰمِ), the source
 /// writing two ya's (بِأَييَّٰمِ): the same reading.

@@ -307,6 +307,12 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
                   .hasMatch(how.replaceAll(RegExp('[ً-ٰٟ]'), '').trim())) {
             found = true;
           }
+          // Warsh's أَرَءَيۡتَ, its two faces told in the usul: the book quotes it
+          // (أفرأيت) in its farsh.
+          if (v.rule == 'tasheel_word' &&
+              v.description.contains('ألفًا خالصة مع المد المشبع للساكنين')) {
+            found = true;
+          }
           // Do not duplicate an existing rule as a lexical book variant.
           if ((p[4] as String).isEmpty && _matchesUsul(v, how)) found = true;
           // Nor the riwaya's own hamza turned to a letter, which the book
@@ -434,7 +440,7 @@ bool _matchesUsul(Variant v, String how) {
   // Warsh's lam made heavy (ٱلصَّلَوٰةَ) or ra made light: told by its rule, not
   // again as farsh («بتفخيم اللام حيث وقعت»). «ولا ترقق راؤه» still tells.
   if (v.isTarqiqOrTaghliz &&
-      RegExp('تفخيم اللام|تغليظ|غلظ|ترقيق الراء|رقق').hasMatch(how) &&
+      RegExp('تفخيم اللام|فخم اللام|تغليظ|غلظ|ترقيق الراء|رقق').hasMatch(how) &&
       !how.contains('لا ترقق')) {
     return true;
   }

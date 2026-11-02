@@ -104,14 +104,29 @@ class HafsFontMarks extends StatelessWidget {
 
   /// The second hamza eased after the first (أَ۟ذَا، أَ۟نَّكَ): Warsh's text
   /// writes it as a ringed dot; the tasheel dot alone takes its place.
-  static bool _easedDot(String cluster) =>
-      RegExp('^[أإ]').hasMatch(cluster) && cluster.contains('۟');
+  /// After a naql the first hamza's seat is a bare alif with the fatha, the
+  /// dot after it (حَاجِزًا اَ۟لَٰهٞ); on a wasl alif (اَ۟ذْكُرُواْ) the ring stays.
+  static bool _easedDot(String cluster, String? next) =>
+      RegExp('^[أإ]').hasMatch(cluster) && cluster.contains('۟') ||
+      cluster == '\u0627\u064e\u06df' &&
+          next != null &&
+          next.contains('\u064e') &&
+          !next.contains('\u0651');
 
   /// The small waw of a madd on a kashida (لِيَسُـۥٓـُٔواْ): the font joins
   /// nothing across it and sets it on the line. The kashida and the waw are
   /// left out, the sin joined to the hamza's seat, and the waw with its madd
   /// drawn high over where they join.
   static bool _smallWawApart(String cluster) => cluster == 'ـۥٓ';
+
+  /// The hamza over a lam-alif, the madd alif after it unwritten (ٱلۡأَخِرَةِ،
+  /// لَأَيَةٗ): the lam-alif is written bare and the hamza with its fatha drawn
+  /// apart, a little to the right of where the font sets it.
+  static bool _lamHamzaApart(String cluster, String? previous, String? next) =>
+      cluster == 'أَ' &&
+      (previous?.startsWith('ل') ?? false) &&
+      next != null &&
+      RegExp('[ً-ِ]').hasMatch(next);
 
   static bool _iqlabApart(String cluster) =>
       cluster.contains('ۭ') || cluster.contains('ۢ') && cluster.contains('ِ');
@@ -126,12 +141,17 @@ class HafsFontMarks extends StatelessWidget {
     String? previous;
     for (final m in _cluster.allMatches(text)) {
       final cluster = m[0]!;
-      if (_raisedMadd(cluster, previous) ||
+      if (_lamHamzaApart(
+            cluster,
+            previous,
+            _cluster.matchAsPrefix(text, m.end)?[0],
+          ) ||
+          _raisedMadd(cluster, previous) ||
           _lowerImala(cluster) ||
           _kasraUnderHamza(cluster) ||
           _waqfOverTanween(cluster) ||
           _naqlFatha(cluster) ||
-          _easedDot(cluster) ||
+          _easedDot(cluster, _cluster.matchAsPrefix(text, m.end)?[0]) ||
           _smallWawApart(cluster) ||
           _daggerApart(cluster, previous)) {
         return true;
@@ -184,8 +204,18 @@ class HafsFontMarks extends StatelessWidget {
     // The kashida carrying a small waw drawn apart, with the waw's colour.
     final waws = <int, Color?>{};
     final dropped = <int>{};
+    // The hamzas drawn apart, their seats written as a bare alif.
+    final seats = <int>{};
     String? previous;
     for (final m in _cluster.allMatches(full)) {
+      if (_lamHamzaApart(
+        m[0]!,
+        previous,
+        _cluster.matchAsPrefix(full, m.end)?[0],
+      )) {
+        seats.add(m.start);
+        dropped.add(m.start + 1);
+      }
       if (_raisedMadd(m[0]!, previous)) {
         final at = full.indexOf('ٓ', m.start);
         marks[at] = placed[at].$2;
@@ -202,11 +232,13 @@ class HafsFontMarks extends StatelessWidget {
         final markAt = full.indexOf(_waqf, m.start);
         marks[markAt] = placed[markAt].$2;
       }
-      if (_naqlFatha(m[0]!) && !_easedDot(m[0]!)) {
+      if (_naqlFatha(m[0]!)) {
         final markAt = full.indexOf('َ', m.start);
         marks[markAt] = placed[markAt].$2;
       }
-      if (_easedDot(m[0]!)) dots.add(full.indexOf('۟', m.start));
+      if (_easedDot(m[0]!, _cluster.matchAsPrefix(full, m.end)?[0])) {
+        dots.add(full.indexOf('۟', m.start));
+      }
       if (_smallWawApart(m[0]!)) {
         // Kept by the seat after it, drawn at its join with the sin.
         waws[m.end] = placed[m.start + 1].$2;
@@ -224,7 +256,11 @@ class HafsFontMarks extends StatelessWidget {
       previous = m[0]!;
     }
     final sakt = {for (final m in _boundarySakt.allMatches(full)) m.start: m};
-    if (marks.isEmpty && sakt.isEmpty && dots.isEmpty && waws.isEmpty) {
+    if (marks.isEmpty &&
+        sakt.isEmpty &&
+        dots.isEmpty &&
+        waws.isEmpty &&
+        seats.isEmpty) {
       return preserveText(builder(_joined(placed)));
     }
     final insertions = {for (final m in sakt.values) m.end: placed[m.start].$2};
@@ -246,7 +282,13 @@ class HafsFontMarks extends StatelessWidget {
           !marks.containsKey(i) &&
           !sakt.containsKey(i)) {
         // The kashida under a dagger alif drawn apart: a thin space.
-        chars.add(thin.contains(i) ? (' ', placed[i].$2) : placed[i]);
+        chars.add(
+          thin.contains(i)
+              ? (' ', placed[i].$2)
+              : seats.contains(i)
+              ? ('ا', placed[i].$2)
+              : placed[i],
+        );
       }
     }
     for (final entry in marks.entries) {
@@ -255,6 +297,9 @@ class HafsFontMarks extends StatelessWidget {
           targets.add((offsets[m.start]!, entry.value, full[entry.key]));
         }
       }
+    }
+    for (final at in seats) {
+      targets.add((offsets[at]!, placed[at].$2, 'ٔ'));
     }
     for (final MapEntry(:key, :value) in waws.entries) {
       targets.add((offsets[key]!, value, 'ۥ'));
@@ -273,6 +318,12 @@ class HafsFontMarks extends StatelessWidget {
     );
   }
 }
+
+/// The hamza drawn apart over a lam-alif, in font sizes: how far right of its
+/// alif, how high over the line, and where the ink of its own alif is clipped.
+const lamHamzaShift = -.02;
+const lamHamzaRise = -.10;
+const lamHamzaClip = .70;
 
 /// How high the small waw of a madd stands over the line, in font sizes.
 const smallWawRise = .55;
@@ -331,6 +382,40 @@ class _QuranMarkPainter extends CustomPainter {
           font * .10,
           Paint()..color = color ?? style.color ?? Colors.black,
         );
+        continue;
+      }
+      if (sign == 'ٔ') {
+        final hamza = TextPainter(
+          text: TextSpan(
+            text: 'أَ',
+            style: TextStyle(
+              fontFamily: 'Hafs',
+              fontSize: font,
+              height: 1,
+              color: color ?? style.color,
+            ),
+          ),
+          textDirection: TextDirection.rtl,
+        )..layout();
+        final baseline = line.baseline - font * lamHamzaRise;
+        canvas.save();
+        canvas.clipRect(
+          Rect.fromLTRB(
+            -font,
+            -font * 2,
+            size.width + font,
+            baseline - font * lamHamzaClip,
+          ),
+        );
+        hamza.paint(
+          canvas,
+          Offset(
+            (box.left + box.right - hamza.width) / 2 + font * lamHamzaShift,
+            baseline - hamza.computeLineMetrics().single.baseline,
+          ),
+        );
+        canvas.restore();
+        hamza.dispose();
         continue;
       }
       if (sign == 'ۥ') {

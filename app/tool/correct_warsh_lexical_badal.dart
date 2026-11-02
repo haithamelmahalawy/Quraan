@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/warsh_badal.dart';
 
@@ -14,6 +17,17 @@ void correctWarshLexicalBadal(Map quran, List variants, {Map? sourceText}) {
     for (final a in quran['ayahs'] as List)
       for (final (w, text) in (a[4] as String).split(' ').indexed)
         '${a[0]}:${a[1]}:$w': text,
+  };
+  // Where the source's rasm has the madd over the hamza (ٱلۡأٓخِرَةِ) the alif
+  // after it is unwritten; the app writes these with a fatha only.
+  final unwritten = <String>{
+    for (final a in (jsonDecode(
+      File('../tools/source/hafsData_v18.json')
+          .readAsStringSync()
+          .replaceFirst('﻿', ''),
+    ) as List))
+      for (final (w, text) in (a['aya_text'] as String).split(' ').indexed)
+        if (text.contains('أٓ')) '${a['sora']}:${a['aya_no']}:$w',
   };
   final changed = <String, (List, String)>{};
   final at = <String, List<List>>{};
@@ -59,8 +73,9 @@ void correctWarshLexicalBadal(Map quran, List variants, {Map? sourceText}) {
             // Hafs's hamza with the alif after it left unwritten (ٱلۡأَخِرَةِ):
             // the riwaya's bare alif is that madd; it stays after the hamza.
             final unwrittenAlif =
-                r[i] == 'ا' &&
-                hafs.contains('لۡأَخِر');
+                r[i] == 'ا' && unwritten.contains(entry.key) ||
+                // Or the riwaya's own madd over its alif (اٰتُوهُ for أَتَوۡهُ).
+                r[i].contains('\u0670');
             r[i] = unwrittenAlif ? '${h[i]}ا' : h[i];
             if (unwrittenAlif) continue;
             // And the letter after it as Hafs marks it: the unread waw of

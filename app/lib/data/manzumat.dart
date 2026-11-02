@@ -274,9 +274,17 @@ class Manzumat {
     final word = v.text.trim().split(RegExp(r'\s+')).first;
     final d = v.shownDescription.replaceAll(RegExp('[ً-ٰٟ]'), '');
     return const {'warsh', 'qalun'}.contains(v.riwayaId) &&
-        _letters(word) == 'انا' &&
+        (_letters(word) == 'انا' ||
+            // وَأَنَآ، فَأَنَآ with the same madd.
+            v.riwayaId == 'warsh' && const {'وانا', 'فانا'}.contains(_letters(word))) &&
         (d.contains('مد') || RegExp('إثبات.*ألف.*أنا').hasMatch(d));
   }
+
+  /// Warsh's two faces of أَرَءَيۡتَ of the question, wherever it comes:
+  /// «أَرَيْتَ فِي الاِسْتِفْهَامِ لاَ عَيْنَ رَاجِعٌ».
+  bool _araayta(Variant v) =>
+      v.riwayaId == 'warsh' &&
+      v.description.contains('تسهيل الهمزة الثانية، أو إبدالها ألفًا');
 
   /// Ibn Dhakwan's imala of «ٱلتَّوۡر۪ىٰةَ», in the farsh of Al 'Imran:
   /// «وَإِضْجَاعُكَ التَّوْرَاةَ مَا رُدَّ حُسْنُهُ».
@@ -527,6 +535,7 @@ class Manzumat {
     if (yaqub != null) return yaqub;
     final d = v.shownDescription;
     if (poem == Poem.shatibiyya && _anaWasl(v)) return {521};
+    if (poem == Poem.shatibiyya && _araayta(v)) return {638};
     if (poem == Poem.durrah) {
       // 14:2 Ruways's «ٱللَّهُ» when starting: «وَطِبْ رَفْعَ أَللهِ ابْتِدَاءً».
       if (v.riwayaId == 'ruways' && v.surah == 14 && v.ayah == 2) {
@@ -584,7 +593,8 @@ class Manzumat {
         case 'lin_hamz_sawat':
           return {182};
         case 'tarqiq':
-          return {343, 344};
+          // ذِكْرًا وسِتْرًا وبابه: «وَتَفْخِيمُهُ ذِكْرًا وَسِتْرًا وَبَابَهُ».
+          return v.description.contains('تفخيم') ? {346} : {343, 344};
         case 'taghliz':
           return {359, 360};
         case 'tasheel_word':
@@ -673,6 +683,9 @@ class Manzumat {
     }
     if (poem == Poem.shatibiyya && _anaWasl(v)) {
       return verses(poem).firstWhere((b) => b.n == 521).chapter;
+    }
+    if (poem == Poem.shatibiyya && _araayta(v)) {
+      return verses(poem).firstWhere((b) => b.n == 638).chapter;
     }
     if (poem == Poem.shatibiyya && v.rule == 'ishmam') {
       final ishmam = _ishmamVerses(v);

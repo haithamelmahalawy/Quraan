@@ -247,6 +247,8 @@ Map<String, int> correctWarshUsul(
       );
       continue;
     }
+    // ءَآللَّهُ خَيۡرٌ (النمل 59): read as Hafs reads it, nothing told.
+    if (key(w) == '27:59:8') continue;
     // Interrogative followed by the al- wasl hamza: distinguish this
     // from two qat' hamzas. These faces also occur in Hafs.
     if (RegExp(r'^ءَآل').hasMatch(w.text)) {
@@ -281,7 +283,10 @@ Map<String, int> correctWarshUsul(
       // Its lexical difference must not be replaced by a tasheel rule.
       if (open || (_hamza(readingFirst) && _vowel(readingFirst) == 'َ')) {
         final ways = [
-          'تسهيل الهمزة الثانية بلا إدخال',
+          // The second hamza on its tooth (أَئِمَّةٗ), told with the first.
+          cs[1].startsWith('ئ')
+              ? 'تحقيق الأولى وتسهيل الثانية بلا إدخال'
+              : 'تسهيل الهمزة الثانية بلا إدخال',
           // A third hamza changed to madd (ءأٰلهتنا) rules out this face.
           if (open && !cs[1].contains('ٰ'))
             _ibdal('ألفًا', _hasSakin(cs[2]) ? 6 : 2),
@@ -569,6 +574,17 @@ Map<String, int> correctWarshUsul(
     final v = reading(w) ?? add(w);
     tag(v, 'taqlil_stop', 'بالتقليل وقفًا', stop: true);
   }
+  // تَرَٰٓءَا (الشعراء 61), its alif dropped in wasl: the ra and the hamza
+  // lessened on stopping, opened in wasl.
+  tag(
+    at['26:61:1']
+            ?.where((v) => v.length > 7 && v[7] == 'taqlil_stop')
+            .firstOrNull ??
+        add(source['26:61:1']!),
+    'taqlil_stop',
+    'بتقليل الراء والهمزة وقفًا',
+    stop: true,
+  );
   correctWarshLexicalBadal(quran, variants, sourceText: sourceText);
   correctYaZawaid(quran, variants, 'warsh', book);
   counts.addAll(correctWarshLinHamz(quran, variants));

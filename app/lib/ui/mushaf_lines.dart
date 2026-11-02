@@ -39,6 +39,7 @@ class MushafLines extends StatelessWidget {
     this.display,
     this.marker,
     this.wordMarker,
+    this.wordGap,
     this.height,
   });
 
@@ -53,6 +54,9 @@ class MushafLines extends StatelessWidget {
   /// The ayah-end ornament; defaults to the number in the Hafs font.
   final ({String text, String font})? Function(Ayah ayah)? marker;
   final ({String text, String font})? Function(Ayah ayah, int word)? wordMarker;
+
+  /// Extra room before a word, in ems, counted in the line's width.
+  final double Function(Ayah ayah, int word)? wordGap;
 
   ({String text, String font}) _marker(Ayah ayah) =>
       marker?.call(ayah) ??
@@ -146,7 +150,9 @@ class MushafLines extends StatelessWidget {
             Padding(
               padding: centered
                   ? EdgeInsets.symmetric(horizontal: fontSize * 0.12)
-                  : EdgeInsets.zero,
+                  : EdgeInsets.only(
+                      right: (wordGap?.call(ayah, w) ?? 0) * fontSize,
+                    ),
               child: item,
             ),
       ],
@@ -172,6 +178,7 @@ class MushafLines extends StatelessWidget {
       final shown = _show(ayah, w);
       if (shown != null) {
         natural += _measure(shown.text, shown.font) * scale;
+        natural += (wordGap?.call(ayah, w) ?? 0) * fontSize;
         if (w == 0 && (ayah.rubStart != null || ayah.juzStart)) {
           natural += _measure('۞', 'Hafs') * .8 * scale;
         }
@@ -279,6 +286,7 @@ class MushafLines extends StatelessWidget {
       final shown = _show(ayah, i);
       if (shown != null) {
         w += _measure(shown.text, shown.font);
+        w += (wordGap?.call(ayah, i) ?? 0) * _probe;
         if (i == 0 && (ayah.rubStart != null || ayah.juzStart)) {
           w += _measure('۞', 'Hafs') * .8;
         }

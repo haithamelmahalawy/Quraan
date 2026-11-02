@@ -28,6 +28,18 @@ class HamzaReplacementMark extends StatelessWidget {
   /// Hafs-aligned source cluster before Warsh's replacement spelling.
   final String? originalHamza;
 
+  /// The hamza before an alif (هَٰٓؤُلَآءِ ءَالِهَةٗ): in its own place before
+  /// the alif, not over it.
+  static bool beforeAlif(
+    String letter,
+    String hamza,
+    String text,
+    int offset,
+  ) =>
+      letter.isNotEmpty &&
+      hamza.startsWith('ء') &&
+      text.startsWith('ا', offset);
+
   static bool isBelow(String cluster) =>
       cluster.startsWith('إ') || RegExp('[ٕ۪]').hasMatch(cluster);
 
@@ -159,7 +171,8 @@ class _ReplacementPainter extends CustomPainter {
     // Anchor to the alif's baseline instead of the top/bottom of that box.
     final hamza = originalHamza ?? text.substring(offset, end);
     final center = Offset(
-      (box.left + box.right) / 2,
+      HamzaReplacementMark.beforeAlif(letter, hamza, text, offset)
+          ? box.right + diameter * .55 : (box.left + box.right) / 2,
       line.baseline +
           fontSize *
               (hamza.startsWith('ء')

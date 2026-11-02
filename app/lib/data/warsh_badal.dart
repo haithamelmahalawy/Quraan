@@ -3,7 +3,8 @@ import 'arabic.dart';
 /// Test the word actually read by Warsh, including any lexical additions
 /// or deletions. A naql spelling needs its underlying hamza restored first.
 bool hasWarshBadal(String word, String location) {
-  if (const ['10:51', '10:91'].contains(location)) return false;
+  // تَرَٰٓءَا (الشعراء 61): no badal, its alif is told on stopping as taqlil.
+  if (const ['10:51', '10:91', '26:61'].contains(location)) return false;
   final bare = skeleton(word);
   if (bare.contains('سريل') ||
       RegExp(r'^[وف]?[يتن]خذ').hasMatch(bare) ||

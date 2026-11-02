@@ -376,6 +376,7 @@ class _MushafPageState extends State<MushafPage>
                   display: _display,
                   marker: _marker,
                   wordMarker: _nativeNumbering ? _wordMarker : null,
+                  wordGap: _wordGap,
                   height: textHeight,
                 ),
               ),
@@ -384,6 +385,23 @@ class _MushafPageState extends State<MushafPage>
         ),
       ),
     );
+  }
+
+  /// Room before a word whose ibdal mark stands ahead of its alif (ءَالِهَةٗ),
+  /// in ems, so the mark keeps clear of the word before it.
+  double _wordGap(Ayah ayah, int w) {
+    final replacement = _replacementAt(ayah, w)?.hamzaReplacement;
+    final text = _display(ayah, w)?.text;
+    if (replacement == null || text == null) return 0;
+    final h = _hamzaLetter(ayah.words[w]);
+    return HamzaReplacementMark.beforeAlif(
+          replacement,
+          lettersOf(ayah.words[w])[h],
+          text,
+          lettersOf(text).take(h).join().length,
+        )
+        ? .16
+        : 0;
   }
 
   String _sequentialSignature(Size size) => [
@@ -450,6 +468,7 @@ class _MushafPageState extends State<MushafPage>
       display: _display,
       marker: _marker,
       wordMarker: _nativeNumbering ? _wordMarker : null,
+      wordGap: _wordGap,
     ).metrics(textWidth);
     // Size by width, with a little less vertical expansion. The glyphs
     // keep their shapes, the print's word order and its inter-word spaces.
@@ -497,6 +516,7 @@ class _MushafPageState extends State<MushafPage>
                   display: _display,
                   marker: _marker,
                   wordMarker: _nativeNumbering ? _wordMarker : null,
+                  wordGap: _wordGap,
                   height: textHeight,
                 ),
               ),
@@ -754,6 +774,7 @@ class _MushafPageState extends State<MushafPage>
       display: _display,
       marker: _marker,
       wordMarker: _nativeNumbering ? _wordMarker : null,
+      wordGap: _wordGap,
       height: textHeight,
     );
     final first = ayahs.first;
@@ -1459,6 +1480,8 @@ class _MushafPageState extends State<MushafPage>
     }
     var priority = 0;
     (int, Color)? zaida;
+    // The eased hamza's dot after a naql's alif (اَ۟لَٰهٞ): apart from the alif.
+    Color? easedDot;
     void mark(int? i, Color color, {bool badal = false}) {
       if (i == null || i < 0 || i >= letters.length) return;
       final rank = priority * 2 + (badal ? 1 : 0);
@@ -1505,6 +1528,18 @@ class _MushafPageState extends State<MushafPage>
         continue;
       }
       if (v.isStoppingTaqlil) {
+        // تَرَٰٓءَا: its ra and hamza, written without the sign.
+        if (v.description.contains('الراء والهمزة')) {
+          mark(
+            letters.indexWhere((l) => l.startsWith('ر')),
+            MushafColors.green,
+          );
+          mark(
+            letters.indexWhere((l) => l.startsWith('ء')),
+            MushafColors.green,
+          );
+          continue;
+        }
         var at = letters.lastIndexWhere((l) => l.startsWith('ى'));
         if (at < 0) at = letters.lastIndexWhere((l) => l.startsWith('ا'));
         mark(at < 0 ? null : at, MushafColors.green);
@@ -1580,10 +1615,19 @@ class _MushafPageState extends State<MushafPage>
             if (_hamzaCluster(l)) i,
         ];
         final variant = lettersOf(v.text);
-        final target =
-            v.rule == 'ibdal_waw' ||
-                v.rule == 'ibdal_ya' ||
-                v.rule == 'tasheel_pair'
+        // أَرَءَيۡتَ: its second hamza, or the letter Warsh writes it on (رَٰٓ).
+        final araayta =
+            v.rule == 'tasheel_word' &&
+            d.contains('ألفًا خالصة مع المد المشبع للساكنين');
+        int at(bool Function(String) test) =>
+            letters.indexed.skip(1).where((l) => test(l.$2)).firstOrNull?.$1 ??
+            -1;
+        final second = at(_hamzaCluster);
+        final target = araayta
+            ? (second >= 0 ? second : at((l) => l.contains('ٰ')))
+            : v.rule == 'ibdal_waw' ||
+                  v.rule == 'ibdal_ya' ||
+                  v.rule == 'tasheel_pair'
             ? 0
             // The second hamza, after the first (ءَآللَّهُ); the riwaya's own
             // text may write the two as one alif (آٰللَّهُ).
@@ -1601,7 +1645,21 @@ class _MushafPageState extends State<MushafPage>
                       )
                       .firstOrNull ??
                   hamzas.lastOrNull;
-        mark(target, ReadingColors.hamza);
+        if (v.rule == 'tasheel_word' &&
+            target == 0 &&
+            letters[0] == '\u0627\u064e\u06df') {
+          easedDot = ReadingColors.hamza;
+        } else {
+          // The sakin hamza written as a dagger alif on the letter before
+          // (يَسْتَٰخِرُونَ): one letter fewer than Hafs's word, that letter.
+          final onDagger =
+              v.rule == 'ibdal_single' &&
+              target != null &&
+              target > 0 &&
+              letters.length == hafs.length - 1 &&
+              letters[target - 1].contains('ٰ');
+          mark(onDagger ? target - 1 : target, ReadingColors.hamza);
+        }
       }
       if (d.contains('صلة')) {
         final base = d.contains('ميم') || d.contains('الميم') ? 'م' : 'ه';
@@ -1634,6 +1692,9 @@ class _MushafPageState extends State<MushafPage>
         if (i == zaida?.$1) ...[
           (l.substring(0, l.indexOf('ۦ')), colors[i]),
           (l.substring(l.indexOf('ۦ')), zaida!.$2),
+        ] else if (easedDot != null && l == '\u0627\u064e\u06df') ...[
+          ('\u0627\u064e', colors[i]),
+          ('\u06df', easedDot),
         ] else
           (l, colors[i]),
     ];
@@ -2046,9 +2107,12 @@ List<int>? _mergedLetters(String description, List<String> letters) {
 }
 
 /// A usul imala, or a farsh word read with it (يَٰبُشۡرٰ۪يَ بالتقليل); not the
-/// sign under a wasl alif begun with kasra (اَ۪تَّخَذتُّمُ).
+/// sign under a wasl alif begun with kasra (اَ۪تَّخَذتُّمُ), nor يُوح۪ىٰٓ for
+/// نُوحِيٓ, whose taqlil is part of its farsh: the whole word in its colour.
 bool _farshImala(Variant v) =>
-    v.isUsul || RegExp('إمالة|الإمالة|تقليل|التقليل').hasMatch(v.description);
+    v.isUsul ||
+    RegExp('إمالة|الإمالة|تقليل|التقليل').hasMatch(v.description) &&
+        !v.description.startsWith('بالياء وتقليل الحاء');
 
 /// Ibn Dhakwan's imala of the ra and the hamza (رَ۪ءَ۪اكَ), drawn apart so
 /// that both signs are seen ([spacedImalaSigns]).
