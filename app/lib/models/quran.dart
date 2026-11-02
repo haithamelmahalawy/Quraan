@@ -219,6 +219,8 @@ class Variant {
   /// A reading with imala (or taqlil, the lesser imala).
   bool get isImala =>
       (text.contains('۪') &&
+          // The easing dot on a hamza's tooth (اَىِ۪نَّكُمْ), no imala.
+          !text.contains('\u0649\u0650\u06ea') &&
           !const {
             'tasheel_word',
             'tasheel_pair',

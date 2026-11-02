@@ -47,25 +47,31 @@ Map<String, Object> buildWarshText(Map base, List<Map> source) {
       out.add([
         s,
         anchors[start].ayah,
-        [
-          for (var i = start; i < end; i++)
-            withHafsYaAlif(
-              withHafsMuqattaat(
-                withHafsStops(
-                  withHafsForms(
-                    withSmallNunApart(
-                      withLowIqlab(
-                        withNaqisIdgham(
-                          withEasedAlifDagger(
-                            withYaDaggerApart(
-                              withNaqlDamma(
-                                withKafMaddApart(
-                                  withHafsHamzaAbove(
-                                    withHafsFullAlif(
-                                      withHafsLamShadda(
-                                        withSakinHamzaAlif(
-                                          withHafsDaggerAlif(
-                                            slots[i],
+        withoutMergedNunSukun(
+          [
+            for (var i = start; i < end; i++)
+              withHafsYaAlif(
+                withHafsMuqattaat(
+                  withHafsStops(
+                    withHafsForms(
+                      withSmallNunApart(
+                        withLowIqlab(
+                          withNaqisIdgham(
+                            withEasedAlifDagger(
+                              withYaDaggerApart(
+                                withNaqlDamma(
+                                  withKafMaddApart(
+                                    withHafsHamzaAbove(
+                                      withHafsFullAlif(
+                                        withHafsLamShadda(
+                                          withSakinHamzaAlif(
+                                            withHafsDaggerAlif(
+                                              withoutIdghamShadda(
+                                                slots[i],
+                                                anchors[i].text,
+                                              ),
+                                              anchors[i].text,
+                                            ),
                                             anchors[i].text,
                                           ),
                                           anchors[i].text,
@@ -74,15 +80,15 @@ Map<String, Object> buildWarshText(Map base, List<Map> source) {
                                       ),
                                       anchors[i].text,
                                     ),
-                                    anchors[i].text,
                                   ),
+                                  anchors[i].text,
                                 ),
-                                anchors[i].text,
                               ),
                             ),
                           ),
                         ),
                       ),
+                      anchors[i].text,
                     ),
                     anchors[i].text,
                   ),
@@ -90,9 +96,12 @@ Map<String, Object> buildWarshText(Map base, List<Map> source) {
                 ),
                 anchors[i].text,
               ),
-              anchors[i].text,
-            ),
-        ],
+          ],
+          [
+            for (var i = start; i < end; i++)
+              withoutIdghamShadda(slots[i], anchors[i].text) != slots[i],
+          ],
+        ),
       ]);
       start = end;
     }
@@ -131,6 +140,41 @@ List<String> _clusters(String s) {
     } else if (!_mark.hasMatch(c)) {
       out.add(c);
     }
+  }
+  return out;
+}
+
+/// The ya or waw a nun or tanween merges into (مَن يَّقُولُ، مِن وَّلِيّٖ): the
+/// source doubles it, Hafs's rasm does not (مَن يَقُولُ), the same reading.
+String withoutIdghamShadda(String warsh, String hafs) {
+  final w = _clusters(warsh), h = _clusters(hafs);
+  if (w.isEmpty ||
+      h.isEmpty ||
+      !RegExp('^[\u064a\u0648]').hasMatch(w.first) ||
+      w.first[0] != h.first[0] ||
+      !w.first.contains('\u0651') ||
+      h.first.contains('\u0651')) {
+    return warsh;
+  }
+  w[0] = w.first.replaceAll('\u0651', '');
+  return w.join();
+}
+
+/// The nun merged into such a ya or waw, without its sukun as Hafs writes it
+/// (مَن يَقُولُ): [merged] tells the words whose shadda was left out.
+List<String> withoutMergedNunSukun(List<String> words, List<bool> merged) {
+  final out = [...words];
+  // The word before, past a slot the riwaya leaves empty (40:26).
+  var last = -1;
+  for (var i = 0; i < words.length; i++) {
+    if (words[i].isEmpty) continue;
+    if (merged[i] && last >= 0) {
+      out[last] = out[last].replaceFirst(
+        RegExp('\u0646\u0652(?=[\u06d6-\u06db]*\$)'),
+        '\u0646',
+      );
+    }
+    last = i;
   }
   return out;
 }
@@ -326,6 +370,11 @@ String withHafsForms(String warsh, String hafs) {
   if (hafs.endsWith(seat) && warsh.endsWith(after)) {
     return warsh.substring(0, warsh.length - after.length) + seat;
   }
+  // And بِلِقَآيِٕ، وَلِقَآيِٕ (الروم 8، 16), the source's hamza alone: on his ya.
+  const alone = 'آءِ';
+  if (hafs.endsWith(seat) && warsh.endsWith(alone)) {
+    return warsh.substring(0, warsh.length - alone.length) + seat;
+  }
   // لِيَسُـۥٓـُٔواْ (الإسراء 7): after the sin the small waw of the madd with
   // its madd sign, then the hamza on the kashida between the sin and the
   // waw, near the waw; the source follows Hafs's لِيَسُـُٔواْ.
@@ -350,6 +399,57 @@ String withHafsForms(String warsh, String hafs) {
   // the source's madd, as Hafs's word is written.
   if (warsh.contains('أٓ') && hafs.contains('أَ')) {
     return warsh.replaceFirst('أٓ', 'أَ');
+  }
+  // ءَآللَّهُ، ءَآلذَّكَرَيۡنِ, read as Hafs reads them: as he writes them, not
+  // the source's آٰلله with the two hamzas as one alif.
+  if (warsh.startsWith('\u0627\u0670\u0653\u0644') &&
+      hafs.startsWith('\u0621\u064e\u0627\u0653\u0644')) {
+    return hafs.replaceAll(RegExp('[\u06d6-\u06db]'), '');
+  }
+  // ٱلَّٰٓـِٔي: the dagger alif with its madd on a kashida between the lam and
+  // the eased ya, the dot under the ya.
+  const lai = '\u0644\u06ea\u06d2\u0652';
+  if (warsh.endsWith(lai)) {
+    return '${warsh.substring(0, warsh.length - lai.length)}'
+        '\u0644\u0640\u0670\u0653\u06d2\u06ea\u0652';
+  }
+  // لَأَتَوْهَا (الأحزاب 14), read without the madd: the hamza directly over the
+  // alif, not moved as in Hafs's لَأَتَوۡهَا; the non-joiner keeps it in place.
+  if (warsh ==
+      '\u0644\u064e\u0623\u064e\u062a\u064e\u0648\u0652\u0647\u064e\u0627') {
+    return '\u0644\u064e\u0623\u064e\u200c\u062a\u064e\u0648\u0652\u0647\u064e\u0627';
+  }
+  // حِينِۭ (ص 88), last of its surah: with Hafs's iqlab mim before the basmala.
+  if (hafs == 'حِينِۭ' &&
+      warsh.startsWith('حِينٖ')) {
+    return hafs;
+  }
+  // جَزَآءُ (الزمر 34) as Hafs writes it, the source's waw seat being no reading.
+  if (hafs == 'جَزَآءُ' &&
+      warsh.startsWith('جَزَٰٓؤ')) {
+    return hafs;
+  }
+  // وَجِاْيٓءَ (الزمر 69، الفجر 23) as Hafs writes it, the alif being no reading.
+  if (hafs ==
+      'وَجِاْيٓءَ') {
+    return hafs;
+  }
+  // فَٱسْرِ (هود 81، الحجر 65، الدخان 23): the wasl sign over its alif.
+  if (warsh.startsWith('فَاسْر')) {
+    return warsh.replaceFirst('ا', 'ٱ');
+  }
+  // جَدَلَۢا (الزخرف 58) as Hafs writes it, its tanween before the ba.
+  if (hafs.startsWith('جَدَلَۢا')) {
+    return hafs.replaceAll(RegExp('[ۖ-ۛ]'), '');
+  }
+  // هَلَكَ (الحاقة 29) without the source's idgham of the ha before it, and
+  // مَالِيَهۡ with its sukun.
+  if (warsh == '\u0647\u0651\u064e\u0644\u064e\u0643\u064e') {
+    return '\u0647\u064e\u0644\u064e\u0643\u064e';
+  }
+  if (warsh.replaceAll(RegExp('[\u06d6-\u06db]'), '') ==
+      '\u0645\u064e\u0627\u0644\u0650\u064a\u064e\u0647') {
+    return '\u0645\u064e\u0627\u0644\u0650\u064a\u064e\u0647\u0652';
   }
   // The eased hamza of أَئِمَّةَ on its tooth, the easing dot in place of
   // the ya's two dots and the kasra under it: أَىِ۪مَّةَ.
@@ -398,6 +498,23 @@ String withSmallNunApart(String warsh) => warsh.replaceAll('نُۨ', 'نُـۨ')
 String withHafsMuqattaat(String warsh, String hafs) {
   if (RegExp(r'^الٓ(?:مٓ)?رۚ$').hasMatch(hafs) && warsh.contains('ر۪')) {
     return hafs.replaceFirst('ر', 'ر۪');
+  }
+  // The letters with a usul of their own: as Hafs writes them, with the
+  // taqlil sign alone (كٓه۪ي۪عٓصٓ، طه۪، ح۪مٓ) and without the source's shadda (نٓ).
+  final plain = hafs
+      .replaceAll(RegExp('[\u06d6-\u06db]'), '')
+      .replaceAll('\u0653', '');
+  switch (plain) {
+    case '\u0643\u0647\u064a\u0639\u0635':
+      return hafs
+          .replaceFirst('\u0647', '\u0647\u06ea')
+          .replaceFirst('\u064a', '\u064a\u06ea');
+    case '\u0637\u0647':
+      return hafs.replaceFirst('\u0647', '\u0647\u06ea');
+    case '\u062d\u0645':
+      return hafs.replaceFirst('\u062d', '\u062d\u06ea');
+    case '\u0646':
+      return hafs;
   }
   // The letters read as Hafs reads them (الٓمٓ، طسٓمٓ، يسٓ، صٓ): as he writes
   // them, without the source's vowels.

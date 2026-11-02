@@ -159,8 +159,20 @@ void main() {
     }
   });
 
-  test('ءالله 27:59 has no usul and no farsh', () {
-    expect(variants.at(['warsh'], 27, 59, 8), isEmpty);
+  test('ءالله and ءالذكرين have no usul and no farsh, written as Hafs', () {
+    for (final (s, a, w) in [
+      (6, 143, 9),
+      (6, 144, 7),
+      (10, 59, 13),
+      (27, 59, 8),
+    ]) {
+      expect(variants.at(['warsh'], s, a, w), isEmpty, reason: '$s:$a');
+      expect(
+        variants.sourceTextAt('warsh', s, a, w),
+        quran.ayah(s, a).words[w],
+        reason: '$s:$a',
+      );
+    }
   });
 
   test('أءله and أءذا after a naql: an alif with the fatha, then the dot', () {
@@ -217,7 +229,6 @@ void main() {
       (30, 1),
       (31, 1),
       (32, 1),
-      (36, 1),
       (38, 1),
       (42, 2),
       (50, 1),
@@ -228,6 +239,347 @@ void main() {
         reason: '$s:$a',
       );
       expect(variants.at(['warsh'], s, a, 0), isEmpty, reason: '$s:$a');
+    }
+  });
+
+  test('أساءوا السوأى 30:10 has no badal, the other words of the ayah do', () {
+    expect(variants.at(['warsh'], 30, 10, 4), isEmpty);
+    expect(variants.at(['warsh'], 30, 10, 8).any((v) => v.isBadal), isTrue);
+    expect(variants.at(['warsh'], 30, 10, 12).any((v) => v.isBadal), isTrue);
+  });
+
+  test('بلقاء and ولقاء 30:8, 30:16 are written as Hafs, nothing told', () {
+    for (final (a, w) in [(8, 19), (16, 5)]) {
+      final hafs = quran.ayah(30, a).words[w];
+      expect(hafs, contains('يٕ'), reason: '$a');
+      expect(variants.sourceTextAt('warsh', 30, a, w), hafs, reason: '$a');
+      expect(variants.at(['warsh'], 30, a, w), isEmpty, reason: '$a');
+    }
+  });
+
+  test('لتربوا 30:39 tells its ta, its damma and its sakin waw', () {
+    expect(
+      variants.at(['warsh'], 30, 39, 4).single.description,
+      'بالتاء وضمها وإسكان الواو',
+    );
+  });
+
+  test('a ya or waw after a merging nun has no shadda, as in Hafs', () {
+    for (final (s, a, w) in [
+      (2, 8, 3),
+      (2, 26, 5),
+      (2, 107, 14),
+      (6, 59, 15),
+    ]) {
+      expect(
+        variants
+            .sourceTextAt('warsh', s, a, w)!
+            .startsWith(RegExp('[\u064a\u0648][\u064e\u064f\u0650]?\u0651')),
+        isFalse,
+        reason: '$s:$a',
+      );
+    }
+    // Warsh's own idgham keeps its shadda: قَد ضَّلَّ.
+    expect(
+      variants
+          .sourceTextAt('warsh', 2, 108, 15)!
+          .startsWith(RegExp('ض[\u064e\u0651]{2}')),
+      isTrue,
+    );
+    expect(variants.at(['warsh'], 10, 35, 24).single.description, 'بالتقليل');
+    expect(
+      variants.at(['warsh'], 3, 111, 1).single.description,
+      'بصلة ميم الجمع',
+    );
+  });
+
+  test('ورءا المجرمون and تبوءو الدار have no badal before the wasl', () {
+    expect(variants.at(['warsh'], 18, 53, 0), isEmpty);
+    expect(variants.at(['warsh'], 59, 9, 1), isEmpty);
+    expect(variants.at(['warsh'], 59, 9, 3).any((v) => v.isBadal), isTrue);
+  });
+
+  test('هلك 69:29 has no shadda, مالية before it its sukun', () {
+    expect(
+      variants.sourceTextAt('warsh', 69, 29, 0)!.contains('\u0651'),
+      isFalse,
+    );
+    expect(
+      variants.sourceTextAt('warsh', 69, 28, 3)!.endsWith('\u0647\u06e1'),
+      isTrue,
+    );
+  });
+
+  test(
+    'تظهرون 33:4 tells its reading, اللائي has its dagger alif and madd',
+    () {
+      expect(
+        variants
+            .at(['warsh'], 33, 4, 12)
+            .firstWhere((v) => !v.isUsul)
+            .description,
+        'بفتح التاء وتشديد الظاء وحذف الألف وتشديد الهاء مع فتحها',
+      );
+      for (final (s, a, w) in [
+        (33, 4, 11),
+        (58, 2, 11),
+        (65, 4, 0),
+        (65, 4, 11),
+      ]) {
+        expect(
+          variants.sourceTextAt('warsh', s, a, w),
+          contains('\u0644\u0640\u0670\u0653'),
+          reason: '$s:$a',
+        );
+      }
+    },
+  );
+
+  test(
+    'لأتوها 33:14 keeps its hamza over the alif, tells the dropped madd',
+    () {
+      final text = variants.sourceTextAt('warsh', 33, 14, 8)!;
+      expect(text, contains('\u200c'));
+      expect(HafsFontMarks.needsAdjustment(text), isFalse);
+      expect(
+        HafsFontMarks.needsAdjustment(quran.ayah(33, 14).words[8]),
+        isTrue,
+      );
+      expect(
+        variants.at(['warsh'], 33, 14, 8).single.description,
+        'بحذف المد الطبيعي بعد الهمزة',
+      );
+    },
+  );
+
+  test('أبناء أخواتهن 33:55 is the usul of its hamza, no farsh', () {
+    for (final w in [13, 14]) {
+      expect(
+        variants.at(['warsh'], 33, 55, w).where((v) => !v.isUsul || v.inHamesh),
+        isEmpty,
+      );
+    }
+    expect(variants.at(['warsh'], 33, 55, 14).single.rule, 'ibdal_ya');
+  });
+
+  test('أليم 34:5, 45:11 tells its tanween with kasra beside its naql', () {
+    for (final (s, a) in [(34, 5), (45, 11)]) {
+      final at = variants.at(['warsh'], s, a, 10);
+      expect(
+        at.where((v) => v.description == 'بالتنوين بالكسر').single.inHamesh,
+        isTrue,
+        reason: '$s:$a',
+      );
+      expect(at.any((v) => v.rule == 'naql'), isTrue, reason: '$s:$a');
+    }
+  });
+
+  test('يجازى 34:17 is farsh told in the hamesh, not in the taqlil usul', () {
+    final at = variants.at(['warsh'], 34, 17, 5);
+    final v = at.firstWhere((v) => !v.isUsul);
+    expect(at.singleWhere((v) => v.isUsul).description, 'بالتقليل بخلف');
+    expect(v.description, 'بالياء وتقليل الزاي وإبدال الياء ألفًا مقصورة');
+    expect(v.isUsul, isFalse);
+    expect(v.inHamesh, isTrue);
+  });
+
+  test('يشاء إن 35:1 is told in the usul of two hamzas, no farsh', () {
+    for (final w in [17, 18]) {
+      expect(
+        variants.at(['warsh'], 35, 1, w).where((v) => v.inHamesh),
+        isEmpty,
+      );
+    }
+    expect(variants.at(['warsh'], 35, 1, 18).single.rule, 'ibdal_waw');
+  });
+
+  test('والبغضاء إلى and جاء أمة are only their usul, no farsh', () {
+    for (final (a, w) in [(5, 64), (23, 44)]) {
+      expect(
+        variants
+            .at(['warsh'], a, w, a == 5 ? 29 : 6)
+            .where((v) => v.rule == 'kharouf'),
+        isEmpty,
+        reason: '$a:$w',
+      );
+    }
+  });
+
+  test('يس والقرآن is one farsh shaded on its two words, told once', () {
+    final first = variants.at(['warsh'], 36, 1, 0).single;
+    final second = variants.at(['warsh'], 36, 2, 0).single;
+    // Its idgham told, يس is still written as Hafs writes it.
+    expect(variants.sourceTextAt('warsh', 36, 1, 0), quran.ayah(36, 1).words[0]);
+    for (final v in [first, second]) {
+      expect(v.inHamesh, isTrue);
+      expect(v.usulText, 'يسٓ وَٱلۡقُرۡءَانِ');
+    }
+    expect(first.description, second.description);
+    expect(
+      first.description,
+      'بإدغام النون من «يس» في واو «والقرآن»',
+    );
+  });
+
+  test('a ya zaida the book only quotes (لترديني) has no farsh', () {
+    for (final (surah, ayah, word) in [
+      (18, 24, 11),
+      (28, 34, 13),
+      (34, 45, 13),
+      (37, 56, 4),
+      (44, 20, 5),
+      (44, 21, 4),
+    ]) {
+      final at = variants.at(['warsh'], surah, ayah, word);
+      expect(at.map((v) => v.rule), ['ya_zaida'], reason: '$surah:$ayah');
+      expect(at.single.inHamesh, isFalse, reason: '$surah:$ayah');
+    }
+  });
+
+  test('the eased hamza that had a damma is no hamzat wasl after a naql', () {
+    for (final word in ['اَ۟نزِلَ', 'اَ۟لْقِيَ', 'اَ۟شْهِدُواْ']) {
+      expect(madinahScript(word), startsWith('اَ۟'));
+      expect(
+        HafsFontMarks.needsAdjustment(madinahScript(word)),
+        isTrue,
+        reason: word,
+      );
+    }
+    // A hamzat wasl with the same vowel stays one.
+    expect(madinahScript('اَ۟نظُرْ'), isNot(contains('۟')));
+  });
+
+  test('عذاب اركض and سخريا are told in the hamesh', () {
+    final tanween = variants.at(['warsh'], 38, 41, 10).single;
+    expect(tanween.description, 'بالضم في الوصل');
+    expect(tanween.inHamesh, isTrue);
+    expect(variants.sourceTextAt('warsh', 38, 41, 10), 'وَعَذَابٍ');
+    final at = variants.at(['warsh'], 38, 63, 1);
+    final farsh = at.singleWhere((v) => v.inHamesh);
+    expect(farsh.description, 'بضم السين');
+    expect(farsh.text, startsWith('سُ'));
+    expect(at.singleWhere((v) => v.rule == 'naql_source').text, isEmpty);
+  });
+
+  test('حين 38:88 is written as Hafs writes it, its iqlab mim, no farsh', () {
+    expect(
+      variants.sourceTextAt('warsh', 38, 88, 3),
+      quran.ayah(38, 88).words[3],
+    );
+    expect(variants.at(['warsh'], 38, 88, 3), isEmpty);
+  });
+
+  test('جزاء 39:34 is written as Hafs writes it, no farsh', () {
+    expect(
+      variants.sourceTextAt('warsh', 39, 34, 6),
+      quran.ayah(39, 34).words[6],
+    );
+    expect(variants.at(['warsh'], 39, 34, 6), isEmpty);
+  });
+
+  test('تأمروني 39:64 is told in the hamesh, its ibdal still in the usul', () {
+    final at = variants.at(['warsh'], 39, 64, 3);
+    final farsh = at.singleWhere((v) => v.inHamesh);
+    expect(farsh.description, 'بتخفيف النون وفتح الياء مع إبدال الهمزة ألفًا');
+    expect(farsh.text, 'تَامُرُونِيَ');
+    expect(at.singleWhere((v) => v.rule == 'ibdal_single').text, isEmpty);
+  });
+
+  test('وجاىء 39:69 and 89:23 are written as Hafs writes them, no farsh', () {
+    for (final (surah, ayah, word) in [(39, 69, 6), (89, 23, 0)]) {
+      expect(
+        variants.sourceTextAt('warsh', surah, ayah, word),
+        quran.ayah(surah, ayah).words[word],
+      );
+      expect(variants.at(['warsh'], surah, ayah, word), isEmpty);
+    }
+  });
+
+  test('the dagger alif of الغفار 40:42 is drawn apart from its shadda', () {
+    final word = madinahScript(variants.sourceTextAt('warsh', 40, 42, 14)!);
+    expect(HafsFontMarks.needsAdjustment(word), isTrue);
+    // Only with the imala sign: Hafs\'s and the others\' stay with the font.
+    expect(
+      HafsFontMarks.needsAdjustment(quran.ayah(40, 42).words[14]),
+      isFalse,
+    );
+  });
+
+  test('ونئا 41:51 is taqlil with its other face, بجانبه nothing at all', () {
+    final at = variants.at(['warsh'], 41, 51, 5);
+    expect(at.where((v) => v.inHamesh), isEmpty);
+    final taqlil = at.singleWhere((v) => v.isImala);
+    expect(taqlil.description, 'بالتقليل بخلف');
+    expect(taqlil.count, 1);
+    expect(at.where((v) => v.isBadal), hasLength(1));
+    expect(variants.at(['warsh'], 41, 51, 6), isEmpty);
+    expect(
+      variants.sourceTextAt('warsh', 41, 51, 6),
+      quran.ayah(41, 51).words[6],
+    );
+  });
+
+  test('وراء 42:51 is written as Hafs writes it, with nothing told', () {
+    expect(variants.at(['warsh'], 42, 51, 10), isEmpty);
+    expect(
+      variants.sourceTextAt('warsh', 42, 51, 10),
+      quran.ayah(42, 51).words[10],
+    );
+  });
+
+  test('ينشؤا 43:18 has a fatha on its ya, no shadda', () {
+    final word = variants.sourceTextAt('warsh', 43, 18, 1)!;
+    expect(word, 'يَنشَؤُاْ');
+    expect(word, isNot(contains('\u0651')));
+  });
+
+  test('أشهدوا 43:19 is in the usul of two hamzas, its second eased', () {
+    final at = variants.at(['warsh'], 43, 19, 7);
+    expect(
+      at.singleWhere((v) => v.rule == 'tasheel_word').description,
+      'بتسهيل الهمزة الثانية بلا إدخال',
+    );
+    expect(at.where((v) => v.rule == 'naql'), hasLength(1));
+  });
+
+  test('ءآلهتنا 43:58 and السماء إله 43:84 are told in the usul only', () {
+    for (final (surah, ayah, word) in [(43, 58, 1), (43, 84, 4)]) {
+      expect(
+        variants.at(['warsh'], surah, ayah, word).where((v) => v.inHamesh),
+        isEmpty,
+        reason: '$surah:$ayah',
+      );
+    }
+    expect(
+      variants.at(['warsh'], 43, 58, 1).map((v) => v.rule),
+      containsAll(['badal', 'tasheel_word']),
+    );
+    expect(
+      variants.at(['warsh'], 43, 84, 4).single.rule,
+      'tasheel_pair',
+    );
+  });
+
+  test('جدلا 43:58 is written as Hafs writes it, no farsh', () {
+    expect(variants.at(['warsh'], 43, 58, 9), isEmpty);
+    expect(
+      variants.sourceTextAt('warsh', 43, 58, 9),
+      quran.ayah(43, 58).words[9],
+    );
+  });
+
+  test('فاسر has the wasl sign over its alif', () {
+    for (final (surah, ayah, word) in [(11, 81, 8), (15, 65, 0), (44, 23, 0)]) {
+      expect(
+        variants.sourceTextAt('warsh', surah, ayah, word),
+        startsWith('فَٱس'),
+        reason: '$surah:$ayah',
+      );
+      expect(
+        variants.at(['warsh'], surah, ayah, word).single.text,
+        startsWith('فَٱس'),
+        reason: '$surah:$ayah',
+      );
     }
   });
 
@@ -822,6 +1174,92 @@ void main() {
     ].join();
     expect(coloured, contains('\u0670'));
     expect(coloured, isNot(contains('\u062e')));
+  });
+
+  testWidgets('al-aala colours its lam for the naql and its taqlil', (t) async {
+    await page(
+      t,
+      407,
+      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+    );
+    final word = t.widget<InkText>(find.byKey(const ValueKey('word:30:27:11')));
+    expect(
+      word.parts!.any(
+        (p) => p.$2 == ReadingColors.naql && p.$1.contains('\u0644'),
+      ),
+      isTrue,
+    );
+    expect(
+      word.parts!.any(
+        (p) => p.$2 == MushafColors.green && p.$1.contains('\u06ea'),
+      ),
+      isTrue,
+    );
+  });
+
+  testWidgets('ذكرا tells its two faces beside the word in the usul', (
+    t,
+  ) async {
+    await page(
+      t,
+      319,
+      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+    );
+    expect(find.text(' (بالتفخيم والترقيق)'), findsWidgets);
+  });
+
+  testWidgets('لأتوها is told in the hamesh though its rasm is that of Hafs', (
+    t,
+  ) async {
+    await page(t, 419, settings: ReaderSettings.memory(selected: {'warsh'}));
+    expect(
+      find.textContaining('بحذف المد الطبيعي بعد الهمزة', findRichText: true),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('يجازى is under the taqlil, with its other face told', (t) async {
+    await page(
+      t,
+      430,
+      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+    );
+    expect(find.text(' (بخلف)'), findsOneWidget);
+  });
+
+  testWidgets('Warsh has no imala in the usul, زلفى and أهدى are taqlil', (
+    t,
+  ) async {
+    for (final p in [86, 432, 477]) {
+      await page(
+        t,
+        p,
+        settings: ReaderSettings.memory(selected: {'warsh'})
+          ..displayed = 'warsh',
+      );
+      expect(find.text('الإمالة'), findsNothing, reason: 'page $p');
+    }
+    await page(
+      t,
+      432,
+      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+    );
+    expect(find.text(' (بخلف)'), findsOneWidget);
+    expect(variants.at(['warsh'], 41, 9, 1).any((v) => v.isImala), isFalse);
+  });
+
+  test('نكير 34:45 is only its ya zaida, no farsh', () {
+    final at = variants.at(['warsh'], 34, 45, 13);
+    expect(at.map((v) => v.rule), ['ya_zaida']);
+    expect(at.single.inHamesh, isFalse);
+  });
+
+  testWidgets('أشهدوا beside Hafs has no tasheel colour on its shin', (t) async {
+    await page(t, 490, settings: ReaderSettings.memory(selected: {'warsh'}));
+    final word = t.widget<InkText>(find.byKey(const ValueKey('word:43:19:7')));
+    final colors = word.parts!.map((p) => p.$2).toSet();
+    expect(colors, isNot(contains(ReadingColors.hamza)));
+    expect(colors, hasLength(2));
   });
 
   testWidgets('a damma before a hamzat wasl colours the two letters', (
@@ -2238,8 +2676,9 @@ void main() {
           for (var w = 0; w < a.words.length; w++) {
             final text = variants.sourceTextAt('warsh', a.surah, a.number, w)!;
             // The eased hamza after a naql (أءله، أءذا) is no wasl.
-            if (RegExp('^\u0627\u064e\u06df[\u0644\u0630]\u064e')
-                .hasMatch(text)) {
+            if (RegExp(
+              '^\u0627\u064e\u06df([\u0644\u0630]\u064e|\u0646\u0632\u0650\u0644\u064e|\u0644[\u0652\u06e1]\u0642\u0650\u064a\u064e|\u0634[\u0652\u06e1]\u0647\u0650\u062f\u064f\u0648\u0627)',
+            ).hasMatch(text)) {
               continue;
             }
             expect(

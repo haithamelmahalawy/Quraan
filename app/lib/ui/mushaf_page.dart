@@ -1358,7 +1358,10 @@ class _MushafPageState extends State<MushafPage>
     final readings =
         [
               // And the shown riwaya's own farsh read with imala (يَٰبُشۡرٰ۪يَ).
-              ...base.where((v) => v.isUsul || v.isImala && _farshImala(v)),
+              ...base.where(
+                (v) =>
+                    v.isUsul || v.isImala && _farshImala(v) || _shadedFarsh(v),
+              ),
               ..._readingsAt(widget.variants, s, ayah, w).shown,
             ]
             .where(
@@ -1389,7 +1392,9 @@ class _MushafPageState extends State<MushafPage>
         // (نُوتِيهِمُ: its ibdal; وَٱلنَّبِيٓـِٕۧنَ: its badal) the rule's letter
         // takes the rule's colour, the rest the farsh colour.
         lexical &&
-            !readings.any((v) => v.isUsul || v.isImala && _farshImala(v))) {
+            !readings.any(
+              (v) => v.isUsul || v.isImala && _farshImala(v) || _shadedFarsh(v),
+            )) {
       return null;
     }
     // Tarqiq, taghliz and imala colour their letter alone, the rest of the
@@ -1470,10 +1475,16 @@ class _MushafPageState extends State<MushafPage>
     // The shown riwaya's own farsh is its text: in ink, unless compared.
     final farshColor = ReadingColors.ofReadings(
       readings
-          .where((v) => !v.isUsul && v.riwayaId != widget.settings.displayed)
+          .where(
+            (v) =>
+                !v.isUsul &&
+                (v.riwayaId != widget.settings.displayed || _shadedFarsh(v)),
+          )
           .toList(),
     );
-    if (farshColor != null) {
+    // وَعَذَابٍ before the next ayah's ٱرۡكُضۡ: its tanween alone.
+    final tanweenColor = readings.any(_tanweenDamm) ? farshColor : null;
+    if (farshColor != null && tanweenColor == null) {
       for (var i = 0; i < letters.length; i++) {
         colors[i] = farshColor;
       }
@@ -1623,7 +1634,14 @@ class _MushafPageState extends State<MushafPage>
             letters.indexed.skip(1).where((l) => test(l.$2)).firstOrNull?.$1 ??
             -1;
         final second = at(_hamzaCluster);
-        final target = araayta
+        // Hafs's word without the second hamza (أَشَهِدُواْ): no letter to mark.
+        final noSecond =
+            v.rule == 'tasheel_word' &&
+            !letters.first.contains('۟') &&
+            lettersOf(v.usulText).where(_hamzaCluster).length < 2;
+        final target = noSecond
+            ? null
+            : araayta
             ? (second >= 0 ? second : at((l) => l.contains('ٰ')))
             : v.rule == 'ibdal_waw' ||
                   v.rule == 'ibdal_ya' ||
@@ -1684,12 +1702,15 @@ class _MushafPageState extends State<MushafPage>
         }
       }
     }
-    if (colors.isEmpty && zaida == null) return null;
+    if (colors.isEmpty && zaida == null && tanweenColor == null) return null;
     // The displayed narrator owns overlapping letters. Within that narrator,
     // badal retains its agreed priority over naql independently of row order.
     return [
       for (final (i, l) in letters.indexed)
-        if (i == zaida?.$1) ...[
+        if (tanweenColor != null && i == letters.length - 1) ...[
+          (l.substring(0, l.length - 1), colors[i]),
+          (l.substring(l.length - 1), tanweenColor),
+        ] else if (i == zaida?.$1) ...[
           (l.substring(0, l.indexOf('ۦ')), colors[i]),
           (l.substring(l.indexOf('ۦ')), zaida!.$2),
         ] else if (easedDot != null && l == '\u0627\u064e\u06df') ...[
@@ -2112,7 +2133,7 @@ List<int>? _mergedLetters(String description, List<String> letters) {
 bool _farshImala(Variant v) =>
     v.isUsul ||
     RegExp('إمالة|الإمالة|تقليل|التقليل').hasMatch(v.description) &&
-        !v.description.startsWith('بالياء وتقليل الحاء');
+        !v.description.startsWith('بالياء وتقليل');
 
 /// Ibn Dhakwan's imala of the ra and the hamza (رَ۪ءَ۪اكَ), drawn apart so
 /// that both signs are seen ([spacedImalaSigns]).
@@ -2281,7 +2302,9 @@ List<_UsulGroup> _usulNotes(
           ? [('قصر المنفصل', own)]
           : [
               if (v.isImala)
-                RegExp('تقليل|بين').hasMatch(v.description)
+                // Warsh has no imala of his own: taqlil only.
+                v.riwayaId == 'warsh' ||
+                        RegExp('تقليل|بين').hasMatch(v.description)
                     ? ('التقليل', MushafColors.green)
                     : ('الإمالة', MushafColors.green),
               for (final l in _usulOf(v))
@@ -2466,7 +2489,10 @@ List<HameshEntry> _entriesOf(
           .map((v) => v.word + v.count)
           .reduce((a, b) => a > b ? a : b);
       // The word as shown on the page: Hafs, or the riwaya shown.
-      final hafs = readingText(variants, settings.displayed, ayah, w, end);
+      // Or both words of a farsh across two ayahs (يسٓ وَٱلۡقُرۡءَانِ), once.
+      final hafs =
+          starting.where(_farshAcrossAyahs).firstOrNull?.usulText ??
+          readingText(variants, settings.displayed, ayah, w, end);
       // With its vowels: «زَكَرِيَّآءَ» then «زَكَرِيَّآءُ» are two notes.
       final key = [
         hafs,
@@ -2487,6 +2513,18 @@ List<HameshEntry> _entriesOf(
   return out;
 }
 
+/// Warsh's لَأَتَوْهَا (الأحزاب 14), its rasm as Hafs's: shaded in its own text
+/// too, the difference being only in the reading.
+/// And its يسٓ وَٱلۡقُرۡءَانِ, read as one with the idgham.
+bool _shadedFarsh(Variant v) =>
+    v.description == 'بحذف المد الطبيعي بعد الهمزة' ||
+    _farshAcrossAyahs(v) ||
+    _tanweenDamm(v);
+
+bool _farshAcrossAyahs(Variant v) => !v.isUsul && v.usulText.contains(' ');
+
+bool _tanweenDamm(Variant v) => v.description == 'بالضم في الوصل';
+
 enum _Naql { lam, last, dropped, alef }
 
 bool _hamzaCluster(String letter) =>
@@ -2503,6 +2541,10 @@ _Naql? _naqlKind(Variant v) => switch (v.description) {
       when v.rule == 'naql' &&
           d.startsWith('بنقل حركة الهمزة إلى الساكن قبلها') =>
     _Naql.alef,
+  // With another rule told after it (ٱلۡأَعۡلَىٰ: «، بالتقليل»).
+  final d
+      when v.rule == 'naql' && d.startsWith('بنقل حركة الهمزة إلى اللام،') =>
+    _Naql.lam,
   // The alef left of a hamza whose vowel went to the word before (اُخَرَ).
   'بتخفيف الهمزة' when RegExp(r'^ا[َ-ِ]?[ء-ي]').hasMatch(v.text) => _Naql.alef,
   final d
@@ -3150,6 +3192,32 @@ class _UsulBox extends StatelessWidget {
                                       )
                                       ? ' (بفتح الياء)'
                                       : ' (بإسكان الياء)',
+                                  style: TextStyle(
+                                    fontSize: 9 * scale,
+                                    color: g.color,
+                                  ),
+                                ),
+                              // Warsh's taqlil of يُجَٰزِيٓ, read with another face.
+                              if (i.readings.any(
+                                (v) =>
+                                    v.riwayaId == 'warsh' &&
+                                    v.isImala &&
+                                    v.description.contains('بخلف'),
+                              ))
+                                Text(
+                                  ' (بخلف)',
+                                  style: TextStyle(
+                                    fontSize: 9 * scale,
+                                    color: g.color,
+                                  ),
+                                ),
+                              // Its two faces (ذِكۡرًا، سِتۡرًا، إِمۡرًا).
+                              if (i.readings.any(
+                                (v) =>
+                                    v.rule == 'tarqiq' && v.usulWays.length > 1,
+                              ))
+                                Text(
+                                  ' (بالتفخيم والترقيق)',
                                   style: TextStyle(
                                     fontSize: 9 * scale,
                                     color: g.color,

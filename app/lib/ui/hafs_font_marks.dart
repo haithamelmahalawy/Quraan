@@ -93,6 +93,15 @@ class HafsFontMarks extends StatelessWidget {
       (previous?.startsWith('ا') ?? false) &&
       previous!.contains('۬');
 
+  /// The dagger alif of a fa with a shadda and the imala sign (ٱلۡغَفّٰ۪رِ, غافر
+  /// 42): the font sets it across the shadda; it stands between the fa and
+  /// the next letter.
+  static bool _daggerOffShadda(String cluster) =>
+      cluster.startsWith('ف') &&
+      cluster.contains('ّ') &&
+      cluster.contains('ٰ') &&
+      cluster.contains('۪');
+
   /// The fatha moved onto a bare alif by the naql (إِنَ اَنَا۠): the font sets
   /// it on the alif's head, against the fatha of the word before; it is
   /// raised over it.
@@ -110,8 +119,9 @@ class HafsFontMarks extends StatelessWidget {
       RegExp('^[أإ]').hasMatch(cluster) && cluster.contains('۟') ||
       cluster == '\u0627\u064e\u06df' &&
           next != null &&
-          next.contains('\u064e') &&
-          !next.contains('\u0651');
+          (next.contains('\u064e') && !next.contains('\u0651') ||
+              // \u0627\u064e\u06df\u0646\u0632\u0650\u0644\u064e\u060c \u0627\u064e\u06df\u0644\u0652\u0642\u0650\u064a\u064e\u060c \u0627\u064e\u06df\u0634\u0652\u0647\u0650\u062f\u064f\u0648\u0627\u0652; the rest are shown as a hamzat wasl.
+              const {'\u0646', '\u0644\u06e1', '\u0634\u06e1'}.contains(next));
 
   /// The small waw of a madd on a kashida (لِيَسُـۥٓـُٔواْ): the font joins
   /// nothing across it and sets it on the line. The kashida and the waw are
@@ -153,7 +163,8 @@ class HafsFontMarks extends StatelessWidget {
           _naqlFatha(cluster) ||
           _easedDot(cluster, _cluster.matchAsPrefix(text, m.end)?[0]) ||
           _smallWawApart(cluster) ||
-          _daggerApart(cluster, previous)) {
+          _daggerApart(cluster, previous) ||
+          _daggerOffShadda(cluster)) {
         return true;
       }
       previous = cluster;
@@ -252,6 +263,10 @@ class HafsFontMarks extends StatelessWidget {
         final markAt = full.indexOf('ٰ', m.start);
         marks[markAt] = placed[markAt].$2;
         thin.add(m.start);
+      }
+      if (_daggerOffShadda(m[0]!)) {
+        final markAt = full.indexOf('ٰ', m.start);
+        marks[markAt] = placed[markAt].$2;
       }
       previous = m[0]!;
     }
@@ -528,8 +543,9 @@ class _QuranMarkPainter extends CustomPainter {
           dagger &&
           !source.startsWith('ى', at) &&
           source.substring(at, end).contains('َ');
+      final daggerOffShadda = sign == 'ٰ' && source.startsWith('ف', at);
       final origin = Offset(
-        (box.left + box.right) / 2 -
+        (daggerOffShadda ? box.left : (box.left + box.right) / 2) -
             mark.width / 2 -
             (lamAlif
                 ? font * .22
@@ -582,6 +598,8 @@ class _QuranMarkPainter extends CustomPainter {
                     ? -.45
                     // The dagger alif standing apart (ءَاٰ۬مَنتُم): low, beside
                     // the letters.
+                    : daggerOffShadda
+                    ? .32
                     : sign == 'ٰ'
                     ? .42
                     // The dagger alif on a final ى (عَلَىٰٓ) stands low.

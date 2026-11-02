@@ -416,7 +416,10 @@ bool _matchesUsul(Variant v, String how) {
       return true;
     }
   }
-  if (v.rule == 'ya_zaida' && RegExp('وصل|وقف|الحالين|الياء').hasMatch(how)) {
+  // Warsh's: the book may only quote the word with its ya (نكيري).
+  if (v.rule == 'ya_zaida' &&
+      (RegExp('وصل|وقف|الحالين|الياء').hasMatch(how) ||
+          how.isEmpty && v.riwayaId == 'warsh')) {
     return true;
   }
   if (v.isBadal && how.contains('البدل')) return true;
@@ -424,7 +427,8 @@ bool _matchesUsul(Variant v, String how) {
     return true;
   }
   if (const {'ibdal_waw', 'ibdal_ya', 'ibdal_single'}.contains(v.rule) &&
-      RegExp('إبدال|ابدال').hasMatch(how)) {
+      RegExp(v.riwayaId == 'warsh' ? 'إبدال|ابدال|أبدل' : 'إبدال|ابدال')
+          .hasMatch(how)) {
     return true;
   }
   if (const {
@@ -433,7 +437,11 @@ bool _matchesUsul(Variant v, String how) {
         'ha_antum',
         'hamza_wasl',
       }.contains(v.rule) &&
-      RegExp('تسهيل|سهلها|إبدالها').hasMatch(how)) {
+      RegExp(
+        v.riwayaId == 'warsh'
+            ? 'تسهيل|سهلها|إبدالها|^ف?سهل'
+            : 'تسهيل|سهلها|إبدالها',
+      ).hasMatch(how)) {
     return true;
   }
   if (v.isImala && RegExp('تقليل|إمالة').hasMatch(how)) return true;

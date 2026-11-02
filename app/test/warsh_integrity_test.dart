@@ -65,6 +65,14 @@ void main() {
       .replaceAll('\u064a\u064e\u0633\u0653\u0650', '\u064a\u0633\u0653')
       .replaceAll('\u0635\u064e\u0653', '\u0635\u0653')
       .replaceAll('\u0642\u064e\u0653', '\u0642\u0653')
+      // And the letters with a usul of their own, without the source's vowels.
+      .replaceAll(
+        '\u0643\u064e\u0653\u0647\u06ea\u064a\u06ea\u0639\u064e\u0653\u0635\u064e\u0653',
+        '\u0643\u0653\u0647\u06ea\u064a\u06ea\u0639\u0653\u0635\u0653',
+      )
+      .replaceAll('\u062d\u06ea\u0645\u0653\u0650', '\u062d\u06ea\u0645\u0653')
+      .replaceAll('\u0637\u064e\u0647\u06ea', '\u0637\u0647\u06ea')
+      .replaceAll('\u0646\u0651\u064f\u0653', '\u0646\u0653')
       // And بِأَيَّىٰمِ as Hafs writes it, the source's بِأَييَّٰمِ.
       .replaceAll('يَّىا', 'ييَّا')
       // And the iqlab mim of a kasra written below (بِيسِۭ).
@@ -78,6 +86,76 @@ void main() {
       .replaceAll('ىِ۪', 'ئِ')
       .replaceAll('ۧ', 'ي')
       .replaceAll('۠', '')
+      // And the ya or waw a nun or tanween merges into, without the source's
+      // shadda and the nun without its sukun (مَن يَقُولُ).
+      .replaceAllMapped(
+        RegExp(
+          '([\u0646\u064b-\u064d\u0656-\u0658\u065e][\u0627\u0649]?)([\u064a\u0648][\u064e\u064f\u0650]?)\u0651',
+        ),
+        (m) => '${m[1]}${m[2]}',
+      )
+      // And هَلَكَ، مَالِيَهۡ (الحاقة 28، 29) without the source's idgham.
+      .replaceAll('\u0647\u0651\u064e\u0644', '\u0647\u064e\u0644')
+      .replaceAll(
+        RegExp('\u0627\u0644\u0650\u064a\u064e\u0647[\u0652\u06e1]'),
+        '\u0627\u0644\u0650\u064a\u064e\u0647',
+      )
+      // And كٓه۪ي۪عٓصٓ without the source's vowels, its last letter told above.
+      .replaceAll(
+        '\u0643\u064e\u0653\u0647\u06ea\u064a\u06ea\u0639\u064e\u0653',
+        '\u0643\u0653\u0647\u06ea\u064a\u06ea\u0639\u0653',
+      )
+      // And ءَآللَّهُ، ءَآلذَّكَرَيۡنِ as Hafs writes them, the source's آٰلله.
+      .replaceAll(
+        RegExp('\u0627[\u0670\u0627]\u0653\u0644'),
+        '\u0621\u064e\u0627\u0653\u0644',
+      )
+      // And ٱلَّٰٓـِٔي with its dagger alif and madd before the eased ya.
+      .replaceAll(
+        RegExp(
+          '\u0644(?:\u0640?\u0670|\u0627)\u0653\u0649\u06ea[\u0652\u06e1]',
+        ),
+        '\u0644\u06ea\u0649\u06e1',
+      )
+      // And the non-joiner that keeps the hamza of لَأَتَوْهَا in place.
+      .replaceAll('\u200c', '')
+      // And حِينِۭ (ص 88) with Hafs's iqlab mim, for the source's offset tanween.
+      .replaceAll(
+        RegExp('حِينِ[ۭۢ]'),
+        'حِينٖ',
+      )
+      // And وَجِاْيٓءَ (الزمر 69، الفجر 23) as Hafs writes it, the source without
+      // its alif.
+      .replaceAll(
+        RegExp('جِا[ْۡ]يٓء'),
+        'جِىٓء',
+      )
+      // And فَٱسْرِ with its wasl sign, for the source's bare alif.
+      .replaceAll(
+        RegExp('فَٱس[ْۡ]ر'),
+        'فَاسۡر',
+      )
+      // And جَدَلَۢا (الزخرف 58) as Hafs writes it, for the source's جَدَلاَ.
+      .replaceAll(
+        RegExp('جَدَلَ[ۢ]ا'),
+        'جَدَلاَ',
+      )
+      // And جَزَآءُ (الزمر 34) as Hafs writes it, for the source's waw seat.
+      .replaceAll(
+        'جَزَآؤُاْ',
+        'جَزَآءُ',
+      )
+      // And بِلِقَآيِٕ، وَلِقَآيِٕ as Hafs writes them, the source's hamza alone.
+      .replaceAll(
+        RegExp(
+          '\u0644\u0650\u0642\u064e\u0627\u0653\u064a[\u0654\u0655]\u0650',
+        ),
+        '\u0644\u0650\u0642\u064e\u0627\u0653\u0621\u0650',
+      )
+      .replaceAll(
+        '\u0644\u0650\u0642\u064e\u0627\u0653\u064a\u0655\u0650',
+        '\u0644\u0650\u0642\u064e\u0627\u0653\u0621\u0650',
+      )
       // تِلۡقَآيِٕ as Hafs writes it, the source's تِلْقَآءِےْ.
       .replaceAll('قَآئِ', 'قَآءِى')
       // So too وَإِيتَآيِٕ، وَرَآيِٕ، ءَانَآيِٕ, the source's ...آءِےْ.
@@ -245,7 +323,20 @@ void main() {
       );
       // Hafs's small ya (إِبۡرَٰهِـۧمَ) is the source's ya.
       // And the small waw of لِيَسُـۥٓـُٔواْ, which the source does not write.
+      // And جَزَآءُ (الزمر 34), وَجِاْيٓءَ (الزمر 69، الفجر 23) as Hafs writes them.
       String ya(String t) => t
+          .replaceAll(
+            RegExp('جِا[ْۡ]يٓء'),
+            'جِىٓء',
+          )
+          .replaceAll(
+            'جَزَٰٓؤُاْ',
+            'جَزَآءُ',
+          )
+          .replaceAll(
+            '\u0644\u0650\u0642\u064e\u0627\u0653\u064a\u0655\u0650',
+            '\u0644\u0650\u0642\u064e\u0627\u0653\u0621\u0650',
+          )
           .replaceAll('ۧ', 'ي')
           .replaceAllMapped(
             RegExp('([\u0623\u0627]\u064e)[\u0649\u064a\u0626]\u0650?\u06ea?'),

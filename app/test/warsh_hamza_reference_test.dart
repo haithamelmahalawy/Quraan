@@ -291,13 +291,7 @@ void main() {
       expect(v.description, contains('حذف الألف بعد الهاء'));
       expect(v.inHamesh, isFalse);
     }
-    for (final site in [
-      (6, 143, 9),
-      (6, 144, 7),
-      (10, 59, 13),
-      (10, 51, 6),
-      (10, 91, 0),
-    ]) {
+    for (final site in [(10, 51, 6), (10, 91, 0)]) {
       expect(rule(site, 'hamza_wasl').usulWays, hasLength(2));
     }
     expect(rule((10, 91, 0), 'hamza_wasl').description, contains('نقل'));

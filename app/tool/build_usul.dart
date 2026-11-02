@@ -88,7 +88,12 @@ String bare(String w) => String.fromCharCodes(
 
 bool hasBadal(String word, String where) {
   if (const ['10:51', '10:91'].contains(where)) return false; // ءالآن
+  if (where == '26:61') return false; // تَرَٰٓءَا, its alif dropped in wasl
   final b = bare(word);
+  // أَسَٰٓـُٔواْ ٱلسُّوٓأَىٰٓ (الروم 10): its waw before a sakin, no badal.
+  if (where == '30:10' && b.contains('س') && !b.contains('ت')) return false;
+  // So وَرَءَا ٱلۡمُجۡرِمُونَ (الكهف 53) and تَبَوَّءُو ٱلدَّارَ (الحشر 9).
+  if (where == '18:53' || where == '59:9' && b.contains('تبو')) return false;
   // Warsh's الصابين / الصابون is a lexical reading without this hamza.
   if (RegExp(r'^[وف]?لصب(ين|ون)$').hasMatch(b)) return false;
   // إسرائيل; يؤاخذ (its ؤ dropped: يخذ, تخذ, نخذ).
@@ -216,7 +221,8 @@ void main() {
           .replaceFirst('\uFEFF', ''),
     ) as List))
       for (final (w, text) in (a['aya_text'] as String).split(' ').indexed)
-        if (text.contains('\u0623\u0653')) '${a['sora']}:${a['aya_no']}:$w': text,
+        if (text.contains('\u0623\u0653'))
+          '${a['sora']}:${a['aya_no']}:$w': text,
   };
   final ayahs = [
     for (final a in quran['ayahs'] as List)

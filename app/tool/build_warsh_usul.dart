@@ -247,8 +247,10 @@ Map<String, int> correctWarshUsul(
       );
       continue;
     }
-    // ءَآللَّهُ خَيۡرٌ (النمل 59): read as Hafs reads it, nothing told.
-    if (key(w) == '27:59:8') continue;
+    // ءَآللَّهُ، ءَآلذَّكَرَيۡنِ: read as Hafs reads them, nothing told.
+    if (const {'6:143:9', '6:144:7', '10:59:13', '27:59:8'}.contains(key(w))) {
+      continue;
+    }
     // Interrogative followed by the al- wasl hamza: distinguish this
     // from two qat' hamzas. These faces also occur in Hafs.
     if (RegExp(r'^ءَآل').hasMatch(w.text)) {

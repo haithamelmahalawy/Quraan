@@ -99,7 +99,10 @@ final _replacementDot = RegExp('([وي])۬(?=[َُِ])');
 // A vowel + sifr marks a joined hamzat al-wasl in the Maghribi export
 // (اُ۟عْبُدُواْ / اِ۟سْجُدُواْ); a bare ا۟ instead belongs to naql. Before an
 // open letter it is the eased hamza after a naql (اَ۟لَٰهٞ، اَ۟ذَا): no wasl.
-final _waslSifrAlef = RegExp(r'(^|\s|[وفبك]َ|لِ)ا(?:[ُِ]۟|َ۟(?![^ً-ْ]َ))');
+// So too where the second hamza had a damma (اَ۟نزِلَ، اَ۟لْقِيَ، اَ۟شْهِدُواْ).
+final _waslSifrAlef = RegExp(
+  r'(^|\s|[وفبك]َ|لِ)ا(?:[ُِ]۟|َ۟(?![^ً-ْ]َ|نزِلَ|ل[ْۡ]قِيَ|ش[ْۡ]هِدُوا))',
+);
 // The dot above (after a fatha or damma) or below (after a kasra: اِ۪تَّخَذتُّمُ).
 final _waslAlef = RegExp(r'(^|\s)ا[َُِ]?[۪۬]');
 

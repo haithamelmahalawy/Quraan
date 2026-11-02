@@ -5,7 +5,14 @@ import 'variant_repository.dart';
 
 /// Pronounced letters and vowels, independent of font spelling and the
 /// position of tanween. Recitation marks remain separate usul annotations.
+/// The key of a reading's text, for comparing it with another's. The non-joiner
+/// marks a reading written as Hafs's but read otherwise (لَأَتَوْهَا): it differs.
 String readingTextKey(String text, {String? baseline}) {
+  final key = _textKey(text, baseline: baseline);
+  return text.contains('\u200c') ? '$key:read-otherwise' : key;
+}
+
+String _textKey(String text, {String? baseline}) {
   List<String> words(String s) =>
       madinahScript(s)
           .replaceAll(RegExp(r'ا(?=[ً-ٰٟۖ-ۭ]*۠)'), '')

@@ -4,7 +4,10 @@ import 'arabic.dart';
 /// or deletions. A naql spelling needs its underlying hamza restored first.
 bool hasWarshBadal(String word, String location) {
   // تَرَٰٓءَا (الشعراء 61): no badal, its alif is told on stopping as taqlil.
-  if (const ['10:51', '10:91', '26:61'].contains(location)) return false;
+  // وَرَآيِٕ (الشورى 51): a muttasil, the source's ya after its hamza no madd.
+  if (const ['10:51', '10:91', '26:61', '42:51'].contains(location)) {
+    return false;
+  }
   final bare = skeleton(word);
   if (bare.contains('سريل') ||
       RegExp(r'^[وف]?[يتن]خذ').hasMatch(bare) ||
