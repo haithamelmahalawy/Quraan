@@ -27,6 +27,8 @@ import 'partition_marker.dart';
 import 'reference_sheet.dart';
 import 'reading_colors.dart';
 import 'theme.dart';
+import 'usul_guide_sheet.dart';
+import 'usul_labels.dart';
 
 typedef WordTap = void Function(Ayah ayah, int word);
 
@@ -293,6 +295,7 @@ class _MushafPageState extends State<MushafPage>
             child: _UsulBox(
               groups: [group],
               onTap: _openUsulReference,
+              onGuide: _openUsulGuide,
               scale: 1.1,
               compact: true,
             ),
@@ -660,6 +663,7 @@ class _MushafPageState extends State<MushafPage>
                 : _UsulBox(
                     groups: groups,
                     onTap: _openUsulReference,
+                    onGuide: _openUsulGuide,
                     scale: 1.5,
                   ),
           );
@@ -809,7 +813,11 @@ class _MushafPageState extends State<MushafPage>
         ? null
         : Padding(
             padding: const EdgeInsets.fromLTRB(4, 1, 4, 6),
-            child: _UsulBox(groups: usul, onTap: _openUsulReference),
+            child: _UsulBox(
+              groups: usul,
+              onTap: _openUsulReference,
+              onGuide: _openUsulGuide,
+            ),
           );
     if (!withHamesh) {
       if (usulBox == null) return page;
@@ -1482,8 +1490,10 @@ class _MushafPageState extends State<MushafPage>
           )
           .toList(),
     );
-    // وَعَذَابٍ before the next ayah's ٱرۡكُضۡ: its tanween alone.
+    // وَعَذَابٍ before the next ayah's ٱرۡكُضۡ: its tanween alone, on the
+    // last letter that has it (مَحۡظُورًا: not the alif).
     final tanweenColor = readings.any(_tanweenDamm) ? farshColor : null;
+    final tanweenAt = letters.lastIndexWhere(_tanweenMark.hasMatch);
     if (farshColor != null && tanweenColor == null) {
       for (var i = 0; i < letters.length; i++) {
         colors[i] = farshColor;
@@ -1707,9 +1717,9 @@ class _MushafPageState extends State<MushafPage>
     // badal retains its agreed priority over naql independently of row order.
     return [
       for (final (i, l) in letters.indexed)
-        if (tanweenColor != null && i == letters.length - 1) ...[
-          (l.substring(0, l.length - 1), colors[i]),
-          (l.substring(l.length - 1), tanweenColor),
+        if (tanweenColor != null && i == tanweenAt) ...[
+          (l.substring(0, l.indexOf(_tanweenMark)), colors[i]),
+          (l.substring(l.indexOf(_tanweenMark)), tanweenColor),
         ] else if (i == zaida?.$1) ...[
           (l.substring(0, l.indexOf('ۦ')), colors[i]),
           (l.substring(l.indexOf('ۦ')), zaida!.$2),
@@ -2027,6 +2037,17 @@ class _MushafPageState extends State<MushafPage>
     );
   }
 
+  /// A label of the key: the rule explained, for the riwayat it is told of.
+  void _openUsulGuide(_UsulGroup group) {
+    UsulGuideSheet.show(
+      context,
+      label: group.label,
+      riwayat: {for (final i in group.items.values) ...i.riwayat}.toList(),
+      variants: widget.variants,
+      quran: widget.quran,
+    );
+  }
+
   /// The notes of the words on this page (an ayah running over a page, as
   /// in the Shamarly print, has its other words on the next).
   List<HameshEntry> _hameshEntries(List<Ayah> ayahs) {
@@ -2287,30 +2308,7 @@ List<_UsulGroup> _usulNotes(
           v.rule == 'hamza_source') {
         continue;
       }
-      final own = ReadingColors.of(v);
-      final kinds = v.isBadal
-          ? [('مد البدل', MushafColors.green)]
-          : v.rule == 'tarqiq'
-          ? [('ترقيق الراء', MushafColors.rule)]
-          : v.rule == 'taghliz'
-          ? [('تغليظ اللام', MushafColors.rule)]
-          : v.isSakt
-          ? [('السكت قبل الهمز', own)]
-          : v.readsAsHafs
-          ? [('الإدغام بلا غنة', own)]
-          : v.isQasr
-          ? [('قصر المنفصل', own)]
-          : [
-              if (v.isImala)
-                // Warsh has no imala of his own: taqlil only.
-                v.riwayaId == 'warsh' ||
-                        RegExp('تقليل|بين').hasMatch(v.description)
-                    ? ('التقليل', MushafColors.green)
-                    : ('الإمالة', MushafColors.green),
-              for (final l in _usulOf(v))
-                if (!v.isImala || l != 'المدود') (l, own),
-              if (!v.isImala && _usulOf(v).isEmpty) ('أصول أخرى', own),
-            ];
+      final kinds = usulKindsOf(v);
       final word = usulReadingText(
         v,
         ayah,
@@ -2394,80 +2392,6 @@ class _UsulItem {
   final ways = <String>{};
 }
 
-/// The usul a reading applies, by its description: the key's wording.
-List<String> _usulOf(Variant v) {
-  final typed = ReadingColors.labelForRule(v.rule);
-  if (typed != null) return [typed];
-  final d = v.description;
-  if (v.rule == 'ya_zaida') return ['ياءات الزوائد'];
-  if (v.isLinHamz) {
-    return [LinHamz.values.singleWhere((kind) => kind.rule == v.rule).label];
-  }
-  if (v.rule == 'tasheel_word') {
-    if (v.description.contains('تحقيق') && !v.description.contains('تسهيل')) {
-      return ['الهمزتان في كلمة'];
-    }
-    // Named by the vowel of the second hamza of the word (ءَأَنذَرۡتَهُمۡ،
-    // أَئِنَّكُمۡ، أَءُنزِلَ).
-    // (Ibn 'Amir's readings; the others keep their own names.)
-    final match = RegExp('[ءأإئؤ][ً-ٰٟ]*[^ءأإئؤ]{0,2}?[ءأإئؤ]([ً-ٰٟ]*)')
-        .firstMatch(v.usulText);
-    final second = const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId)
-        ? match?.group(1)
-        : null;
-    return [
-      second == null
-          ? v.usulWays.length > 1
-                ? 'الهمزتان المفتوحتان في كلمة'
-                : 'تسهيل الهمزتين في كلمة'
-          : second.contains('ِ')
-          ? 'الهمزتان المفتوحة والمكسورة في كلمة'
-          : second.contains('ُ')
-          ? 'الهمزتان المفتوحة والمضمومة في كلمة'
-          : 'الهمزتان المفتوحتان في كلمة',
-      if (d.contains('صلة ميم الجمع')) 'صلة ميم الجمع',
-    ];
-  }
-  if (v.rule == 'tasheel_pair' ||
-      (v.rule == 'ibdal_waw' && v.usulWays.length > 1)) {
-    return [
-      'الهمزتان من كلمتين',
-      if (d.contains('صلة ميم الجمع')) 'صلة ميم الجمع',
-    ];
-  }
-  if (v.rule == 'ha_antum') return ['همزة هأنتم'];
-  // Ya'qub's naql (عَادٗا ٱلُّاولَىٰ) is told in its own chapter only, though its
-  // note names the merged tanween.
-  if (v.rule == 'naql' && const {'ruways', 'rawh'}.contains(v.riwayaId)) {
-    return ['النقل'];
-  }
-  if (v.rule == 'hamza_wasl') {
-    return ['همزة الاستفهام مع همزة الوصل', if (d.contains('نقل')) 'النقل'];
-  }
-  return [
-    if (RegExp('صلة (ال)?ميم|وصلة الميم|صلة الميم').hasMatch(d))
-      'صلة ميم الجمع',
-    if (RegExp('صلة (ال)?هاء|بصلة الهاء|ترك صلة').hasMatch(d)) 'صلة هاء الضمير',
-    if (RegExp('إدغام|ادغام|الإدغام').hasMatch(d)) 'الإدغام',
-    if (RegExp(r'نقل').hasMatch(d)) 'النقل',
-    if (RegExp('إبدال|ابدال').hasMatch(d)) 'إبدال الهمز',
-    if (RegExp('تسهيل').hasMatch(d)) 'تسهيل الهمز',
-    if (RegExp('تخفيف الهمز|حذف الهمزة').hasMatch(d) && !d.contains('تسهيل'))
-      'الهمزات',
-    if (RegExp('تحقيق الهمز').hasMatch(d)) 'تحقيق الهمز',
-    if (d.contains('البدل')) 'مد البدل',
-    // Ya'qub's madd is known of the riwaya, not told at each word.
-    if (!const {'ruways', 'rawh'}.contains(v.riwayaId) &&
-        RegExp(r'(^|\s)(ب|و)?(ال)?مد|ومدها|القصر').hasMatch(d) &&
-        !v.isQasr &&
-        !d.contains('البدل') &&
-        !RegExp('المتصل|المنفصل').hasMatch(d))
-      'المدود',
-    if (RegExp('إشمام|الإشمام').hasMatch(d)) 'الإشمام',
-    if (RegExp('سكت').hasMatch(d) && !d.contains('دون سكت')) 'السكت',
-  ];
-}
-
 /// Hamesh entries of [ayahs] in page order: one per word where a reading
 /// of the selected riwayat starts. The same word read the same way again on
 /// the page is listed once.
@@ -2524,6 +2448,8 @@ bool _shadedFarsh(Variant v) =>
 bool _farshAcrossAyahs(Variant v) => !v.isUsul && v.usulText.contains(' ');
 
 bool _tanweenDamm(Variant v) => v.description == 'بالضم في الوصل';
+
+final _tanweenMark = RegExp('[ً-ٍٖٗٞ]');
 
 enum _Naql { lam, last, dropped, alef }
 
@@ -3104,12 +3030,14 @@ class _UsulBox extends StatelessWidget {
   const _UsulBox({
     required this.groups,
     required this.onTap,
+    this.onGuide,
     this.scale = 1,
     this.compact = false,
   });
 
   final List<_UsulGroup> groups;
   final ValueChanged<_UsulItem> onTap;
+  final ValueChanged<_UsulGroup>? onGuide;
   final double scale;
   final bool compact;
 
@@ -3148,29 +3076,33 @@ class _UsulBox extends StatelessWidget {
                             color: MushafColors.green,
                           ),
                         ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: g.color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              '${g.label}:',
-                              style: TextStyle(
-                                fontSize: 9 * scale,
-                                fontWeight: FontWeight.bold,
+                      InkWell(
+                        key: ValueKey('usul-guide:${g.label}'),
+                        onTap: onGuide == null ? null : () => onGuide!(g),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
                                 color: g.color,
+                                shape: BoxShape.circle,
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                '${g.label}:',
+                                style: TextStyle(
+                                  fontSize: 9 * scale,
+                                  fontWeight: FontWeight.bold,
+                                  color: g.color,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       for (final i in g.items.values)
                         InkWell(

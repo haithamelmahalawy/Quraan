@@ -102,6 +102,16 @@ class VariantRepository {
     }
   }
 
+  /// Every reading of a loaded [riwayaId], each once, in mushaf order.
+  List<Variant> allOf(String riwayaId) {
+    final list = _loaded[riwayaId];
+    if (list == null) return const [];
+    final keys = list.keys.toList()..sort();
+    return {
+      for (final k in keys) ...list[k]!,
+    }.toList();
+  }
+
   static int key(int surah, int ayah, int word) =>
       surah * 1000000 + ayah * 1000 + word;
 }
@@ -267,7 +277,9 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
             v.rule.isEmpty &&
             // Warsh's idgham in the word (لَتَّخَذتَّ): the book tells it
             // apart from the word's farsh, which it reads as Hafs.
-            !(id == 'warsh' && v.description.startsWith('بإدغام')),
+            !(id == 'warsh' && v.description.startsWith('بإدغام')) &&
+            // Nor its tanween in wasl, apart from the word (وَعُيُونٍ).
+            !(id == 'warsh' && v.description == 'بالضم في الوصل'),
       );
     }
   }
@@ -311,6 +323,14 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
           // (أفرأيت) in its farsh.
           if (v.rule == 'tasheel_word' &&
               v.description.contains('ألفًا خالصة مع المد المشبع للساكنين')) {
+            found = true;
+          }
+          // ٱلسَّمَآءَ أَن (الحج 65), its two faces told in the usul: the book
+          // quotes the two words joined.
+          if (id == 'warsh' &&
+              surah == 22 &&
+              ayah == 65 &&
+              v.rule == 'tasheel_pair') {
             found = true;
           }
           // Do not duplicate an existing rule as a lexical book variant.

@@ -190,7 +190,8 @@ class HafsFontMarks extends StatelessWidget {
         }
         continue;
       }
-      final color = chars[m.start].$2;
+      // Each keeps its own colour: the tanween may be told alone (مَحْظُوراً).
+      final color = chars[m.start + (m[1] == null ? 1 : 0)].$2;
       chars[m.start] = ('ا', chars[m.start + (m[1] == null ? 0 : 1)].$2);
       chars[m.start + 1] = ('ً', color);
     }

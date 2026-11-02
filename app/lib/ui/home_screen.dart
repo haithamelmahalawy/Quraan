@@ -92,7 +92,12 @@ class HomeScreen extends StatelessWidget {
       _pick(context, SearchScreen(quran: quran));
 
   void _openQurraGuide(BuildContext context) => Navigator.of(context)
-      .push<void>(MaterialPageRoute(builder: (_) => const QurraGuideScreen()));
+      .push<void>(
+        MaterialPageRoute(
+          builder: (_) =>
+              QurraGuideScreen(variants: variants, quran: mushafs.madani),
+        ),
+      );
 
   void _openLibrary(BuildContext context) => Navigator.of(context).push<void>(
     MaterialPageRoute(

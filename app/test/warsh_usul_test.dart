@@ -89,7 +89,6 @@ void main() {
       (36, 19, 3),
       (37, 36, 1),
       (37, 86, 0),
-      (41, 9, 1),
       (56, 47, 2),
     ]) {
       final text = variants.sourceTextAt('warsh', s, a, w)!;
@@ -581,6 +580,43 @@ void main() {
         reason: '$surah:$ayah',
       );
     }
+  });
+
+  test('ألقي 54:25 and أئنكم 41:9 are told by the second hamza alone', () {
+    for (final (surah, ayah, word) in [(54, 25, 0), (41, 9, 1)]) {
+      final v = variants
+          .at(['warsh'], surah, ayah, word)
+          .singleWhere((v) => v.rule == 'tasheel_word');
+      expect(v.description, 'بتسهيل الهمزة الثانية بلا إدخال');
+      expect(v.usulWays, ['تسهيل الهمزة الثانية بلا إدخال']);
+    }
+  });
+
+  test('السماء أن 22:65 is told in the usul only', () {
+    for (final w in [15, 16]) {
+      expect(variants.at(['warsh'], 22, 65, w).where((v) => v.inHamesh), isEmpty);
+    }
+    expect(variants.at(['warsh'], 22, 65, 16).single.rule, 'tasheel_pair');
+  });
+
+  test('the tanween before a damma of wasl across ayahs is told', () {
+    for (final (surah, ayah, word) in [
+      (4, 49, 13),
+      (12, 8, 14),
+      (15, 45, 4),
+      (17, 20, 11),
+      (17, 47, 18),
+      (25, 8, 16),
+      (38, 41, 10),
+    ]) {
+      final v = variants.at(['warsh'], surah, ayah, word).singleWhere((v) => v.inHamesh);
+      expect(v.description, 'بالضم في الوصل', reason: '$surah:$ayah');
+    }
+  });
+
+  test('ونئا 17:83 is taqlil with its other face', () {
+    final v = variants.at(['warsh'], 17, 83, 5).singleWhere((v) => v.isImala);
+    expect(v.description, 'بالتقليل بخلف');
   });
 
   test('صلواتهم 23:9 has only the taghliz, the book\'s note adds no farsh', () {
@@ -1260,6 +1296,42 @@ void main() {
     final colors = word.parts!.map((p) => p.$2).toSet();
     expect(colors, isNot(contains(ReadingColors.hamza)));
     expect(colors, hasLength(2));
+  });
+
+  testWidgets('a label of the key opens the rule explained', (t) async {
+    // Read outside the test's fake clock: the sources are cached for the rest.
+    await t.runAsync(() async {
+      await Manzumat.load();
+      await Kharouf.load();
+    });
+    await page(
+      t,
+      3,
+      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+    );
+    final label = find.byKey(const ValueKey('usul-guide:مد البدل'));
+    await t.ensureVisible(label);
+    await t.pump();
+    await t.tap(label);
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('usul-guide-title')), findsOneWidget);
+  });
+
+  testWidgets('the tanween of محظورا is coloured alone, on Warsh and Hafs', (t) async {
+    for (final settings in [
+      ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      ReaderSettings.memory(selected: {'warsh'}),
+    ]) {
+      await page(t, 284, settings: settings);
+      final word = t.widget<InkText>(
+        find.byKey(const ValueKey('word:17:20:11')),
+      );
+      final colored = HafsFontMarks.positionedParts(
+        word.parts!,
+      ).where((p) => p.$2 != null && p.$2 != MushafColors.ink);
+      expect(colored.map((p) => p.$1).join(), matches('^[ً]\$'));
+    }
   });
 
   testWidgets('a damma before a hamzat wasl colours the two letters', (

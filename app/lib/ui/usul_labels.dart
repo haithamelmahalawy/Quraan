@@ -1,0 +1,109 @@
+import 'package:flutter/material.dart';
+
+import '../data/lin_hamz.dart';
+import '../models/quran.dart';
+import 'reading_colors.dart';
+import 'theme.dart';
+
+/// The labels a general rule is told under in the page's key, with their
+/// colours: «مد البدل»، «النقل»، «التقليل»...
+List<(String, Color)> usulKindsOf(Variant v) {
+  final own = ReadingColors.of(v);
+  return v.isBadal
+      ? [('مد البدل', MushafColors.green)]
+      : v.rule == 'tarqiq'
+      ? [('ترقيق الراء', MushafColors.rule)]
+      : v.rule == 'taghliz'
+      ? [('تغليظ اللام', MushafColors.rule)]
+      : v.isSakt
+      ? [('السكت قبل الهمز', own)]
+      : v.readsAsHafs
+      ? [('الإدغام بلا غنة', own)]
+      : v.isQasr
+      ? [('قصر المنفصل', own)]
+      : [
+          if (v.isImala)
+            // Warsh has no imala of his own: taqlil only.
+            v.riwayaId == 'warsh' ||
+                    RegExp('تقليل|بين').hasMatch(v.description)
+                ? ('التقليل', MushafColors.green)
+                : ('الإمالة', MushafColors.green),
+          for (final l in usulOf(v))
+            if (!v.isImala || l != 'المدود') (l, own),
+          if (!v.isImala && usulOf(v).isEmpty) ('أصول أخرى', own),
+        ];
+}
+
+/// The usul a reading applies, by its description: the key's wording.
+List<String> usulOf(Variant v) {
+  final typed = ReadingColors.labelForRule(v.rule);
+  if (typed != null) return [typed];
+  final d = v.description;
+  if (v.rule == 'ya_zaida') return ['ياءات الزوائد'];
+  if (v.isLinHamz) {
+    return [LinHamz.values.singleWhere((kind) => kind.rule == v.rule).label];
+  }
+  if (v.rule == 'tasheel_word') {
+    if (v.description.contains('تحقيق') && !v.description.contains('تسهيل')) {
+      return ['الهمزتان في كلمة'];
+    }
+    // Named by the vowel of the second hamza of the word (ءَأَنذَرۡتَهُمۡ،
+    // أَئِنَّكُمۡ، أَءُنزِلَ).
+    // (Ibn 'Amir's readings; the others keep their own names.)
+    final match = RegExp('[ءأإئؤ][ً-ٰٟ]*[^ءأإئؤ]{0,2}?[ءأإئؤ]([ً-ٰٟ]*)')
+        .firstMatch(v.usulText);
+    final second = const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId)
+        ? match?.group(1)
+        : null;
+    return [
+      second == null
+          ? v.usulWays.length > 1
+                ? 'الهمزتان المفتوحتان في كلمة'
+                : 'تسهيل الهمزتين في كلمة'
+          : second.contains('ِ')
+          ? 'الهمزتان المفتوحة والمكسورة في كلمة'
+          : second.contains('ُ')
+          ? 'الهمزتان المفتوحة والمضمومة في كلمة'
+          : 'الهمزتان المفتوحتان في كلمة',
+      if (d.contains('صلة ميم الجمع')) 'صلة ميم الجمع',
+    ];
+  }
+  if (v.rule == 'tasheel_pair' ||
+      (v.rule == 'ibdal_waw' && v.usulWays.length > 1)) {
+    return [
+      'الهمزتان من كلمتين',
+      if (d.contains('صلة ميم الجمع')) 'صلة ميم الجمع',
+    ];
+  }
+  if (v.rule == 'ha_antum') return ['همزة هأنتم'];
+  // Ya'qub's naql (عَادٗا ٱلُّاولَىٰ) is told in its own chapter only, though its
+  // note names the merged tanween.
+  if (v.rule == 'naql' && const {'ruways', 'rawh'}.contains(v.riwayaId)) {
+    return ['النقل'];
+  }
+  if (v.rule == 'hamza_wasl') {
+    return ['همزة الاستفهام مع همزة الوصل', if (d.contains('نقل')) 'النقل'];
+  }
+  return [
+    if (RegExp('صلة (ال)?ميم|وصلة الميم|صلة الميم').hasMatch(d))
+      'صلة ميم الجمع',
+    if (RegExp('صلة (ال)?هاء|بصلة الهاء|ترك صلة').hasMatch(d)) 'صلة هاء الضمير',
+    if (RegExp('إدغام|ادغام|الإدغام').hasMatch(d)) 'الإدغام',
+    if (RegExp(r'نقل').hasMatch(d)) 'النقل',
+    if (RegExp('إبدال|ابدال').hasMatch(d)) 'إبدال الهمز',
+    if (RegExp('تسهيل').hasMatch(d)) 'تسهيل الهمز',
+    if (RegExp('تخفيف الهمز|حذف الهمزة').hasMatch(d) && !d.contains('تسهيل'))
+      'الهمزات',
+    if (RegExp('تحقيق الهمز').hasMatch(d)) 'تحقيق الهمز',
+    if (d.contains('البدل')) 'مد البدل',
+    // Ya'qub's madd is known of the riwaya, not told at each word.
+    if (!const {'ruways', 'rawh'}.contains(v.riwayaId) &&
+        RegExp(r'(^|\s)(ب|و)?(ال)?مد|ومدها|القصر').hasMatch(d) &&
+        !v.isQasr &&
+        !d.contains('البدل') &&
+        !RegExp('المتصل|المنفصل').hasMatch(d))
+      'المدود',
+    if (RegExp('إشمام|الإشمام').hasMatch(d)) 'الإشمام',
+    if (RegExp('سكت').hasMatch(d) && !d.contains('دون سكت')) 'السكت',
+  ];
+}

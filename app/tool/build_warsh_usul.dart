@@ -286,7 +286,8 @@ Map<String, int> correctWarshUsul(
       if (open || (_hamza(readingFirst) && _vowel(readingFirst) == 'َ')) {
         final ways = [
           // The second hamza on its tooth (أَئِمَّةٗ), told with the first.
-          cs[1].startsWith('ئ')
+          // Not أَئِنَّكُمۡ (فصلت 9), reviewed with its second alone.
+          cs[1].startsWith('ئ') && key(w) != '41:9:1'
               ? 'تحقيق الأولى وتسهيل الثانية بلا إدخال'
               : 'تسهيل الهمزة الثانية بلا إدخال',
           // A third hamza changed to madd (ءأٰلهتنا) rules out this face.

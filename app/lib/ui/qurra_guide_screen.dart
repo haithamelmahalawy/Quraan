@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../data/quran_repository.dart';
 import '../data/qurra_biographies.dart';
 import '../data/qurra_graph.dart';
+import '../data/variant_repository.dart';
 import 'guide_depth.dart';
 import 'qurra_graph_view.dart';
+import 'usul_guide_sheet.dart';
 
 /// An offline guide, separate from choosing which riwaya to read.
 class QurraGuideScreen extends StatefulWidget {
-  const QurraGuideScreen({super.key});
+  const QurraGuideScreen({super.key, this.variants, this.quran});
+
+  /// For the usul of each narrator; without them the narrators have no link.
+  final VariantRepository? variants;
+  final QuranRepository? quran;
 
   @override
   State<QurraGuideScreen> createState() => _QurraGuideScreenState();
@@ -30,6 +37,18 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
     _scroll.dispose();
     _camera.dispose();
     super.dispose();
+  }
+
+  /// The usul of a narrator, when the sources are at hand.
+  ValueChanged<String>? get _onUsul {
+    final variants = widget.variants, quran = widget.quran;
+    if (variants == null || quran == null) return null;
+    return (id) => Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) =>
+            RiwayaUsulScreen(riwaya: id, variants: variants, quran: quran),
+      ),
+    );
   }
 
   void _reset() => setState(() {
@@ -243,6 +262,7 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
                                   _NarratorInfo(
                                     narrator: t.narrator,
                                     showReader: true,
+                                    onUsul: _onUsul,
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
@@ -261,6 +281,7 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
                             key: ValueKey('reader-${b.qiraaId}'),
                             biography: b,
                             query: query,
+                            onUsul: _onUsul,
                           ),
                     ],
                   ],
@@ -430,9 +451,13 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (node.kind == QurraNodeKind.reader)
-                  _ReaderCard(biography: node.reader!, query: '')
+                  _ReaderCard(biography: node.reader!, query: '', onUsul: _onUsul)
                 else if (node.kind == QurraNodeKind.narrator) ...[
-                  _NarratorInfo(narrator: node.narrator!, showReader: true),
+                  _NarratorInfo(
+                    narrator: node.narrator!,
+                    showReader: true,
+                    onUsul: _onUsul,
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'عن القارئ ${node.reader!.qiraa.nameAr} • ${node.reader!.group.nameAr}',
@@ -878,9 +903,15 @@ class _CityFilterTile extends StatelessWidget {
 }
 
 class _ReaderCard extends StatelessWidget {
-  const _ReaderCard({super.key, required this.biography, required this.query});
+  const _ReaderCard({
+    super.key,
+    required this.biography,
+    required this.query,
+    this.onUsul,
+  });
   final ReaderBiography biography;
   final String query;
+  final ValueChanged<String>? onUsul;
 
   @override
   Widget build(BuildContext context) {
@@ -941,7 +972,7 @@ class _ReaderCard extends StatelessWidget {
             children: [
               for (final (i, n) in b.narrators.indexed) ...[
                 if (i > 0) const Divider(height: 24),
-                _NarratorInfo(narrator: n),
+                _NarratorInfo(narrator: n, onUsul: onUsul),
               ],
             ],
           ),
@@ -952,9 +983,14 @@ class _ReaderCard extends StatelessWidget {
 }
 
 class _NarratorInfo extends StatelessWidget {
-  const _NarratorInfo({required this.narrator, this.showReader = false});
+  const _NarratorInfo({
+    required this.narrator,
+    this.showReader = false,
+    this.onUsul,
+  });
   final NarratorBiography narrator;
   final bool showReader;
+  final ValueChanged<String>? onUsul;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -988,6 +1024,16 @@ class _NarratorInfo extends StatelessWidget {
       _Tag(text: narrator.city.nameAr),
       const SizedBox(height: 6),
       Text(narrator.brief, style: const TextStyle(height: 1.6)),
+      if (onUsul != null)
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            key: ValueKey('narrator-usul:${narrator.riwaya.id}'),
+            onPressed: () => onUsul!(narrator.riwaya.id),
+            icon: const Icon(Icons.rule_rounded),
+            label: Text('أصول ${narrator.riwaya.nameAr}'),
+          ),
+        ),
     ],
   );
 }
