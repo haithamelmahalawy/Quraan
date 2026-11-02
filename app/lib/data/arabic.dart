@@ -72,7 +72,9 @@ String _madaniSukun(String text) {
     final silent =
         c.startsWith('ا') ||
         c.startsWith('و') && before.startsWith('أ') && before.contains('ُ') ||
-        c.startsWith('ي') && before.startsWith('إ') && before.contains('ِ');
+        c.startsWith('ي') && before.startsWith('إ') && before.contains('ِ') ||
+        // بِأَيۡيْدٖ, as Hafs's second ya.
+        c.startsWith('ي') && before.startsWith('ي') && before.contains('ۡ');
     if (silent) continue;
     final madd =
         c.startsWith('و') && before.contains('ُ') ||
@@ -302,7 +304,11 @@ int? naqlLetter(List<String> letters, {bool last = false}) {
 /// (ٱلۡأٓخِرَةِ, ءَٰدَم), or, the hamza dropped by naql, the alef after the
 /// lam (وَبِالَاخِرَةِ) or at the start of the word (اٰتَيْنَا).
 int? badalLetter(List<String> letters) {
-  bool madd(int i) => i < letters.length && 'اوىي'.contains(letters[i][0]);
+  // With no vowel of its own (not the waw of أَوَءَابَآؤُنَا).
+  bool madd(int i) =>
+      i < letters.length &&
+      'اوىي'.contains(letters[i][0]) &&
+      !RegExp('[َُِ]').hasMatch(letters[i]);
   for (var i = 0; i < letters.length; i++) {
     final l = letters[i];
     if (_hamzas.contains(l[0]) ||

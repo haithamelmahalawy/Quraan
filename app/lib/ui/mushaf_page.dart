@@ -1374,7 +1374,7 @@ class _MushafPageState extends State<MushafPage>
             ]
             .where(
               (v) =>
-                  v.word == w &&
+                  (v.word == w || _shadedFarsh(v)) &&
                   !v.isMarginNote &&
                   !isRoutineMadd(v) &&
                   showYaqubMimExample(v, ayah.words[v.word]) &&
@@ -1490,13 +1490,18 @@ class _MushafPageState extends State<MushafPage>
           )
           .toList(),
     );
-    // وَعَذَابٍ before the next ayah's ٱرۡكُضۡ: its tanween alone, on the
-    // last letter that has it (مَحۡظُورًا: not the alif).
+    // وَعَذَابٍ before the next ayah's ٱرۡكُضۡ: its last letter with the tanween
+    // alone, and the alif the tanween may stand on (مَحۡظُورًا، مَحْظُوراً).
     final tanweenColor = readings.any(_tanweenDamm) ? farshColor : null;
-    final tanweenAt = letters.lastIndexWhere(_tanweenMark.hasMatch);
     if (farshColor != null && tanweenColor == null) {
       for (var i = 0; i < letters.length; i++) {
         colors[i] = farshColor;
+      }
+    } else if (tanweenColor != null) {
+      final at = letters.lastIndexWhere(_tanweenMark.hasMatch);
+      final from = at > 0 && letters[at].startsWith('ا') ? at - 1 : at;
+      for (var i = from; from >= 0 && i < letters.length; i++) {
+        colors[i] = tanweenColor;
       }
     }
     var priority = 0;
@@ -1578,6 +1583,14 @@ class _MushafPageState extends State<MushafPage>
             ? raLetter(letters)
             : lamLetter(letters) ?? lamLetter(letters, anyVowel: true);
         mark(i, MushafColors.rule);
+        continue;
+      }
+      // إِۦلَٰفِهِمۡ: the madd is the small ya on the hamza or the naql's alif,
+      // that sign alone.
+      if (v.isBadal &&
+          RegExp('^[إا]').hasMatch(letters.first) &&
+          letters.first.contains('ۦ')) {
+        zaida = (0, MushafColors.green);
         continue;
       }
       final kind = v.isBadal ? null : _naqlKind(v);
@@ -1712,20 +1725,21 @@ class _MushafPageState extends State<MushafPage>
         }
       }
     }
-    if (colors.isEmpty && zaida == null && tanweenColor == null) return null;
+    if (colors.isEmpty && zaida == null) return null;
     // The displayed narrator owns overlapping letters. Within that narrator,
     // badal retains its agreed priority over naql independently of row order.
     return [
       for (final (i, l) in letters.indexed)
-        if (tanweenColor != null && i == tanweenAt) ...[
-          (l.substring(0, l.indexOf(_tanweenMark)), colors[i]),
-          (l.substring(l.indexOf(_tanweenMark)), tanweenColor),
-        ] else if (i == zaida?.$1) ...[
+        if (i == zaida?.$1) ...[
           (l.substring(0, l.indexOf('ۦ')), colors[i]),
           (l.substring(l.indexOf('ۦ')), zaida!.$2),
         ] else if (easedDot != null && l == '\u0627\u064e\u06df') ...[
           ('\u0627\u064e', colors[i]),
           ('\u06df', easedDot),
+          // The sajda sign keeps the ink of the text (\u0648\u064e\u0671\u0642\u06e1\u062a\u064e\u0631\u0650\u0628\u06e9).
+        ] else if (l.endsWith('\u06e9')) ...[
+          (l.substring(0, l.length - 1), colors[i]),
+          ('\u06e9', null),
         ] else
           (l, colors[i]),
     ];
@@ -2442,12 +2456,19 @@ List<HameshEntry> _entriesOf(
 /// And its يسٓ وَٱلۡقُرۡءَانِ, read as one with the idgham.
 bool _shadedFarsh(Variant v) =>
     v.description == 'بحذف المد الطبيعي بعد الهمزة' ||
+    // ٱلۡغَنِيُّ ٱلۡحَمِيدُ (الحديد 24), without هُوَ.
+    v.description == 'بحذف هو' ||
     _farshAcrossAyahs(v) ||
     _tanweenDamm(v);
 
 bool _farshAcrossAyahs(Variant v) => !v.isUsul && v.usulText.contains(' ');
 
-bool _tanweenDamm(Variant v) => v.description == 'بالضم في الوصل';
+/// Warsh's tanween read with a damma in wasl, before the next ayah: the book's
+/// wording (مُّنِيبٍ «ضم التنوين وصلاً») or the reviewed one.
+bool _tanweenDamm(Variant v) =>
+    v.riwayaId == 'warsh' &&
+    (v.description == 'بالضم في الوصل' ||
+        v.description.contains('ضم التنوين'));
 
 final _tanweenMark = RegExp('[ً-ٍٖٗٞ]');
 
@@ -3142,6 +3163,20 @@ class _UsulBox extends StatelessWidget {
                               ))
                                 Text(
                                   ' (بخلف)',
+                                  style: TextStyle(
+                                    fontSize: 9 * scale,
+                                    color: g.color,
+                                  ),
+                                ),
+                              // بَنَىٰهَا and its neighbours, with the fath.
+                              if (i.readings.any(
+                                (v) =>
+                                    v.riwayaId == 'warsh' &&
+                                    v.isImala &&
+                                    v.description.contains('والتقليل مقدم'),
+                              ))
+                                Text(
+                                  ' (له الفتح والتقليل والتقليل مقدم)',
                                   style: TextStyle(
                                     fontSize: 9 * scale,
                                     color: g.color,

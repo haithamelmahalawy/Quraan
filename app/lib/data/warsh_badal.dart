@@ -30,7 +30,7 @@ bool hasWarshBadal(String word, String location) {
       if (!lamOfAl && !lin) continue;
     }
     final open = h.contains('َ') || h.contains('۪') || h.contains('ٜ');
-    if (h.contains('ِ') && h.contains('ۧ')) return true;
+    if (h.contains('ِ') && (h.contains('ۧ') || h.contains('ۦ'))) return true;
     if (alifMadd || open && h.contains('ٰ')) return true;
     if (i + 1 >= letters.length) continue;
     final next = letters[i + 1];

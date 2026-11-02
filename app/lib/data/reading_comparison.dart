@@ -426,11 +426,13 @@ List<Variant> compareReadings({
         text: readingText(repository, id, ayah, from, to),
         kind: VariantKind.farsh,
         rule: 'comparison',
-        description: own
-            .map((v) => v.description)
-            .where((d) => d.isNotEmpty)
-            .toSet()
-            .join('، '),
+        description: <String>{
+          ...own.map((v) => v.description).where((d) => d.isNotEmpty),
+          // What the shown riwaya leaves out, this one reads (هُوَ, الحديد 24).
+          if (own.isEmpty)
+            for (final v in lexical[displayed ?? 'hafs'] ?? const <Variant>[])
+              if (v.description == 'بحذف هو') 'بزيادة هو',
+        }.join('، '),
         bookWujuh: own
             .map((v) => v.bookWujuh)
             .where((d) => d.isNotEmpty)

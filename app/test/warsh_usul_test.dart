@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
+import 'package:qiraat_mushaf/data/reading_comparison.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/quran.dart';
 import 'package:qiraat_mushaf/models/qiraat_catalog.dart';
@@ -304,7 +305,7 @@ void main() {
       isFalse,
     );
     expect(
-      variants.sourceTextAt('warsh', 69, 28, 3)!.endsWith('\u0647\u06e1'),
+      variants.sourceTextAt('warsh', 69, 28, 3)!.endsWith('\u0647\u06e1\u06dc'),
       isTrue,
     );
   });
@@ -617,6 +618,199 @@ void main() {
   test('ونئا 17:83 is taqlil with its other face', () {
     final v = variants.at(['warsh'], 17, 83, 5).singleWhere((v) => v.isImala);
     expect(v.description, 'بالتقليل بخلف');
+  });
+
+  test('بأييد 51:47 is written as Hafs writes it, with nothing told', () {
+    expect(variants.at(['warsh'], 51, 47, 2), isEmpty);
+    expect(
+      variants.sourceTextAt('warsh', 51, 47, 2),
+      quran.ayah(51, 47).words[2],
+    );
+  });
+
+  test('امرئ 52:21 is written as Hafs writes it, with nothing told', () {
+    expect(variants.at(['warsh'], 52, 21, 15), isEmpty);
+    expect(
+      variants.sourceTextAt('warsh', 52, 21, 15),
+      quran.ayah(52, 21).words[15],
+    );
+    expect(HafsFontMarks.needsAdjustment(quran.ayah(52, 21).words[15]), isTrue);
+  });
+
+  test('every sajda of Warsh is where Hafs marks it', () {
+    var count = 0;
+    for (var p = 1; p <= 604; p++) {
+      for (final a in quran.page(p)) {
+        for (var w = 0; w < a.words.length; w++) {
+          final own = variants.sourceTextAt('warsh', a.surah, a.number, w)!;
+          expect(
+            own.contains('۩'),
+            a.words[w].contains('۩'),
+            reason: '${a.surah}:${a.number}:$w',
+          );
+          if (own.contains('۩')) count++;
+        }
+      }
+    }
+    expect(count, 15);
+  });
+
+  test('اللؤلؤ 55:22 is written as Hafs writes it, with nothing told', () {
+    expect(variants.at(['warsh'], 55, 22, 2), isEmpty);
+    expect(
+      variants.sourceTextAt('warsh', 55, 22, 2),
+      quran.ayah(55, 22).words[2],
+    );
+  });
+
+  test('المنشئات 55:24 is written as Hafs writes it, with its badal only', () {
+    expect(variants.at(['warsh'], 55, 24, 2).single.rule, 'badal');
+    expect(
+      variants.sourceTextAt('warsh', 55, 24, 2),
+      quran.ayah(55, 24).words[2],
+    );
+  });
+
+  test('وجنى 55:54 is written as Hafs writes it, its taqlil on stopping', () {
+    expect(variants.at(['warsh'], 55, 54, 6).single.rule, 'taqlil_stop');
+    expect(
+      variants.sourceTextAt('warsh', 55, 54, 6),
+      quran.ayah(55, 54).words[6],
+    );
+  });
+
+  test('the badal of أوءاباؤنا is the alif after its second hamza', () {
+    final letters = lettersOf(quran.ayah(56, 48).words[0]);
+    final at = badalLetter(letters)!;
+    expect(letters[at], 'ا');
+    expect(letters[at - 1], startsWith('ء'));
+  });
+
+  test('أوءاباؤنا 37:17 is one word, as at 56:48', () {
+    expect(
+      variants.sourceTextAt('warsh', 37, 17, 0),
+      variants.sourceTextAt('warsh', 56, 48, 0),
+    );
+    expect(variants.sourceTextAt('warsh', 37, 17, 0), isNot(contains(' ')));
+  });
+
+  test('يظهرون 58:2 and 58:3 tell their farsh in the hamesh', () {
+    for (final ayah in [2, 3]) {
+      final v = variants.at(['warsh'], 58, ayah, 1).singleWhere((v) => v.inHamesh);
+      expect(v.description, 'بفتح الياء وتشديد الظاء وحذف الألف وتشديد الهاء مع فتحها');
+    }
+  });
+
+  test('ماليه 69:28 has the sakt, as Hafs writes it', () {
+    final word = madinahScript(variants.sourceTextAt('warsh', 69, 28, 3)!);
+    expect(word, quran.ayah(69, 28).words[3]);
+    expect(HafsFontMarks.needsAdjustment(word), isTrue);
+  });
+
+  test('وألو 72:16 is as Hafs writes it, قال 72:20 with a dagger alif', () {
+    expect(variants.at(['warsh'], 72, 16, 0), isEmpty);
+    expect(
+      variants.sourceTextAt('warsh', 72, 16, 0),
+      quran.ayah(72, 16).words[0],
+    );
+    const said = '\u0642\u064e\u0670\u0644\u064e';
+    expect(variants.sourceTextAt('warsh', 72, 20, 0), said);
+    expect(variants.at(['warsh'], 72, 20, 0).single.text, said);
+  });
+
+  test('no badal is coloured on a letter with its own vowel after the hamza', () {
+    final hamza = RegExp('[ءأإؤئإٓٔ]');
+    final vowel = RegExp('[َُِ]');
+    final wrong = <String>[];
+    for (final v in variants.allOf('warsh').where((v) => v.isBadal)) {
+      final hafs = quran.ayah(v.surah, v.ayah).words[v.word];
+      for (final word in [
+        hafs,
+        madinahScript(variants.sourceTextAt('warsh', v.surah, v.ayah, v.word)!),
+      ]) {
+        final letters = lettersOf(word);
+        if (!letters.any((l) => hamza.hasMatch(l))) continue;
+        final at = badalLetter(letters);
+        if (at == null) continue;
+        final l = letters[at];
+        if ('وي'.contains(l[0]) && vowel.hasMatch(l) && !hamza.hasMatch(l)) {
+          wrong.add('${v.surah}:${v.ayah}:${v.word} $word');
+        }
+      }
+    }
+    expect(wrong, isEmpty);
+    // لِأَيَٰتِنَا: the alif of the lam-alif, with its hamza.
+    final letters = lettersOf(quran.ayah(74, 16).words[3]);
+    expect(letters[badalLetter(letters)!], startsWith('أ'));
+  });
+
+  test('هو 57:24: those who leave it out are told alike', () async {
+    const ids = ['warsh', 'qalun', 'hisham', 'ibn_dhakwan', 'ibn_wardan', 'ibn_jammaz'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants.at([id], 57, 24, 9).single;
+      expect(v.description, 'بحذف هو', reason: id);
+      expect(v.count, 3, reason: id);
+      expect(variants.at([id], 57, 24, 8), isEmpty, reason: id);
+    }
+    final keys = {
+      for (final id in ids)
+        readingVariantKey(
+          variants.at([id], 57, 24, 9).single,
+          baseline: quran.ayah(57, 24).words.sublist(9, 12).join(' '),
+        ),
+    };
+    expect(keys, hasLength(1));
+  });
+
+  test('نذرا 77:6 tells its damma, بشرر 77:32 only its tarqiq', () {
+    final at = variants.at(['warsh'], 77, 6, 2);
+    expect(at.singleWhere((v) => v.inHamesh).description, 'بضم الذال');
+    expect(at.singleWhere((v) => v.rule == 'naql_source').text, isEmpty);
+    expect(variants.at(['warsh'], 77, 6, 1).where((v) => v.inHamesh), isEmpty);
+    final ra = variants.at(['warsh'], 77, 32, 2).single;
+    expect(ra.rule, 'tarqiq');
+    expect(ra.inHamesh, isFalse);
+  });
+
+  test('the stop sign of بلى is drawn apart from its madd', () {
+    expect(HafsFontMarks.needsAdjustment(quran.ayah(84, 15).words[0]), isTrue);
+    expect(
+      HafsFontMarks.needsAdjustment(
+        madinahScript(variants.sourceTextAt('warsh', 84, 15, 0)!),
+      ),
+      isTrue,
+    );
+  });
+
+  test('فحدث ألم 93:11 is a naql across the surahs, no farsh', () {
+    final source = variants.at(['warsh'], 93, 11, 3).single;
+    expect(source.rule, 'naql_source');
+    expect(source.inHamesh, isFalse);
+    final naql = variants.at(['warsh'], 94, 1, 0).single;
+    expect(naql.rule, 'naql');
+    expect(naql.inHamesh, isFalse);
+  });
+
+  test('واقترب 96:19 is a naql into إنا, with its sajda, no farsh', () {
+    final source = variants.at(['warsh'], 96, 19, 4).single;
+    expect(source.rule, 'naql_source');
+    expect(source.inHamesh, isFalse);
+    expect(variants.sourceTextAt('warsh', 96, 19, 4), endsWith('۩'));
+    expect(variants.at(['warsh'], 97, 1, 0).single.rule, 'naql');
+  });
+
+  test('البريئة 98:6 and 98:7 have the hamza on a kashida after the madd', () {
+    for (final (a, w) in [(6, 15), (7, 8)]) {
+      final v = variants.at(['warsh'], 98, a, w).single;
+      expect(v.description, 'بتخفيف الياء مع المد ثم همزة');
+      expect(v.inHamesh, isTrue);
+      expect(v.text, contains('\u064a\u0653\u0640\u064e\u0654'));
+      expect(
+        variants.sourceTextAt('warsh', 98, a, w),
+        contains('\u064a\u0653\u0640\u064e\u0654'),
+      );
+    }
   });
 
   test('صلواتهم 23:9 has only the taghliz, the book\'s note adds no farsh', () {
@@ -1318,20 +1512,136 @@ void main() {
     expect(find.byKey(const ValueKey('usul-guide-title')), findsOneWidget);
   });
 
-  testWidgets('the tanween of محظورا is coloured alone, on Warsh and Hafs', (t) async {
+  testWidgets('a tanween damma in wasl colours its last letter with the tanween', (t) async {
+    String colored(WidgetTester t, String key) {
+      final word = t.widget<InkText>(find.byKey(ValueKey(key)));
+      return [
+        for (final (l, c) in word.parts!)
+          if (c != null) l,
+      ].join();
+    }
+
     for (final settings in [
       ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
       ReaderSettings.memory(selected: {'warsh'}),
     ]) {
+      await page(t, 519, settings: settings);
+      expect(colored(t, 'word:50:33:6'), startsWith('ب'));
+      await page(t, 455, settings: settings);
+      expect(colored(t, 'word:38:41:10'), startsWith('ب'));
       await page(t, 284, settings: settings);
-      final word = t.widget<InkText>(
-        find.byKey(const ValueKey('word:17:20:11')),
-      );
-      final colored = HafsFontMarks.positionedParts(
-        word.parts!,
-      ).where((p) => p.$2 != null && p.$2 != MushafColors.ink);
-      expect(colored.map((p) => p.$1).join(), matches('^[ً]\$'));
+      expect(colored(t, 'word:17:20:11'), startsWith('ر'));
     }
+  });
+
+  testWidgets('هو 57:24: all three words beside Hafs, the two in Warsh', (t) async {
+    bool colored(WidgetTester t, int w) {
+      final word = t.widget<InkText>(find.byKey(ValueKey('word:57:24:$w')));
+      final parts = word.parts;
+      return parts != null && parts.any((p) => p.$2 != null) ||
+          word.style.color != MushafColors.ink;
+    }
+
+    await page(t, 540, settings: ReaderSettings.memory(selected: {'warsh'}));
+    for (final w in [9, 10, 11]) {
+      expect(colored(t, w), isTrue, reason: 'Hafs $w');
+    }
+    expect(find.textContaining('بحذف هو'), findsOneWidget);
+    await page(
+      t,
+      540,
+      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+    );
+    for (final w in [10, 11]) {
+      expect(colored(t, w), isTrue, reason: 'Warsh $w');
+    }
+    await page(
+      t,
+      540,
+      settings: ReaderSettings.memory(selected: {'warsh'})
+        ..displayed = 'warsh'
+        ..compareHafs = true,
+    );
+    expect(find.textContaining('بزيادة هو'), findsOneWidget);
+  });
+
+  testWidgets('سأل 70:1 is told under the ibdal, its alif coloured', (t) async {
+    final v = variants.at(['warsh'], 70, 1, 0).single;
+    expect(v.rule, 'ibdal_single');
+    expect(v.inHamesh, isFalse);
+    await page(
+      t,
+      568,
+      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+    );
+    expect(find.byKey(const ValueKey('usul-guide:إبدال الهمز')), findsOneWidget);
+    expect(find.byKey(const ValueKey('usul-guide:الهمزات')), findsNothing);
+  });
+
+  testWidgets('بناها and its neighbours are taqlil with the fath told', (t) async {
+    for (final (a, w) in [
+      (27, 5),
+      (28, 2),
+      (29, 3),
+      (31, 3),
+      (32, 1),
+      (42, 4),
+      (44, 2),
+      (45, 4),
+      (46, 8),
+      (30, 3),
+    ]) {
+      final v = variants.at(['warsh'], 79, a, w).singleWhere((v) => v.isImala);
+      expect(v.isUsul, isTrue, reason: '$a');
+      expect(v.inHamesh, isFalse, reason: '$a');
+      expect(variants.sourceTextAt('warsh', 79, a, w), contains('۪'));
+    }
+    for (var a = 1; a <= 15; a++) {
+      final words = quran.ayah(91, a).words;
+      final w = words.indexWhere((t) => t.contains('\u0670\u0647\u064e\u0627'));
+      final v = variants.at(['warsh'], 91, a, w).singleWhere((v) => v.isImala);
+      expect(v.description, contains('والتقليل مقدم'), reason: '91:$a');
+      expect(variants.sourceTextAt('warsh', 91, a, w), contains('۪'));
+    }
+    await page(
+      t,
+      584,
+      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+    );
+    expect(
+      find.text(' (له الفتح والتقليل والتقليل مقدم)'),
+      findsNWidgets(10),
+    );
+    await page(
+      t,
+      595,
+      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+    );
+    expect(
+      find.text(' (له الفتح والتقليل والتقليل مقدم)'),
+      findsNWidgets(15),
+    );
+  });
+
+  testWidgets('إيلافهم 106:2 has no hamza, it is naql, its small ya the badal', (t) async {
+    expect(
+      variants.sourceTextAt('warsh', 106, 2, 0),
+      quran.ayah(106, 2).words[0].replaceFirst('إ', 'ا'),
+    );
+    final at = variants.at(['warsh'], 106, 2, 0);
+    expect(at.where((v) => v.inHamesh), isEmpty);
+    expect(at.where((v) => v.isBadal), hasLength(1));
+    expect(at.where((v) => v.rule == 'naql'), hasLength(1));
+    await page(
+      t,
+      602,
+      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+    );
+    final word = t.widget<InkText>(find.byKey(const ValueKey('word:106:2:0')));
+    expect(
+      word.parts!.where((p) => p.$2 == MushafColors.green).map((p) => p.$1),
+      ['ۦ'],
+    );
   });
 
   testWidgets('a damma before a hamzat wasl colours the two letters', (

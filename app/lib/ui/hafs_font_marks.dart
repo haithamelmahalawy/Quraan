@@ -64,7 +64,8 @@ class HafsFontMarks extends StatelessWidget {
   static bool _kasraUnderHamza(String cluster) =>
       (cluster.startsWith('ي') ||
               cluster.startsWith('و') ||
-              cluster.startsWith('ـ')) &&
+              cluster.startsWith('ـ') ||
+              cluster.startsWith('ى')) &&
           cluster.contains('ٕ') &&
           _kasras.hasMatch(cluster) ||
       // The eased hamza's tooth with the tasheel dot under it (أَىِ۪مَّةَ).
@@ -82,6 +83,14 @@ class HafsFontMarks extends StatelessWidget {
   static bool _waqfOverTanween(String cluster) =>
       cluster.startsWith('ا') &&
       cluster.contains('ً') &&
+      _waqf.hasMatch(cluster);
+
+  /// The stop sign over the madd of a dagger alif on a final ى (بَلَىٰٓۚ): the
+  /// madd is raised, across the sign; the sign is raised clear of it.
+  static bool _waqfOverMadd(String cluster) =>
+      cluster.startsWith('ى') &&
+      cluster.contains('ٰ') &&
+      cluster.contains('ٓ') &&
       _waqf.hasMatch(cluster);
 
   /// The dagger alif after an eased hamza's alif (ءَا۬ـٰمَنتُم): drawn on its
@@ -160,6 +169,7 @@ class HafsFontMarks extends StatelessWidget {
           _lowerImala(cluster) ||
           _kasraUnderHamza(cluster) ||
           _waqfOverTanween(cluster) ||
+          _waqfOverMadd(cluster) ||
           _naqlFatha(cluster) ||
           _easedDot(cluster, _cluster.matchAsPrefix(text, m.end)?[0]) ||
           _smallWawApart(cluster) ||
@@ -240,7 +250,7 @@ class HafsFontMarks extends StatelessWidget {
         final markAt = full.indexOf(_kasras, m.start);
         marks[markAt] = placed[markAt].$2;
       }
-      if (_waqfOverTanween(m[0]!)) {
+      if (_waqfOverTanween(m[0]!) || _waqfOverMadd(m[0]!)) {
         final markAt = full.indexOf(_waqf, m.start);
         marks[markAt] = placed[markAt].$2;
       }
@@ -375,15 +385,19 @@ class _QuranMarkPainter extends CustomPainter {
     for (final (at, color, sign) in targets) {
       final sakt = sign == 'ۜ';
       final imala = sign == '۪' || sign == 'ٜ';
-      final low = sign == 'ۭ';
       final kasra = HafsFontMarks._kasras.hasMatch(sign);
       final below = imala || kasra;
-      // This font draws the low mim (ۭ) like the high one, on the tatweel:
-      // both are drawn as the high mim, the low one moved below the letter.
-      final iqlab = sign == 'ۢ' || low;
       final end = sakt
           ? at + 1
           : HafsFontMarks._cluster.matchAsPrefix(source, at)!.end;
+      // The mim beside the hamza and the kasra under it (ٱمۡرِيِٕۭ), not across.
+      final besideHamza =
+          (sign == 'ۭ' || sign == 'ۢ') &&
+          source.substring(at, end).contains('ٕ');
+      final low = sign == 'ۭ' || besideHamza;
+      // This font draws the low mim (ۭ) like the high one, on the tatweel:
+      // both are drawn as the high mim, the low one moved below the letter.
+      final iqlab = sign == 'ۢ' || low;
       final boxes = text.getBoxesForSelection(
         TextSelection(baseOffset: at, extentOffset: end),
       );
@@ -545,10 +559,16 @@ class _QuranMarkPainter extends CustomPainter {
           !source.startsWith('ى', at) &&
           source.substring(at, end).contains('َ');
       final daggerOffShadda = sign == 'ٰ' && source.startsWith('ف', at);
+      final waqfOverMadd =
+          HafsFontMarks._waqf.hasMatch(sign) &&
+          source.startsWith('ى', at) &&
+          source.substring(at, end).contains('ٓ');
       final origin = Offset(
         (daggerOffShadda ? box.left : (box.left + box.right) / 2) -
             mark.width / 2 -
-            (lamAlif
+            (besideHamza
+                ? font * .20
+                : lamAlif
                 ? font * .22
                 : lamDagger
                 ? font * .16
@@ -593,12 +613,16 @@ class _QuranMarkPainter extends CustomPainter {
                           : .44)
                     : below
                     ? .18
+                    : besideHamza
+                    ? .52
                     : low
                     ? .72
                     : iqlab
                     ? -.45
                     // The dagger alif standing apart (ءَاٰ۬مَنتُم): low, beside
                     // the letters.
+                    : waqfOverMadd
+                    ? -.52
                     : daggerOffShadda
                     ? .32
                     : sign == 'ٰ'

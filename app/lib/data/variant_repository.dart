@@ -297,6 +297,8 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
     // A note without written text or an explanation cannot establish a lexical
     // omission. E.g. a margin reminder of Warsh's badal on رؤوف at 24:20.
     if ((p[4] as String).isEmpty && how.isEmpty && wujuh.isEmpty) continue;
+    // بِشَرَرٖ (المرسلات 32): the book's note on its ra is told in the usul.
+    if (id == 'warsh' && surah == 77 && ayah == 32) continue;
     final keys = [
       for (var w = word; w < word + count; w++)
         VariantRepository.key(surah, ayah, w),

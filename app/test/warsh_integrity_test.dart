@@ -97,7 +97,7 @@ void main() {
       // And هَلَكَ، مَالِيَهۡ (الحاقة 28، 29) without the source's idgham.
       .replaceAll('\u0647\u0651\u064e\u0644', '\u0647\u064e\u0644')
       .replaceAll(
-        RegExp('\u0627\u0644\u0650\u064a\u064e\u0647[\u0652\u06e1]'),
+        RegExp('\u0627\u0644\u0650\u064a\u064e\u0647[\u0652\u06e1]\u06dc?'),
         '\u0627\u0644\u0650\u064a\u064e\u0647',
       )
       // And كٓه۪ي۪عٓصٓ without the source's vowels, its last letter told above.
@@ -129,6 +129,56 @@ void main() {
       .replaceAll(
         RegExp('جِا[ْۡ]يٓء'),
         'جِىٓء',
+      )
+      // And وَجَنَى (الرحمن 54) as Hafs writes it, for the source's وَجَنَا.
+      .replaceAll(
+        'وَجَنَى',
+        'وَجَنَا',
+      )
+      // And ٱلۡمُنشَـَٔاتُ (الرحمن 24) as Hafs writes it, the source's أَٰ.
+      .replaceAll(
+        RegExp('نشَ(?:أَ|َٔ|َٔ)ا'),
+        'نشَأَا',
+      )
+      // And ٱللُّؤۡلُؤُ (الرحمن 22) as Hafs writes it, the source with an alif.
+      .replaceAll(
+        'لُؤُاْ',
+        'لُؤُ',
+      )
+      // And وَأَلَّوِ (الجن 16) as Hafs writes it, the source's two words.
+      .replaceAll(
+        RegExp('وَأَن\\s?لَّوِ'),
+        'وَأَلَّوِ',
+      )
+      // And the reviewed taqlil of بَنَىٰهَا and its neighbours (النازعات، الشمس).
+      .replaceAll(
+        RegExp('\u06ea(?=[\u064a\u0649]?[\u0670\u0627]\u0647\u064e\u0627)'),
+        '\u064e',
+      )
+      // And ٱلۡبَرِيٓـَٔةِ (البينة 6، 7), the source's hamza over the ya.
+      .replaceAll(
+        RegExp('\u064a\u0653\u0640?\u064e\u0654'),
+        '\u064a\u0653\u0654\u064e',
+      )
+      // And اِۦلَٰفِهِمۡ (قريش 2) with its small ya, for the source's اِيلَٰفِهِمْ.
+      .replaceAll('\u0627\u0650\u06e6\u0644', '\u0627\u0650\u064a\u0644')
+      // And the sajda, placed where Hafs marks it, not as in the source.
+      .replaceAll('\u06e9', '')
+      // And ٱمۡرِيِٕۭ (الطور 21) as Hafs writes it, the source's ya without dots.
+      .replaceAll(
+        RegExp(
+          '[اٱ]ُ?۪?م[ْۡ]رِ'
+          '[يىےئ][ٕٔ]?ِ',
+        ),
+        'ٱمۡرِئِ',
+      )
+      // And بِأَيۡيْدٖ (الذاريات 47) as Hafs writes it, the source with a fatha.
+      .replaceAll(
+        RegExp(
+          'بِأَي[َْۡ]ي'
+          '[ْۡ]?د',
+        ),
+        'بِأَييد',
       )
       // And فَٱسْرِ with its wasl sign, for the source's bare alif.
       .replaceAll(
@@ -324,7 +374,22 @@ void main() {
       // Hafs's small ya (إِبۡرَٰهِـۧمَ) is the source's ya.
       // And the small waw of لِيَسُـۥٓـُٔواْ, which the source does not write.
       // And جَزَآءُ (الزمر 34), وَجِاْيٓءَ (الزمر 69، الفجر 23) as Hafs writes them.
+      // And ٱللُّؤۡلُؤُ (الرحمن 22), وَجَنَى (الرحمن 54).
+      // And وَأَلَّوِ (الجن 16).
       String ya(String t) => t
+          .replaceAll('\u0627\u0650\u06e6\u0644', '\u0627\u0650\u064a\u0644')
+          .replaceAll(
+            RegExp('وَأَن\\s?لَّوِ'),
+            'وَأَلَّوِ',
+          )
+          .replaceAll(
+            'وَجَنَى',
+            'وَجَنَا',
+          )
+          .replaceAll(
+            'لُؤُاْ',
+            'لُؤُ',
+          )
           .replaceAll(
             RegExp('جِا[ْۡ]يٓء'),
             'جِىٓء',
