@@ -417,6 +417,13 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       final next = index[VariantRepository.key(surah, ayah, word + 1)];
       found = next?.any((v) => v.isUsul && _matchesUsul(v, how)) ?? false;
     }
+    // The damma that parts two quiescents, which the book tells as farsh
+    // (قلُ ادعوا، بضم التنوين وصلاً): told in the usul «التقاء الساكنين».
+    if (!found && (how.isEmpty || how.contains('ضم'))) {
+      found = keys.any(
+        (k) => index[k]?.any((v) => v.rule == 'first_sakin') ?? false,
+      );
+    }
     // A farsh reading the book states and the riwaya file lacks. Ibn 'Amir's
     // files have its farsh written in, reviewed: the book's notes (stopping
     // on the hamza, ishmam, two hamzas) are their usul, not farsh.

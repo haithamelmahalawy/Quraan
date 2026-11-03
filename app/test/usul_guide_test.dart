@@ -408,6 +408,58 @@ void main() {
       expect(variants.at([id], 19, 70, 7).single.text, 'صُلِيّٗا');
       expect(variants.at([id], 15, 45, 4).single.rule, 'first_sakin');
     }
+    // «التقاء الساكنين»: the letters and the tanween with a damma for those
+    // who read so, one rule for them all; Ibn Dhakwan's tanween as Hafs but
+    // for برحمة and خبيثة; Asim's (Hafs's, Shu'bah's) kasra not told.
+    int sakinin(String id) => [
+      for (final s in quran.surahs)
+        for (var a = 1; a <= s.ayahCount; a++)
+          for (var w = 0; w < quran.ayah(s.number, a).words.length; w++)
+            ...variants
+                .at([id], s.number, a, w)
+                .where((v) => v.word == w && v.rule == 'first_sakin'),
+    ].length;
+    for (final id in [
+      'warsh',
+      'qalun',
+      'bazzi',
+      'qunbul',
+      'hisham',
+      'ibn_wardan',
+      'ibn_jammaz',
+    ]) {
+      expect(sakinin(id), 40, reason: id);
+      expect(
+        variants.at([id], 17, 20, 11).single.description,
+        'بضم نون التنوين وصلاً لالتقاء الساكنين',
+        reason: id,
+      );
+      expect(
+        variants
+            .at([id], 7, 195, 19)
+            .singleWhere((v) => v.rule == 'first_sakin')
+            .text,
+        'قُلُ',
+        reason: id,
+      );
+      expect(
+        variants.at([id], 59, 16, 4).where((v) => v.rule == 'first_sakin'),
+        isEmpty,
+      );
+    }
+    expect(sakinin('ibn_dhakwan'), 30);
+    expect(variants.at(['ibn_dhakwan'], 17, 20, 11), isEmpty);
+    expect(
+      variants.at(['ibn_dhakwan'], 7, 49, 6).single.usulWays,
+      hasLength(2),
+    );
+    expect(sakinin('shubah'), 0);
+    // Abu Ja'far's farsh once told in it (يَبْطُشُونَ) back in the farsh.
+    expect(
+      variants.at(['ibn_wardan'], 7, 195, 7).single.kind,
+      VariantKind.farsh,
+    );
+    expect(variants.at(['ibn_wardan'], 2, 173, 13).single.text, 'اضطِر');
     // Shu'bah leaves Hafs's sakt as Warsh does: in the usul, not the farsh.
     for (final (s, a, w) in [(36, 52, 5), (75, 27, 1), (83, 14, 1)]) {
       bool own(Variant v) => v.rule != 'kharouf';

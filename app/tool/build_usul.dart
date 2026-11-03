@@ -29,6 +29,7 @@ import 'dart:io';
 
 import 'package:qiraat_mushaf/data/arabic.dart' show hasWarshTarqiq;
 
+import 'apply_first_sakin.dart';
 import 'build_warsh_usul.dart' show correctWarshUsul;
 
 /// A letter and its marks.
@@ -390,6 +391,7 @@ void main() {
       ) as Map;
       correctWarshUsul(quran, book, variants, sourceText: source);
     }
+    applyFirstSakin(id, quran, variants);
     file.writeAsStringSync(jsonEncode(json));
     stdout.writeln(
       '$id: dropped $dropped written as Hafs'

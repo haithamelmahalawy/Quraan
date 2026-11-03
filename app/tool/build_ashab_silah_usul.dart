@@ -9,6 +9,8 @@ import 'dart:io';
 
 import 'package:qiraat_mushaf/data/arabic.dart';
 
+import 'apply_first_sakin.dart';
+
 const ashabSilahSource = 'ashab_silah_pdf';
 const ashabSilahRiwayat = [
   'qalun',
@@ -929,6 +931,7 @@ Map<String, int> buildAshabSilahUsul(
     if (gone) count('same_kasr_ha');
     return gone;
   });
+  applyFirstSakin(id, quran, rows);
   data['variants'] = rows;
   data['reviewedUsul'] = true;
   return counts;
@@ -1385,24 +1388,15 @@ void _bookGaps(
     for (final (from, to, how, text, kind, rule) in [
       (place(18, 45, 0), place(18, 44, 8), 'بضم القاف', 'عُقُبٗا', 'f', ''),
       (place(19, 71, 0), place(19, 70, 7), 'بضم الصاد', 'صُلِيّٗا', 'f', ''),
-      (
-        place(15, 46, 0),
-        place(15, 45, 4),
-        'بضم العين وبضم نون التنوين لالتقاء الساكنين',
-        '',
-        'u',
-        'first_sakin',
-      ),
     ]) {
       drop(from, (v) => told(v, how));
-      put(
-        to,
-        kind,
-        rule == 'first_sakin' ? 'بضم نون التنوين لالتقاء الساكنين' : how,
-        rule,
-        text: text,
-      );
+      put(to, kind, how, rule, text: text);
     }
+    // «وعيونٍ ادخلوها»: the ain as Hafs; its tanween in «التقاء الساكنين».
+    drop(
+      place(15, 46, 0),
+      (v) => told(v, 'بضم العين وبضم نون التنوين لالتقاء الساكنين'),
+    );
   }
 
   if (id == 'qunbul') {

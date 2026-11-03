@@ -1411,6 +1411,7 @@ class _MushafPageState extends State<MushafPage>
             isWarshRabbahuMadd(v) ||
             isWarshAnaMadd(v) ||
             v.rule == 'ikhfa' ||
+            v.rule == 'first_sakin' ||
             RegExp('همز|تسهيل|صلة|إدغام|ادغام').hasMatch(v.description));
     final lexical = readings.any((v) => !v.isUsul);
     if (readings.isEmpty ||
@@ -1548,6 +1549,18 @@ class _MushafPageState extends State<MushafPage>
               mark(i, MushafColors.green);
             }
           }
+        }
+        continue;
+      }
+      // «التقاء الساكنين»: the first quiescent's letter (قُلُ), or the
+      // tanween's and the alif it may stand on (مَحۡظُورًا).
+      if (v.rule == 'first_sakin') {
+        final at = letters.lastIndexWhere(
+          (l) => _tanweenMark.hasMatch(l) || RegExp('[ُِ]').hasMatch(l),
+        );
+        final from = at > 0 && letters[at].startsWith('ا') ? at - 1 : at;
+        for (var i = from; from >= 0 && i < letters.length; i++) {
+          mark(i, ReadingColors.of(v));
         }
         continue;
       }
@@ -1848,12 +1861,23 @@ class _MushafPageState extends State<MushafPage>
       return null;
     }
     final s = widget.settings;
-    final shown = _readingsAt(
+    final all = _readingsAt(
       widget.variants,
       s,
       ayah,
       w,
-    ).shown.where((v) => v.word == w && !v.isUsul && s.kinds.contains(v.kind));
+    ).shown.where((v) => v.word == w && s.kinds.contains(v.kind));
+    // «التقاء الساكنين», in its colour; unless all the selected read it so.
+    final usul = [
+      ..._baseAt(widget.variants, s, ayah, w).where(
+        (v) =>
+            s.kinds.contains(v.kind) &&
+            !_readByAll(widget.variants, s, ayah, w, v),
+      ),
+      ...all,
+    ].where((v) => v.word == w && v.rule == 'first_sakin').firstOrNull;
+    if (usul != null) return ReadingColors.of(usul);
+    final shown = all.where((v) => !v.isUsul);
     final damm = [
       ..._baseAt(widget.variants, s, ayah, w),
       ...shown,

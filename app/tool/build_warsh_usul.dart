@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:qiraat_mushaf/data/arabic.dart';
 
+import 'apply_first_sakin.dart';
 import 'correct_warsh_lin_hamz.dart';
 import 'correct_warsh_lexical_badal.dart';
 import 'correct_ya_zawaid.dart';
@@ -629,6 +630,7 @@ Map<String, int> correctWarshUsul(
       context: '${previous.text} ${w.text}',
     );
   }
+  applyFirstSakin('warsh', quran, variants);
   variants.sort((a, b) {
     for (var i = 0; i < 3; i++) {
       final c = (a[i] as int).compareTo(b[i] as int);

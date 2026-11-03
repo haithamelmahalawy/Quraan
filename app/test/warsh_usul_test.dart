@@ -452,10 +452,10 @@ void main() {
     expect(madinahScript('اَ۟نظُرْ'), isNot(contains('۟')));
   });
 
-  test('عذاب اركض and سخريا are told in the hamesh', () {
+  test('عذاب اركض in the usul, سخريا in the hamesh', () {
     final tanween = variants.at(['warsh'], 38, 41, 10).single;
-    expect(tanween.description, 'بالضم في الوصل');
-    expect(tanween.inHamesh, isTrue);
+    expect(tanween.rule, 'first_sakin');
+    expect(tanween.isUsul, isTrue);
     expect(variants.sourceTextAt('warsh', 38, 41, 10), 'وَعَذَابٍ');
     final at = variants.at(['warsh'], 38, 63, 1);
     final farsh = at.singleWhere((v) => v.inHamesh);
@@ -627,10 +627,16 @@ void main() {
       (25, 8, 16),
       (38, 41, 10),
     ]) {
+      // In the usul «التقاء الساكنين», as for all who read it so.
       final v = variants
           .at(['warsh'], surah, ayah, word)
-          .singleWhere((v) => v.inHamesh);
-      expect(v.description, 'بالضم في الوصل', reason: '$surah:$ayah');
+          .singleWhere((v) => v.rule == 'first_sakin');
+      expect(
+        v.description,
+        'بضم نون التنوين وصلاً لالتقاء الساكنين',
+        reason: '$surah:$ayah',
+      );
+      expect(v.isUsul, isTrue, reason: '$surah:$ayah');
     }
   });
 
