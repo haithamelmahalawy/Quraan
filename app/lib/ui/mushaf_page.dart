@@ -9,6 +9,7 @@ import '../data/lin_hamz.dart';
 import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
+import '../data/usul_guide.dart';
 import '../data/usul_text.dart';
 import '../data/reading_comparison.dart';
 import '../models/qiraat_catalog.dart';
@@ -1392,6 +1393,8 @@ class _MushafPageState extends State<MushafPage>
             v.isImala ||
             v.isTarqiqOrTaghliz ||
             _naqlKind(v) != null ||
+            isWarshRabbahuMadd(v) ||
+            isWarshAnaMadd(v) ||
             RegExp('همز|تسهيل|صلة|إدغام|ادغام').hasMatch(v.description));
     final lexical = readings.any((v) => !v.isUsul);
     if (readings.isEmpty ||
@@ -1508,6 +1511,8 @@ class _MushafPageState extends State<MushafPage>
     (int, Color)? zaida;
     // The eased hamza's dot after a naql's alif (اَ۟لَٰهٞ): apart from the alif.
     Color? easedDot;
+    // رَبَّهُۥٓ: the small waw and the madd sign, apart from the ha.
+    Color? smallWaw;
     void mark(int? i, Color color, {bool badal = false}) {
       if (i == null || i < 0 || i >= letters.length) return;
       final rank = priority * 2 + (badal ? 1 : 0);
@@ -1528,6 +1533,14 @@ class _MushafPageState extends State<MushafPage>
             }
           }
         }
+        continue;
+      }
+      if (isWarshRabbahuMadd(v)) {
+        smallWaw = ReadingColors.of(v);
+        continue;
+      }
+      if (isWarshAnaMadd(v)) {
+        mark(letters.length - 1, ReadingColors.of(v));
         continue;
       }
       if (v.rule == 'ishmam' || v.rule == 'ishmam_sad') {
@@ -1661,11 +1674,17 @@ class _MushafPageState extends State<MushafPage>
         final noSecond =
             v.rule == 'tasheel_word' &&
             !letters.first.contains('۟') &&
+            // ءَا۬عۡجَمِيّٞ: its second hamza is the alif, eased or changed.
+            !(v.riwayaId == 'warsh' && v.surah == 41 && v.ayah == 44) &&
             lettersOf(v.usulText).where(_hamzaCluster).length < 2;
         final target = noSecond
             ? null
             : araayta
             ? (second >= 0 ? second : at((l) => l.contains('ٰ')))
+            // لِأَهَبَ: its hamza is within the word, the lam left alone.
+            : v.riwayaId == 'warsh' &&
+                  v.description == 'بإبدال الهمزة ياءً مفتوحة'
+            ? _hamzaLetter(ayah.words[w])
             : v.rule == 'ibdal_waw' ||
                   v.rule == 'ibdal_ya' ||
                   v.rule == 'tasheel_pair'
@@ -1699,7 +1718,10 @@ class _MushafPageState extends State<MushafPage>
               target > 0 &&
               letters.length == hafs.length - 1 &&
               letters[target - 1].contains('ٰ');
-          mark(onDagger ? target - 1 : target, ReadingColors.hamza);
+          mark(
+            onDagger ? target - 1 : target,
+            isWarshHamzaNaql(v) ? ReadingColors.naql : ReadingColors.hamza,
+          );
         }
       }
       if (d.contains('صلة')) {
@@ -1725,7 +1747,7 @@ class _MushafPageState extends State<MushafPage>
         }
       }
     }
-    if (colors.isEmpty && zaida == null) return null;
+    if (colors.isEmpty && zaida == null && smallWaw == null) return null;
     // The displayed narrator owns overlapping letters. Within that narrator,
     // badal retains its agreed priority over naql independently of row order.
     return [
@@ -1733,6 +1755,9 @@ class _MushafPageState extends State<MushafPage>
         if (i == zaida?.$1) ...[
           (l.substring(0, l.indexOf('ۦ')), colors[i]),
           (l.substring(l.indexOf('ۦ')), zaida!.$2),
+        ] else if (smallWaw != null && l.contains('\u06e5')) ...[
+          (l.substring(0, l.indexOf('\u06e5')), colors[i]),
+          (l.substring(l.indexOf('\u06e5')), smallWaw),
         ] else if (easedDot != null && l == '\u0627\u064e\u06df') ...[
           ('\u0627\u064e', colors[i]),
           ('\u06df', easedDot),
@@ -2051,12 +2076,23 @@ class _MushafPageState extends State<MushafPage>
     );
   }
 
-  /// A label of the key: the rule explained, for the riwayat it is told of.
+  /// A label of the key: the rule explained, for every selected riwaya that
+  /// has it, the page's own first.
   void _openUsulGuide(_UsulGroup group) {
+    final chapter = usulGuideLabel(group.label);
     UsulGuideSheet.show(
       context,
       label: group.label,
-      riwayat: {for (final i in group.items.values) ...i.riwayat}.toList(),
+      riwayat: {
+        for (final i in group.items.values) ...i.riwayat,
+        for (final r in widget.settings.selected)
+          if (usulOfRiwaya(
+            widget.variants,
+            widget.quran,
+            r,
+          ).containsKey(chapter))
+            r,
+      }.toList(),
       variants: widget.variants,
       quran: widget.quran,
     );
@@ -2335,16 +2371,25 @@ List<_UsulGroup> _usulNotes(
             : null,
       );
       for (final (label, _) in kinds) {
-        final ways =
+        final faces =
             ReadingColors.labelForRule(v.rule) != null ||
                 v.isLinHamz ||
                 v.rule == 'ya_zaida' ||
+                label.startsWith('الهمزتان من كلمتين') ||
                 label.contains('همز') &&
                     (v.usulWays.length > 1 ||
                         v.rule == 'tasheel_pair' ||
                         v.rule == 'tasheel_word')
             ? v.usulWays
             : const <String>[];
+        // A verified reader's two hamzas told only in the row's wording.
+        final ways =
+            faces.isEmpty &&
+                usulUnifiedRiwayat.contains(v.riwayaId) &&
+                label.startsWith('الهمزتان من كلم') &&
+                v.description.isNotEmpty
+            ? [v.description.replaceFirst(RegExp('^ب'), '')]
+            : faces;
         // Equal labels need separate groups when their permitted faces
         // differ (qasr / ishba', arid movement, or changed badal).
         final groupKey = '$label:${ways.join('|')}';
@@ -2382,6 +2427,15 @@ List<_UsulGroup> _usulNotes(
     }
   }
   return groups.values.toList();
+}
+
+extension on String {
+  /// These faces with the readers they are of, when [named].
+  String followedBy(_UsulGroup g, bool named) {
+    if (!named) return this;
+    final readers = {for (final i in g.items.values) ...i.riwayat}.toList();
+    return '$this (${readersAr(readers, const [])})';
+  }
 }
 
 class _UsulGroup {
@@ -2467,8 +2521,7 @@ bool _farshAcrossAyahs(Variant v) => !v.isUsul && v.usulText.contains(' ');
 /// wording (مُّنِيبٍ «ضم التنوين وصلاً») or the reviewed one.
 bool _tanweenDamm(Variant v) =>
     v.riwayaId == 'warsh' &&
-    (v.description == 'بالضم في الوصل' ||
-        v.description.contains('ضم التنوين'));
+    (v.description == 'بالضم في الوصل' || v.description.contains('ضم التنوين'));
 
 final _tanweenMark = RegExp('[ً-ٍٖٗٞ]');
 
@@ -3062,8 +3115,25 @@ class _UsulBox extends StatelessWidget {
   final double scale;
   final bool compact;
 
+  /// The verified readers' faces of one rule, its name told once above them.
+  bool _unified(_UsulGroup g) => g.items.values.every(
+    (i) => i.riwayat.every(usulUnifiedRiwayat.contains),
+  );
+
+  /// The groups of one rule together, in the order they come.
+  List<_UsulGroup> get _clustered {
+    final labels = <String>[];
+    for (final g in groups) {
+      if (!labels.contains(g.label)) labels.add(g.label);
+    }
+    return [
+      for (final label in labels) ...groups.where((g) => g.label == label),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final groups = _clustered;
     return Container(
       key: const ValueKey('usul-notes'),
       padding: compact
@@ -3097,6 +3167,10 @@ class _UsulBox extends StatelessWidget {
                             color: MushafColors.green,
                           ),
                         ),
+                      if (n == 0 ||
+                          groups[n - 1].label != g.label ||
+                          !_unified(g) ||
+                          !_unified(groups[n - 1]))
                       InkWell(
                         key: ValueKey('usul-guide:${g.label}'),
                         onTap: onGuide == null ? null : () => onGuide!(g),
@@ -3231,9 +3305,11 @@ class _UsulBox extends StatelessWidget {
                             .asMap()
                             .entries
                             .map((e) => '${e.key + 1}- ${e.value}')
-                            .join('؛ '),
+                            .join('؛ ')
+                            .followedBy(g, _unified(g)),
                         key: ValueKey(
-                          g.label.contains('في كلمة')
+                          g.label.contains('في كلمة') ||
+                                  g.label.startsWith('الهمزتان من كلمة (')
                               ? 'hamza-word-ways'
                               : 'hamza-ways:${g.label}:${g.ways.join('|')}',
                         ),

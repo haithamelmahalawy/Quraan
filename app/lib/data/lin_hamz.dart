@@ -27,13 +27,13 @@ enum LinHamz {
   ),
   exception(
     'lin_hamz_exception',
-    'مستثنيات مد اللين المهموز',
+    'مد اللين المهموز (مستثنى)',
     'من مستثنيات مد اللين المهموز: القصر حركتان فقط وصلًا ووقفًا، دون توسط أو إشباع',
     ['القصر حركتان فقط وصلًا ووقفًا'],
   ),
   sawat(
     'lin_hamz_sawat',
-    'مد اللين المهموز في سوءات',
+    'مد اللين المهموز (مع مد البدل)',
     'في واو سوءات خلاف لورش من طريق الأزرق: قصر اللين مع أوجه البدل الثلاثة، أو توسط اللين مع توسط البدل',
     [
       'قصر اللين مع قصر البدل أو توسطه أو إشباعه',
@@ -50,9 +50,9 @@ enum LinHamz {
     final plain = word
         .replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), '')
         .replaceAll('ٱ', 'ا');
-    // مَوۡئِلٗا is read short, as Hafs reads it: nothing to tell.
-    if (plain == 'موئلا') return null;
-    if (plain == 'الموءودة' || plain == 'الموءدة') return exception;
+    if (plain == 'موئلا' || plain == 'الموءودة' || plain == 'الموءدة') {
+      return exception;
+    }
     if (plain.contains('سوءات') || plain.contains('سوءت')) return sawat;
     return regular;
   }

@@ -128,7 +128,7 @@ void main() {
         await t.pump();
         final ishmam = find.byKey(
           ValueKey(
-            'usul-reference:الإشمام:2:13:1:${selected.contains('ruways') ? 'hisham,ruways' : 'hisham'}',
+            'usul-reference:الإشمام (إشمام حركة بحركة):2:13:1:${selected.contains('ruways') ? 'hisham,ruways' : 'hisham'}',
           ),
         );
         expect(ishmam, findsOneWidget);

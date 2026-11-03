@@ -450,6 +450,8 @@ String withHafsForms(String warsh, String hafs) {
   if (hafs == 'ٱمۡرِيِٕۭ') {
     return hafs;
   }
+  // لِأَهَبَ (مريم 19) as Hafs writes it: its ibdal is a circled ya on the hamza.
+  if (hafs == 'لِأَهَبَ') return hafs;
   // وَجَنَى (الرحمن 54) as Hafs writes it, its ya read with taqlil on stopping.
   if (hafs == 'وَجَنَى') return hafs;
   // ٱلۡمُنشَـَٔاتُ (الرحمن 24) as Hafs writes it: the hamza on its kashida, the

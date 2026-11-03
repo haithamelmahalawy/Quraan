@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/usul_guide.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import 'theme.dart';
@@ -25,15 +26,15 @@ abstract final class ReadingColors {
   /// Typed rules describe only this row's narrator, even when its source
   /// sentence mentions the contrasting performance of another reader.
   static String? labelForRule(String rule) => switch (rule) {
-    'ishmam' => 'الإشمام',
-    'ishmam_sad' => 'إشمام الصاد',
+    'ishmam' => 'الإشمام (إشمام حركة بحركة)',
+    'ishmam_sad' => 'الإشمام (إشمام حرف بحرف)',
     'ya_idafa' => 'ياءات الإضافة',
     'ya_zaida' => 'ياءات الزوائد',
     'ha_silah' || 'ha_kinaya' || 'ha_damir' => 'هاء الكناية',
     'mim_jam' => 'ميم الجمع',
     'rasm_stop' || 'waqf_rasm' => 'الوقف على مرسوم الخط',
     'ha_sakt' => 'هاء السكت',
-    'hisham_waqf' => 'وقف هشام على الهمز',
+    'hisham_waqf' => 'الوقف على الهمز',
     'first_sakin' => 'التقاء الساكنين',
     'idgham' || 'idgham_saghir' => 'الإدغام',
     'idgham_kabir' => 'الإدغام الكبير',
@@ -52,11 +53,15 @@ abstract final class ReadingColors {
     final label = labelForRule(v.rule);
     if (label != null) return forLabel(label);
     final d = v.description;
-    if (v.rule == 'naql' || v.rule == 'naql_source' || d.contains('نقل')) {
+    if (v.rule == 'naql' ||
+        v.rule == 'naql_source' ||
+        d.contains('نقل') ||
+        isWarshHamzaNaql(v)) {
       return naql;
     }
     if (v.isSakt) return sakt;
     if (v.isLinHamz) return MushafColors.green;
+    if (isWarshRabbahuMadd(v)) return separatedMadd;
     if (const {
       'ibdal_waw',
       'ibdal_ya',
@@ -87,7 +92,9 @@ abstract final class ReadingColors {
     if (label == 'المد المنفصل') return separatedMadd;
     if (label == 'الإدغام الكبير') return kabirIdgham;
     if (label == 'هاء الكناية' || label == 'ميم الجمع') return silah;
-    if (label == 'ياءات الزوائد') return MushafColors.green;
+    if (label == 'ياءات الزوائد' || label == 'مد أنا') {
+      return MushafColors.green;
+    }
     if (label.contains('مد اللين المهموز')) return MushafColors.green;
     if (label == 'النقل') return naql;
     if (label.contains('السكت')) return sakt;

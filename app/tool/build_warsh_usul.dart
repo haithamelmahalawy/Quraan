@@ -247,10 +247,6 @@ Map<String, int> correctWarshUsul(
       );
       continue;
     }
-    // ءَآللَّهُ، ءَآلذَّكَرَيۡنِ: read as Hafs reads them, nothing told.
-    if (const {'6:143:9', '6:144:7', '10:59:13', '27:59:8'}.contains(key(w))) {
-      continue;
-    }
     // Interrogative followed by the al- wasl hamza: distinguish this
     // from two qat' hamzas. These faces also occur in Hafs.
     if (RegExp(r'^ءَآل').hasMatch(w.text)) {
@@ -272,6 +268,18 @@ Map<String, int> correctWarshUsul(
       );
       continue;
     }
+    // ءَا۬عۡجَمِيّٞ (فصلت 44): Hafs's word has one hamza; the book's two faces.
+    if (v != null && key(w) == '41:44:8') {
+      final ways = ['تسهيل الهمزة الثانية بلا إدخال', _ibdal('ألفًا', 6)];
+      tag(
+        v,
+        'tasheel_word',
+        'بوجهين: ${ways.join('؛ أو ')}',
+        context: w.text,
+        ways: ways,
+      );
+      continue;
+    }
     if (v != null &&
         cs.length > 1 &&
         _hamza(cs[0]) &&
@@ -284,15 +292,11 @@ Map<String, int> correctWarshUsul(
       // A riwaya that reads by ikhbar has no interrogative hamza here.
       // Its lexical difference must not be replaced by a tasheel rule.
       if (open || (_hamza(readingFirst) && _vowel(readingFirst) == 'َ')) {
+        // A third hamza changed to madd (ءأٰلهتنا) rules out the ibdal.
+        final ibdal = open && !cs[1].contains('ٰ');
         final ways = [
-          // The second hamza on its tooth (أَئِمَّةٗ), told with the first.
-          // Not أَئِنَّكُمۡ (فصلت 9), reviewed with its second alone.
-          cs[1].startsWith('ئ') && key(w) != '41:9:1'
-              ? 'تحقيق الأولى وتسهيل الثانية بلا إدخال'
-              : 'تسهيل الهمزة الثانية بلا إدخال',
-          // A third hamza changed to madd (ءأٰلهتنا) rules out this face.
-          if (open && !cs[1].contains('ٰ'))
-            _ibdal('ألفًا', _hasSakin(cs[2]) ? 6 : 2),
+          ibdal ? 'تسهيل الهمزة الثانية بلا إدخال' : _easedSecond,
+          if (ibdal) _ibdal('ألفًا', _hasSakin(cs[2]) ? 6 : 2),
         ];
         // These are all recitation rules; the source's generic comparison
         // may have labelled their spelling as farsh.
@@ -483,6 +487,9 @@ Map<String, int> correctWarshUsul(
         context: '${previous.text} ${w.text}',
         ways: ['إبدال الهمزة $read وصلاً'],
       );
+    } else if (w.text == 'لِأَهَبَ') {
+      // لِيَهَبَ (مريم 19): the book's ya for the moving hamza after the kasra.
+      tag(v, 'ibdal_ya', 'بإبدال الهمزة ياءً مفتوحة', context: w.text);
     } else if (_singleIbdal(w.text, v[4] as String, how)
         case final String refined) {
       tag(
@@ -524,9 +531,9 @@ Map<String, int> correctWarshUsul(
     tag(
       add(w),
       'tasheel_word',
-      'بتسهيل الهمزة الثانية بلا إدخال',
+      'ب$_easedSecond',
       context: w.text,
-      ways: ['تسهيل الهمزة الثانية بلا إدخال'],
+      ways: [_easedSecond],
     );
   }
 
@@ -549,9 +556,9 @@ Map<String, int> correctWarshUsul(
     tag(
       add(w),
       'tasheel_word',
-      'بتسهيل الهمزة الثانية بلا إدخال',
+      'ب$_easedSecond',
       context: w.text,
-      ways: ['تسهيل الهمزة الثانية بلا إدخال'],
+      ways: [_easedSecond],
     );
   }
 
@@ -681,6 +688,9 @@ List<String> _sameVowelWays(_Word w, String vowel) {
       'إبدال الهمزة الثانية ياءً مكسورة خالصة وصلاً',
   ];
 }
+
+/// The second hamza of a word eased, with no other face.
+const _easedSecond = 'تحقيق الأولى وتسهيل الثانية بلا إدخال';
 
 /// Refine the source's ambiguous "تخفيف" only where the actual single
 /// hamza has been replaced. Derivatives of الإيواء retain their hamza.

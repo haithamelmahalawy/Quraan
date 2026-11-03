@@ -9,6 +9,8 @@ bool hasWarshBadal(String word, String location) {
     return false;
   }
   final bare = skeleton(word);
+  // ءَا۬عۡجَمِيّٞ (فصلت 44): its alif is the second hamza, eased or changed.
+  if (location == '41:44' && bare.contains('عجمي')) return false;
   if (bare.contains('سريل') ||
       RegExp(r'^[وف]?[يتن]خذ').hasMatch(bare) ||
       RegExp(r'^[وف]?لصب(ين|ون)$').hasMatch(bare)) {

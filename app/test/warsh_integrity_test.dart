@@ -31,6 +31,8 @@ void main() {
   // (اُولَٰٓئِكَ, tool/build_warsh_text.dart): the same letters, either way.
   // So the ta merged after a ta' (بَسَطۡتَّ written بَسَطتَ).
   String naqlDamma(String t) => t
+      // And لِأَهَبَ (مريم 19) as Hafs writes it, its ibdal a circled ya.
+      .replaceAll('لِأَهَبَ', 'لِاَهَبَ')
       // And the stop signs, Hafs's in place of the source's (ۖ).
       .replaceAll(RegExp('[ۖ-ۛ]'), '')
       // And «الٓر», «الٓمٓر» as Hafs writes them, the source vowelling them

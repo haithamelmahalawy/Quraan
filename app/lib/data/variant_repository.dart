@@ -299,6 +299,12 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
     if ((p[4] as String).isEmpty && how.isEmpty && wujuh.isEmpty) continue;
     // بِشَرَرٖ (المرسلات 32): the book's note on its ra is told in the usul.
     if (id == 'warsh' && surah == 77 && ayah == 32) continue;
+    // لِأَهَبَ (مريم 19): the book's ya is the ibdal told in the usul.
+    if (id == 'warsh' && surah == 19 && ayah == 19 && word == 5) continue;
+    // تَشَآءُۖ أَنتَ (الأعراف 155): the pair is told once, on أَنتَ.
+    if (id == 'warsh' && surah == 7 && ayah == 155 && word == 32) continue;
+    // مَنۡۜ رَاقٖ (القيامة 27): told in ترك السكت alone.
+    if (id == 'warsh' && surah == 75 && ayah == 27 && word == 1) continue;
     final keys = [
       for (var w = word; w < word + count; w++)
         VariantRepository.key(surah, ayah, w),

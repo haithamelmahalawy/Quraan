@@ -37,7 +37,7 @@ Map<String, List<Variant>> usulOfRiwaya(
       continue;
     }
     for (final (label, _) in usulKindsOf(v)) {
-      (out[label] ??= []).add(v);
+      (out[usulGuideLabel(label)] ??= []).add(v);
     }
   }
   return out;
@@ -77,7 +77,7 @@ class UsulGuideSheet extends StatefulWidget {
       builder: (context, controller) => PrimaryScrollController(
         controller: controller,
         child: UsulGuideSheet(
-          label: label,
+          label: usulGuideLabel(label),
           riwayat: riwayat,
           variants: variants,
           quran: quran,
@@ -101,7 +101,7 @@ class _UsulGuideSheetState extends State<UsulGuideSheet> {
   @override
   Widget build(BuildContext context) {
     final color = ReadingColors.forLabel(widget.label);
-    return ListView(
+    final list = ListView(
       controller: PrimaryScrollController.of(context),
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
       children: [
@@ -162,6 +162,7 @@ class _UsulGuideSheetState extends State<UsulGuideSheet> {
         ),
       ],
     );
+    return Directionality(textDirection: TextDirection.rtl, child: list);
   }
 }
 
@@ -187,6 +188,14 @@ class _RiwayaSection extends StatelessWidget {
   /// How many kinds, and how many examples of each, are shown.
   static const _kinds = 10, _examples = 6, _rulings = 4;
 
+  /// The reason of a numbered kind, when all its wordings have the same one.
+  String? _sharedReason(List<MapEntry<String, List<Variant>>> group) {
+    final reasons = {
+      for (final e in group) usulKindReason(label, e.value.first, e.key),
+    };
+    return reasons.length == 1 ? reasons.single : null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final rows = usulOfRiwaya(variants, quran, riwaya)[label] ?? const [];
@@ -207,28 +216,65 @@ class _RiwayaSection extends StatelessWidget {
     // How the riwaya reads it, when the kinds do not already say.
     final rulings = {
       for (final v in rows)
-        if (v.description.isNotEmpty && !kinds.containsKey(v.description))
+        if (v.description.isNotEmpty &&
+            !kinds.containsKey(v.description) &&
+            // سوءات and the excepted words: told with their kind. So the
+            // faces of the two hamzas of a word.
+            (!v.isLinHamz || v.rule == 'lin_hamz') &&
+            !isWarshHamzaNaql(v) &&
+            v.description != 'بترقيق الراء' &&
+            label != 'الهمزتان من كلمة' &&
+            label != 'الهمزتان من كلمتين' &&
+            label != 'الإشمام' &&
+            label != 'الهمز المفرد')
           v.description,
     }.take(_rulings).toList();
-    final ordered = kinds.entries.toList()
-      ..sort((a, b) => b.value.length.compareTo(a.value.length));
-    final shown = ordered.take(_kinds).toList();
+    // The numbered kinds, each with the wordings told under it.
+    final grouped = <String, List<MapEntry<String, List<Variant>>>>{};
+    for (final e in kinds.entries) {
+      (grouped[usulKindGroup(e.key)] ??= []).add(e);
+    }
+    int total(List<MapEntry<String, List<Variant>>> g) =>
+        g.fold(0, (n, e) => n + e.value.length);
+    for (final g in grouped.values) {
+      g.sort((a, b) => b.value.length.compareTo(a.value.length));
+    }
+    final ordered = grouped.entries.toList()
+      ..sort((a, b) {
+        final rank = usulKindRank(
+          label,
+          a.key,
+        ).compareTo(usulKindRank(label, b.key));
+        return rank != 0 ? rank : total(b.value).compareTo(total(a.value));
+      });
+    // Their kinds are few and each has its own faces: none is left out.
+    final shown =
+        const {
+          'الهمزتان من كلمة',
+          'الهمزتان من كلمتين',
+          'الهمز المفرد',
+          'الإشمام',
+        }.contains(label)
+        ? ordered
+        : ordered.take(_kinds).toList();
     final poem = Poem.of(riwaya);
     final names = [for (final s in quran.surahs) s.nameAr];
     final named = <int>{};
-    for (final kind in shown) {
-      final v = kind.value.first;
-      named.addAll(
-        manzumat
-            .referenceOf(
-              v,
-              quran.ayah(v.surah, v.ayah).words[v.word],
-              v.surah,
-              names,
-              entries: book.at(v.surah, v.ayah, v.word),
-            )
-            .mention,
-      );
+    for (final group in shown) {
+      for (final kind in group.value) {
+        final v = kind.value.first;
+        named.addAll(
+          manzumat
+              .referenceOf(
+                v,
+                quran.ayah(v.surah, v.ayah).words[v.word],
+                v.surah,
+                names,
+                entries: book.at(v.surah, v.ayah, v.word),
+              )
+              .mention,
+        );
+      }
     }
     final verses = [
       for (final b in manzumat.verses(poem))
@@ -272,15 +318,60 @@ class _RiwayaSection extends StatelessWidget {
                 ),
               ),
             ),
-          for (final kind in shown)
-            _Kind(
-              description: '${kind.key} (${arabicNumber(kind.value.length)})',
-              rows: kind.value,
+          if (shown.length > 1)
+            _KindsChart(
+              key: ValueKey('usul-guide-chart:$riwaya'),
+              kinds: [for (final g in shown) (g.key, total(g.value))],
               color: color,
-              examples: _examples,
-              variants: variants,
-              quran: quran,
             ),
+          for (final (i, group) in shown.indexed) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Text(
+                '${arabicNumber(i + 1)}- ${group.key} '
+                '(${arabicNumber(total(group.value))})',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+            ),
+            // One reason for the whole kind is told under its title.
+            if (_sharedReason(group.value) case final reason?)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  reason,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.5,
+                    color: MushafColors.ink,
+                  ),
+                ),
+              ),
+            for (final (j, kind) in group.value.indexed)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 18),
+                child: _Kind(
+                  description: _subKind(
+                    group.key,
+                    kind,
+                    group.value.length > 1
+                        ? '${arabicNumber(i + 1)}-${arabicNumber(j + 1)}'
+                        : null,
+                  ),
+                  reason: _sharedReason(group.value) == null
+                      ? usulKindReason(label, kind.value.first, kind.key)
+                      : null,
+                  rows: kind.value,
+                  color: color,
+                  examples: _examples,
+                  variants: variants,
+                  quran: quran,
+                ),
+              ),
+          ],
           if (ordered.length > shown.length)
             Padding(
               padding: const EdgeInsets.only(top: 6),
@@ -330,9 +421,90 @@ class _RiwayaSection extends StatelessWidget {
   }
 }
 
+/// What a wording adds to its numbered kind: empty when nothing, and the
+/// wording's number and count when the kind has several.
+String _subKind(
+  String group,
+  MapEntry<String, List<Variant>> kind,
+  String? number,
+) {
+  final rest = kind.key.startsWith(group)
+      ? kind.key
+            .substring(group.length)
+            .replaceFirst(RegExp(r'^:\s*'), '')
+            .trim()
+      : kind.key;
+  if (number == null) return rest;
+  return '$number $rest (${arabicNumber(kind.value.length)})';
+}
+
+/// The numbered kinds of a rule at a glance: how many words each has.
+class _KindsChart extends StatelessWidget {
+  const _KindsChart({super.key, required this.kinds, required this.color});
+
+  final List<(String, int)> kinds;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final most = kinds.map((k) => k.$2).reduce((a, b) => a > b ? a : b);
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        children: [
+          for (final (i, (name, count)) in kinds.indexed)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child: Text(
+                      '${arabicNumber(i + 1)}- $name',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: MushafColors.ink),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 4,
+                    child: FractionallySizedBox(
+                      alignment: AlignmentDirectional.centerStart,
+                      widthFactor: (count / most).clamp(0.02, 1.0),
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius:
+                              const BorderRadiusDirectional.horizontal(
+                                end: Radius.circular(4),
+                              ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 40,
+                    child: Text(
+                      arabicNumber(count),
+                      textAlign: TextAlign.end,
+                      style: TextStyle(fontSize: 11, color: MushafColors.frame),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Kind extends StatelessWidget {
   const _Kind({
     required this.description,
+    this.reason,
     required this.rows,
     required this.color,
     required this.examples,
@@ -340,8 +512,11 @@ class _Kind extends StatelessWidget {
     required this.quran,
   });
 
-  /// The kind's name.
+  /// What it adds to its numbered kind; empty when nothing.
   final String description;
+
+  /// Why its faces are so, when the rule tells.
+  final String? reason;
   final List<Variant> rows;
   final Color color;
   final int examples;
@@ -354,10 +529,20 @@ class _Kind extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          description.isEmpty ? 'بلا وصف مسجل' : description,
-          style: TextStyle(fontWeight: FontWeight.w600, color: color),
-        ),
+        if (description.isNotEmpty)
+          Text(
+            description,
+            style: TextStyle(fontWeight: FontWeight.w600, color: color),
+          ),
+        if (reason != null)
+          Text(
+            reason!,
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.5,
+              color: MushafColors.ink,
+            ),
+          ),
         const SizedBox(height: 4),
         Wrap(
           spacing: 12,
@@ -376,7 +561,21 @@ class _Kind extends StatelessWidget {
 
   Widget _example(Variant v) {
     final ayah = quran.ayah(v.surah, v.ayah);
-    final word = v.text.isNotEmpty
+    final surahEnd = quran.surah(v.surah).ayahCount;
+    // A rule on two words (ٱلسُّفَهَآءُ أَلَآ) is shown on both.
+    final word = v.usulText.contains(' ')
+        ? usulReadingText(
+            v,
+            ayah,
+            variants,
+            nextAyah: v.ayah < surahEnd
+                ? quran.ayah(v.surah, v.ayah + 1)
+                : null,
+            previousAyah: v.word == 0 && v.ayah > 1
+                ? quran.ayah(v.surah, v.ayah - 1)
+                : null,
+          )
+        : v.text.isNotEmpty
         ? v.text
         : readingText(variants, v.riwayaId, ayah, v.word, v.word + v.count);
     return Column(

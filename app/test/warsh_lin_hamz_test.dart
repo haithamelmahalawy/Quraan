@@ -96,7 +96,7 @@ void main() {
       expect(counts, {
         LinHamz.regular: 297,
         LinHamz.sawat: 5,
-        LinHamz.exception: 1,
+        LinHamz.exception: 2,
       });
     },
   );
@@ -153,11 +153,9 @@ void main() {
   });
 
   test(
-    'mawudah is an exception, mawilan reads as Hafs, sawat has its own faces',
+    'mawudah and mawilan are the exceptions, sawat has its own faces',
     () {
-      // مَوۡئِلٗا (page 300) is short as Hafs reads it: neither glow nor rule.
-      expect(variants.at(['warsh'], 18, 58, 18), isEmpty);
-      for (final (s, a, w) in [(81, 8, 1)]) {
+      for (final (s, a, w) in [(18, 58, 18), (81, 8, 1)]) {
         final v = lin(s, a, w);
         expect(v.rule, 'lin_hamz_exception');
         expect(v.usulWays, ['القصر حركتان فقط وصلًا ووقفًا']);
@@ -295,13 +293,13 @@ void main() {
   );
 
   testWidgets('the exception shows qasr in the usul margin', (t) async {
-    for (final page in [586]) {
+    for (final page in [300, 586]) {
       await showPage(t, page);
       final notes = find.byKey(const ValueKey('usul-notes'));
       expect(
         find.descendant(
           of: notes,
-          matching: find.text('مستثنيات مد اللين المهموز:'),
+          matching: find.text('مد اللين المهموز (مستثنى):'),
         ),
         findsOneWidget,
       );

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../data/lin_hamz.dart';
+import '../data/usul_guide.dart';
 import '../models/quran.dart';
 import 'reading_colors.dart';
 import 'theme.dart';
+
+const _singleHamzaIbdal = 'الهمز المفرد (إبدال الهمز)';
 
 /// The labels a general rule is told under in the page's key, with their
 /// colours: «مد البدل»، «النقل»، «التقليل»...
@@ -24,8 +27,7 @@ List<(String, Color)> usulKindsOf(Variant v) {
       : [
           if (v.isImala)
             // Warsh has no imala of his own: taqlil only.
-            v.riwayaId == 'warsh' ||
-                    RegExp('تقليل|بين').hasMatch(v.description)
+            v.riwayaId == 'warsh' || RegExp('تقليل|بين').hasMatch(v.description)
                 ? ('التقليل', MushafColors.green)
                 : ('الإمالة', MushafColors.green),
           for (final l in usulOf(v))
@@ -42,6 +44,20 @@ List<String> usulOf(Variant v) {
   if (v.rule == 'ya_zaida') return ['ياءات الزوائد'];
   if (v.isLinHamz) {
     return [LinHamz.values.singleWhere((kind) => kind.rule == v.rule).label];
+  }
+  final unified = usulUnifiedRiwayat.contains(v.riwayaId);
+  if (isMaddFarq(v)) {
+    return ['الهمزتان من كلمة (مد الفرق)', if (d.contains('نقل')) 'النقل'];
+  }
+  // أَذۡهَبۡتُمۡ: its two open hamzas told without a rule of their own.
+  if (unified && d.contains('بهمزتين مفتوحتين')) {
+    return ['الهمزتان من كلمة (${twoHamzasKind(v)})'];
+  }
+  if (v.rule == 'tasheel_word' && unified) {
+    return [
+      'الهمزتان من كلمة (${twoHamzasKind(v)})',
+      if (d.contains('صلة ميم الجمع')) 'صلة ميم الجمع',
+    ];
   }
   if (v.rule == 'tasheel_word') {
     if (v.description.contains('تحقيق') && !v.description.contains('تسهيل')) {
@@ -69,13 +85,28 @@ List<String> usulOf(Variant v) {
     ];
   }
   if (v.rule == 'tasheel_pair' ||
-      (v.rule == 'ibdal_waw' && v.usulWays.length > 1)) {
+      (v.rule == 'ibdal_waw' && v.usulWays.length > 1) ||
+      (unified &&
+          (d.contains('إبدال الهمزة الثانية') ||
+              d.startsWith('تحقيق الهمزتين')))) {
     return [
-      'الهمزتان من كلمتين',
+      unified
+          ? 'الهمزتان من كلمتين (${twoWordsKind(v)})'
+          : 'الهمزتان من كلمتين',
       if (d.contains('صلة ميم الجمع')) 'صلة ميم الجمع',
     ];
   }
-  if (v.rule == 'ha_antum') return ['همزة هأنتم'];
+  if (v.rule == 'ha_antum') return ['الهمز المفرد (الهمز المتحرك)'];
+  if (isWarshHamzaNaql(v)) return ['النقل'];
+  if (unified &&
+      RegExp('صلة الهاء|الهاء مع الصلة|هاء مضمومة دون صلة').hasMatch(d)) {
+    return ['هاء الكناية'];
+  }
+  if (v.riwayaId == 'warsh') {
+    if (d == 'بتخفيف الهمزة') return [_singleHamzaIbdal];
+    if (isWarshRabbahuMadd(v)) return ['المد المنفصل'];
+    if (isWarshAnaMadd(v)) return ['مد أنا'];
+  }
   // Ya'qub's naql (عَادٗا ٱلُّاولَىٰ) is told in its own chapter only, though its
   // note names the merged tanween.
   if (v.rule == 'naql' && const {'ruways', 'rawh'}.contains(v.riwayaId)) {
@@ -90,7 +121,8 @@ List<String> usulOf(Variant v) {
     if (RegExp('صلة (ال)?هاء|بصلة الهاء|ترك صلة').hasMatch(d)) 'صلة هاء الضمير',
     if (RegExp('إدغام|ادغام|الإدغام').hasMatch(d)) 'الإدغام',
     if (RegExp(r'نقل').hasMatch(d)) 'النقل',
-    if (RegExp('إبدال|ابدال').hasMatch(d)) 'إبدال الهمز',
+    if (RegExp('إبدال|ابدال').hasMatch(d))
+      unified ? _singleHamzaIbdal : 'إبدال الهمز',
     if (RegExp('تسهيل').hasMatch(d)) 'تسهيل الهمز',
     if (RegExp('تخفيف الهمز|حذف الهمزة').hasMatch(d) && !d.contains('تسهيل'))
       'الهمزات',

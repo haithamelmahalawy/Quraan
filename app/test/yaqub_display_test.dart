@@ -243,14 +243,14 @@ void main() {
         selected: {'ruways', 'hisham'},
         layout: MarginLayout.sequential,
       );
-      expect(find.text('الإشمام:'), findsOneWidget);
+      expect(find.text('الإشمام (إشمام حركة بحركة):'), findsOneWidget);
       for (final narrator in ['ruways', 'hisham']) {
         expect(
           find.byWidgetPredicate(
             (w) =>
                 w.key is ValueKey<String> &&
                 (w.key as ValueKey<String>).value.startsWith(
-                  'usul-reference:الإشمام:',
+                  'usul-reference:الإشمام (إشمام حركة بحركة):',
                 ) &&
                 (w.key as ValueKey<String>).value.contains(narrator),
           ),
@@ -838,7 +838,7 @@ void main() {
       (w) =>
           w.key is ValueKey<String> &&
           (w.key as ValueKey<String>).value.startsWith(
-            'usul-reference:الإشمام:',
+            'usul-reference:الإشمام (إشمام حركة بحركة):',
           ),
     );
     // قيل at 2:11 and 2:13 has the same narrator and performance.
@@ -912,7 +912,7 @@ void main() {
         final target = word(2, 6, 5);
         expect(target, findsOneWidget);
         final footer = find.byKey(
-          const ValueKey('usul-reference:تسهيل الهمزتين في كلمة:2:6:5:ruways'),
+          const ValueKey('usul-reference:الهمزتان من كلمة (المفتوحتان):2:6:5:ruways'),
         );
         expect(footer, findsOneWidget);
         final marginMark = t.widget<HamzaReplacementMark>(
