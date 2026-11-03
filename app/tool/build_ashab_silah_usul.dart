@@ -1024,9 +1024,15 @@ void main() {
     }
     built[id] = (file, data, counts);
   }
-  _oneText({for (final e in built.entries) e.key: e.value.$2}, {
-    for (final e in built.entries) e.key: e.value.$3,
-  });
+  _oneText(
+    {for (final e in built.entries) e.key: e.value.$2},
+    {for (final e in built.entries) e.key: e.value.$3},
+  );
+  _oneFarsh(
+    quran,
+    {for (final e in built.entries) e.key: e.value.$2},
+    {for (final e in built.entries) e.key: e.value.$3},
+  );
   for (final MapEntry(key: id, value: (file, data, counts)) in built.entries) {
     file.writeAsStringSync(jsonEncode(data));
     stdout.writeln('$id: $counts');
@@ -1056,7 +1062,9 @@ void _oneText(Map<String, Map> data, Map<String, Map<String, int>> counts) {
     final at = rulesAt[id] = {};
     for (final v in (d['variants'] as List).cast<List>()) {
       if (v.length < 7 || v[5] == 'f') continue;
-      (at['${v[0]}:${v[1]}:${v[2]}'] ??= {}).add('${v.length > 7 ? v[7] : ''}|${v[6]}');
+      (at['${v[0]}:${v[1]}:${v[2]}'] ??= {}).add(
+        '${v.length > 7 ? v[7] : ''}|${v[6]}',
+      );
     }
   }
   final written = {
@@ -1088,14 +1096,16 @@ void _oneText(Map<String, Map> data, Map<String, Map<String, int>> counts) {
       final theirs = rulesAt[from]![word] ?? const <String>{};
       // A ya of idafa told with the word after it, which only shows where.
       final context = v[7] == 'ya_idafa' && (v[3] as int) > (c[3] as int);
-      final unwritten = '${v[4]}'.isEmpty &&
+      final unwritten =
+          '${v[4]}'.isEmpty &&
           (v[3] == c[3] || context) &&
           own.length == theirs.length &&
           own.containsAll(theirs);
       final head = '${v[4]}'.split(' ').take(c[3] as int).join(' ');
       final mine = context ? head : '${v[4]}';
       // Or the same letters, of a word the two read alike in all else.
-      final alike = own.length == theirs.length &&
+      final alike =
+          own.length == theirs.length &&
           own.containsAll(theirs) &&
           letters(mine) == letters('${c[4]}');
       if (!unwritten && !alike && spelling(mine) != spelling('${c[4]}')) {
@@ -1107,6 +1117,138 @@ void _oneText(Map<String, Map> data, Map<String, Map<String, int>> counts) {
       counts[id]!.update('one_text', (n) => n + 1, ifAbsent: () => 1);
     }
   }
+}
+
+/// The verified readers whose farsh a new one takes where it reads alike:
+/// those of no font of their own first, their texts written as Hafs's.
+const _verifiedFarsh = [
+  'qalun',
+  'bazzi',
+  'qunbul',
+  'hisham',
+  'ibn_dhakwan',
+  'ruways',
+  'rawh',
+  'warsh',
+  'shubah',
+];
+
+/// Abu Ja'far's farsh read and written as a verified reader's, which his
+/// source tells with the word after it (يُغْفَرْ لكمُ), in other words
+/// (بالياء المضمومة) or with its letters bare (يقولون): told as theirs, so
+/// it is one reading, told once.
+void _oneFarsh(
+  Map quran,
+  Map<String, Map> data,
+  Map<String, Map<String, int>> counts,
+) {
+  String spelling(String t) => t
+      .replaceAll(RegExp('[ۖ-ۜۥۦ]'), '')
+      .replaceAll('ۡ', 'ْ')
+      .replaceAll(RegExp('[ىے]'), 'ي')
+      .replaceAll('ٱ', 'ا')
+      .trim();
+  String letters(String t) => t
+      .replaceAll(RegExp('[ۦىے]'), 'ي')
+      .replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), '')
+      .replaceAll(RegExp('[أإآٱ]'), 'ا');
+  // Every letter as written, the dagger alif an alif, without the vowels:
+  // a word his source writes bare (يقولون) agrees in these alone.
+  String bareLetters(String t) => t
+      .replaceAll(RegExp('[ىے]'), 'ي')
+      .replaceAll('ٰ', 'ا')
+      .replaceAll(RegExp('[أإآٱ]'), 'ا')
+      .replaceAll(RegExp('[ً-ْۖ-ۛۡۥۦـ]'), '');
+  final vowel = RegExp('[ًٌٍَُِّْۡ]');
+  final fontSign = RegExp('[ے۪ۭٜ۬]');
+  final hafs = <String, String>{
+    for (final x in quran['ayahs'] as List)
+      for (final (i, w) in (x[4] as String).split(' ').indexed)
+        '${x[0]}:${x[1]}:$i': w,
+  };
+  final farsh = <String, List<List>>{};
+  for (final id in _verifiedFarsh) {
+    final rows =
+        data[id]?['variants'] as List? ??
+        (jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                as Map)['variants']
+            as List;
+    for (final v in rows.cast<List>()) {
+      if (v[5] == 'f' && '${v[4]}'.isNotEmpty) {
+        (farsh['${v[0]}:${v[1]}:${v[2]}'] ??= []).add(v);
+      }
+    }
+  }
+  for (final id in const ['ibn_wardan', 'ibn_jammaz']) {
+    for (final v in (data[id]!['variants'] as List).cast<List>()) {
+      if (v[5] != 'f' || '${v[4]}'.isEmpty) continue;
+      final own = '${v[4]}'.split(' ');
+      bool same(List c) {
+        final n = (c[3] as num).toInt();
+        if ((v[3] as num).toInt() < n || own.length < n) return false;
+        final head = own.take(n).join(' ');
+        final bare = own.take(n).every((w) => !vowel.hasMatch(w));
+        if (spelling(head) != spelling('${c[4]}') &&
+            !(bare && bareLetters(head) == bareLetters('${c[4]}'))) {
+          return false;
+        }
+        // The words after it only show where: Hafs's letters, and no vowel
+        // of their own (أَنَّ لعنةَ: its nasb told with it), but the silah.
+        for (var d = n; d < own.length; d++) {
+          final h = hafs['${v[0]}:${v[1]}:${(v[2] as int) + d}'] ?? '';
+          if (!asHafs(own[d], h, letters)) return false;
+        }
+        return true;
+      }
+
+      final matching = [
+        for (final c in farsh['${v[0]}:${v[1]}:${v[2]}'] ?? const <List>[])
+          if (same(c)) c,
+      ];
+      if (matching.isEmpty) continue;
+      // Its text from one whose font writes as Hafs's (بِرِسَالَتِے aside).
+      final c = matching.firstWhere(
+        (c) => !fontSign.hasMatch('${c[4]}'),
+        orElse: () => matching.first,
+      );
+      final n = (c[3] as num).toInt();
+      final text = fontSign.hasMatch('${c[4]}') ? own.take(n).join(' ') : c[4];
+      // His own wording kept: where the letters agree it may still tell what
+      // they do not show (زكرياءَ إذ: the second hamza eased).
+      if (v[3] == c[3] && v[4] == text) continue;
+      v
+        ..[3] = c[3]
+        ..[4] = text;
+      counts[id]!.update('one_farsh', (k) => k + 1, ifAbsent: () => 1);
+    }
+  }
+}
+
+/// Whether [own] is Hafs's [hafs] in its letters, with no vowel Hafs lacks
+/// but a damma on a last mim (its silah, told in the usul).
+bool asHafs(String own, String hafs, String Function(String) letters) {
+  if (letters(own) != letters(hafs)) return false;
+  final mark = RegExp('[ً-ْۡ]');
+  List<Set<String>> vowels(String t) {
+    final out = <Set<String>>[];
+    for (final ch in t.split('')) {
+      if (mark.hasMatch(ch)) {
+        if (out.isNotEmpty) out.last.add(ch == 'ۡ' ? 'ْ' : ch);
+      } else if (letters(ch).isNotEmpty) {
+        out.add({});
+      }
+    }
+    return out;
+  }
+
+  final a = vowels(own), h = vowels(hafs);
+  if (a.length != h.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    final extra = a[i].difference(h[i]);
+    final silah = i == a.length - 1 && own.endsWith('مُ') && extra.length == 1;
+    if (extra.isNotEmpty && !(silah && extra.single == 'ُ')) return false;
+  }
+  return true;
 }
 
 /// What the book «الجامع» tells, read from its pages, that the earlier

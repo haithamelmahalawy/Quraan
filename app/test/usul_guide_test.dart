@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/kharouf.dart';
 import 'package:qiraat_mushaf/data/manzumat.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
+import 'package:qiraat_mushaf/data/reading_comparison.dart';
 import 'package:qiraat_mushaf/data/usul_guide.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/qiraat_catalog.dart';
@@ -454,6 +455,26 @@ void main() {
       hasLength(2),
     );
     expect(sakinin('shubah'), 0);
+    // Abu Ja'far's farsh read as Qalun's, told with the word after it in
+    // his source: as Qalun's, one reading; a word after with its own vowel
+    // (لعنةَ) still told with it.
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final aj = variants.at([id], 2, 58, 15).single;
+      final qalun = variants.at(['qalun'], 2, 58, 15).single;
+      expect((aj.count, aj.text), (qalun.count, qalun.text));
+      expect(
+        compareReadings(
+          repository: variants,
+          ayah: quran.ayah(2, 58),
+          word: 15,
+          displayed: 'qalun',
+          selected: {id},
+        ),
+        isEmpty,
+        reason: id,
+      );
+      expect(variants.at([id], 7, 44, 23).single.count, 2);
+    }
     // Abu Ja'far's farsh once told in it (يَبْطُشُونَ) back in the farsh.
     expect(
       variants.at(['ibn_wardan'], 7, 195, 7).single.kind,
