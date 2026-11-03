@@ -45,6 +45,22 @@ void main() {
     surahs,
   );
 
+  test("Abu Ja'far's sakt of the opening letters cites the Durrah", () {
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final r = ref(
+        id,
+        2,
+        'الٓمٓ',
+        description: 'بالسكت على الحروف المقطعة',
+        rule: 'fawatih',
+        kind: VariantKind.usul,
+      );
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {62}, reason: id);
+      expect(r.chapter, contains('الْبَقَرَةِ'), reason: id);
+    }
+  });
+
   test('an isri quotes bayt 765 of the book for Warsh', () {
     const v = Variant(
       riwayaId: 'warsh',

@@ -255,7 +255,11 @@ class _AyahSheetState extends State<AyahSheet> {
                 key: const ValueKey('previous-ayah'),
                 tooltip: 'الآية السابقة',
                 onPressed: _neighbour(-1) == null ? null : () => _step(-1),
-                icon: const Icon(Icons.chevron_right_rounded, size: 32),
+                // Pointing out, away from the ayah: the chevron unmirrored.
+                icon: const Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Icon(Icons.chevron_right_rounded, size: 32),
+                ),
                 color: MushafColors.green,
               ),
               Expanded(
@@ -276,7 +280,10 @@ class _AyahSheetState extends State<AyahSheet> {
                 key: const ValueKey('next-ayah'),
                 tooltip: 'الآية التالية',
                 onPressed: _neighbour(1) == null ? null : () => _step(1),
-                icon: const Icon(Icons.chevron_left_rounded, size: 32),
+                icon: const Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Icon(Icons.chevron_left_rounded, size: 32),
+                ),
                 color: MushafColors.green,
               ),
             ],

@@ -588,7 +588,8 @@ void main() {
       await page(t, id, number: quran.ayah(2, 40).page, selected: {id});
       expect(t.widget<InkText>(word(2, 40, 12)).text, 'فَٱرۡهَبُونِۦ');
       await page(t, id, number: quran.ayah(2, 186).page, selected: {id});
-      expect(t.widget<InkText>(word(2, 186, 10)).text, 'دَعَانِۦ');
+      // With the stop sign of the Hafs page.
+      expect(t.widget<InkText>(word(2, 186, 10)).text, 'دَعَانِۦۖ');
       expect(t.takeException(), isNull);
     }
   });
@@ -703,7 +704,11 @@ void main() {
         selected: {'ruways', 'rawh'},
         alert: DiffAlert.glow,
       );
-      expect(alerts(word(2, 167, 13)), findsOneWidget);
+      // Read alike by both: with Hafs not selected, nothing differs to tell.
+      expect(
+        alerts(word(2, 167, 13)),
+        id == null ? findsNothing : findsOneWidget,
+      );
       expect(t.takeException(), isNull);
     }
   });

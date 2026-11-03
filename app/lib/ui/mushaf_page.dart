@@ -273,7 +273,10 @@ class _MushafPageState extends State<MushafPage>
         () => _UsulGroup(source.label, source.color)..ways.addAll(source.ways),
       );
       for (final item in source.items.values) {
-        final key = '${item.stopOnly}:${item.text}:${item.replacement}';
+        final key =
+            '${item.stopOnly}:'
+            '${item.text.replaceAll(RegExp('[ۖ-ۜ]'), '')}:'
+            '${item.replacement}';
         final existing = group.items.putIfAbsent(key, () => item);
         if (existing != item) {
           existing.riwayat.addAll(item.riwayat);
@@ -2300,6 +2303,26 @@ _Readings _readingsOf(
     displayed: s.displayed,
     selected: {...s.selected, if (s.compareHafs) hafsId},
   ).where((v) => !v.readsAsHafs).toList();
+  // Without Hafs to compare with, only what differs among the selected
+  // riwayat is coloured: a usul all of them read alike (their mim silah) is
+  // told once in the usul below the page.
+  final others = s.selected.where((id) => id != s.displayed).toSet();
+  if (s.displayed == null && !s.compareHafs && others.length > 1) {
+    final keys = {
+      for (final id in others)
+        id: variants
+            .at([id], ayah.surah, ayah.number, w)
+            .where((v) => v.isUsul && v.word == w)
+            .map(readingVariantKey)
+            .toSet(),
+    };
+    all.removeWhere(
+      (v) =>
+          v.isUsul &&
+          !v.isMarginNote &&
+          keys.values.every((k) => k.contains(readingVariantKey(v))),
+    );
+  }
   // Source reminders remain visible when their own riwaya is the base.
   all.addAll(base.where((v) => v.isMarginNote));
   final shown = all
@@ -2411,10 +2434,16 @@ List<_UsulGroup> _usulNotes(
           () => _UsulGroup(label, ReadingColors.forLabel(label)),
         );
         g.ways.addAll(ways);
+        // One word however a reader's text marks its pause («رَّبِّهِمُۥۖ»),
+        // or its font writes the sukun and the ya («مَعِے»، «مَعِي»).
+        final same = word
+            .replaceAll(RegExp('[ۖ-ۜ]'), '')
+            .replaceAll('ۡ', 'ْ')
+            .replaceAll(RegExp('[ىے]'), 'ي');
         final item = g.items.putIfAbsent(
           hasYaqub
-              ? 'yaqub:${v.stopOnly}:$word:${v.hamzaReplacement}'
-              : '${ayah.surah}:${ayah.number}:$w:${v.stopOnly}:$word:${v.hamzaReplacement}',
+              ? 'yaqub:${v.stopOnly}:$same:${v.hamzaReplacement}'
+              : '${ayah.surah}:${ayah.number}:$w:${v.stopOnly}:$same:${v.hamzaReplacement}',
           () => _UsulItem(
             ayah,
             w,
@@ -3453,7 +3482,29 @@ class _UsulBox extends StatelessWidget {
                 ],
               ),
             ),
-            for (final i in g.items.values) _item(g, i),
+            // The words the same readers share, their readers named once:
+            // first what several share, then each reader's own.
+            for (final (items, readers) in _byReaders(g.items.values))
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  for (final (n, i) in items.indexed) ...[
+                    if (n > 0)
+                      Text(
+                        '، ',
+                        style: TextStyle(fontSize: 9 * scale, color: g.color),
+                      ),
+                    _item(g, i, named: false),
+                  ],
+                  Text(
+                    ' (${readersAr(readers, const [])})',
+                    style: TextStyle(
+                      fontSize: 8.5 * scale,
+                      color: MushafColors.ink,
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
         if (g.ways.isNotEmpty)
@@ -3482,6 +3533,22 @@ class _UsulBox extends StatelessWidget {
       ],
     ),
   );
+
+  /// [items] by the readers who read them, in the page's order: the sets of
+  /// several readers first, by their first reader, then each one's own.
+  List<(List<_UsulItem>, List<String>)> _byReaders(Iterable<_UsulItem> items) {
+    final sets = <String, (List<_UsulItem>, List<String>)>{};
+    for (final i in items) {
+      final readers = i.riwayat.toList()
+        ..sort((a, b) => _riwayaRank(a).compareTo(_riwayaRank(b)));
+      sets.putIfAbsent(readers.join(','), () => ([], readers)).$1.add(i);
+    }
+    return sets.values.toList()..sort((a, b) {
+      final many = (b.$2.length > 1 ? 1 : 0) - (a.$2.length > 1 ? 1 : 0);
+      if (many != 0) return many;
+      return _riwayaRank(a.$2.first).compareTo(_riwayaRank(b.$2.first));
+    });
+  }
 
   Widget _item(_UsulGroup g, _UsulItem i, {bool named = true}) => InkWell(
     key: ValueKey(

@@ -376,6 +376,63 @@ void main() {
       );
     }
     expect(variants.at(['qunbul'], 75, 1, 0).single.text, 'لَأُقۡسِمُ');
+    // The stop signs of the Hafs page on every reader's word, one text.
+    expect({
+      for (final id in ['qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz'])
+        variants.at([id], 2, 5, 4).single.text,
+    }, hasLength(1));
+    expect(variants.at(['bazzi'], 2, 5, 4).single.text, endsWith('ۖ'));
+    // The separated madd short: no sign on the silah before a hamza.
+    for (final id in ['qalun', 'ibn_wardan']) {
+      expect(variants.at([id], 2, 13, 2).single.text, 'لَهُمُۥ', reason: id);
+    }
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      // «السفهاء ألا»: one text with Qalun's and Ibn Kathir's, one row.
+      expect(
+        variants.at([id], 2, 13, 12).single.text,
+        variants.at(['qalun'], 2, 13, 12).single.text,
+        reason: id,
+      );
+      // «فلا خوف عليهم»: the ha read with kasra as Hafs, no farsh; the silah.
+      expect(
+        variants.at([id], 2, 38, 13).where((v) => v.kind == VariantKind.farsh),
+        isEmpty,
+      );
+      expect(variants.at([id], 2, 38, 13).single.text, 'عَلَيۡهِمُۥ');
+      // As Hafs reads them: no farsh.
+      for (final (s, a, w) in [(7, 143, 8), (20, 87, 6), (43, 4, 1)]) {
+        expect(variants.at([id], s, a, w), isEmpty, reason: '$id $s:$a');
+      }
+      // Told on their own words.
+      expect(variants.at([id], 18, 44, 8).single.text, 'عُقُبٗا');
+      expect(variants.at([id], 19, 70, 7).single.text, 'صُلِيّٗا');
+      expect(variants.at([id], 15, 45, 4).single.rule, 'first_sakin');
+    }
+    // Shu'bah leaves Hafs's sakt as Warsh does: in the usul, not the farsh.
+    for (final (s, a, w) in [(36, 52, 5), (75, 27, 1), (83, 14, 1)]) {
+      bool own(Variant v) => v.rule != 'kharouf';
+      final v = variants.at(['shubah'], s, a, w).singleWhere(own);
+      expect(v.rule, 'no_sakt', reason: '$s:$a');
+      expect(v.isUsul, isTrue, reason: '$s:$a');
+      expect(
+        v.description,
+        variants.at(['warsh'], s, a, w).singleWhere(own).description,
+      );
+    }
+    expect(variants.at(['shubah'], 83, 14, 2).single.isImala, isTrue);
+    expect(
+      variants.at(['shubah'], 18, 1, 10).map((v) => v.kind),
+      contains(VariantKind.farsh),
+    );
+    // Abu Ja'far's two hamzas of a word written as Qalun's: one row.
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      expect(
+        variants.at([id], 2, 6, 5).single.text,
+        variants.at(['qalun'], 2, 6, 5).single.text,
+        reason: id,
+      );
+    }
+    expect(variants.at(['qalun'], 2, 6, 5).single.text, contains('ٰا۬'));
     expect(rowOf('bazzi', 93, 11, 3, 'takbir'), isNotNull);
     expect(rowOf('qunbul', 93, 11, 3, 'takbir'), isNull);
     expect(

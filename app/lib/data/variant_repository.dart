@@ -107,14 +107,15 @@ class VariantRepository {
     final list = _loaded[riwayaId];
     if (list == null) return const [];
     final keys = list.keys.toList()..sort();
-    return {
-      for (final k in keys) ...list[k]!,
-    }.toList();
+    return {for (final k in keys) ...list[k]!}.toList();
   }
 
   static int key(int surah, int ayah, int word) =>
       surah * 1000000 + ayah * 1000 + word;
 }
+
+/// The signs of stopping over a word (ۖ ۗ ۘ ۙ ۚ ۛ), not the small seen.
+final _stopSigns = RegExp('[ۖ-ۛ]');
 
 Map<int, String> _indexSourceText(String raw) {
   final json = jsonDecode(raw) as Map;
@@ -160,6 +161,23 @@ Map<int, List<Variant>> _index((String, String, String?, String?) input) {
     return hafs[surah * 1000 + ayah + 1]?.first ?? 'بِسۡمِ';
   }
 
+  // The stop signs of the Hafs page on a reading's words, whatever its
+  // source wrote: صلى، قلى، م، لا، ج and the paired dots, on each word.
+  String hafsStops(String text, int surah, int ayah, int word, int count) {
+    final own = text.replaceAll(_stopSigns, '');
+    final words = hafs[surah * 1000 + ayah];
+    if (words == null || own.isEmpty) return own;
+    String signs(int w) => w < words.length
+        ? _stopSigns.allMatches(words[w]).map((m) => m[0]).join()
+        : '';
+    final parts = own.split(' ');
+    if (parts.length == count) {
+      return [for (final (i, p) in parts.indexed) '$p${signs(word + i)}']
+          .join(' ');
+    }
+    return '$own${signs(word + count - 1)}';
+  }
+
   final index = <int, List<Variant>>{};
   // Ya'qub's riwayat (Ruways, Rawh) only: their reviewed rules below.
   final yaqub = id == 'ruways' || id == 'rawh';
@@ -192,7 +210,15 @@ Map<int, List<Variant>> _index((String, String, String?, String?) input) {
       // Read in the script of the Madinah page around it, the tanween as
       // it is written before the next word.
       text: tanweenBefore(
-        madinahScript(v[4] as String),
+        madinahScript(
+          hafsStops(
+            v[4] as String,
+            v[0] as int,
+            v[1] as int,
+            v[2] as int,
+            v[3] as int,
+          ),
+        ),
         after(v[0] as int, v[1] as int, v[2] as int, v[3] as int),
       ),
       kind: VariantKind.fromCode(v[5] as String),

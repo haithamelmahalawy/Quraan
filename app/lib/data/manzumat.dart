@@ -276,7 +276,8 @@ class Manzumat {
     return const {'warsh', 'qalun'}.contains(v.riwayaId) &&
         (_letters(word) == 'انا' ||
             // وَأَنَآ، فَأَنَآ with the same madd.
-            v.riwayaId == 'warsh' && const {'وانا', 'فانا'}.contains(_letters(word))) &&
+            v.riwayaId == 'warsh' &&
+                const {'وانا', 'فانا'}.contains(_letters(word))) &&
         (d.contains('مد') || RegExp('إثبات.*ألف.*أنا').hasMatch(d));
   }
 
@@ -537,6 +538,9 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _anaWasl(v)) return {521};
     if (poem == Poem.shatibiyya && _araayta(v)) return {638};
     if (poem == Poem.durrah) {
+      // Abu Ja'far's sakt on each letter that opens a sura: «حُرُوفَ
+      // التَّهَجِّي افْصِلْ بِسَكْتٍ كَحَا أَلِفْ».
+      if (v.rule == 'fawatih') return {62};
       // 14:2 Ruways's «ٱللَّهُ» when starting: «وَطِبْ رَفْعَ أَللهِ ابْتِدَاءً».
       if (v.riwayaId == 'ruways' && v.surah == 14 && v.ayah == 2) {
         if (v.word == 0) return {138};
@@ -673,6 +677,10 @@ class Manzumat {
   /// The chapter of the usul a reading belongs to, by its rule or by the
   /// words of its description.
   String? _usulChapter(Poem poem, Variant v) {
+    // Told in the farsh of al-Baqara, not under «السكت».
+    if (poem == Poem.durrah && v.rule == 'fawatih') {
+      return verses(poem).firstWhere((b) => b.n == 62).chapter;
+    }
     if (poem == Poem.durrah &&
         const {'ruways', 'rawh'}.contains(v.riwayaId) &&
         v.isUsul) {

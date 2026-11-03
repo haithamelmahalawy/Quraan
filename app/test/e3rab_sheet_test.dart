@@ -160,6 +160,26 @@ void main() {
           .toPlainText(),
       'ومثله ﴿معروفا﴾ [أي: كاف]',
     );
+    // Its arrows point out, away from the ayah: right on the right, left
+    // on the left, unmirrored by the sheet's right-to-left text.
+    for (final (key, icon, right) in [
+      ('previous-ayah', Icons.chevron_right_rounded, true),
+      ('next-ayah', Icons.chevron_left_rounded, false),
+    ]) {
+      final arrow = find.descendant(
+        of: find.byKey(ValueKey(key)),
+        matching: find.byIcon(icon),
+      );
+      expect(
+        Directionality.of(tester.element(arrow)),
+        TextDirection.ltr,
+        reason: key,
+      );
+      final sheet = tester.getCenter(
+        find.byKey(const ValueKey('selected-verse-text')),
+      );
+      expect(tester.getCenter(arrow).dx > sheet.dx, right, reason: key);
+    }
     // The ayah after it, and its book with it; then back.
     String waqf() => tester
         .widget<SelectableText>(find.byKey(const ValueKey('waqf-text')))

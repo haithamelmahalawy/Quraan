@@ -898,6 +898,37 @@ Map<String, int> buildAshabSilahUsul(
     }
   }
   _bookGaps(id, rows, at, words, taStops, count);
+  // They all read the separated madd short: no madd sign on a word's last
+  // letter before a hamza of the next word (لَهُمُۥ أَمۡ، بِمَا أُنزِلَ).
+  final next = <String, String>{};
+  for (var n = 0; n + 1 < words.length; n++) {
+    next['${words[n].s}:${words[n].a}:${words[n].w}'] = words[n + 1].t;
+  }
+  for (final v in rows) {
+    if (v.length > 7 && v[7] == 'fawatih') continue;
+    final text = '${v[4]}';
+    final end = RegExp('ٓ([ۖ-ۜ]*)\$');
+    if (!end.hasMatch(text)) continue;
+    final last = (v[2] as int) + (v[3] as num).toInt() - 1;
+    final after = next['${v[0]}:${v[1]}:$last'] ?? '';
+    if (!RegExp('^[ءأإآ]').hasMatch(after)) continue;
+    v[4] = text.replaceFirstMapped(end, (m) => m[1]!);
+    count('qasr_munfasil_sign');
+  }
+  // A farsh telling only the ha read with kasra, where Hafs reads it so
+  // («فلا خوفٌ عليهِمُ»: as against Yaqub's damma): nothing differs.
+  rows.removeWhere((v) {
+    if (v[5] != 'f' || !RegExp(r'^ب?كسر ?الهاء$').hasMatch('${v[6]}'.trim())) {
+      return false;
+    }
+    final hafs = [
+      for (var d = 0; d < (v[3] as num).toInt(); d++)
+        hafsAt['${v[0]}:${v[1]}:${(v[2] as int) + d}'] ?? '',
+    ].join(' ');
+    final gone = hafs.contains('هِ') && !RegExp('ه[ُۡۥ]').hasMatch(hafs);
+    if (gone) count('same_kasr_ha');
+    return gone;
+  });
   data['variants'] = rows;
   data['reviewedUsul'] = true;
   return counts;
@@ -953,6 +984,9 @@ void main() {
       );
     }
   }
+  // Qalun's two hamzas of a word, which Abu Ja'far reads as he does.
+  final qalunWords = <String, List>{};
+  final built = <String, (File, Map, Map<String, int>)>{};
   for (final id in ashabSilahRiwayat) {
     final file = File('assets/data/qiraat/$id.json');
     final data = jsonDecode(file.readAsStringSync()) as Map;
@@ -965,6 +999,15 @@ void main() {
       haSites: haSites,
       taStops: taStops,
     );
+    if (id == 'qalun') {
+      for (final v in (data['variants'] as List).cast<List>()) {
+        if (v.length > 8 && v[7] == 'tasheel_word') {
+          qalunWords['${v[0]}:${v[1]}:${v[2]}'] = v;
+        }
+      }
+    } else if (id == 'ibn_wardan' || id == 'ibn_jammaz') {
+      _asQalun(data, qalunWords, counts);
+    }
     // A word's farsh told of no how: as another riwaya describes those letters.
     for (final v in (data['variants'] as List).cast<List>()) {
       if (v[5] != 'f' || v.length > 6 && '${v[6] ?? ''}'.isNotEmpty) continue;
@@ -976,8 +1019,90 @@ void main() {
       v[6] = told;
       counts.update('described', (n) => n + 1, ifAbsent: () => 1);
     }
+    built[id] = (file, data, counts);
+  }
+  _oneText({for (final e in built.entries) e.key: e.value.$2}, {
+    for (final e in built.entries) e.key: e.value.$3,
+  });
+  for (final MapEntry(key: id, value: (file, data, counts)) in built.entries) {
     file.writeAsStringSync(jsonEncode(data));
     stdout.writeln('$id: $counts');
+  }
+}
+
+/// A word the readers read with one rule, one how and the same faces is
+/// written once, so it is told in one row: as the reader it is taken from
+/// writes it, where the other leaves it unwritten or spells it otherwise.
+void _oneText(Map<String, Map> data, Map<String, Map<String, int>> counts) {
+  String spelling(String t) => t
+      .replaceAll(RegExp('[ۖ-ۜ]'), '')
+      .replaceAll('ۡ', 'ْ')
+      .replaceAll('ى', 'ي');
+  String letters(String t) => t
+      .replaceAll(RegExp('[ۦىے]'), 'ي')
+      .replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), '')
+      .replaceAll(RegExp('[أإآٱ]'), 'ا');
+  String keyOf(List v) =>
+      '${v[0]}:${v[1]}:${v[2]}|${v[7]}|${v[6]}|'
+      '${v.length > 8 && v[8] is Map ? jsonEncode((v[8] as Map)['ways']) : ''}';
+  bool usul(List v) => v.length > 7 && v[5] != 'f' && '${v[7]}'.isNotEmpty;
+  // Each reader's rules at a word: an unwritten row may take another's text
+  // only when that text tells nothing more of the word.
+  final rulesAt = <String, Map<String, Set<String>>>{};
+  for (final MapEntry(key: id, value: d) in data.entries) {
+    final at = rulesAt[id] = {};
+    for (final v in (d['variants'] as List).cast<List>()) {
+      if (v.length < 7 || v[5] == 'f') continue;
+      (at['${v[0]}:${v[1]}:${v[2]}'] ??= {}).add('${v.length > 7 ? v[7] : ''}|${v[6]}');
+    }
+  }
+  final written = {
+    for (final id in data.keys)
+      id: {
+        for (final v in (data[id]!['variants'] as List).cast<List>())
+          if (usul(v) && '${v[4]}'.isNotEmpty) keyOf(v): v,
+      },
+  };
+  // Each reader's font writes its own signs: a text goes only to Abu Ja'far,
+  // who has none, and between Ibn Kathir's two.
+  const takesFrom = {
+    'qunbul': ['bazzi'],
+    'ibn_wardan': ['qalun', 'bazzi', 'qunbul'],
+    'ibn_jammaz': ['qalun', 'bazzi', 'qunbul'],
+  };
+  for (final MapEntry(key: id, value: sources) in takesFrom.entries) {
+    for (final v in (data[id]!['variants'] as List).cast<List>()) {
+      if (!usul(v)) continue;
+      final from = sources.firstWhere(
+        (s) => written[s]!.containsKey(keyOf(v)),
+        orElse: () => '',
+      );
+      if (from.isEmpty) continue;
+      final c = written[from]![keyOf(v)]!;
+      if (v[4] == c[4]) continue;
+      final word = '${v[0]}:${v[1]}:${v[2]}';
+      final own = rulesAt[id]![word] ?? const <String>{};
+      final theirs = rulesAt[from]![word] ?? const <String>{};
+      // A ya of idafa told with the word after it, which only shows where.
+      final context = v[7] == 'ya_idafa' && (v[3] as int) > (c[3] as int);
+      final unwritten = '${v[4]}'.isEmpty &&
+          (v[3] == c[3] || context) &&
+          own.length == theirs.length &&
+          own.containsAll(theirs);
+      final head = '${v[4]}'.split(' ').take(c[3] as int).join(' ');
+      final mine = context ? head : '${v[4]}';
+      // Or the same letters, of a word the two read alike in all else.
+      final alike = own.length == theirs.length &&
+          own.containsAll(theirs) &&
+          letters(mine) == letters('${c[4]}');
+      if (!unwritten && !alike && spelling(mine) != spelling('${c[4]}')) {
+        continue;
+      }
+      v
+        ..[3] = c[3]
+        ..[4] = c[4];
+      counts[id]!.update('one_text', (n) => n + 1, ifAbsent: () => 1);
+    }
   }
 }
 
@@ -1232,6 +1357,52 @@ void _bookGaps(
         text: 'أَشۡهَدۡنَٰهُمُۥ',
       );
     }
+    _Word place(int s, int a, int w) => (s: s, a: a, w: w, t: '');
+    bool told(List v, String how) => v[5] == 'f' && '${v[6]}'.trim() == how;
+    // The source's farsh where he reads as Hafs, against Ya'qub or Khalaf:
+    // nothing differs.
+    for (final (s, a, w, how) in [
+      (7, 143, 8, 'بكسر الراء'),
+      (10, 15, 11, 'بإسكان الراء وبعدها همزة مفتوحة'),
+      (11, 46, 7, 'بفتح الميم وضم اللام وتنوينها وضم الراء وتفخيمها'),
+      (20, 87, 6, 'بضم الحاء وكسر الميم وتشديدها'),
+      (22, 58, 6, 'بتخفيف التاء'),
+      (42, 3, 1, 'بكسر الحاء وبعدها ياء ساكنة تمد حركتين'),
+      (43, 4, 1, 'ضم الهمزة'),
+    ]) {
+      drop(place(s, a, w), (v) => told(v, how));
+    }
+    // Written as Hafs, though read otherwise.
+    for (final (s, a, w, how, text) in [
+      (11, 81, 8, 'بهمزة وصل', 'فَاسْرِ'),
+      (12, 4, 7, 'بإسكان العين', 'أَحَدَ عْشَرَ'),
+    ]) {
+      for (final v in at['$s:$a:$w'] ?? const <List>[]) {
+        if (told(v, how)) v[4] = text;
+      }
+    }
+    // Told on the word after: «عقبا»، «صليا»، and the tanween of «وعيونٍ».
+    for (final (from, to, how, text, kind, rule) in [
+      (place(18, 45, 0), place(18, 44, 8), 'بضم القاف', 'عُقُبٗا', 'f', ''),
+      (place(19, 71, 0), place(19, 70, 7), 'بضم الصاد', 'صُلِيّٗا', 'f', ''),
+      (
+        place(15, 46, 0),
+        place(15, 45, 4),
+        'بضم العين وبضم نون التنوين لالتقاء الساكنين',
+        '',
+        'u',
+        'first_sakin',
+      ),
+    ]) {
+      drop(from, (v) => told(v, how));
+      put(
+        to,
+        kind,
+        rule == 'first_sakin' ? 'بضم نون التنوين لالتقاء الساكنين' : how,
+        rule,
+        text: text,
+      );
+    }
   }
 
   if (id == 'qunbul') {
@@ -1241,4 +1412,39 @@ void _bookGaps(
       put(la, 'f', 'بحذف الألف بعد اللام', '', text: 'لَأُقۡسِمُ', n: 2);
     }
   }
+}
+
+/// Abu Ja'far's two hamzas of a word where his face is Qalun's: written as
+/// Qalun's (the eased hamza, the small alif let in between), his silah told
+/// in the same row, so both are told together.
+void _asQalun(Map data, Map<String, List> qalunWords, Map<String, int> counts) {
+  final rows = (data['variants'] as List).cast<List>();
+  final at = <String, List<List>>{};
+  for (final v in rows) {
+    (at['${v[0]}:${v[1]}:${v[2]}'] ??= []).add(v);
+  }
+  final gone = <List>{};
+  for (final e in qalunWords.entries) {
+    final q = e.value;
+    final ways = (q[8] as Map)['ways'];
+    for (final v in at[e.key] ?? const <List>[]) {
+      if (v.length < 9 || v[7] != 'tasheel_word' || v[8] is! Map) continue;
+      if (jsonEncode((v[8] as Map)['ways']) != jsonEncode(ways)) continue;
+      v
+        ..[3] = q[3]
+        ..[4] = q[4]
+        ..[5] = q[5]
+        ..[6] = q[6]
+        ..[8] = {...(v[8] as Map), ...(q[8] as Map)};
+      counts.update('as_qalun', (n) => n + 1, ifAbsent: () => 1);
+      if ('${q[6]}'.contains('صلة ميم الجمع')) {
+        gone.addAll(
+          (at[e.key] ?? const <List>[]).where(
+            (o) => o != v && '${o.length > 6 ? o[6] : ''}' == 'بصلة ميم الجمع',
+          ),
+        );
+      }
+    }
+  }
+  rows.removeWhere(gone.contains);
 }

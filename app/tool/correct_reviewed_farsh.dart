@@ -54,7 +54,18 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
     'f',
     'بإبدال الهمزة الأولى واوًا ساكنة مدية',
   ]);
-  put([36, 52, 5, 1, 'مَّرۡقَدِنَاۗ', 'f', 'بدون سكت']);
+  // Hafs's sakt left, as Warsh: in the usul «ترك السكت».
+  put([
+    36,
+    52,
+    5,
+    1,
+    '',
+    'u',
+    'بالوصل دون سكت',
+    'no_sakt',
+    {'context': 'مَّرۡقَدِنَاۜۗ هَٰذَا'},
+  ]);
   put([
     40,
     46,
@@ -101,7 +112,17 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
     'بفتح الجيم والراء وهمزة مكسورة بدل الياء',
   ]);
   rows.removeWhere((r) => r[0] == 69 && r[1] == 41 && r[2] == 6);
-  put([75, 27, 1, 2, 'مَن رَّاقٖ', 'f', 'بلا سكت وإدغام النون في الراء']);
+  put([
+    75,
+    27,
+    1,
+    1,
+    '',
+    'u',
+    'بالإدغام دون سكت',
+    'no_sakt',
+    {'context': 'مَنۡۜ رَاقٖ'},
+  ]);
   put([
     75,
     36,
@@ -124,17 +145,18 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
       'بتنوين الراء بالفتح وصلًا، وإبدال التنوين ألفًا وقفًا',
     ]);
   }
-  // One phrase replaces both old one-word usul rows, retaining the imala.
-  rows.removeWhere((r) => r[0] == 83 && r[1] == 14 && r[2] == 2);
   put([
     83,
     14,
     1,
-    2,
-    'بَل رَّ۪انَ',
-    'f',
-    'بترك السكت على اللام وإدغامها في الراء وإمالة فتحة الراء والألف',
+    1,
+    '',
+    'u',
+    'بالإدغام دون سكت',
+    'no_sakt',
+    {'context': 'بَلۡۜ رَانَ'},
   ]);
+  put([83, 14, 2, 1, 'رّٜانَ', 'u', 'بالإمالة']);
   put([104, 8, 2, 1, 'مُّوصَدَةٞ', 'f', 'بإبدال الهمزة واوًا مدية']);
 }
 

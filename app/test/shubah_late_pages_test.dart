@@ -203,17 +203,15 @@ void main() {
     },
   );
 
-  test('min raq is one two-word farsh phrase without sakt and with idgham', () {
-    final v = at(75, 27, 1);
+  test('min raq leaves the sakt in the usul, as Warsh', () {
+    final v = variants
+        .at(['shubah'], 75, 27, 1)
+        .singleWhere((v) => v.rule == 'no_sakt');
     expect(quran.pageOf(75, 27), 578);
-    expect(v.count, 2);
-    expect(v.text, 'مَن رَّاقٖ');
-    expect(v.text, isNot(contains('ۜ')));
-    expect(v.shownDescription, 'بلا سكت وإدغام النون في الراء');
-    expect(v.kind, VariantKind.farsh);
-    expect(v.inHamesh, isTrue);
-    expect(v.isUsul, isFalse);
-    expect(at(75, 27, 2), same(v));
+    expect(v.count, 1);
+    expect(v.rule, 'no_sakt');
+    expect(v.shownDescription, 'بالإدغام دون سكت');
+    expect(v.isUsul, isTrue);
   });
 
   test('suda has stopping-only alif imala in usul', () {
@@ -239,20 +237,15 @@ void main() {
     }
   });
 
-  test('bal ran is one farsh phrase retaining idgham and imala', () {
+  test('bal ran leaves the sakt in the usul, its ra with imala', () {
     final v = at(83, 14, 1);
     expect(quran.pageOf(83, 14), 588);
-    expect(v.count, 2);
-    expect(v.text, 'بَل رَّ۪انَ');
-    expect(
-      v.shownDescription,
-      'بترك السكت على اللام وإدغامها في الراء وإمالة فتحة الراء والألف',
-    );
-    expect(v.kind, VariantKind.farsh);
-    expect(v.inHamesh, isTrue);
-    expect(v.isUsul, isFalse);
-    expect(v.isImala, isTrue);
-    expect(at(83, 14, 2), same(v));
+    expect(v.count, 1);
+    expect(v.rule, 'no_sakt');
+    expect(v.shownDescription, 'بالإدغام دون سكت');
+    expect(v.isUsul, isTrue);
+    expect(at(83, 14, 2).isImala, isTrue);
+    expect(at(83, 14, 2).isUsul, isTrue);
   });
 
   test('musada is farsh with a madd waw replacing hamza', () {
@@ -307,13 +300,7 @@ void main() {
       (552, 'بالإدغام وفتح الراء وضم الهاء', 1),
       (558, 'بفتح الراء وضم الهاء', 1),
       (560, 'بفتح الجيم والراء وهمزة مكسورة بدل الياء', 1),
-      (578, 'بلا سكت وإدغام النون في الراء', 1),
       (579, 'بتنوين الراء بالفتح وصلًا، وإبدال التنوين ألفًا وقفًا', 2),
-      (
-        588,
-        'بترك السكت على اللام وإدغامها في الراء وإمالة فتحة الراء والألف',
-        1,
-      ),
       (601, 'بإبدال الهمزة واوًا مدية', 1),
     ]) {
       await t.pumpWidget(

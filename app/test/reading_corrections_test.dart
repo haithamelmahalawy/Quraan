@@ -245,14 +245,13 @@ void main() {
     expect(v.inHamesh, isTrue);
   });
 
-  test('marqadina states no sakt and removes the sakt mark', () {
-    final v = shubah.at(['shubah'], 36, 52, 5).single;
+  test('marqadina leaves the sakt in the usul, as Warsh', () {
+    final v = shubah
+        .at(['shubah'], 36, 52, 5)
+        .singleWhere((v) => v.rule == 'no_sakt');
     expect(quran.pageOf(36, 52), 443);
-    expect(v.text, 'مَّرۡقَدِنَاۗ');
-    expect(v.text, isNot(contains('\u06dc')));
-    expect(v.shownDescription, 'بدون سكت');
-    expect(v.certified, isTrue);
-    expect(v.inHamesh, isTrue);
+    expect(v.shownDescription, 'بالوصل دون سكت');
+    expect(v.isUsul, isTrue);
   });
 
   test('udkhulu is an imperative with wasl and a damma on the kha', () {
@@ -370,7 +369,6 @@ void main() {
       (425, 'بإبدال الياء همزة مضمومة', 1),
       (427, 'بإثبات الألف وصلاً ووقفاً', 2),
       (438, 'بإبدال الهمزة الأولى واوًا ساكنة مدية', 1),
-      (443, 'بدون سكت', 1),
       (472, 'فعل أمر بهمزة وصل وضم الخاء، ويُبدأ بها بهمزة مضمومة', 1),
       (532, 'بوجهين: الأول بكسر الشين وهو المقدم، والثاني بفتح الشين', 1),
       (536, 'بزيادة همزة استفهام', 1),
