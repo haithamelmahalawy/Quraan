@@ -33,6 +33,11 @@ void main() {
       'shubah',
       'khalaf_hamzah',
       'khallad',
+      'qalun',
+      'bazzi',
+      'qunbul',
+      'ibn_wardan',
+      'ibn_jammaz',
     ]);
     mutashabihat = await MutashabihatRepository.load();
   });
@@ -500,7 +505,8 @@ void main() {
       t,
       'ruways',
       number: quran.ayah(2, 176).page,
-      selected: {'ruways'},
+      // Against Hafs: Ruways shown alone has nothing coloured.
+      selected: {'ruways', 'hafs'},
       alert: DiffAlert.glow,
     );
     for (final target in [word(2, 176, 4), word(2, 176, 5)]) {
@@ -705,11 +711,68 @@ void main() {
         alert: DiffAlert.glow,
       );
       // Read alike by both: with Hafs not selected, nothing differs to tell.
-      expect(
-        alerts(word(2, 167, 13)),
-        id == null ? findsNothing : findsOneWidget,
-      );
+      expect(alerts(word(2, 167, 13)), findsNothing);
       expect(t.takeException(), isNull);
+    }
+  });
+
+  testWidgets('a riwaya shown alone: its text, its usul below, nothing '
+      'coloured, glowing or in the hamesh', (t) async {
+    for (final (id, number) in [('warsh', 2), ('warsh', 3), ('bazzi', 3)]) {
+      await page(t, id, number: number, selected: {id}, alert: DiffAlert.glow);
+      await t.pump(const Duration(milliseconds: 200));
+      for (final e in find.byType(InkText).evaluate()) {
+        final ink = e.widget as InkText;
+        expect(ink.style.color, MushafColors.ink, reason: '$id ${ink.text}');
+        expect(
+          ink.parts?.every((p) => p.$2 == null || p.$2 == MushafColors.ink) ??
+              true,
+          isTrue,
+          reason: '$id ${ink.text}',
+        );
+      }
+      expect(
+        find.byWidgetPredicate((w) => w.runtimeType.toString() == '_Alerting'),
+        findsNothing,
+        reason: id,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w.key is ValueKey<String> &&
+              (w.key as ValueKey<String>).value.startsWith('margin-reference:'),
+        ),
+        findsNothing,
+        reason: id,
+      );
+      expect(find.byKey(const ValueKey('usul-notes')), findsOneWidget);
+    }
+  });
+
+  testWidgets('a usul all the selected read alike is neither coloured nor '
+      'glowing, whichever of them the mushaf shows', (t) async {
+    Finder alerts(Finder target) => find.ancestor(
+      of: target,
+      matching: find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_Alerting',
+      ),
+    );
+    const silah = {'qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz'};
+    for (final id in [null, 'bazzi', 'qalun']) {
+      await page(t, id, selected: silah, alert: DiffAlert.glow);
+      await t.pump(const Duration(milliseconds: 200));
+      // قُلُوبِهِمُۥ: the mim silah of them all.
+      final ink = t.widget<InkText>(word(2, 7, 3));
+      expect(ink.style.color, MushafColors.ink, reason: '$id');
+      expect(
+        ink.parts?.every((p) => p.$2 == null || p.$2 == MushafColors.ink) ??
+            true,
+        isTrue,
+        reason: '$id',
+      );
+      expect(alerts(word(2, 7, 3)), findsNothing, reason: '$id');
+      // ءَأَنذَرۡتَهُمۡ: Qalun's idkhal, not Ibn Kathir's, still told.
+      expect(alerts(word(2, 6, 5)), findsOneWidget, reason: '$id');
     }
   });
 

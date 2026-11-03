@@ -1367,6 +1367,7 @@ void main() {
           t,
           284,
           settings: ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = displayed
             ..compareHafs = displayed != null,
         );
@@ -1391,6 +1392,7 @@ void main() {
         t,
         302,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed
           ..compareHafs = displayed != null,
       );
@@ -1430,7 +1432,7 @@ void main() {
     await page(
       t,
       345,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     final word = t.widget<InkText>(find.byKey(const ValueKey('word:23:43:6')));
     final coloured = [
@@ -1445,7 +1447,7 @@ void main() {
     await page(
       t,
       407,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     final word = t.widget<InkText>(find.byKey(const ValueKey('word:30:27:11')));
     expect(
@@ -1468,7 +1470,7 @@ void main() {
     await page(
       t,
       319,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     expect(find.text(' (بالتفخيم والترقيق)'), findsWidgets);
   });
@@ -1487,7 +1489,7 @@ void main() {
     await page(
       t,
       430,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     expect(find.text(' (بخلف)'), findsOneWidget);
   });
@@ -1500,6 +1502,7 @@ void main() {
         t,
         p,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = 'warsh',
       );
       expect(find.text('الإمالة'), findsNothing, reason: 'page $p');
@@ -1507,7 +1510,7 @@ void main() {
     await page(
       t,
       432,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     expect(find.text(' (بخلف)'), findsOneWidget);
     expect(variants.at(['warsh'], 41, 9, 1).any((v) => v.isImala), isFalse);
@@ -1538,7 +1541,7 @@ void main() {
     await page(
       t,
       3,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     final label = find.byKey(const ValueKey('usul-guide:مد البدل'));
     await t.ensureVisible(label);
@@ -1561,7 +1564,7 @@ void main() {
       }
 
       for (final settings in [
-        ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+        ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
         ReaderSettings.memory(selected: {'warsh'}),
       ]) {
         await page(t, 519, settings: settings);
@@ -1592,7 +1595,7 @@ void main() {
     await page(
       t,
       540,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     for (final w in [10, 11]) {
       expect(colored(t, w), isTrue, reason: 'Warsh $w');
@@ -1601,6 +1604,7 @@ void main() {
       t,
       540,
       settings: ReaderSettings.memory(selected: {'warsh'})
+        ..compareHafs = true
         ..displayed = 'warsh'
         ..compareHafs = true,
     );
@@ -1614,7 +1618,7 @@ void main() {
     await page(
       t,
       568,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     expect(
       find.byKey(const ValueKey('usul-guide:الهمز المفرد (إبدال الهمز)')),
@@ -1653,13 +1657,13 @@ void main() {
     await page(
       t,
       584,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     expect(find.text(' (له الفتح والتقليل والتقليل مقدم)'), findsNWidgets(10));
     await page(
       t,
       595,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     expect(find.text(' (له الفتح والتقليل والتقليل مقدم)'), findsNWidgets(15));
   });
@@ -1679,6 +1683,7 @@ void main() {
         t,
         602,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = 'warsh',
       );
       final word = t.widget<InkText>(
@@ -1713,7 +1718,7 @@ void main() {
     await page(
       t,
       306,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     final mark = t.widget<HamzaReplacementMark>(
       find.ancestor(
@@ -1759,6 +1764,7 @@ void main() {
         t,
         481,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = 'warsh',
       );
       final word = t.widget<InkText>(
@@ -1778,6 +1784,7 @@ void main() {
           t,
           p,
           settings: ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = 'warsh',
         );
         expect(find.text('الهمزات:'), findsNothing);
@@ -1794,7 +1801,7 @@ void main() {
     await page(
       t,
       599,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     final parts = t
         .widget<InkText>(find.byKey(const ValueKey('word:98:8:20')))
@@ -1815,6 +1822,7 @@ void main() {
         t,
         p,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = 'warsh',
       );
       final parts = t.widget<InkText>(find.byKey(ValueKey(key))).parts!;
@@ -1876,6 +1884,7 @@ void main() {
         t,
         156,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed
           ..compareHafs = displayed != null,
       );
@@ -1907,6 +1916,7 @@ void main() {
           t,
           30,
           settings: ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = displayed,
         );
         for (final start in [20, 28, 30, 52]) {
@@ -1955,6 +1965,7 @@ void main() {
           t,
           31,
           settings: ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = displayed,
         );
         final kasra = t.widget<InkText>(
@@ -2001,6 +2012,7 @@ void main() {
       for (final displayed in [null, 'warsh']) {
         for (final (p, a, w) in [(33, 213, 32), (35, 222, 5), (2, 2, 5)]) {
           final settings = ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = displayed
             ..diffAlert = DiffAlert.glow;
           await page(t, p, settings: settings);
@@ -2067,6 +2079,7 @@ void main() {
         t,
         38,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed,
       );
       final example = find.byKey(
@@ -2107,6 +2120,7 @@ void main() {
     (t) async {
       for (final displayed in [null, 'warsh']) {
         final settings = ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed
           ..compareHafs = displayed != null;
         await page(t, 43, settings: settings);
@@ -2151,13 +2165,11 @@ void main() {
         settings: ReaderSettings.memory(selected: {'warsh'})
           ..displayed = 'warsh',
       );
+      // Warsh shown alone: nothing compared, nothing coloured.
       final alone = t.widget<InkText>(
         find.byKey(const ValueKey('word:2:259:52')),
       );
-      expect(
-        alone.parts!.where((p) => p.$2 != null).single.$1,
-        startsWith('ر'),
-      );
+      expect(alone.parts?.where((p) => p.$2 != null) ?? [], isEmpty);
     },
     tags: 'golden',
   );
@@ -2201,6 +2213,7 @@ void main() {
         t,
         340,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed,
       );
       final ink = t.widget<InkText>(
@@ -2240,6 +2253,7 @@ void main() {
         t,
         51,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed,
       );
       final footer = find.byKey(
@@ -2376,6 +2390,7 @@ void main() {
       t,
       102,
       settings: ReaderSettings.memory(selected: {'warsh'})
+        ..compareHafs = true
         ..displayed = 'warsh'
         ..compareHafs = true,
     );
@@ -2400,6 +2415,7 @@ void main() {
         t,
         5,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed,
       );
       final green = coloured('word:2:28:5');
@@ -2407,13 +2423,14 @@ void main() {
       expect(green.single.$1, contains(imalaSign));
       expect(green.single.$2, MushafColors.green);
     }
-    // يَٰبُشۡرَىٰ, farsh in Hafs's view: the ra green, the rest in the farsh
-    // colour; Warsh's own text alone: the ra green, the rest in ink.
+    // يَٰبُشۡرَىٰ, farsh against Hafs, in Hafs's text or Warsh's: the ra green,
+    // the rest in the farsh colour.
     for (final displayed in [null, 'warsh']) {
       await page(
         t,
         237,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed,
       );
       final parts = coloured('word:12:19:7');
@@ -2421,10 +2438,7 @@ void main() {
         parts.where((p) => p.$2 == MushafColors.green).map((p) => p.$1[0]),
         ['ر'],
       );
-      expect(
-        parts.where((p) => p.$2 != MushafColors.green),
-        displayed == null ? isNotEmpty : isEmpty,
-      );
+      expect(parts.where((p) => p.$2 != MushafColors.green), isNotEmpty);
     }
     expect(t.takeException(), isNull);
   });
@@ -2433,7 +2447,7 @@ void main() {
     await page(
       t,
       55,
-      settings: ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+      settings: ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
     );
     final word = find.byKey(const ValueKey('word:3:39:10'));
     expect(t.widget<InkText>(word).text, contains(imalaSign));
@@ -2463,6 +2477,7 @@ void main() {
           t,
           29,
           settings: ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = displayed,
         );
         for (final label in ['النقل', 'مد البدل']) {
@@ -2491,6 +2506,7 @@ void main() {
           t,
           quran.pageOf(2, 186),
           settings: ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = displayed,
         );
         for (final w in [8, 10]) {
@@ -2518,6 +2534,7 @@ void main() {
         t,
         quran.pageOf(2, 211),
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed,
       );
       for (final w in [4, 6]) {
@@ -2546,6 +2563,7 @@ void main() {
           t,
           123,
           settings: ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = displayed
             ..mode = DisplayMode.highlight
             ..diffAlert = DiffAlert.glow
@@ -2576,6 +2594,7 @@ void main() {
         t,
         117,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = 'warsh',
       );
       final word = t.widget<InkText>(find.byKey(const ValueKey('word:5:54:4')));
@@ -2763,6 +2782,7 @@ void main() {
           t,
           11,
           settings: ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = displayed,
         );
         expect(
@@ -2791,6 +2811,7 @@ void main() {
   ) async {
     for (final displayed in [null, 'warsh']) {
       final settings = ReaderSettings.memory(selected: {'warsh'})
+        ..compareHafs = true
         ..displayed = displayed
         ..mode = DisplayMode.highlight
         ..diffAlert = DiffAlert.glow
@@ -2834,6 +2855,7 @@ void main() {
         t,
         10,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed,
       );
       final notes = find.byKey(const ValueKey('usul-notes'));
@@ -2868,6 +2890,7 @@ void main() {
           t,
           8,
           settings: ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = displayed,
         );
         final notes = find.byKey(const ValueKey('usul-notes'));
@@ -2906,6 +2929,7 @@ void main() {
       }
       for (final displayed in [null, 'warsh']) {
         final settings = ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed
           ..mode = DisplayMode.hamesh
           ..compareHafs = true
@@ -3177,6 +3201,7 @@ void main() {
     (t) async {
       for (final displayed in [null, 'warsh']) {
         final settings = ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = displayed
           ..compareHafs = true;
         await page(t, 3, settings: settings);
@@ -3310,6 +3335,7 @@ void main() {
           t,
           p,
           settings: ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
             ..displayed = 'warsh',
         );
         final word = t.widget<InkText>(find.byKey(ValueKey('word:2:$a:$w')));
@@ -3538,6 +3564,7 @@ void main() {
         t,
         3,
         settings: ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = 'warsh'
           ..compareHafs = true,
       );

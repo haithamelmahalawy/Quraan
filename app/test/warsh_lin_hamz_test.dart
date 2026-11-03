@@ -219,6 +219,7 @@ void main() {
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
     final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..compareHafs = true
       ..displayed = displayed;
     await t.pumpWidget(
       MaterialApp(

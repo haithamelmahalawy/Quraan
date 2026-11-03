@@ -145,6 +145,7 @@ void main() {
         t,
         28,
         ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
           ..displayed = 'warsh'
           ..compareHafs = true,
         'p28_warsh_hafs_compared',
@@ -291,7 +292,7 @@ void main() {
       await shot(
         t,
         28,
-        ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+        ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
         'p28_warsh_naql',
       );
     },
@@ -307,6 +308,7 @@ void main() {
           t,
           page,
           ReaderSettings.memory(selected: {'khalaf_hamzah'})
+            ..compareHafs = true
             ..displayed = 'khalaf_hamzah',
           'p${page}_khalaf',
         );
@@ -322,7 +324,7 @@ void main() {
         await shot(
           t,
           page,
-          ReaderSettings.memory(selected: {'warsh'})..displayed = 'warsh',
+          ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
           'p${page}_warsh_letters',
         );
       }

@@ -143,7 +143,11 @@ void main() {
         final qila = t.widget<InkText>(
           find.byKey(const ValueKey('word:2:13:1')),
         );
-        expect(qila.parts!.first.$2, ReadingColors.ishmam);
+        // Shown alone, nothing of it is coloured; Warsh's reading differs.
+        expect(
+          qila.parts?.first.$2,
+          selected.length == 1 ? isNot(ReadingColors.ishmam) : ReadingColors.ishmam,
+        );
         expect(t.takeException(), isNull);
       }
     },

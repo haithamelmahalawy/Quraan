@@ -1381,7 +1381,10 @@ class _MushafPageState extends State<MushafPage>
               // And the shown riwaya's own farsh read with imala (يَٰبُشۡرٰ۪يَ).
               ...base.where(
                 (v) =>
-                    v.isUsul || v.isImala && _farshImala(v) || _shadedFarsh(v),
+                    !_readByAll(widget.variants, s, ayah, w, v) &&
+                    (v.isUsul ||
+                        v.isImala && _farshImala(v) ||
+                        _shadedFarsh(v)),
               ),
               ..._readingsAt(widget.variants, s, ayah, w).shown,
             ]
@@ -2303,28 +2306,16 @@ _Readings _readingsOf(
     displayed: s.displayed,
     selected: {...s.selected, if (s.compareHafs) hafsId},
   ).where((v) => !v.readsAsHafs).toList();
-  // Without Hafs to compare with, only what differs among the selected
-  // riwayat is coloured: a usul all of them read alike (their mim silah) is
-  // told once in the usul below the page.
-  final others = s.selected.where((id) => id != s.displayed).toSet();
-  if (s.displayed == null && !s.compareHafs && others.length > 1) {
-    final keys = {
-      for (final id in others)
-        id: variants
-            .at([id], ayah.surah, ayah.number, w)
-            .where((v) => v.isUsul && v.word == w)
-            .map(readingVariantKey)
-            .toSet(),
-    };
-    all.removeWhere(
-      (v) =>
-          v.isUsul &&
-          !v.isMarginNote &&
-          keys.values.every((k) => k.contains(readingVariantKey(v))),
-    );
+  if (s.displayed == null) {
+    all.removeWhere((v) => _readByAll(variants, s, ayah, w, v));
   }
-  // Source reminders remain visible when their own riwaya is the base.
-  all.addAll(base.where((v) => v.isMarginNote));
+  // Source reminders remain visible when their own riwaya is the base, but
+  // for it shown alone: its usul below the page, no hamesh.
+  final alone =
+      s.displayed != null &&
+      !s.compareHafs &&
+      {...s.selected, s.displayed}.length == 1;
+  if (!alone) all.addAll(base.where((v) => v.isMarginNote));
   final shown = all
       .where(
         (v) =>
@@ -2348,6 +2339,7 @@ _Readings _readingsOf(
               .where(
                 (v) =>
                     v.isUsul &&
+                    !_readByAll(variants, s, ayah, w, v) &&
                     !isRoutineMadd(v) &&
                     showYaqubMimExample(v, ayah.words[v.word]) &&
                     _showYaIdafa(v, ayah, variants, s) &&
@@ -2356,6 +2348,31 @@ _Readings _readingsOf(
               .toList(),
         ) ??
         _colorOf(shown),
+  );
+}
+
+/// Without Hafs to compare with, the mushaf's riwaya is compared with the
+/// other selected ones only: a usul all of them read alike (their mim silah)
+/// differs from none, so it is not coloured; the usul below the page tell it.
+/// Shown alone, nothing of it is coloured.
+bool _readByAll(
+  VariantRepository variants,
+  ReaderSettings s,
+  Ayah ayah,
+  int w,
+  Variant v,
+) {
+  if (v.isMarginNote || s.compareHafs) return false;
+  final readers = {...s.selected, ?s.displayed};
+  // The mushaf in one riwaya alone: nothing to compare it with, its farsh
+  // its text. Hafs's text with one riwaya selected is compared with it.
+  if (readers.length < 2) return s.displayed != null;
+  if (!v.isUsul) return false;
+  final key = readingVariantKey(v);
+  return readers.every(
+    (id) => variants
+        .at([id], ayah.surah, ayah.number, w)
+        .any((o) => o.isUsul && o.word == w && readingVariantKey(o) == key),
   );
 }
 

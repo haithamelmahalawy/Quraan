@@ -276,7 +276,9 @@ void main() {
     t.view.physicalSize = size;
     t.view.devicePixelRatio = 1;
     final theme = buildTheme(MushafPalette.light);
+    // Against Hafs: Warsh shown alone has nothing coloured.
     final settings = ReaderSettings.memory(selected: {'warsh'}, mode: mode)
+      ..compareHafs = true
       ..displayed = 'warsh';
     await t.pumpWidget(
       MaterialApp(
