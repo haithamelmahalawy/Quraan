@@ -1404,6 +1404,7 @@ class _MushafPageState extends State<MushafPage>
             _naqlKind(v) != null ||
             isWarshRabbahuMadd(v) ||
             isWarshAnaMadd(v) ||
+            v.rule == 'ikhfa' ||
             RegExp('همز|تسهيل|صلة|إدغام|ادغام').hasMatch(v.description));
     final lexical = readings.any((v) => !v.isUsul);
     if (readings.isEmpty ||
@@ -1664,7 +1665,10 @@ class _MushafPageState extends State<MushafPage>
           if (l.contains(imalaSign)) mark(i, MushafColors.green);
         }
       }
-      if (RegExp('إبدال|ابدال|تسهيل|تخفيف الهمزة').hasMatch(d)) {
+      if (v.rule == 'ikhfa') {
+        mark(letters.length - 1, ReadingColors.of(v));
+      }
+      if (RegExp('إبدال|ابدال|تسهيل|تخفيف الهمزة|إسقاط').hasMatch(d)) {
         final hafs = lettersOf(ayah.words[w]);
         final hamzas = [
           for (final (i, l) in hafs.indexed)
@@ -2454,6 +2458,11 @@ const _tightColumns = <int, TableColumnWidth>{
   1: MinColumnWidth(IntrinsicColumnWidth(), FractionColumnWidth(0.2)),
   2: FlexColumnWidth(),
 };
+
+/// A rule's table: its fields set apart by a visible line and a small gap.
+const _cellPadding = EdgeInsets.symmetric(horizontal: 4, vertical: 2);
+TableBorder get _tableBorder =>
+    TableBorder.all(color: MushafColors.gold.withAlpha(220), width: 0.8);
 
 /// The place of a riwaya in the app's list of the readers.
 int _riwayaRank(String id) {
@@ -3291,7 +3300,9 @@ class _UsulBox extends StatelessWidget {
       final places = <String, (_UsulItem, Set<String>)>{};
       for (final i in g.items.values) {
         final place = places.putIfAbsent(
-          '${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.stopOnly}',
+          // A madd written in one reader's word only is a word of its own.
+          '${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.stopOnly}:'
+          '${i.text.endsWith('\u0653')}',
           () => (i, {}),
         );
         place.$2.addAll(i.riwayat);
@@ -3324,8 +3335,7 @@ class _UsulBox extends StatelessWidget {
     rows.sort(
       (a, b) => _riwayaRank(a.$3.first).compareTo(_riwayaRank(b.$3.first)),
     );
-    Widget cell(Widget child) =>
-        Padding(padding: const EdgeInsets.all(2), child: child);
+    Widget cell(Widget child) => Padding(padding: _cellPadding, child: child);
     Widget wordsOf(_UsulGroup g, List<_UsulItem> items) => Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
@@ -3352,14 +3362,10 @@ class _UsulBox extends StatelessWidget {
       readersAr(readers, const []),
       style: TextStyle(fontSize: 8.5 * scale, color: MushafColors.ink),
     );
-    final border = TableBorder.all(
-      color: MushafColors.gold.withAlpha(120),
-      width: 0.5,
-    );
     return LayoutBuilder(
       builder: (context, box) => box.maxWidth < _tableMinWidth
           ? Table(
-              border: border,
+              border: _tableBorder,
               children: [
                 for (final (g, items, readers, faces) in rows)
                   TableRow(
@@ -3381,7 +3387,7 @@ class _UsulBox extends StatelessWidget {
           : Table(
               columnWidths: _tightColumns,
               defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              border: border,
+              border: _tableBorder,
               children: [
                 for (final (g, items, readers, faces) in rows)
                   TableRow(
@@ -3773,15 +3779,11 @@ class _EntryView extends StatelessWidget {
 
   /// A verified reader's farsh: the word, the reader and the reading.
   Widget _table(HameshEntry e, Widget word, TextStyle label, double reading) {
-    Widget cell(Widget child) =>
-        Padding(padding: const EdgeInsets.all(1), child: child);
+    Widget cell(Widget child) => Padding(padding: _cellPadding, child: child);
     return Table(
       columnWidths: _tightColumns,
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-      border: TableBorder.all(
-        color: MushafColors.gold.withAlpha(120),
-        width: 0.5,
-      ),
+      border: _tableBorder,
       children: [
         for (final g in _readings(
           e.readings,

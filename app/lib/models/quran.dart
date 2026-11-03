@@ -224,6 +224,7 @@ class Variant {
           !const {
             'tasheel_word',
             'tasheel_pair',
+            'tasheel_pair_first',
             'hamza_wasl',
             'ha_antum',
           }.contains(rule)) ||

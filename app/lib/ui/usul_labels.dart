@@ -85,6 +85,7 @@ List<String> usulOf(Variant v) {
     ];
   }
   if (v.rule == 'tasheel_pair' ||
+      v.rule == 'tasheel_pair_first' ||
       (v.rule == 'ibdal_waw' && v.usulWays.length > 1) ||
       (unified &&
           (d.contains('إبدال الهمزة الثانية') ||
@@ -106,6 +107,25 @@ List<String> usulOf(Variant v) {
     if (d == 'بتخفيف الهمزة') return [_singleHamzaIbdal];
     if (isWarshRabbahuMadd(v)) return ['المد المنفصل'];
     if (isWarshAnaMadd(v)) return ['مد أنا'];
+  }
+  // What the sources of Qalun, Ibn Kathir and Abu Ja'far tell without a rule.
+  if (unified && v.riwayaId != 'warsh' && v.rule.isEmpty) {
+    if (d.startsWith('بفتح الراء وحذف الهمزة') || d == 'بالسين') {
+      return ['النقل'];
+    }
+    if (!d.contains('إبدال')) {
+      if (RegExp('زيادة الهمزة|^بالهمز').hasMatch(d)) {
+        return ['الهمز المفرد (زيادة الهمزة)'];
+      }
+      if (d.contains('حذف الهمزة') && d.contains('تشديد')) {
+        return ['الهمز المفرد (إدغام الهمزة)'];
+      }
+      if (RegExp(r'حذف الهمزة|^بالباء$|^بالهاء$').hasMatch(d)) {
+        return ['الهمز المفرد (حذف الهمزة)'];
+      }
+      if (d.contains('تخفيف الهمز')) return ['الهمز المفرد (تخفيف الهمزة)'];
+      if (d.contains('تسهيل')) return ['الهمز المفرد (تسهيل الهمزة)'];
+    }
   }
   // Ya'qub's naql (عَادٗا ٱلُّاولَىٰ) is told in its own chapter only, though its
   // note names the merged tanween.

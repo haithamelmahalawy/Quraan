@@ -308,8 +308,145 @@ void main() {
       hasLength(115),
     );
     expect(
-      usulOfRiwaya(variants, quran, 'qalun').keys,
+      usulOfRiwaya(variants, quran, 'susi').keys,
       isNot(contains('الهمز المفرد')),
+    );
+  });
+
+  test('Qalun, Ibn Kathir and Abu Jafar follow «أصول أصحاب الصلة»', () {
+    Variant? rowOf(String id, int s, int a, int w, String rule) =>
+        variants.at([id], s, a, w).where((v) => v.rule == rule).firstOrNull;
+    final qalun = usulOfRiwaya(variants, quran, 'qalun');
+    expect(qalun['صلة ميم الجمع']!.length, greaterThan(6000));
+    final mim = variants
+        .at(['qalun'], 1, 7, 3)
+        .singleWhere((v) => v.description == 'بصلة ميم الجمع');
+    expect(mim.usulWays, isEmpty);
+    expect(mim.text, contains('مُۥ'));
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final usul = usulOfRiwaya(variants, quran, id);
+      expect(usul['صلة ميم الجمع']!.length, greaterThan(5000), reason: id);
+      expect(usul['الإخفاء'], isNotEmpty, reason: id);
+      expect(
+        rowOf(id, 2, 3, 1, 'ibdal_single')!.text,
+        contains('يُو'),
+        reason: id,
+      );
+    }
+    // أئمة: the book, the file; not the old ibdal.
+    for (final id in ['qalun', 'bazzi', 'qunbul']) {
+      expect(rowOf(id, 9, 12, 10, 'tasheel_word')!.usulWays, [
+        'تسهيل الهمزة الثانية بلا إدخال',
+      ], reason: id);
+    }
+    expect(rowOf('ibn_wardan', 9, 12, 10, 'tasheel_word')!.usulWays, [
+      'تسهيل الهمزة الثانية مع الإدخال',
+    ]);
+    // هار: Qalun's greater imala, not Warsh's taqlil.
+    final har = variants.at(['qalun'], 9, 109, 16).single;
+    expect(har.description, 'بالإمالة الكبرى');
+    expect(usulOfRiwaya(variants, quran, 'qalun').keys, contains('الإمالة'));
+    // The chapters new to them.
+    for (final id in ['qalun', 'bazzi', 'qunbul']) {
+      expect(rowOf(id, 19, 1, 0, 'fawatih')!.usulWays, ['التوسط', 'الإشباع']);
+    }
+    expect(
+      usulOfRiwaya(variants, quran, 'bazzi')['تاءات البزي'],
+      hasLength(30),
+    );
+    expect(rowOf('bazzi', 92, 14, 2, 'bazzi_ta')!.text, startsWith('تّ'));
+    // What «الجامع» told that the earlier sources missed.
+    for (final id in ['bazzi', 'qunbul']) {
+      final ha = rowOf(id, 13, 7, 14, 'rasm_stop')!;
+      expect(ha.stopOnly, isTrue, reason: id);
+      expect(ha.stopText, endsWith('ي'), reason: id);
+      expect(rowOf(id, 3, 35, 2, 'rasm_stop')!.stopOnly, isTrue, reason: id);
+    }
+    expect(usulOfRiwaya(variants, quran, 'qalun')['مد أنا'], hasLength(15));
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      expect(usulOfRiwaya(variants, quran, id)['مد أنا'], hasLength(12));
+      expect(
+        rowOf(id, 9, 44, 1, 'ibdal_single')!.text,
+        contains('يَسۡتَاذِنُكَ'),
+        reason: id,
+      );
+      expect(
+        variants.at([id], 18, 51, 1).single.text,
+        contains('أَشۡهَدۡنَٰهُمُ'),
+      );
+    }
+    expect(variants.at(['qunbul'], 75, 1, 0).single.text, 'لَأُقۡسِمُ');
+    expect(rowOf('bazzi', 93, 11, 3, 'takbir'), isNotNull);
+    expect(rowOf('qunbul', 93, 11, 3, 'takbir'), isNull);
+    expect(
+      rowOf('qalun', 4, 5, 2, 'tasheel_pair_first')!.usulWays.first,
+      contains('إسقاط الهمزة الأولى'),
+    );
+    // Their farsh keeps its rows.
+    expect(variants.at(['qalun'], 2, 6, 5).single.usulWays, [
+      'تسهيل الهمزة الثانية مع الإدخال',
+    ]);
+  });
+
+  test('each difference of the Ashab al-Silah stands in its chapter', () {
+    Variant only(String id, int s, int a, int w) =>
+        variants.at([id], s, a, w).firstWhere((v) => v.word == w);
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      // وَهۡوَ: of the book's farsh words, Abu Ja'far's as Qalun's.
+      for (final place in const [(2, 29, 15), (2, 74, 6), (13, 3, 0)]) {
+        final v = only(id, place.$1, place.$2, place.$3);
+        expect(v.description, 'بإسكان الهاء', reason: id);
+        expect(v.isUsul, isFalse, reason: id);
+      }
+      // «لهو» the noun is read as Hafs.
+      expect(variants.at([id], 31, 6, 4), isEmpty, reason: id);
+      // Two hamzas of two words: in their chapter, not the farsh.
+      final pair = only(id, 2, 13, 12);
+      expect(pair.rule, 'ibdal_waw', reason: id);
+      expect(pair.isUsul, isTrue, reason: id);
+      // Nothing as Hafs is told as his difference.
+      expect(variants.at([id], 2, 11, 1), isEmpty, reason: id);
+      // The face stays when the silah beside it goes to its own row.
+      expect(
+        variants.at([id], 29, 25, 7).single.shownDescription,
+        contains('الإقلاب'),
+        reason: id,
+      );
+      // A face told beside what is as Hafs is never lost with it.
+      for (final (s, a, w, told) in const [
+        (4, 58, 17, 'إسكان العين'),
+        (4, 154, 12, 'إسكان العين'),
+        (5, 2, 28, 'إسكان النون'),
+        (34, 17, 4, 'بالياء'),
+        (82, 9, 1, 'بالياء'),
+        (28, 57, 12, 'بالتاء'),
+      ]) {
+        expect(
+          variants.at([id], s, a, w).map((v) => v.description).join(' '),
+          contains(told),
+          reason: '$id $s:$a:$w',
+        );
+      }
+      final usul = usulOfRiwaya(variants, quran, id);
+      for (final off in ['تسهيل الهمز', 'المدود', 'الهمزات', 'أصول أخرى']) {
+        expect(usul.keys, isNot(contains(off)), reason: '$id: $off');
+      }
+    }
+    for (final id in ['qalun', 'bazzi', 'qunbul']) {
+      // ياء الإضافة: the verified readers' chapter.
+      final ya = variants.at([id], 2, 30, 23).single;
+      expect(ya.rule, 'ya_idafa', reason: id);
+      expect(usulOfRiwaya(variants, quran, id).keys, contains('ياءات الإضافة'));
+    }
+    // A word's letters are farsh, the silah beside them usul.
+    final both = variants.at(['bazzi'], 2, 72, 3);
+    expect(
+      both.where((v) => v.isUsul && v.description.contains('صلة')),
+      isNotEmpty,
+    );
+    expect(
+      both.where((v) => !v.isUsul && !v.description.contains('صلة')),
+      isNotEmpty,
     );
   });
 
