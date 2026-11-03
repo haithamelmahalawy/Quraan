@@ -2989,9 +2989,17 @@ void main() {
           of: word,
           matching: find.byType(HamzaReplacementMark),
         );
-        expect(main, displayed == 'warsh' ? findsOneWidget : findsNothing);
         if (displayed == 'warsh') {
+          expect(main, findsOneWidget);
           expect(t.widget<HamzaReplacementMark>(main).letter, letter);
+        } else {
+          // No circled letter; Qunbul's own tasheel dot only (إِن، 2:31).
+          expect(
+            t
+                .widgetList<HamzaReplacementMark>(main)
+                .every((m) => m.letter.isEmpty),
+            isTrue,
+          );
         }
         final notes = find.byKey(const ValueKey('usul-notes'));
         expect(

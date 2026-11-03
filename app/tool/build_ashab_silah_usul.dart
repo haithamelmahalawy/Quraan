@@ -1539,6 +1539,39 @@ void _bookGaps(
       place(15, 46, 0),
       (v) => told(v, 'بضم العين وبضم نون التنوين لالتقاء الساكنين'),
     );
+    // «فيغرقكم» بالتاء: Ibn Wardan with two faces, the takhfif preferred,
+    // and «وشدد لخلف بن» of «ونغرق»; Ibn Jammaz the takhfif alone.
+    if (id == 'ibn_wardan') {
+      // No «، » in it: the clauses of a source row are split there.
+      const how =
+          'بالتاء وبوجهين: إسكان الغين وتخفيف الراء وهو المقدّم؛ أو فتح '
+          'الغين وتشديد الراء';
+      // In the source's own row, which a later run keeps.
+      drop(place(17, 69, 12), (v) => told(v, 'بالتاء وفتح الغين وتشديد الراء'));
+      for (final v in at['17:69:12'] ?? const <List>[]) {
+        if (!told(v, 'بالتاء وإسكان الغين وتخفيف الراء') && !told(v, how)) {
+          continue;
+        }
+        v
+          ..[6] = how
+          ..length = 8
+          ..add({
+            'ways': [
+              'إسكان الغين وتخفيف الراء، وهو المقدّم',
+              'فتح الغين وتشديد الراء',
+            ],
+          });
+        count('two_faces');
+      }
+    }
+  }
+
+  // «سيئه» (الإسراء ٣٨): Hafs's ha read a ta, worded as Ya'qub and Abu Ja'far.
+  for (final v in at['17:38:3'] ?? const <List>[]) {
+    if (v[5] == 'f' && v[6] == 'بإسكان الهاء وفتح الهمزة والتاء') {
+      v[6] = 'بفتح الهمزة وبعدها تاء منونة بالفتح';
+      count('one_wording');
+    }
   }
 
   if (id == 'qunbul') {

@@ -161,7 +161,7 @@ class _ReplacementPainter extends CustomPainter {
     }
     final box = boxes.first;
     final fontSize = textScaler.scale(style.fontSize ?? 14);
-    final diameter = fontSize * (letter.isEmpty ? .16 : .30);
+    final diameter = fontSize * (letter.isEmpty ? .18 : .30);
     final lines = painter.computeLineMetrics();
     final line = lines.firstWhere(
       (l) => box.top <= l.baseline && box.bottom >= l.baseline,
@@ -172,7 +172,8 @@ class _ReplacementPainter extends CustomPainter {
     final hamza = originalHamza ?? text.substring(offset, end);
     final center = Offset(
       HamzaReplacementMark.beforeAlif(letter, hamza, text, offset)
-          ? box.right + diameter * .55 : (box.left + box.right) / 2,
+          ? box.right + diameter * .55
+          : (box.left + box.right) / 2,
       line.baseline +
           fontSize *
               (hamza.startsWith('ء')
@@ -188,13 +189,17 @@ class _ReplacementPainter extends CustomPainter {
                   ? -.48
                   : -0.83),
     );
+    // The tasheel dot filled, as Warsh's (أَءِذَا، أَىِ۪مَّةَ); the circle of
+    // the ibdal ringed round its letter.
     canvas.drawCircle(
       center,
       diameter / 2,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = math.max(0.5, diameter * 0.065),
+      letter.isEmpty
+          ? (Paint()..color = color)
+          : (Paint()
+              ..color = color
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = math.max(0.5, diameter * 0.065)),
     );
     if (letter.isNotEmpty) {
       final glyph = TextPainter(

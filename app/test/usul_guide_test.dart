@@ -29,6 +29,32 @@ void main() {
     ]);
   });
 
+  test('«فيغرقكم» has two faces for Ibn Wardan, one for Ibn Jammaz', () {
+    List<Variant> farsh(String id) => [
+      for (final v in variants.at([id], 17, 69, 12))
+        if (v.kind == VariantKind.farsh) v,
+    ];
+    final wardan = farsh('ibn_wardan').single;
+    expect(wardan.usulWays, [
+      'إسكان الغين وتخفيف الراء، وهو المقدّم',
+      'فتح الغين وتشديد الراء',
+    ]);
+    expect(wardan.description, startsWith('بالتاء وبوجهين:'));
+    expect(
+      farsh('ibn_jammaz').single.description,
+      'بالتاء وإسكان الغين وتخفيف الراء',
+    );
+  });
+
+  test('«سيئه» (الإسراء ٣٨) is worded alike by the verified readers', () {
+    for (final id in ['qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ruways']) {
+      final v = variants
+          .at([id], 17, 38, 3)
+          .singleWhere((v) => v.kind == VariantKind.farsh);
+      expect(v.description, 'بفتح الهمزة وبعدها تاء منونة بالفتح', reason: id);
+    }
+  });
+
   test('every rule of every riwaya has its own explanation', () {
     final other = usulDefinition('أصول أخرى');
     for (final q in qiraat) {

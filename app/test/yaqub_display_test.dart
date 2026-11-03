@@ -90,6 +90,62 @@ void main() {
 
   Finder word(int s, int a, int w) => find.byKey(ValueKey('word:$s:$a:$w'));
 
+  testWidgets('Ashab al-Silah ease the hamza with the tasheel dot', (t) async {
+    for (final (id, number, a, w, hamza) in [
+      // ءَٰا۬نذَرْتَهُمُۥ: the source's dot, over the alif.
+      ('qalun', 3, 6, 5, 'أَ'),
+      // هَٰؤُلَآ۟ إِن: the first hamza, the sifr on its alif.
+      ('qalun', 6, 31, 11, 'ءِ'),
+      ('bazzi', 6, 31, 11, 'ءِ'),
+      // The second: taken for a wasl alif, or written as Hafs.
+      ('qunbul', 6, 31, 12, 'إِ'),
+      ('ibn_wardan', 6, 31, 12, 'إِ'),
+      ('ibn_jammaz', 6, 31, 12, 'إِ'),
+      ('qalun', 20, 133, 3, 'إِ'),
+    ]) {
+      await page(t, id, number: number, selected: {id});
+      final mark = t.widget<HamzaReplacementMark>(
+        find.ancestor(
+          of: word(2, a, w),
+          matching: find.byType(HamzaReplacementMark),
+        ),
+      );
+      expect(mark.letter, isEmpty, reason: '$id 2:$a:$w');
+      expect(
+        mark.originalHamza?.replaceAll('۬', ''),
+        hamza,
+        reason: '$id 2:$a:$w',
+      );
+      // Nor the font's round blots.
+      expect(
+        t.widget<InkText>(word(2, a, w)).parts?.map((p) => p.$1).join() ??
+            t.widget<InkText>(word(2, a, w)).text,
+        isNot(matches(RegExp('[۬۟]'))),
+        reason: '$id 2:$a:$w',
+      );
+      expect(t.takeException(), isNull);
+    }
+    // In the hamesh too (ءَٰا۬عْجَمِيّٞ وَعَرَبِيّٞ, فصلت 44).
+    await page(
+      t,
+      'qalun',
+      number: 481,
+      selected: {'qalun', 'bazzi', 'ibn_wardan'},
+    );
+    expect(
+      t
+          .widgetList<HamzaReplacementMark>(find.byType(HamzaReplacementMark))
+          .any(
+            (m) =>
+                m.letter.isEmpty &&
+                m.text.contains('وَعَرَبِيّ') &&
+                !HamzaReplacementMark.seatText(m.text, m.offset).contains('۬'),
+          ),
+      isTrue,
+    );
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets(
     'sequential notes stay on the page side and continue below in order',
     (t) async {

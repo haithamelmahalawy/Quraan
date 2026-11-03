@@ -33,6 +33,75 @@ import 'usul_labels.dart';
 
 typedef WordTap = void Function(Ayah ayah, int word);
 
+const _ashabSilah = {'qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz'};
+
+/// Ashab al-Silah's eased hamza in the place Hafs writes it, marked ۬ for
+/// the tasheel dot to take: after a ra, its seat the dagger alif in their
+/// source (أَرَٰ۬يْتَ → أَرَءَ۬يْتَ); a waw with the sifr (أَٰوْ۟نَبِّئُكُمُۥ →
+/// أَٰؤُ۬نَبِّئُكُمُۥ); the last hamza, the sifr on its alif (هَٰؤُلَآ۟ →
+/// هَٰؤُلَآءِ۬); the first, before an alif, its sifr dropped with the alif
+/// taken for a naql (جَآءَ ا۟لَ → ءَ۬الَ).
+String _easedAsHafs(String text, String hafs, bool hamza) {
+  final last = RegExp(r'ء[َُِ]$').firstMatch(hafs)?[0];
+  if (hamza && hafs.startsWith('ءَا') && RegExp('^ا[^ً-ٰ]').hasMatch(text)) {
+    text = 'ءَ۬$text';
+  }
+  return text
+      .replaceAll('رَٰ۬', 'رَءَ۬')
+      .replaceAll('وْ۟', 'ؤُ۬')
+      .replaceFirstMapped(
+        RegExp(r'([اآ]ٓ?)۟$'),
+        (m) => last == null ? m[0]! : '${m[1]}$last۬',
+      );
+}
+
+/// A row easing the hamza that begins its word (شُهَدَآءَ إِذۡ).
+bool _easesFirstHamza(Variant v) =>
+    v.kind == VariantKind.hamza &&
+    v.rule != 'tasheel_pair_first' &&
+    RegExp('تسهيل|تخفيف الهمزة').hasMatch(v.description);
+
+/// Where Ashab al-Silah's [drawn] word eases a hamza, and the hamza of
+/// [hafs] there for its vowel: the dot their source writes on its seat
+/// (ءَٰا۬نذَرْتَهُمُۥ، أَرَءَ۬يْتَ), which the font draws as a big round blot;
+/// or, when [initial], the word's first hamza eased after the one before
+/// (شُهَدَآءَ إِذۡ), which the Madinah script took for a wasl alif (ٱذۡ) or a
+/// bare one (ا۟مَّةٗ), or which is written as Hafs. The tasheel dot of Warsh
+/// takes its place (أَءِذَا).
+(int, String)? _easedHamzaDot(
+  String drawn,
+  String hafs, {
+  required bool initial,
+}) {
+  final letters = lettersOf(drawn);
+  final own = lettersOf(hafs);
+  final hamza = RegExp('^[ءأإآؤئ]');
+  for (var i = 0; i < letters.length; i++) {
+    // The dot on a first alif is a wasl's.
+    if (!letters[i].contains('۬') ||
+        !RegExp(i == 0 ? '^[ءؤئ]' : '^[اءؤئ]').hasMatch(letters[i])) {
+      continue;
+    }
+    final h = own.elementAtOrNull(i);
+    return (
+      i,
+      RegExp('^[ءؤئ]').hasMatch(letters[i])
+          ? letters[i]
+          : h != null && hamza.hasMatch(h)
+          ? h
+          : 'أَ',
+    );
+  }
+  final first = letters.firstOrNull ?? '';
+  return initial &&
+          RegExp('^[أإ]').hasMatch(own.firstOrNull ?? '') &&
+          (first.startsWith('ٱ') ||
+              first == 'ا' ||
+              first.startsWith(own.first[0]))
+      ? (0, own.first)
+      : null;
+}
+
 /// One mushaf page: Hafs text with the selected riwayat's differences
 /// applied according to [ReaderSettings.mode], and mutashabihat underlined.
 class MushafPage extends StatefulWidget {
@@ -1342,7 +1411,13 @@ class _MushafPageState extends State<MushafPage>
       if (_dadAsZa(ayah, w) != null) {
         return (text: ayah.words[w], font: 'Hafs');
       }
-      return (text: withNaqlVowel(v.text, ayah.words[w]), font: 'Hafs');
+      final text = withNaqlVowel(v.text, ayah.words[w]);
+      return (
+        text: _ashabSilah.contains(s.displayed)
+            ? _easedAsHafs(text, ayah.words[w], v.kind == VariantKind.hamza)
+            : text,
+        font: 'Hafs',
+      );
     }
     final glyph = qcf && !(w == 0 && (ayah.rubStart != null || ayah.juzStart))
         ? (ayah.glyphs?[w])
@@ -1492,6 +1567,20 @@ class _MushafPageState extends State<MushafPage>
                   widget.settings.kinds.contains(v.kind),
             )
             .firstOrNull;
+
+  (int, String)? _easedHamzaAt(Ayah ayah, int w, String drawn) =>
+      _ashabSilah.contains(widget.settings.displayed)
+      ? _easedHamzaDot(
+          drawn,
+          ayah.words[w],
+          initial: _baseAt(
+            widget.variants,
+            widget.settings,
+            ayah,
+            w,
+          ).any((v) => v.word == w && _easesFirstHamza(v)),
+        )
+      : null;
 
   /// [text] in parts, each affected letter in the colour of its rule.
   List<(String, Color?)>? _letterParts(Ayah ayah, int w, String text) {
@@ -1948,6 +2037,8 @@ class _MushafPageState extends State<MushafPage>
           ];
     final replacement = _replacementAt(ayah, w);
     final ruwaysTasheel = _ruwaysTasheelAt(ayah, w);
+    final drawnText = parts?.map((p) => p.$1).join() ?? shown.text;
+    final eased = hafsFont ? _easedHamzaAt(ayah, w, drawnText) : null;
     final roundedTasheel =
         widget.settings.displayed == 'warsh' &&
         RegExp(r'^[اأ]َ[وي][ْۡ]۟').hasMatch(shown.text) &&
@@ -1998,9 +2089,21 @@ class _MushafPageState extends State<MushafPage>
       return child;
     }
 
-    final drawn = parts?.map((p) => p.$1).join() ?? shown.text;
+    final drawn = drawnText;
     Widget word = ink(drawn);
-    if (replacement != null) {
+    if (eased != null) {
+      final (i, hamza) = eased;
+      word = HamzaReplacementMark(
+        text: drawn,
+        offset: lettersOf(drawn).take(i).join().length,
+        originalHamza: hamza,
+        letter: '',
+        // In the colour of its letter: in ink when nothing is compared.
+        color: expanded?.elementAtOrNull(i)?.$2 ?? m.color ?? MushafColors.ink,
+        style: TextStyle(fontFamily: 'Hafs', fontSize: fontSize, height: 1),
+        builder: ink,
+      );
+    } else if (replacement != null) {
       final h = _hamzaLetter(ayah.words[w]);
       word = HamzaReplacementMark(
         text: drawn,
@@ -2554,6 +2657,86 @@ class _UsulGroup {
   final items = <String, _UsulItem>{};
   final ways = <String>{};
 }
+
+/// The tasheel dot of Ashab al-Silah in [item]'s text, as on the page: the
+/// text with its eased hamza in Hafs's place, the offset of the dot and
+/// Hafs's hamza there.
+(String, int, String)? _usulEasedDot(_UsulItem item) =>
+    _easedDotIn(item.text, item.ayah, item.word, item.readings);
+
+/// [text], read at [word] of [ayah] by [readings], with its tasheel dot. Its
+/// words are Hafs's own from [from], or else beginning where their first
+/// letters agree (هَٰؤُلَآ۟ إِن from the first of the pair, شُهَدَآءَ إِذۡ to the
+/// second).
+(String, int, String)? _easedDotIn(
+  String text,
+  Ayah ayah,
+  int word,
+  List<Variant> readings, {
+  int? from,
+}) {
+  final words = text.split(' ');
+  final hafs = ayah.words;
+  String head(String w) => w.isEmpty
+      ? ''
+      : RegExp('[اأإآٱء]').hasMatch(w[0])
+      ? 'ا'
+      : w[0];
+  var start = from ?? word;
+  for (var s = word - words.length + 1; from == null && s <= word; s++) {
+    if (s < 0) continue;
+    if ([
+      for (final (k, w) in words.indexed)
+        head(w) == head(hafs.elementAtOrNull(s + k) ?? ''),
+    ].every((same) => same)) {
+      start = s;
+      break;
+    }
+  }
+  final hamza = readings.any((v) => v.kind == VariantKind.hamza);
+  final initial = readings.any(_easesFirstHamza);
+  var offset = 0;
+  for (final (k, w) in words.indexed) {
+    final own = hafs.elementAtOrNull(start + k) ?? '';
+    words[k] = _easedAsHafs(w, own, hamza);
+    final dot = _easedHamzaDot(
+      words[k],
+      own,
+      initial: initial && start + k == word,
+    );
+    if (dot != null) {
+      final (i, h) = dot;
+      return (
+        words.join(' '),
+        offset + lettersOf(words[k]).take(i).join().length,
+        h,
+      );
+    }
+    offset += words[k].length + 1;
+  }
+  return null;
+}
+
+/// [shown] in [style], the hamza at [hidden] kept for its room but unseen
+/// under the dot that takes its place.
+Widget _withHiddenHamza(String shown, int? hidden, TextStyle style) =>
+    hidden == null
+    ? QuranWordText(shown, style: style)
+    : Text.rich(
+        TextSpan(
+          children: [
+            for (final (part, color) in HamzaReplacementMark.hideHamza([
+              (shown, null),
+            ], hidden))
+              TextSpan(
+                text: part,
+                style: TextStyle(color: color),
+              ),
+          ],
+        ),
+        textDirection: TextDirection.rtl,
+        style: style,
+      );
 
 class _UsulItem {
   _UsulItem(this.ayah, this.word, this.text, this.stopOnly, this.replacement);
@@ -3663,23 +3846,26 @@ class _UsulBox extends StatelessWidget {
       fontSize: 12 * scale,
       color: color,
     );
-    Widget text(String shown, [int? hiddenHamza]) => hiddenHamza == null
-        ? QuranWordText(shown, style: style)
-        : Text.rich(
-            TextSpan(
-              children: [
-                for (final (part, color) in HamzaReplacementMark.hideHamza([
-                  (shown, null),
-                ], hiddenHamza))
-                  TextSpan(
-                    text: part,
-                    style: TextStyle(color: color),
-                  ),
-              ],
-            ),
-            textDirection: TextDirection.rtl,
-            style: style,
-          );
+    Widget text(String shown, [int? hiddenHamza]) =>
+        _withHiddenHamza(shown, hiddenHamza, style);
+    final eased =
+        item.replacement == null &&
+            item.readings.isNotEmpty &&
+            item.readings.every((v) => _ashabSilah.contains(v.riwayaId))
+        ? _usulEasedDot(item)
+        : null;
+    if (eased != null) {
+      final (shown, offset, hamza) = eased;
+      return HamzaReplacementMark(
+        text: shown,
+        offset: offset,
+        originalHamza: hamza,
+        letter: '',
+        style: style,
+        color: color,
+        builder: text,
+      );
+    }
     if (item.replacement == null) {
       return text(
         item.readings.any(_spacedImala)
@@ -3954,6 +4140,32 @@ class _EntryView extends StatelessWidget {
           ? g.names.single.$2
           : MushafColors.multi,
     );
+    // Ashab al-Silah's eased hamza with the tasheel dot, as on the page.
+    final ashab = [
+      for (final v in e.readings)
+        if (_ashabSilah.contains(v.riwayaId) &&
+            (v.marginText.isNotEmpty ? v.marginText : v.text) == g.text)
+          v,
+    ];
+    final dot = g.font == 'Hafs' && ashab.isNotEmpty
+        ? _easedDotIn(text, e.ayah, ashab.first.word, ashab, from: e.word)
+        : null;
+    if (dot != null) {
+      final (shown, offset, hamza) = dot;
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: HamzaReplacementMark(
+          text: shown,
+          offset: offset,
+          originalHamza: hamza,
+          letter: '',
+          style: style,
+          color: style.color!,
+          builder: (shown, hidden) => _withHiddenHamza(shown, hidden, style),
+        ),
+      );
+    }
     if (g.font == 'Hafs' && HafsFontMarks.needsAdjustment(text)) {
       return WidgetSpan(
         alignment: PlaceholderAlignment.baseline,
