@@ -281,9 +281,18 @@ class _MushafPageState extends State<MushafPage>
         }
       }
     }
+    // The verified readers: a chapter once, at its first word.
+    final notesOf = <String, List<_UsulGroup>>{};
     for (final (index, group) in merged.values.indexed) {
       if (group.items.isEmpty) continue;
-      final first = group.items.values.first;
+      (notesOf[_isUnifiedGroup(group)
+                  ? usulGuideLabel(group.label)
+                  : '$index'] ??=
+              [])
+          .add(group);
+    }
+    for (final (index, of) in notesOf.values.indexed) {
+      final first = of.first.items.values.first;
       notes.add(
         _SequentialNote(
           first.ayah,
@@ -294,7 +303,7 @@ class _MushafPageState extends State<MushafPage>
               'sequential-usul:${VariantRepository.key(first.ayah.surah, first.ayah.number, first.word)}:$index',
             ),
             child: _UsulBox(
-              groups: [group],
+              groups: of,
               onTap: _openUsulReference,
               onGuide: _openUsulGuide,
               scale: 1.1,
@@ -2429,13 +2438,33 @@ List<_UsulGroup> _usulNotes(
   return groups.values.toList();
 }
 
-extension on String {
-  /// These faces with the readers they are of, when [named].
-  String followedBy(_UsulGroup g, bool named) {
-    if (!named) return this;
-    final readers = {for (final i in g.items.values) ...i.riwayat}.toList();
-    return '$this (${readersAr(readers, const [])})';
+/// The readers verified so far share one set of chapters: their rules are
+/// told by chapter, kind, then a table of the word, reader and face.
+bool _isUnifiedGroup(_UsulGroup g) =>
+    g.items.values.every((i) => i.riwayat.every(usulUnifiedRiwayat.contains));
+
+/// Below this a phone's margin has no room for three columns: a table's row
+/// is then told in one column.
+const _tableMinWidth = 200.0;
+
+/// A rule's table: the word and the reader as wide as they need, up to their
+/// share of a narrow margin, and the face all the rest.
+const _tightColumns = <int, TableColumnWidth>{
+  0: MinColumnWidth(IntrinsicColumnWidth(), FractionColumnWidth(0.34)),
+  1: MinColumnWidth(IntrinsicColumnWidth(), FractionColumnWidth(0.2)),
+  2: FlexColumnWidth(),
+};
+
+/// The place of a riwaya in the app's list of the readers.
+int _riwayaRank(String id) {
+  var rank = 0;
+  for (final q in qiraat) {
+    for (final r in q.riwayat) {
+      if (r.id == id) return rank;
+      rank++;
+    }
   }
+  return rank;
 }
 
 class _UsulGroup {
@@ -3115,25 +3144,8 @@ class _UsulBox extends StatelessWidget {
   final double scale;
   final bool compact;
 
-  /// The verified readers' faces of one rule, its name told once above them.
-  bool _unified(_UsulGroup g) => g.items.values.every(
-    (i) => i.riwayat.every(usulUnifiedRiwayat.contains),
-  );
-
-  /// The groups of one rule together, in the order they come.
-  List<_UsulGroup> get _clustered {
-    final labels = <String>[];
-    for (final g in groups) {
-      if (!labels.contains(g.label)) labels.add(g.label);
-    }
-    return [
-      for (final label in labels) ...groups.where((g) => g.label == label),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
-    final groups = _clustered;
     return Container(
       key: const ValueKey('usul-notes'),
       padding: compact
@@ -3146,180 +3158,122 @@ class _UsulBox extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _rules(),
+      ),
+    );
+  }
+
+  /// The rules told: a rule with no kinds or faces on its line; the others
+  /// under the name of their chapter, each kind with its table.
+  List<Widget> _rules() {
+    final rules = <Widget>[];
+    final told = <String>{};
+    for (final g in groups) {
+      if (!_isUnifiedGroup(g)) {
+        rules.add(_plain(g, first: rules.isEmpty));
+        continue;
+      }
+      final chapter = usulGuideLabel(g.label);
+      if (!told.add(chapter)) continue;
+      final of = [
+        for (final o in groups)
+          if (_isUnifiedGroup(o) && usulGuideLabel(o.label) == chapter) o,
+      ];
+      if (of.every((o) => o.label == chapter && o.ways.isEmpty)) {
+        for (final o in of) {
+          rules.add(_plain(o, first: rules.isEmpty));
+        }
+      } else {
+        rules.add(_chapter(chapter, of, first: rules.isEmpty));
+      }
+    }
+    return rules;
+  }
+
+  Widget _chapter(String chapter, List<_UsulGroup> of, {required bool first}) {
+    final labels = {for (final g in of) g.label}.toList();
+    final alone = labels.length == 1 && labels.single == chapter;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final (n, g) in groups.indexed)
+          if (first && !compact)
+            Text(
+              'الأصول',
+              style: TextStyle(
+                fontSize: 8 * scale,
+                fontWeight: FontWeight.bold,
+                color: MushafColors.green,
+              ),
+            ),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: InkWell(
+              key: ValueKey(
+                alone ? 'usul-guide:$chapter' : 'usul-chapter:$chapter',
+              ),
+              onTap: onGuide == null ? null : () => onGuide!(of.first),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: of.first.color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      '$chapter:',
+                      style: TextStyle(
+                        fontSize: 10 * scale,
+                        fontWeight: FontWeight.bold,
+                        color: of.first.color,
+                        decoration: onGuide == null
+                            ? null
+                            : TextDecoration.underline,
+                        decorationColor: of.first.color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          for (final label in labels)
             Padding(
-              padding: const EdgeInsets.only(bottom: 2),
+              padding: EdgeInsetsDirectional.only(start: 10 * scale, top: 2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 2,
-                    children: [
-                      if (n == 0 && !compact)
-                        Text(
-                          'الأصول',
+                  if (label != chapter)
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: InkWell(
+                        key: ValueKey('usul-guide:$label'),
+                        onTap: onGuide == null
+                            ? null
+                            : () => onGuide!(
+                                of.firstWhere((g) => g.label == label),
+                              ),
+                        child: Text(
+                          '${label.substring(chapter.length + 2, label.length - 1)}:',
                           style: TextStyle(
-                            fontSize: 8 * scale,
+                            fontSize: 9 * scale,
                             fontWeight: FontWeight.bold,
-                            color: MushafColors.green,
+                            color: of.first.color,
                           ),
-                        ),
-                      if (n == 0 ||
-                          groups[n - 1].label != g.label ||
-                          !_unified(g) ||
-                          !_unified(groups[n - 1]))
-                      InkWell(
-                        key: ValueKey('usul-guide:${g.label}'),
-                        onTap: onGuide == null ? null : () => onGuide!(g),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: g.color,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                '${g.label}:',
-                                style: TextStyle(
-                                  fontSize: 9 * scale,
-                                  fontWeight: FontWeight.bold,
-                                  color: g.color,
-                                  decoration: onGuide == null
-                                      ? null
-                                      : TextDecoration.underline,
-                                  decorationColor: g.color,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      for (final i in g.items.values)
-                        InkWell(
-                          key: ValueKey(
-                            'usul-reference:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.riwayat.join(',')}',
-                          ),
-                          onTap: () => onTap(i),
-                          child: Wrap(
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              _usulWord(i, g.color),
-                              // How the ya is read (يَدِي: بإسكان الياء).
-                              if (i.readings.any((v) => v.rule == 'ya_idafa'))
-                                Text(
-                                  i.readings.any(
-                                        (v) =>
-                                            v.rule == 'ya_idafa' &&
-                                            v.description.contains('فتح'),
-                                      )
-                                      ? ' (بفتح الياء)'
-                                      : ' (بإسكان الياء)',
-                                  style: TextStyle(
-                                    fontSize: 9 * scale,
-                                    color: g.color,
-                                  ),
-                                ),
-                              // Warsh's taqlil of يُجَٰزِيٓ, read with another face.
-                              if (i.readings.any(
-                                (v) =>
-                                    v.riwayaId == 'warsh' &&
-                                    v.isImala &&
-                                    v.description.contains('بخلف'),
-                              ))
-                                Text(
-                                  ' (بخلف)',
-                                  style: TextStyle(
-                                    fontSize: 9 * scale,
-                                    color: g.color,
-                                  ),
-                                ),
-                              // بَنَىٰهَا and its neighbours, with the fath.
-                              if (i.readings.any(
-                                (v) =>
-                                    v.riwayaId == 'warsh' &&
-                                    v.isImala &&
-                                    v.description.contains('والتقليل مقدم'),
-                              ))
-                                Text(
-                                  ' (له الفتح والتقليل والتقليل مقدم)',
-                                  style: TextStyle(
-                                    fontSize: 9 * scale,
-                                    color: g.color,
-                                  ),
-                                ),
-                              // Its two faces (ذِكۡرًا، سِتۡرًا، إِمۡرًا).
-                              if (i.readings.any(
-                                (v) =>
-                                    v.rule == 'tarqiq' && v.usulWays.length > 1,
-                              ))
-                                Text(
-                                  ' (بالتفخيم والترقيق)',
-                                  style: TextStyle(
-                                    fontSize: 9 * scale,
-                                    color: g.color,
-                                  ),
-                                ),
-                              if (i.stopOnly)
-                                Text(
-                                  ' (وقفًا فقط)',
-                                  style: TextStyle(
-                                    fontSize: 9 * scale,
-                                    color: g.color,
-                                  ),
-                                ),
-                              Text(
-                                ' (${readersAr(i.riwayat.toList(), const [])})',
-                                style: TextStyle(
-                                  fontSize: 8.5 * scale,
-                                  color: MushafColors.ink,
-                                ),
-                              ),
-                              if (i.ways.isNotEmpty)
-                                Text(
-                                  ' ${i.ways.join('؛ ')}',
-                                  style: TextStyle(
-                                    fontSize: 8.5 * scale,
-                                    color: g.color,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  if (g.ways.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 1, bottom: 1),
-                      child: Text(
-                        g.ways
-                            .toList()
-                            .asMap()
-                            .entries
-                            .map((e) => '${e.key + 1}- ${e.value}')
-                            .join('؛ ')
-                            .followedBy(g, _unified(g)),
-                        key: ValueKey(
-                          g.label.contains('في كلمة') ||
-                                  g.label.startsWith('الهمزتان من كلمة (')
-                              ? 'hamza-word-ways'
-                              : 'hamza-ways:${g.label}:${g.ways.join('|')}',
-                        ),
-                        style: TextStyle(
-                          fontSize: 9 * scale,
-                          height: 1.3,
-                          color: g.color,
                         ),
                       ),
                     ),
+                  _table([
+                    for (final g in of)
+                      if (g.label == label) g,
+                  ]),
                 ],
               ),
             ),
@@ -3327,6 +3281,267 @@ class _UsulBox extends StatelessWidget {
       ),
     );
   }
+
+  /// The word, its reader and the face, a row for each reader's own; in the
+  /// order of the readers' list.
+  Widget _table(List<_UsulGroup> of) {
+    final rows = <(_UsulGroup, List<_UsulItem>, List<String>, String)>[];
+    for (final g in of) {
+      // One word of one face, however each reader's text writes it.
+      final places = <String, (_UsulItem, Set<String>)>{};
+      for (final i in g.items.values) {
+        final place = places.putIfAbsent(
+          '${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.stopOnly}',
+          () => (i, {}),
+        );
+        place.$2.addAll(i.riwayat);
+      }
+      final byRow = <String, (List<_UsulItem>, List<String>, String)>{};
+      for (final (i, readers) in places.values) {
+        final ordered = readers.toList()
+          ..sort((a, b) => _riwayaRank(a).compareTo(_riwayaRank(b)));
+        // Told by its faces, or else by the wording of its row.
+        final faces = g.ways.isNotEmpty
+            ? g.ways
+                  .toList()
+                  .asMap()
+                  .entries
+                  .map((e) => '${e.key + 1}- ${e.value}')
+                  .join('؛ ')
+            : i.readings.first.description.replaceFirst(RegExp('^ب'), '');
+        byRow
+            .putIfAbsent(
+              '${ordered.join(',')}:$faces',
+              () => ([], ordered, faces),
+            )
+            .$1
+            .add(i);
+      }
+      for (final (items, readers, faces) in byRow.values) {
+        rows.add((g, items, readers, faces));
+      }
+    }
+    rows.sort(
+      (a, b) => _riwayaRank(a.$3.first).compareTo(_riwayaRank(b.$3.first)),
+    );
+    Widget cell(Widget child) =>
+        Padding(padding: const EdgeInsets.all(2), child: child);
+    Widget wordsOf(_UsulGroup g, List<_UsulItem> items) => Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (final (n, i) in items.indexed) ...[
+          if (n > 0)
+            Text(
+              '، ',
+              style: TextStyle(fontSize: 9 * scale, color: g.color),
+            ),
+          _item(g, i, named: false),
+        ],
+      ],
+    );
+    Widget face(_UsulGroup g, String faces) => Text(
+      faces,
+      key: ValueKey(
+        g.label.startsWith('الهمزتان من كلمة (')
+            ? 'hamza-word-ways'
+            : 'hamza-ways:${g.label}:${g.ways.join('|')}',
+      ),
+      style: TextStyle(fontSize: 8.5 * scale, height: 1.3, color: g.color),
+    );
+    Widget reader(List<String> readers) => Text(
+      readersAr(readers, const []),
+      style: TextStyle(fontSize: 8.5 * scale, color: MushafColors.ink),
+    );
+    final border = TableBorder.all(
+      color: MushafColors.gold.withAlpha(120),
+      width: 0.5,
+    );
+    return LayoutBuilder(
+      builder: (context, box) => box.maxWidth < _tableMinWidth
+          ? Table(
+              border: border,
+              children: [
+                for (final (g, items, readers, faces) in rows)
+                  TableRow(
+                    children: [
+                      cell(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            wordsOf(g, items),
+                            reader(readers),
+                            face(g, faces),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            )
+          : Table(
+              columnWidths: _tightColumns,
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              border: border,
+              children: [
+                for (final (g, items, readers, faces) in rows)
+                  TableRow(
+                    children: [
+                      cell(wordsOf(g, items)),
+                      cell(reader(readers)),
+                      cell(face(g, faces)),
+                    ],
+                  ),
+              ],
+            ),
+    );
+  }
+
+  Widget _plain(_UsulGroup g, {required bool first}) => Padding(
+    padding: const EdgeInsets.only(bottom: 2),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 2,
+          children: [
+            if (first && !compact)
+              Text(
+                'الأصول',
+                style: TextStyle(
+                  fontSize: 8 * scale,
+                  fontWeight: FontWeight.bold,
+                  color: MushafColors.green,
+                ),
+              ),
+            InkWell(
+              key: ValueKey('usul-guide:${g.label}'),
+              onTap: onGuide == null ? null : () => onGuide!(g),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: g.color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      '${g.label}:',
+                      style: TextStyle(
+                        fontSize: 9 * scale,
+                        fontWeight: FontWeight.bold,
+                        color: g.color,
+                        decoration: onGuide == null
+                            ? null
+                            : TextDecoration.underline,
+                        decorationColor: g.color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            for (final i in g.items.values) _item(g, i),
+          ],
+        ),
+        if (g.ways.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 1, bottom: 1),
+            child: Text(
+              g.ways
+                  .toList()
+                  .asMap()
+                  .entries
+                  .map((e) => '${e.key + 1}- ${e.value}')
+                  .join('؛ '),
+              key: ValueKey(
+                g.label.contains('في كلمة') ||
+                        g.label.startsWith('الهمزتان من كلمة (')
+                    ? 'hamza-word-ways'
+                    : 'hamza-ways:${g.label}:${g.ways.join('|')}',
+              ),
+              style: TextStyle(
+                fontSize: 9 * scale,
+                height: 1.3,
+                color: g.color,
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+
+  Widget _item(_UsulGroup g, _UsulItem i, {bool named = true}) => InkWell(
+    key: ValueKey(
+      'usul-reference:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.riwayat.join(',')}',
+    ),
+    onTap: () => onTap(i),
+    child: Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _usulWord(i, g.color),
+        // How the ya is read (يَدِي: بإسكان الياء).
+        if (i.readings.any((v) => v.rule == 'ya_idafa'))
+          Text(
+            i.readings.any(
+                  (v) => v.rule == 'ya_idafa' && v.description.contains('فتح'),
+                )
+                ? ' (بفتح الياء)'
+                : ' (بإسكان الياء)',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
+        // Warsh's taqlil of يُجَٰزِيٓ, read with another face.
+        if (i.readings.any(
+          (v) =>
+              v.riwayaId == 'warsh' &&
+              v.isImala &&
+              v.description.contains('بخلف'),
+        ))
+          Text(
+            ' (بخلف)',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
+        // بَنَىٰهَا and its neighbours, with the fath.
+        if (i.readings.any(
+          (v) =>
+              v.riwayaId == 'warsh' &&
+              v.isImala &&
+              v.description.contains('والتقليل مقدم'),
+        ))
+          Text(
+            ' (له الفتح والتقليل والتقليل مقدم)',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
+        // Its two faces (ذِكۡرًا، سِتۡرًا، إِمۡرًا).
+        if (i.readings.any((v) => v.rule == 'tarqiq' && v.usulWays.length > 1))
+          Text(
+            ' (بالتفخيم والترقيق)',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
+        if (i.stopOnly)
+          Text(
+            ' (وقفًا فقط)',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
+        if (named)
+          Text(
+            ' (${readersAr(i.riwayat.toList(), const [])})',
+            style: TextStyle(fontSize: 8.5 * scale, color: MushafColors.ink),
+          ),
+        if (i.ways.isNotEmpty)
+          Text(
+            ' ${i.ways.join('؛ ')}',
+            style: TextStyle(fontSize: 8.5 * scale, color: g.color),
+          ),
+      ],
+    ),
+  );
 
   Widget _usulWord(_UsulItem item, Color color) {
     final style = TextStyle(
@@ -3475,73 +3690,142 @@ class _EntryView extends StatelessWidget {
     // at a glance.
     final quran = (compact ? 10.5 : 13.0) * scale;
     final reading = (compact ? 14.0 : 17.0) * scale;
+    final word = Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: e.hafs,
+            style: TextStyle(
+              fontFamily: 'Hafs',
+              fontSize: quran,
+              height: 1.4,
+              color: e.color,
+              backgroundColor: e.readings.every((v) => v.isMarginNote)
+                  ? null
+                  : e.color.withAlpha(28),
+            ),
+          ),
+          // Confirmed by the certified source (التسهيل).
+          if (e.readings.every((v) => v.certified))
+            TextSpan(
+              text: ' ✓',
+              style: TextStyle(
+                fontSize: quran * 0.8,
+                color: MushafColors.green,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+        ],
+      ),
+    );
     return InkWell(
       key: ValueKey(
         'margin-reference:${e.ayah.surah}:${e.ayah.number}:${e.word}',
       ),
       onTap: () => onTap(e.ayah, e.word),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: e.hafs,
-                  style: TextStyle(
-                    fontFamily: 'Hafs',
-                    fontSize: quran,
-                    height: 1.4,
-                    color: e.color,
-                    backgroundColor: e.readings.every((v) => v.isMarginNote)
-                        ? null
-                        : e.color.withAlpha(28),
-                  ),
-                ),
-                // Confirmed by the certified source (التسهيل).
-                if (e.readings.every((v) => v.certified))
-                  TextSpan(
-                    text: ' ✓',
-                    style: TextStyle(
-                      fontSize: quran * 0.8,
-                      color: MushafColors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          for (final g in _readings(
-            e.readings,
-            e.ayah.words
-                .sublist(e.word, e.word + e.readings.first.count)
-                .join(' '),
-          ))
-            Text.rich(
-              TextSpan(
+      child: LayoutBuilder(
+        builder: (context, box) =>
+            box.maxWidth >= _tableMinWidth &&
+                e.readings.every((v) => usulUnifiedRiwayat.contains(v.riwayaId))
+            ? _table(e, word, label, reading * 0.85)
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (var i = 0; i < g.names.length; i++)
-                    TextSpan(
-                      text: i == 0 ? g.names[i].$1 : ' و${g.names[i].$1}',
-                      style: label.copyWith(
-                        color: g.names[i].$2,
-                        fontWeight: FontWeight.w600,
+                  word,
+                  for (final g in _readings(
+                    e.readings,
+                    e.ayah.words
+                        .sublist(e.word, e.word + e.readings.first.count)
+                        .join(' '),
+                  ))
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          for (var i = 0; i < g.names.length; i++)
+                            TextSpan(
+                              text: i == 0
+                                  ? g.names[i].$1
+                                  : ' و${g.names[i].$1}',
+                              style: label.copyWith(
+                                color: g.names[i].$2,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          TextSpan(text: ': ', style: label),
+                          if (g.text.isNotEmpty ||
+                              g.description.isEmpty ||
+                              g.imala)
+                            _wordSpan(g, e, reading),
+                          if (g.description.isNotEmpty)
+                            TextSpan(
+                              text: ' ${g.description}',
+                              style: label.copyWith(color: MushafColors.frame),
+                            ),
+                        ],
                       ),
-                    ),
-                  TextSpan(text: ': ', style: label),
-                  if (g.text.isNotEmpty || g.description.isEmpty || g.imala)
-                    _wordSpan(g, e, reading),
-                  if (g.description.isNotEmpty)
-                    TextSpan(
-                      text: ' ${g.description}',
-                      style: label.copyWith(color: MushafColors.frame),
                     ),
                 ],
               ),
-            ),
-        ],
       ),
+    );
+  }
+
+  /// A verified reader's farsh: the word, the reader and the reading.
+  Widget _table(HameshEntry e, Widget word, TextStyle label, double reading) {
+    Widget cell(Widget child) =>
+        Padding(padding: const EdgeInsets.all(1), child: child);
+    return Table(
+      columnWidths: _tightColumns,
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      border: TableBorder.all(
+        color: MushafColors.gold.withAlpha(120),
+        width: 0.5,
+      ),
+      children: [
+        for (final g in _readings(
+          e.readings,
+          e.ayah.words
+              .sublist(e.word, e.word + e.readings.first.count)
+              .join(' '),
+        ))
+          TableRow(
+            children: [
+              cell(word),
+              cell(
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      for (var i = 0; i < g.names.length; i++)
+                        TextSpan(
+                          text: i == 0 ? g.names[i].$1 : '، ${g.names[i].$1}',
+                          style: label.copyWith(
+                            color: g.names[i].$2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              cell(
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      if (g.text.isNotEmpty || g.description.isEmpty || g.imala)
+                        _wordSpan(g, e, reading),
+                      if (g.description.isNotEmpty)
+                        TextSpan(
+                          text: ' ${g.description}',
+                          style: label.copyWith(color: MushafColors.frame),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 

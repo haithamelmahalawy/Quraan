@@ -243,7 +243,7 @@ void main() {
         selected: {'ruways', 'hisham'},
         layout: MarginLayout.sequential,
       );
-      expect(find.text('الإشمام (إشمام حركة بحركة):'), findsOneWidget);
+      expect(find.text('إشمام حركة بحركة:'), findsOneWidget);
       for (final narrator in ['ruways', 'hisham']) {
         expect(
           find.byWidgetPredicate(
@@ -786,7 +786,10 @@ void main() {
     expect(withoutJoinedSeparatedMaddSign('هَٰٓؤُلَآءِ'), 'هَٰؤُلَآءِ');
     expect(withoutJoinedSeparatedMaddSign('يَٰٓأَيُّهَا'), 'يَٰأَيُّهَا');
     expect(withoutJoinedSeparatedMaddSign('يَٰٓـَٔادَمُ'), 'يَٰـَٔادَمُ');
-    expect(withoutJoinedSeparatedMaddSign('ٱلۡمَلَٰٓئِكَةِ'), 'ٱلۡمَلَٰٓئِكَةِ');
+    expect(
+      withoutJoinedSeparatedMaddSign('ٱلۡمَلَٰٓئِكَةِ'),
+      'ٱلۡمَلَٰٓئِكَةِ',
+    );
   });
 
   test('shortening removes only the separated madd at the word end', () {
@@ -912,7 +915,9 @@ void main() {
         final target = word(2, 6, 5);
         expect(target, findsOneWidget);
         final footer = find.byKey(
-          const ValueKey('usul-reference:الهمزتان من كلمة (المفتوحتان):2:6:5:ruways'),
+          const ValueKey(
+            'usul-reference:الهمزتان من كلمة (المفتوحتان):2:6:5:ruways',
+          ),
         );
         expect(footer, findsOneWidget);
         final marginMark = t.widget<HamzaReplacementMark>(

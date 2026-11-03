@@ -152,26 +152,23 @@ void main() {
     expect(variants.at(['warsh'], 5, 110, 36).any((v) => v.inHamesh), isTrue);
   });
 
-  test(
-    'mawudah and mawilan are the exceptions, sawat has its own faces',
-    () {
-      for (final (s, a, w) in [(18, 58, 18), (81, 8, 1)]) {
-        final v = lin(s, a, w);
-        expect(v.rule, 'lin_hamz_exception');
-        expect(v.usulWays, ['القصر حركتان فقط وصلًا ووقفًا']);
-      }
-      for (final (s, a, w) in [
-        (7, 20, 9),
-        (7, 22, 7),
-        (7, 26, 7),
-        (7, 27, 14),
-        (20, 121, 4),
-      ]) {
-        expect(lin(s, a, w).rule, 'lin_hamz_sawat');
-        expect(lin(s, a, w).usulWays, LinHamz.sawat.ways);
-      }
-    },
-  );
+  test('mawudah and mawilan are the exceptions, sawat has its own faces', () {
+    for (final (s, a, w) in [(18, 58, 18), (81, 8, 1)]) {
+      final v = lin(s, a, w);
+      expect(v.rule, 'lin_hamz_exception');
+      expect(v.usulWays, ['القصر حركتان فقط وصلًا ووقفًا']);
+    }
+    for (final (s, a, w) in [
+      (7, 20, 9),
+      (7, 22, 7),
+      (7, 26, 7),
+      (7, 27, 14),
+      (20, 121, 4),
+    ]) {
+      expect(lin(s, a, w).rule, 'lin_hamz_sawat');
+      expect(lin(s, a, w).usulWays, LinHamz.sawat.ways);
+    }
+  });
 
   test('lin and its exceptions cite their own Shatibiyya verses', () {
     final surahs = [for (final s in quran.surahs) s.nameAr];
@@ -297,10 +294,7 @@ void main() {
       await showPage(t, page);
       final notes = find.byKey(const ValueKey('usul-notes'));
       expect(
-        find.descendant(
-          of: notes,
-          matching: find.text('مد اللين المهموز (مستثنى):'),
-        ),
+        find.descendant(of: notes, matching: find.text('مستثنى:')),
         findsOneWidget,
       );
       expect(

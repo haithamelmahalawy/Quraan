@@ -1,7 +1,8 @@
 # Builds the iPhone app on GitHub's macOS runners.
 #
-# Always: runs the tests and builds an unsigned .ipa (artifact "ios-unsigned"),
-# which can be side-loaded with a free Apple ID (Sideloadly / AltStore).
+# Always: runs the tests on Linux, then builds an unsigned .ipa (artifact
+# "ios-unsigned"), which can be side-loaded with a free Apple ID (Sideloadly /
+# AltStore).
 #
 # When the App Store Connect secrets below are set: signs with automatic
 # (cloud) signing and uploads the build to TestFlight, so it installs on the
@@ -15,6 +16,10 @@ name: iOS
 on:
   push:
     branches: [main]
+    # Only what the app is built from; run by hand for anything else.
+    paths:
+      - 'app/**'
+      - '.github/workflows/ios.yml'
   workflow_dispatch:
 
 # A new push builds only the latest commit: older iOS builds of the same
@@ -24,7 +29,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A test that fails stops the build below, and so any TestFlight upload.
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.6
+          cache: true
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Tests
+        # Golden (screenshot) tests are platform-specific; they run locally.
+        run: flutter test --exclude-tags golden
+
   ios:
+    needs: test
     # Intel: GitHub's Apple-silicon (arm64) macOS runners are short of
     # capacity and jobs waiting for one were cancelled after 15 minutes
     # ("not acquired by Runner of type hosted").
@@ -46,10 +75,6 @@ jobs:
 
       - name: Dependencies
         run: flutter pub get
-
-      - name: Tests
-        # Golden (screenshot) tests are platform-specific; they run locally.
-        run: flutter test --exclude-tags golden
 
       - name: Build number
         run: echo "BUILD_NUMBER=${{ github.run_number }}" >> "$GITHUB_ENV"
@@ -107,7 +132,8 @@ jobs:
       - name: Build and sign
         if: env.HAS_SIGNING == 'true'
         run: |
-          flutter build ios --release --no-codesign --build-number "$BUILD_NUMBER"
+          # Only the build settings: the archive below compiles the app, once.
+          flutter build ios --config-only --release --no-codesign --build-number "$BUILD_NUMBER"
           KEY=~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
           cd ios
           xcodebuild -workspace Runner.xcworkspace -scheme Runner \

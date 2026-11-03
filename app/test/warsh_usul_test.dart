@@ -1845,16 +1845,24 @@ void main() {
         find.byKey(const ValueKey('usul-guide:الهمزتان من كلمة (المفتوحتان)')),
         findsOneWidget,
       );
-      for (final reader in ['ورش', 'هشام', 'رويس']) {
-        expect(
-          find.textContaining(RegExp('1- .*\\($reader\\)\$')),
-          findsWidgets,
-          reason: reader,
-        );
-      }
-      // Ruways's ibdal in السفهاء ألا: told from its row's wording.
+      // One table for the kind, in the order of the readers' list.
+      final kind = t.getTopLeft(find.text('المفتوحتان:')).dy;
+      final y = [
+        for (final r in ['ورش', 'هشام', 'رويس'])
+          find
+              .text(r)
+              .evaluate()
+              .map((e) => t.getTopLeft(find.byWidget(e.widget)).dy)
+              .where((dy) => dy > kind)
+              .reduce((a, b) => a < b ? a : b),
+      ];
+      expect(y[0], lessThan(y[1]));
+      expect(y[1], lessThan(y[2]));
+      expect(find.text('وجه القراءة'), findsNothing);
+      // Ruways's ibdal in السفهاء ألا, as Warsh's: their names in one cell.
+      expect(find.text('ورش، رويس'), findsOneWidget);
       expect(
-        find.textContaining(RegExp('واوًا خالصة وصلاً .*رويس')),
+        find.textContaining('إبدال الهمزة الثانية واوًا خالصة وصلاً'),
         findsOneWidget,
       );
     },
@@ -3009,7 +3017,7 @@ void main() {
     );
     expect(explanation.data, contains('تسهيل الهمزة الثانية بلا إدخال'));
     expect(explanation.data, contains('مع المد المشبع (٦ حركات)'));
-    expect(find.text('الهمزتان من كلمة (المفتوحتان):'), findsOneWidget);
+    expect(find.text('المفتوحتان:'), findsOneWidget);
     expect(
       t.widget<Text>(find.text('الأصول')).style?.fontSize,
       lessThanOrEqualTo(8),
@@ -3203,7 +3211,7 @@ void main() {
           ReadingColors.naql,
         );
         expect(
-          t.widget<Text>(find.text('الهمز المفرد (إبدال الهمز):')).style?.color,
+          t.widget<Text>(find.text('إبدال الهمز:')).style?.color,
           ReadingColors.hamza,
         );
         expect(t.takeException(), isNull);
