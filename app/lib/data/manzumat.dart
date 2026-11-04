@@ -221,6 +221,7 @@ class Manzumat {
     // «سراط» with the sin is told in its verse alone, wherever it comes.
     final sirat = _sirat(poem, v);
     if (sirat.isNotEmpty) return sirat.contains(n);
+    if (_nansaha(poem, v)) return n == 475;
     final huwa = _abuJafarHuwa(poem, v);
     if (huwa.isNotEmpty) return huwa.contains(n);
     // «وَالصَّادُ زَاياً اشِمَّهَا لَدَى خَلَفٍ وَاشْمِمْ لِخَلاَّدِ الاَوَّلَا» is
@@ -622,6 +623,15 @@ class Manzumat {
     return ok ? {64} : {};
   }
 
+  /// Ibn Kathir's «نَنسَـٔۡهَا» (البقرة ١٠٦): «وَنَنْسَخْ بِهِ ضَمٌّ وَكَسْرٌ كَفَى
+  /// وَنُنْسِهَا مِثْلُهُ مِنْ غَيْرِ هَمْزٍ ذَكَتْ إِلَى».
+  bool _nansaha(Poem poem, Variant v) =>
+      poem == Poem.shatibiyya &&
+      const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+      v.surah == 2 &&
+      v.ayah == 106 &&
+      v.word == 5;
+
   /// Abu Ja'far's eased hamza of «إِسۡرَٰٓءِيلَ», its second, in the single
   /// hamza: «أَرَيْتَ وَإِسْرَائِيْلَ كَائِنْ وَمَدَّ أُدْ».
   Set<int> _abuJafarIsrail(Poem poem, Variant v) =>
@@ -641,6 +651,7 @@ class Manzumat {
     if (hamzaBab.isNotEmpty) return hamzaBab;
     final israil = _abuJafarIsrail(poem, v);
     if (israil.isNotEmpty) return israil;
+    if (_nansaha(poem, v)) return {475};
     final huwa = _abuJafarHuwa(poem, v);
     if (huwa.isNotEmpty) return huwa;
     // Ibn Wardan's naql of «ٱلۡـَٰٔنَ», and of Yunus's «ءَآلۡـَٰٔنَ»: «وَلاَ

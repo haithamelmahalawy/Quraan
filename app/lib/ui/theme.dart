@@ -133,6 +133,10 @@ class InkText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final small = style.fontFamily == 'Hafs'
+        ? smallHamzaAlifParts(parts ?? [(text, null)])
+        : null;
+    if (small != null) return _drawSmallAlif(small);
     if (style.fontFamily == 'Hafs' &&
         HafsFontMarks.needsAdjustment(parts?.map((p) => p.$1).join() ?? text)) {
       return HafsFontMarks(
@@ -142,6 +146,60 @@ class InkText extends StatelessWidget {
       );
     }
     return _draw(context, parts);
+  }
+
+  /// The word of [smallHamzaAlifParts], its outline and fill as [_draw]'s.
+  Widget _drawSmallAlif(List<(String, Color?, bool)> small) {
+    final color = style.color ?? MushafColors.ink;
+    final size = style.fontSize ?? 14;
+    TextStyle sized(TextStyle s, bool isSmall) => isSmall
+        ? s.copyWith(
+            fontSize: size * smallHamzaAlifScale,
+            height: (style.height ?? 1) / smallHamzaAlifScale,
+          )
+        : s;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Text.rich(
+          TextSpan(
+            children: [
+              for (final (t, c, isSmall) in small)
+                TextSpan(
+                  text: t,
+                  style: sized(
+                    TextStyle(
+                      fontFamily: style.fontFamily,
+                      fontSize: size,
+                      height: style.height,
+                      foreground: Paint()
+                        ..style = PaintingStyle.stroke
+                        ..strokeWidth = weight(size) * firmness
+                        ..strokeJoin = StrokeJoin.round
+                        ..color = c ?? color,
+                    ),
+                    isSmall,
+                  ),
+                ),
+            ],
+          ),
+          textDirection: TextDirection.rtl,
+        ),
+        Text.rich(
+          TextSpan(
+            style: style.copyWith(color: color),
+            children: [
+              for (final (t, c, isSmall) in small)
+                TextSpan(
+                  text: t,
+                  style: sized(style.copyWith(color: c ?? color), isSmall),
+                ),
+            ],
+          ),
+          textDirection: TextDirection.rtl,
+        ),
+      ],
+    );
   }
 
   Widget _draw(BuildContext context, List<(String, Color?)>? parts) {

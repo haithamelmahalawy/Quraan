@@ -692,3 +692,30 @@ class _QuranMarkPainter extends CustomPainter {
       style != old.style ||
       scaler != old.scaler;
 }
+
+/// The small alif under the hamza of «فَٱدَّٰرَأۡتُمۡ», as the Madinah print writes
+/// it: the Hafs font has no such letter, and a dagger alif would stand on the
+/// ra. Its share of the word's size; only here, not in «قَرَأۡتَ».
+const smallHamzaAlifScale = .6;
+final _smallHamzaAlif = RegExp('(?<=د[َّ]+ٰرَ)أ[ْۡ]?');
+
+/// [parts] with the small alif told apart, each with whether it is small; null
+/// when the word has none.
+List<(String, Color?, bool)>? smallHamzaAlifParts(
+  List<(String, Color?)> parts,
+) {
+  final match = _smallHamzaAlif.firstMatch(parts.map((p) => p.$1).join());
+  if (match == null) return null;
+  final out = <(String, Color?, bool)>[];
+  var at = 0;
+  for (final (text, color) in parts) {
+    final end = at + text.length;
+    final from = match.start.clamp(at, end) - at;
+    final to = match.end.clamp(at, end) - at;
+    if (from > 0) out.add((text.substring(0, from), color, false));
+    if (to > from) out.add((text.substring(from, to), color, true));
+    if (to < text.length) out.add((text.substring(to), color, false));
+    at = end;
+  }
+  return out;
+}

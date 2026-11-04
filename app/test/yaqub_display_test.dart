@@ -8,6 +8,7 @@ import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/reading_comparison.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
+import 'package:qiraat_mushaf/ui/hafs_font_marks.dart';
 import 'package:qiraat_mushaf/ui/hamza_replacement_mark.dart';
 import 'package:qiraat_mushaf/ui/letter_above_mark.dart';
 import 'package:qiraat_mushaf/ui/quran_word_text.dart';
@@ -228,6 +229,53 @@ void main() {
       expect(t.takeException(), isNull);
     }
   });
+
+  test(
+    '«فادارأتم»: a small alif for Abu Ja\'far, the hamza for the others',
+    () {
+      String written(String id) =>
+          variants.at([id], 2, 72, 3).firstWhere((v) => v.text.isNotEmpty).text;
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        expect(written(id), 'فَٱدَّٰرَٰتُمُۥ', reason: id);
+      }
+      // «وَمِيكَٰٓئِلَ»: one note for Qalun and Abu Ja'far, the dagger alif.
+      final mikail = variants.at(['qalun'], 2, 98, 7).single;
+      expect(mikail.text, contains('ٰ'));
+      expect(mikail.description, 'بهمزة مكسورة بعد الألف');
+      for (final id in ['warsh', 'ibn_wardan', 'ibn_jammaz']) {
+        final v = variants.at([id], 2, 98, 7).single;
+        expect(v.text, mikail.text, reason: id);
+        expect(v.description, mikail.description, reason: id);
+      }
+      for (final id in ['bazzi', 'qunbul']) {
+        expect(
+          variants.at([id], 2, 98, 7).single.description,
+          'بهمزة مكسورة بعد الألف وبعدها ياء ساكنة',
+          reason: id,
+        );
+      }
+      // «أَنۢبِئَآءَ»: its ya the hamza, not «بالهمز».
+      for (final id in ['qalun', 'warsh']) {
+        expect(
+          variants
+              .at([id], 2, 91, 23)
+              .where((v) => v.rule == 'hamza_zaida')
+              .single
+              .description,
+          'بإبدال الياء همزة',
+          reason: id,
+        );
+      }
+      // Drawn small in this word alone, as the print's; not in «قَرَأۡتَ».
+      expect(smallHamzaAlifParts([('قَرَأۡتَ', null)]), isNull);
+      expect(smallHamzaAlifParts([('فَٱدَّٰرَأۡتُمُۥ', null)])?[1].$3, isTrue);
+      for (final id in ['qalun', 'bazzi', 'qunbul']) {
+        // As Hafs's on the page: an alif with the hamza on it.
+        expect(written(id), 'فَٱدَّٰرَأۡتُمُۥ', reason: id);
+        expect(variants.at([id], 2, 72, 3), hasLength(1), reason: id);
+      }
+    },
+  );
 
   test("no word of Abu Ja'far is lost, and «يأمركم» is usul", () {
     // Each row on the words its text reads; these alone are read as one or

@@ -984,7 +984,45 @@ Map<String, int> buildAshabSilahUsul(
     if (gone) count('same_kasr_ha');
     return gone;
   });
+  // «فَٱدَّٰرَٰءۡتُمۡ» (البقرة ٧٢): the small alif under its hamza, as Hafs but for
+  // the silah; Abu Ja'far's changed, a small alif in its place.
+  bool faddara(List v) => v[0] == 2 && v[1] == 72 && v[2] == 3;
+  bool mimSilah(List v) => '${v[6]}'.trim() == 'بصلة ميم الجمع';
+  rows.removeWhere(
+    (v) => faddara(v) && RegExp('^ب?الهمز و').hasMatch('${v[6]}'),
+  );
+  for (final v in rows) {
+    if (!faddara(v)) continue;
+    if (_abuJafar(id)) {
+      v[4] = mimSilah(v) ? '' : 'فَٱدَّٰرَٰتُمُۥ';
+    } else if (mimSilah(v)) {
+      v[4] = 'فَٱدَّٰرَأۡتُمُۥ';
+    }
+  }
   if (_abuJafar(id)) {
+    // «ءَأَنتُمۡ» (البقرة ١٤٠) as Qalun's, on its word alone: not «قُلۡ» or
+    // «أَعۡلَمُ» with it, and its silah in the one row.
+    rows.removeWhere(
+      (v) =>
+          v[0] == 2 && v[1] == 140 && (v[2] == 12 && v[3] == 3 || v[2] == 13),
+    );
+    final at140 = rows.indexWhere(
+      (v) => (v[0] as int) * 1000 + (v[1] as int) > 2 * 1000 + 140,
+    );
+    rows.insert(at140 < 0 ? rows.length : at140, [
+      2,
+      140,
+      13,
+      1,
+      'ءَٰا۬نتُمُۥ',
+      'h',
+      'بتسهيل الهمزة الثانية مع الإدخال، بصلة ميم الجمع',
+      'tasheel_word',
+      {
+        'context': 'ءَأَنتُمۡ',
+        'ways': ['تسهيل الهمزة الثانية مع الإدخال'],
+      },
+    ]);
     // Two words his source writes joined, or on the word before.
     for (final (key, before) in const [
       ('10:16:7', 'أَد'),

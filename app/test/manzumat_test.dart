@@ -346,6 +346,45 @@ void main() {
     }
   });
 
+  test('«ننسأها» of Ibn Kathir, and «وأوصى» one note', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded([
+      'bazzi',
+      'qunbul',
+      'qalun',
+      'ibn_wardan',
+      'ibn_jammaz',
+    ]);
+    for (final id in ['bazzi', 'qunbul']) {
+      final v = variants.at([id], 2, 106, 5).single;
+      expect(v.description, 'بفتح النون الأولى والسين وزيادة الهمزة بعد السين');
+      final r = manzumat.referenceOf(
+        v,
+        'نُنسِهَا',
+        2,
+        surahs,
+        entries: book.at(2, 106, 5),
+      );
+      expect(r.mention, {475}, reason: id);
+    }
+    // «ءَأَنتُمۡ» (البقرة ١٤٠): Abu Ja'far's as Qalun's, on its word alone.
+    final antum = variants.at(['qalun'], 2, 140, 13).single;
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final v = variants.at([id], 2, 140, 13).single;
+      expect(v.text, antum.text, reason: id);
+      expect(v.description, antum.description, reason: id);
+      expect(v.count, 1, reason: id);
+      expect(variants.at([id], 2, 140, 12), isEmpty, reason: id);
+      expect(variants.at([id], 2, 140, 14), isEmpty, reason: id);
+    }
+    final qalun = variants.at(['qalun'], 2, 132, 0).single;
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final v = variants.at([id], 2, 132, 0).single;
+      expect(v.text, qalun.text, reason: id);
+      expect(v.description, qalun.description, reason: id);
+    }
+  });
+
   test("Abu Ja'far's ikhfa cites «وَبِخَا وَغَيْنِ الاِخْفَا»", () async {
     final variants = await VariantRepository.discover();
     await variants.ensureLoaded(['ibn_wardan', 'ibn_jammaz']);

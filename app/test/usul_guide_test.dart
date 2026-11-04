@@ -645,14 +645,25 @@ void main() {
       expect(usulOfRiwaya(variants, quran, id).keys, contains('ياءات الإضافة'));
     }
     // A word's letters are farsh, the silah beside them usul.
-    final both = variants.at(['bazzi'], 2, 72, 3);
+    final bazzi = variants.allOf('bazzi');
+    final silah = {
+      for (final v in bazzi)
+        if (v.isUsul && v.description.contains('صلة'))
+          '${v.surah}:${v.ayah}:${v.word}',
+    };
     expect(
-      both.where((v) => v.isUsul && v.description.contains('صلة')),
+      bazzi.where(
+        (v) =>
+            !v.isUsul &&
+            !v.description.contains('صلة') &&
+            silah.contains('${v.surah}:${v.ayah}:${v.word}'),
+      ),
       isNotEmpty,
     );
+    // «فَٱدَّٰرَءۡتُمُۥ»: his hamza as Hafs's, the silah alone told.
     expect(
-      both.where((v) => !v.isUsul && !v.description.contains('صلة')),
-      isNotEmpty,
+      variants.at(['bazzi'], 2, 72, 3).single.description,
+      contains('صلة'),
     );
   });
 

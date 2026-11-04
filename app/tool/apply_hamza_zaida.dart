@@ -118,7 +118,42 @@ void applyHuzuan(String id, Map quran, List rows) {
   }
 }
 
+/// «وَمِيكَىٰلَ» (البقرة ٩٨): one note for Nafi' and Abu Ja'far, its alif the
+/// dagger one; Ibn Kathir's with its ya, worded without the madd.
+void applyMikail(String id, List rows) {
+  for (final v in rows.cast<List>()) {
+    if (v[0] != 2 || v[1] != 98 || v[2] != 7 || v[5] != 'f') continue;
+    if (const {'qalun', 'warsh', 'ibn_wardan', 'ibn_jammaz'}.contains(id)) {
+      v
+        ..[4] = 'وَمِيكَٰٓئِلَ'
+        ..[6] = 'بهمزة مكسورة بعد الألف';
+    } else if (id == 'bazzi' || id == 'qunbul') {
+      v[6] = 'بهمزة مكسورة بعد الألف وبعدها ياء ساكنة';
+    }
+  }
+  for (final v in rows.cast<List>()) {
+    if (v[5] != 'f') continue;
+    // «وَأَوْصَىٰ» (البقرة ١٣٢): Abu Ja'far's as Qalun's, one note.
+    if (v[0] == 2 &&
+        v[1] == 132 &&
+        v[2] == 0 &&
+        (id == 'ibn_wardan' || id == 'ibn_jammaz')) {
+      v
+        ..[4] = 'وَأَوْصَىٰ'
+        ..[6] = 'بزيادة الهمزة وإسكان الواو وتخفيف الصاد';
+    }
+    // «نَنسَـٔۡهَا» (البقرة ١٠٦) of Ibn Kathir.
+    if (v[0] == 2 &&
+        v[1] == 106 &&
+        v[2] == 5 &&
+        (id == 'bazzi' || id == 'qunbul')) {
+      v[6] = 'بفتح النون الأولى والسين وزيادة الهمزة بعد السين';
+    }
+  }
+}
+
 void applyHamzaZaida(String id, Map quran, List rows) {
+  applyMikail(id, rows);
   applyHamzaHadhf(id, rows);
   applyHuzuan(id, quran, rows);
   if (!hamzaZaidaReaders.contains(id)) return;
@@ -139,8 +174,11 @@ void applyHamzaZaida(String id, Map quran, List rows) {
     }
     var how = '${v[6]}'
         .replaceAll(RegExp(r'\s*(مع ثلاثة البدل|والمد)'), '')
-        .replaceFirst('بإبدال الياء همزة', 'بالهمز')
         .trim();
+    // «أَنۢبِئَآءَ»: its ya the hamza, not one added (ٱلنَّبِيٓءُ).
+    if (_bare(words[key]!).contains('أنبيا')) {
+      how = how.replaceFirst(RegExp(r'^بالهمز$'), 'بإبدال الياء همزة');
+    }
     if (id == 'warsh' && badal.contains(key)) how = '$how مع ثلاثة البدل';
     while (v.length < 8) {
       v.add('');

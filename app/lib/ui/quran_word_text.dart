@@ -17,6 +17,31 @@ class QuranWordText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final small = style.fontFamily == 'Hafs'
+        ? smallHamzaAlifParts([(text, style.color)])
+        : null;
+    if (small != null) {
+      final size = style.fontSize ?? 14;
+      return Text.rich(
+        TextSpan(
+          children: [
+            for (final (s, _, isSmall) in small)
+              TextSpan(
+                text: s,
+                style: isSmall
+                    ? TextStyle(
+                        fontSize: size * smallHamzaAlifScale,
+                        height: (style.height ?? 1) / smallHamzaAlifScale,
+                      )
+                    : null,
+              ),
+          ],
+        ),
+        style: style,
+        textDirection: TextDirection.rtl,
+        textAlign: textAlign,
+      );
+    }
     if (style.fontFamily != 'Hafs' || !HafsFontMarks.needsAdjustment(text)) {
       return Text(
         text,
