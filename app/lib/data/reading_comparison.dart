@@ -144,7 +144,10 @@ String? _yaIdafa(Variant v) {
 }
 
 bool _lexical(Variant v) =>
-    (v.inHamesh || _writtenIdgham(v) || _yaIdafaRule(v)) &&
+    (v.inHamesh ||
+        // «اتخذتم، أخذتم»: told in the usul alone, shaded where it differs.
+        _writtenIdgham(v) && v.description != 'بإدغام الذال في التاء' ||
+        _yaIdafaRule(v)) &&
     !v.isMarginNote &&
     !v.readsAsHafs;
 

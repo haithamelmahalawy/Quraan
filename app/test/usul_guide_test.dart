@@ -29,6 +29,51 @@ void main() {
     ]);
   });
 
+  test('«اتخذتم، أخذتم» is one idgham on its word, for all who merge it', () {
+    final sites = <(int, int, int)>{
+      for (var p = 1; p <= quran.pageCount; p++)
+        for (final a in quran.page(p))
+          for (final (w, word) in a.words.indexed)
+            if (word.contains('خَذۡت')) (a.surah, a.number, w),
+    }.toList();
+    expect(sites, hasLength(18));
+    for (final id in [
+      'shubah',
+      'qalun',
+      'ibn_wardan',
+      'ibn_jammaz',
+      'warsh',
+      'hisham',
+      'ibn_dhakwan',
+      'rawh',
+    ]) {
+      for (final (s, a, w) in sites) {
+        final told = [
+          for (final v in variants.at([id], s, a, w))
+            if (v.description.contains('إدغام الذال')) v,
+        ];
+        expect(told, hasLength(1), reason: '$id $s:$a:$w');
+        // Told of its word alone (not «قل أتخذتم»), in the usul.
+        expect(told.single.word, w, reason: '$id $s:$a:$w');
+        expect(told.single.count, 1, reason: '$id $s:$a:$w');
+        expect(told.single.rule, 'idgham_saghir', reason: '$id $s:$a:$w');
+        expect(told.single.kind, VariantKind.usul, reason: '$id $s:$a:$w');
+      }
+    }
+    // Ibn Kathir, Hafs and Ruways with izhar, as Hafs.
+    for (final id in ['bazzi', 'qunbul', 'ruways']) {
+      for (final (s, a, w) in sites) {
+        expect(
+          variants
+              .at([id], s, a, w)
+              .where((v) => v.description.contains('إدغام الذال')),
+          isEmpty,
+          reason: '$id $s:$a:$w',
+        );
+      }
+    }
+  });
+
   test('«فيغرقكم» has two faces for Ibn Wardan, one for Ibn Jammaz', () {
     List<Variant> farsh(String id) => [
       for (final v in variants.at([id], 17, 69, 12))
@@ -200,7 +245,8 @@ void main() {
     // Its 95 and the 29 of the second hamza changed; تشاء أنت is told once.
     expect(lin['الهمزتان من كلمتين'], hasLength(124));
     expect(kinds('الهمز المفرد').where((k) => k.contains('  ')), isEmpty);
-    expect(lin['الإدغام'], hasLength(21));
+    // With the 18 of «اتخذتم، أخذتم» (إدغام الذال في التاء).
+    expect(lin['الإدغام'], hasLength(39));
     expect(lin['ترك السكت'], hasLength(3));
     expect(lin['النقل'], hasLength(3541));
     expect(lin['مد أنا'], hasLength(12));

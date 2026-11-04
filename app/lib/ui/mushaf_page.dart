@@ -59,6 +59,8 @@ String _easedAsHafs(String text, String hafs, bool hamza) {
 bool _easesFirstHamza(Variant v) =>
     v.kind == VariantKind.hamza &&
     v.rule != 'tasheel_pair_first' &&
+    // Its ibdal first, in the circle (يَشَآءُ إِلَىٰ for Abu Ja'far).
+    v.hamzaReplacement == null &&
     RegExp('تسهيل|تخفيف الهمزة').hasMatch(v.description);
 
 /// Where Ashab al-Silah's [drawn] word eases a hamza, and the hamza of
@@ -1507,7 +1509,9 @@ class _MushafPageState extends State<MushafPage>
   }
 
   Variant? _replacementAt(Ayah ayah, int w) =>
-      !const {'warsh', 'ruways', 'rawh'}.contains(widget.settings.displayed)
+      !const {'warsh', 'ruways', 'rawh'}.contains(widget.settings.displayed) &&
+          // Ashab al-Silah's ibdal too, in Warsh's circle (ٱلسُّفَهَآءُ أَلَآ).
+          !_ashabSilah.contains(widget.settings.displayed)
       ? null
       : [
               ..._baseAt(widget.variants, widget.settings, ayah, w),
@@ -2583,7 +2587,13 @@ List<_UsulGroup> _usulNotes(
         final same = word
             .replaceAll(RegExp('[ۖ-ۜ]'), '')
             .replaceAll('ۡ', 'ْ')
-            .replaceAll(RegExp('[ىے]'), 'ي');
+            .replaceAll(RegExp('[ىے]'), 'ي')
+            // Nor its dhal merged into the ta, told in its own chapter: one
+            // silah of «أَتَّخَذۡتُمُۥ» for al-Bazzi and Abu Ja'far.
+            .replaceAllMapped(
+              RegExp('ذْ?ت([َُِ]?)ّ?([َُِ]?)'),
+              (m) => 'ذت${m[1]}${m[2]}',
+            );
         final item = g.items.putIfAbsent(
           hasYaqub
               ? 'yaqub:${v.stopOnly}:$same:${v.hamzaReplacement}'

@@ -90,6 +90,33 @@ void main() {
 
   Finder word(int s, int a, int w) => find.byKey(ValueKey('word:$s:$a:$w'));
 
+  testWidgets('Ashab al-Silah change the hamza in the circle of Warsh', (
+    t,
+  ) async {
+    for (final (id, number, a, w, letter) in [
+      // ٱلسُّفَهَآءُ أَلَآ: a waw, all of them.
+      ('qalun', 3, 13, 12, 'و'),
+      ('bazzi', 3, 13, 12, 'و'),
+      ('qunbul', 3, 13, 12, 'و'),
+      ('ibn_wardan', 3, 13, 12, 'و'),
+      ('ibn_jammaz', 3, 13, 12, 'و'),
+      // يَشَآءُ إِلَىٰ: the waw their first face; Qalun's the tasheel.
+      ('bazzi', 22, 142, 18, 'و'),
+      ('ibn_wardan', 22, 142, 18, 'و'),
+      ('qalun', 22, 142, 18, ''),
+    ]) {
+      await page(t, id, number: number, selected: {id});
+      final mark = t.widget<HamzaReplacementMark>(
+        find.ancestor(
+          of: word(2, a, w),
+          matching: find.byType(HamzaReplacementMark),
+        ),
+      );
+      expect(mark.letter, letter, reason: '$id 2:$a:$w');
+      expect(t.takeException(), isNull);
+    }
+  });
+
   testWidgets('Ashab al-Silah ease the hamza with the tasheel dot', (t) async {
     for (final (id, number, a, w, hamza) in [
       // ءَٰا۬نذَرْتَهُمُۥ: the source's dot, over the alif.

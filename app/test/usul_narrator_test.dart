@@ -47,7 +47,8 @@ void main() {
       number: 1,
       page: 1,
       juz: 1,
-      words: ['ٱتَّخَذۡتُمُ'],
+      // Not «اتخذتم»: told in the usul alone, never compared as written.
+      words: ['لَبِثۡتُمۡ'],
     );
     final rows = [
       for (final id in ['shubah', 'warsh', 'hisham', 'ibn_dhakwan'])
@@ -57,12 +58,12 @@ void main() {
           ayah: 1,
           word: 0,
           count: 1,
-          text: 'ٱتَّخَتُّمُ',
+          text: 'لَبِتُّمۡ',
           kind: id == 'shubah' || id == 'warsh'
               ? VariantKind.farsh
               : VariantKind.usul,
           rule: id == 'shubah' || id == 'warsh' ? '' : 'idgham',
-          description: 'بإدغام الذال في التاء',
+          description: 'بإدغام الثاء في التاء',
         ),
     ];
     final repository = _Variants(rows);
@@ -146,7 +147,9 @@ void main() {
         // Shown alone, nothing of it is coloured; Warsh's reading differs.
         expect(
           qila.parts?.first.$2,
-          selected.length == 1 ? isNot(ReadingColors.ishmam) : ReadingColors.ishmam,
+          selected.length == 1
+              ? isNot(ReadingColors.ishmam)
+              : ReadingColors.ishmam,
         );
         expect(t.takeException(), isNull);
       }

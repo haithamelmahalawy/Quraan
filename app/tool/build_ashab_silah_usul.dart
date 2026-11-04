@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:qiraat_mushaf/data/arabic.dart';
 
 import 'apply_first_sakin.dart';
+import 'apply_idgham_dhal.dart';
 
 const ashabSilahSource = 'ashab_silah_pdf';
 const ashabSilahRiwayat = [
@@ -932,6 +933,7 @@ Map<String, int> buildAshabSilahUsul(
     return gone;
   });
   applyFirstSakin(id, quran, rows);
+  applyIdghamDhal(id, quran, rows);
   data['variants'] = rows;
   data['reviewedUsul'] = true;
   return counts;

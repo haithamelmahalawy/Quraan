@@ -171,18 +171,15 @@ void main() {
     expect(colours(17), colours(16));
   });
 
-  test('Rawh: the dhal merged into the ta, as at 2:92, in the hamesh', () {
+  test('Rawh: the dhal merged into the ta, in the usul, as at 2:92', () {
     for (final (a, w) in [(80, 8), (92, 5)]) {
-      final farsh = variants
-          .at(['rawh'], 2, a, w)
-          .where((v) => v.word == w && v.inHamesh);
-      expect(
-        farsh.map((v) => v.description),
-        contains('بإدغام الذال في التاء'),
-      );
+      final told = variants.at(['rawh'], 2, a, w).where((v) => v.word == w);
+      expect(told.single.rule, 'idgham_saghir');
+      expect(told.single.description, 'بإدغام الذال في التاء');
+      expect(told.single.inHamesh, isFalse);
     }
     // 3:81 «وأخذتم» too; Ruways reads them as Hafs.
-    expect(variants.at(['rawh'], 3, 81, 21).any((v) => v.inHamesh), isTrue);
+    expect(variants.at(['rawh'], 3, 81, 21).single.rule, 'idgham_saghir');
     expect(
       variants.at(['ruways'], 2, 80, 8).where((v) => v.word == 8),
       isEmpty,

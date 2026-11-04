@@ -93,9 +93,16 @@ void main() {
             displayed: base == 'hafs' ? null : base,
             selected: [selected],
           );
+          // A usul alone: told beside Hafs when shown, never in the hamesh;
+          // shown in a merging riwaya, the page colours it against Hafs.
           expect(
             differences.isNotEmpty,
-            (base == 'hafs') != (selected == 'hafs'),
+            base == 'hafs' && selected != 'hafs',
+            reason: '$base / $selected',
+          );
+          expect(
+            differences.where((v) => v.inHamesh),
+            isEmpty,
             reason: '$base / $selected',
           );
         }

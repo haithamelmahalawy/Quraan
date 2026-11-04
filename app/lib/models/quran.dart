@@ -154,6 +154,12 @@ class Variant {
             RegExp(r'ءِ[ۖ-ۭ]*$').hasMatch(usulText.split(' ').first) &&
             usulText.split(' ').last.startsWith('إِ') =>
       'ي',
+    // Al-Bazzi's and Abu Ja'far's ibdal, their first face (يَشَآءُ إِلَىٰ).
+    'tasheel_pair'
+        when const {'bazzi', 'ibn_wardan', 'ibn_jammaz'}.contains(riwayaId) &&
+            (usulWays.firstOrNull?.startsWith('إبدال الهمزة الثانية واوًا') ??
+                false) =>
+      'و',
     _ => null,
   };
 
