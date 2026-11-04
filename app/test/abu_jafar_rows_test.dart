@@ -232,6 +232,16 @@ void main() {
     expect(v[6], contains('اختلاس'));
   });
 
+  test('Ibn Kathir\'s «يعذب»: shown alone, its ba with qalqala', () {
+    for (final id in const ['bazzi', 'qunbul']) {
+      final v = rowsOf(
+        id,
+      ).firstWhere((v) => v[0] == 2 && v[1] == 284 && v[2] == 20);
+      expect(v[5], 'f');
+      expect(v[6], 'بإسكان الباء مع الإظهار والقلقلة');
+    }
+  });
+
   test('Qalun\'s «فاذكروني» is written without the madd', () {
     final v = rowsOf('qalun')
         .firstWhere((v) => v[0] == 2 && v[1] == 152 && v[2] == 0);

@@ -131,6 +131,13 @@ void applyMikail(String id, List rows) {
       v[6] = 'بهمزة مكسورة بعد الألف وبعدها ياء ساكنة';
     }
   }
+  // «وَيُعَذِّبۡ مَن» (البقرة ٢٨٤) of Ibn Kathir: shown, its ba with qalqala.
+  if (id == 'bazzi' || id == 'qunbul') {
+    for (final v in rows.cast<List>()) {
+      if (v[0] != 2 || v[1] != 284 || v[2] != 20 || v[5] != 'f') continue;
+      v[6] = 'بإسكان الباء مع الإظهار والقلقلة';
+    }
+  }
   // «فَنِعۡمَّا» (البقرة ٢٧١) of Qalun: the sukun first, or the kasra stolen.
   if (id == 'qalun') {
     for (final v in rows.cast<List>()) {
