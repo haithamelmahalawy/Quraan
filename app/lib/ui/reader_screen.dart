@@ -20,7 +20,7 @@ import 'mushaf_page.dart';
 import 'page_side_hint.dart';
 import 'mutashabihat_sheet.dart';
 import 'raised.dart';
-import 'riwayat_menu.dart';
+import 'riwayat_panel.dart';
 import 'search_screen.dart';
 import 'surah_index.dart';
 import 'page_slider.dart';
@@ -86,6 +86,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   /// Full-screen reading: no bars, no hamesh.
   bool _fullScreen = false;
+  final _rightMargin = ValueNotifier<MarginRule?>(null);
 
   /// While a page is zoomed in, drags pan it instead of turning pages.
   bool _zoomed = false;
@@ -457,6 +458,10 @@ class _ReaderScreenState extends State<ReaderScreen>
       showHamesh: hamesh,
       onZoomChanged: (z) => setState(() => _zoomed = z),
       onPageNumberTap: _pickPage,
+      // The hamesh the list of the riwayat may cover, of the page in sight.
+      onRightMargin: number == _page
+          ? (rule) => _rightMargin.value = rule
+          : null,
       // The QCF page fonts draw the Madinah pages only.
       qcf:
           widget.settings.qcfFont &&
@@ -501,7 +506,13 @@ class _ReaderScreenState extends State<ReaderScreen>
             : page(_pageAt(i), hamesh: !_fullScreen),
       ),
     );
-    final pages = _withHint(book);
+    // «الرواة» at the right of the screen, the mushaf smaller beside it.
+    final pages = RiwayatPanel(
+      settings: widget.settings,
+      variants: widget.variants,
+      rightMargin: two ? null : _rightMargin,
+      child: _withHint(book),
+    );
 
     if (_fullScreen) {
       return Scaffold(
@@ -591,10 +602,6 @@ class _ReaderScreenState extends State<ReaderScreen>
                               child: Text(layout.labelAr),
                             ),
                         ],
-                      ),
-                      RiwayatMenu(
-                        settings: widget.settings,
-                        variants: widget.variants,
                       ),
                       RaisedIcon(
                         icon: Icons.search_rounded,

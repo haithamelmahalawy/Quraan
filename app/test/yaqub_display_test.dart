@@ -305,6 +305,16 @@ void main() {
     }
   });
 
+  testWidgets('a note of the hamesh stands level with its word', (t) async {
+    await page(t, null, number: 1, selected: {'qalun', 'bazzi'});
+    final note = t.getCenter(
+      find.byKey(const ValueKey('margin-reference:1:4:0')),
+    );
+    final ink = t.getCenter(word(1, 4, 0));
+    expect((note.dy - ink.dy).abs(), lessThan(12));
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('a hamza dropped or added colours its word on the page', (
     t,
   ) async {
@@ -520,10 +530,10 @@ void main() {
         final key = (widget.key as ValueKey<String>).value;
         final parts = key.split(':').skip(1).map(int.parse).toList();
         expect(
-          (t.getTopLeft(find.byKey(widget.key!)).dy -
-                  t.getTopLeft(word(parts[0], parts[1], parts[2])).dy)
+          (t.getCenter(find.byKey(widget.key!)).dy -
+                  t.getCenter(word(parts[0], parts[1], parts[2])).dy)
               .abs(),
-          lessThan(90),
+          lessThan(65),
         );
       }
       expect(t.takeException(), isNull);

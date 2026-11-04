@@ -55,6 +55,29 @@ void main() {
         },
       );
 
+      test('Hafs is not noted against a silah alone (تفادوهم)', () {
+        final notes = compareReadings(
+          repository: variants,
+          ayah: quran.ayah(2, 85),
+          word: 17,
+          displayed: 'ibn_wardan',
+          selected: const ['hafs', 'bazzi', 'ibn_wardan'],
+        ).where((v) => v.inHamesh);
+        // Al-Bazzi reads it otherwise; Hafs reads it as the one shown.
+        expect({for (final v in notes) v.riwayaId}, {'bazzi'});
+      });
+
+      test('«فنعما»: Qalun\'s two faces and Abu Ja\'far\'s one are apart', () {
+        final notes = compareReadings(
+          repository: variants,
+          ayah: quran.ayah(2, 271),
+          word: 3,
+          displayed: 'qalun',
+          selected: const ['ibn_wardan'],
+        ).where((v) => v.inHamesh);
+        expect({for (final v in notes) v.riwayaId}, {'ibn_wardan'});
+      });
+
       test('a silah alone adds no note', () {
         final ayah = quran.ayah(2, 191);
         final notes = otherBodyNotes(variants, ayah, 17, 'qalun', const [

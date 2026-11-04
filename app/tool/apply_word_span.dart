@@ -258,6 +258,7 @@ const Map<String, (int, int, String?, String?)?> _placed = {
   '35:28:12+2': (1, 1, 'اِ۪نَّ', null),
   '35:43:4+2': (5, 1, 'اِ۪لَّا', null),
   '37:25:2+2': (1, 1, 'تَّنَاصَرُونَ', null),
+  '22:56:3+2': null,
   '38:1:0+2': (0, 1, null, null),
   '38:23:6+2': (1, 1, 'وَلِيْ', null),
   '40:26:11+3': (1, 2, 'وَأَن', null),
@@ -318,6 +319,23 @@ const _writtenAs = {
   '12:43:22': 'لِلرُّيَّا',
   '78:37:5': 'ٱلرَّحۡمَٰنُ',
   '83:14:1': 'بَلۡ رَّانَ',
+};
+
+/// Rows whose source leaves their text unwritten or tells them amiss: what
+/// they read, how they are kept, and their wording; `null` where they read as
+/// Hafs.
+const Map<String, (String, String, String)?> _toldAs = {
+  // «رِيَآءَ»: its hamza a ya, in the usul.
+  '2:264:11': ('رِيَآءَ', 'h', 'بإبدال الهمزة ياءً'),
+  '8:47:7': ('وَرِيَآءَ', 'h', 'بإبدال الهمزة ياءً'),
+  // One face, against Qalun's two.
+  '2:271:3': ('فَنِعۡمَّا', 'f', 'بإسكان العين'),
+  '19:43:0': ('يَٰٓأَبَتَ', 'f', 'بفتح التاء'),
+  '19:44:0': ('يَٰٓأَبَتَ', 'f', 'بفتح التاء'),
+  '19:45:0': ('يَٰٓأَبَتَ', 'f', 'بفتح التاء'),
+  '78:19:0': ('وَفُتِّحَتِ', 'f', 'بتشديد التاء الأولى'),
+  '7:26:7': null,
+  '53:11:4': null,
 };
 
 /// Told twice on one word: its sakin hamza is told in the usul.
@@ -540,6 +558,19 @@ int applyVowelsFromHafs(Map quran, List rows) {
     }
     if (v[0] == 24 && v[1] == 61 && v[2] == 24 && v[5] == 'f') {
       v[4] = 'أُمَّهَٰتِكُمُۥ';
+    }
+    final place = '${v[0]}:${v[1]}:${v[2]}';
+    if (v[5] != 'u' && _toldAs.containsKey(place)) {
+      final told = _toldAs[place];
+      if (told == null) {
+        gone.add(v);
+      } else {
+        v
+          ..[4] = told.$1
+          ..[5] = told.$2
+          ..[6] = told.$3;
+      }
+      continue;
     }
     // Written by hand: their sources' letters bare or mistaken.
     final fixed = _writtenAs['${v[0]}:${v[1]}:${v[2]}'];

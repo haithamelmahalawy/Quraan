@@ -104,6 +104,23 @@ bool _easesFirstHamza(Variant v) =>
       : null;
 }
 
+/// How much of the page's right the list of the riwayat lies over: what is
+/// told under the page stays clear of it, as the printed page does.
+class PageCover extends InheritedWidget {
+  const PageCover({super.key, required this.right, required super.child});
+
+  final double right;
+
+  static double rightOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<PageCover>()?.right ?? 0;
+
+  @override
+  bool updateShouldNotify(PageCover old) => right != old.right;
+}
+
+/// A hamesh's width for a page's: a share of it, within two bounds.
+typedef MarginRule = ({double share, double least, double most});
+
 /// One mushaf page: Hafs text with the selected riwayat's differences
 /// applied according to [ReaderSettings.mode], and mutashabihat underlined.
 class MushafPage extends StatefulWidget {
@@ -121,7 +138,12 @@ class MushafPage extends StatefulWidget {
     this.qcf = false,
     this.onAyahTap,
     this.onAyahWordTap,
+    this.onRightMargin,
   });
+
+  /// How wide the hamesh at the page's right is for a page's width, if it has
+  /// one: what the list of the riwayat may cover in place of the mushaf.
+  final ValueChanged<MarginRule?>? onRightMargin;
 
   final int page;
   final QuranRepository quran;
@@ -409,10 +431,7 @@ class _MushafPageState extends State<MushafPage>
     }
     return [
       for (final note in notes)
-        math.max(
-          0.0,
-          top + (lineOf[note.position] ?? 0) * lineHeight - lineHeight * 0.3,
-        ),
+        math.max(0.0, top + ((lineOf[note.position] ?? 0) + .5) * lineHeight),
     ];
   }
 
@@ -422,6 +441,11 @@ class _MushafPageState extends State<MushafPage>
         if (line is TextLine) ...line.words,
     ], _showFarshMargins ? _hameshEntries(ayahs) : []);
     final rail = notes.isEmpty ? 0.0 : (size.width * 0.20).clamp(60.0, 220.0);
+    _reportMargin(
+      notes.isNotEmpty && widget.quran.isRightPage(widget.page)
+          ? (share: .20, least: 60, most: 220)
+          : null,
+    );
     final textHeight = math.max(
       1.0,
       size.height - 30 - 2 * OrnamentFrame.inset - _PageFrame.numberHeight,
@@ -505,7 +529,16 @@ class _MushafPageState extends State<MushafPage>
   /// A large, continuously scrolling print. Fixed side margins follow
   /// only the lines currently in view; their own scroll keeps dense
   /// readings accessible without reducing the font or dropping notes.
+  void _reportMargin(MarginRule? rule) {
+    final report = widget.onRightMargin;
+    if (report == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) report(rule);
+    });
+  }
+
   Widget _landscapePage(List<Ayah> ayahs, List<MushafLine> lines, Size size) {
+    _reportMargin(null);
     final scroll = _landscapeScroll;
     final sides = widget.showHamesh;
     final entries = _showFarshMargins
@@ -842,6 +875,9 @@ class _MushafPageState extends State<MushafPage>
         ? (size.width * 0.16).clamp(52.0, 104.0)
         : 0.0;
     final rightPage = widget.quran.isRightPage(widget.page);
+    _reportMargin(
+      rightPage && withHamesh ? (share: .16, least: 52, most: 104) : null,
+    );
     final rightWidth = rightPage ? marginWidth : 0.0;
     final leftWidth = rightPage ? 0.0 : marginWidth;
     final pageWidth = size.width - rightWidth - leftWidth;
@@ -922,7 +958,7 @@ class _MushafPageState extends State<MushafPage>
       );
     }
 
-    // Vertical position of each note: level with its word's line.
+    // Vertical position of each note: the middle of its word's line.
     final lineHeight = mushafLines.metrics(textWidth).lineHeight;
     // The printed line each word is on (a Shamarly header takes two).
     final lineOf = <int, int>{};
@@ -941,8 +977,8 @@ class _MushafPageState extends State<MushafPage>
       for (final e in shown)
         math.max(
           0.0,
-          top -
-              lineHeight * 0.45 +
+          top +
+              lineHeight * 0.5 +
               (lineOf[VariantRepository.key(
                         e.ayah.surah,
                         e.ayah.number,
@@ -978,7 +1014,12 @@ class _MushafPageState extends State<MushafPage>
           ),
           if (overflow)
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, 1, 4, 4),
+              padding: EdgeInsets.fromLTRB(
+                4,
+                1,
+                4 + PageCover.rightOf(context),
+                4,
+              ),
               child: KeyedSubtree(
                 key: const ValueKey('bottom-notes'),
                 child: _HameshBox(
@@ -989,7 +1030,11 @@ class _MushafPageState extends State<MushafPage>
                 ),
               ),
             ),
-          ?usulBox,
+          if (usulBox != null)
+            Padding(
+              padding: EdgeInsets.only(right: PageCover.rightOf(context)),
+              child: usulBox,
+            ),
         ],
       ),
     );
@@ -3259,17 +3304,21 @@ class _SequentialNotesLayout extends MultiChildLayoutDelegate {
         ).height,
     };
     final placed = <int, double>{};
+    // Each note's middle on the middle of its word's line.
+    final wanted = {
+      for (final i in shown) i: math.max(0.0, tops[i] - heights[i]! / 2),
+    };
     // In the order of the words: a note of the same line as the one before
     // it (يُجَٰزَىٰٓ … ٱلۡكَفُورُ) goes just under it, not below the page.
     final lexical = shown.where((i) => notes[i].farsh).toList()..sort();
     final order = <int>[];
     var bottom = 0.0;
     for (final i in lexical) {
-      var y = math.max(tops[i], bottom);
+      var y = math.max(wanted[i]!, bottom);
       // Too far below its line (نتقبل … أحسن … ونتجاوز on one line): the
       // notes stacked just above it rise into the free room above them,
       // each still within a line of its own.
-      final need = y - tops[i] - 63;
+      final need = y - wanted[i]! - 63;
       if (need > 0) {
         // How far each note above must move: what the gap under it
         // cannot absorb.
@@ -3280,7 +3329,7 @@ class _SequentialNotesLayout extends MultiChildLayoutDelegate {
         for (final j in order.reversed) {
           rise -= edge - (placed[j]! + heights[j]! + 3);
           if (rise <= 0) break;
-          if (rise > placed[j]! - math.max(0.0, tops[j] - 63)) {
+          if (rise > placed[j]! - math.max(0.0, wanted[j]! - 63)) {
             fits = false;
             break;
           }
@@ -3293,7 +3342,7 @@ class _SequentialNotesLayout extends MultiChildLayoutDelegate {
         }
       }
       // Still beside its line; farther away, below the page.
-      if (y + heights[i]! > size.height || y - tops[i] >= 64) continue;
+      if (y + heights[i]! > size.height || y - wanted[i]! >= 64) continue;
       placed[i] = y;
       order.add(i);
       bottom = y + heights[i]! + 3;
@@ -3406,7 +3455,8 @@ class _NotesLayout extends MultiChildLayoutDelegate {
       final positions = <int, double>{};
       var bottom = 0.0;
       for (final i in columns[c]) {
-        positions[i] = math.max(tops[i], bottom);
+        // Its middle on the middle of its word's line.
+        positions[i] = math.max(tops[i] - heights[i] / 2, bottom);
         bottom = positions[i]! + heights[i] + 3;
       }
       // Float late notes upwards when there is free space in the margin.

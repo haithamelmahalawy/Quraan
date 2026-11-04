@@ -119,6 +119,7 @@ String readingVariantKey(Variant v, {String? baseline}) {
     return 'rule:${v.count}:${v.shownDescription.isNotEmpty ? _descriptionKey(v.shownDescription) : '${v.rule}:${readingTextKey(v.text)}:$marks'}';
   }
   return 'farsh:${v.count}:${readingTextKey(v.text, baseline: baseline)}:$marks:'
+      '${v.description.startsWith('بوجهين') ? _descriptionKey(v.description) : ''}:'
       '${v.text.isEmpty ? _descriptionKey(v.description) : ''}:'
       '${_descriptionKey(v.bookWujuh)}';
 }
@@ -281,16 +282,21 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
         '${v.word - from}:${_descriptionKey(v.bookWujuh)}',
       // Read as Hafs reads it (إِنِّيٓ sakin, وَجۡهِيَ open), the ya is no
       // difference from him; it still is from those who read it otherwise.
+      // Two faces differ from one of them, though written alike (فَنِعۡمَّا).
+      if (v.description.startsWith('بوجهين'))
+        '${v.word - from}:faces:${_descriptionKey(v.description)}',
       if (_yaIdafa(v) case final ya? when ya != _hafsYa(ayah, v.word))
         '${v.word - from}:ya:$ya',
     ],
   ]..sort();
+  // A silah is told in the usul: no difference of the word here, or Hafs would
+  // be noted against Abu Ja'far in «تُفَٰدُوهُمۡ» when another reads it otherwise.
   final applied = _apply(
     ayah,
     rows.where((v) => !v.stopOnly).toList(),
     from,
     to,
-  );
+  ).replaceAll(RegExp('مُۥٓ?(?=[ۖ-ۜ]*( |\$))'), 'مۡ');
   // Hafs's alif marked ۠ (ٱلظُّنُونَا۠) is dropped in wasl only: a reading
   // without it at all (ٱلظُّنُونَ) differs from him when stopping.
   final ownWords = applied.split(' ');

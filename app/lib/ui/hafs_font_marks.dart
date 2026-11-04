@@ -552,6 +552,8 @@ class _QuranMarkPainter extends CustomPainter {
       // So on a ra (أَرَٰٓيْتَكُمْ، إِسۡرَٰٓءِيلَ): over its dagger alif, past
       // the ra's fatha.
       final raDagger = dagger && source.startsWith('ر', at);
+      // So on a kaf (وَمِيكَٰٓئِلَ): over its dagger alif, not the kaf's stem.
+      final kafDagger = dagger && source.startsWith('ك', at);
       // On the others with a fatha (أَتُحَٰٓجُّوٓنِّي، هَٰٓأَنتُمۡ) the dagger
       // alif stands after it, to its left: so its madd.
       final fathaDagger =
@@ -574,6 +576,8 @@ class _QuranMarkPainter extends CustomPainter {
                 ? font * .16
                 : raDagger
                 ? font * .12
+                : kafDagger
+                ? font * .27
                 : fathaDagger
                 ? font * .08
                 // The dagger alif of a final ى (عَلَىٰٓ) stands at its left,
@@ -602,9 +606,8 @@ class _QuranMarkPainter extends CustomPainter {
                           ? .28
                           // Clear of the kasra of the letter before (فَنِع۪مَّا).
                           : source.startsWith('ع', at) &&
-                                RegExp(
-                                  'ِ[ً-ْ]*\$',
-                                ).hasMatch(source.substring(0, at))
+                                RegExp('ِ[ً-ْ]*\$')
+                                    .hasMatch(source.substring(0, at))
                           ? .56
                           : .40)
                     : kasra

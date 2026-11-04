@@ -117,6 +117,21 @@ void main() {
         expect(v[6], 'بإبدال الهمزة ياءً');
       });
 
+      test('«رياء» is its hamza a ya, not a farsh', () {
+        for (final (a, w) in const [(264, 11)]) {
+          final v = at(2, a, w).firstWhere((v) => v[5] == 'h');
+          expect(canon(v[4]), canon('رِيَآءَ'));
+          expect(v[6], 'بإبدال الهمزة ياءً');
+        }
+        expect(at(2, 264, 11).where((v) => v[5] == 'f'), isEmpty);
+      });
+
+      test('«فنعما» with one face, the sukun', () {
+        final v = at(2, 271, 3).single;
+        expect(canon(v[4]), canon('فَنِعۡمَّا'));
+        expect(v[6], 'بإسكان العين');
+      });
+
       test('«جاءته» has no row: its ha is short as Hafs\'s', () {
         expect(at(2, 211, 15), isEmpty);
       });
@@ -234,9 +249,8 @@ void main() {
 
   test('Ibn Kathir\'s «يعذب»: shown alone, its ba with qalqala', () {
     for (final id in const ['bazzi', 'qunbul']) {
-      final v = rowsOf(
-        id,
-      ).firstWhere((v) => v[0] == 2 && v[1] == 284 && v[2] == 20);
+      final v = rowsOf(id)
+          .firstWhere((v) => v[0] == 2 && v[1] == 284 && v[2] == 20);
       expect(v[5], 'f');
       expect(v[6], 'بإسكان الباء مع الإظهار والقلقلة');
     }
