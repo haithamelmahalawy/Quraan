@@ -61,6 +61,439 @@ void main() {
     }
   });
 
+  test('«سراط» with the sin cites its own verse in every place', () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['qunbul', 'ruways', 'qalun', 'khallad']);
+    // «وَعَنْدَ سِرَاطٍ وَالسِّرَاطَ لِ قُنْبُلَا»; «وَبِالسِّيْنِ طِبْ».
+    for (final (id, verses) in [
+      ('qunbul', {108}),
+      ('ruways', {10, 11}),
+    ]) {
+      final sirat = [
+        for (final v in variants.allOf(id))
+          if (!v.isUsul &&
+              v.text.replaceAll(RegExp('[ً-ٰ]'), '').contains('صۜرط'))
+            v,
+      ];
+      expect(sirat.length, greaterThan(40), reason: id);
+      for (final v in sirat) {
+        final r = manzumat.referenceOf(
+          v,
+          quran.ayah(v.surah, v.ayah).words[v.word],
+          v.surah,
+          surahs,
+          entries: book.at(v.surah, v.ayah, v.word),
+        );
+        expect(r.mention, verses, reason: '$id ${v.surah}:${v.ayah}');
+      }
+    }
+    // «وَمَالِكِ يَوْمِ الدِّينِ رَاوِيهِ نَاَصِرٌ», without Hamzah's ishmam.
+    for (final id in ['qunbul', 'qalun', 'khallad']) {
+      final v = variants.at([id], 1, 4, 0).first;
+      final r = manzumat.referenceOf(
+        v,
+        'مَٰلِكِ',
+        1,
+        surahs,
+        entries: book.at(1, 4, 0),
+      );
+      expect(r.mention, {108}, reason: id);
+    }
+  });
+
+  test("Abu Ja'far's «مستهزءون» and its bab are one hamza rule", () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ibn_wardan', 'ibn_jammaz']);
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final bab = [
+        for (final v in variants.allOf(id))
+          if (RegExp('تَهۡزِءُونَ|تَهۡزِءُوا')
+              .hasMatch(quran.ayah(v.surah, v.ayah).words[v.word]))
+            v,
+      ];
+      expect(bab.length, greaterThan(15), reason: id);
+      for (final v in bab) {
+        expect(v.kind, VariantKind.hamza, reason: '$id ${v.surah}:${v.ayah}');
+        expect(v.description, contains('حذف الهمزة'));
+        final r = manzumat.referenceOf(
+          v,
+          quran.ayah(v.surah, v.ayah).words[v.word],
+          v.surah,
+          surahs,
+          entries: book.at(v.surah, v.ayah, v.word),
+        );
+        // «وَيَحْذِفُ مُسْتَهْزُونَ وَالْبَابَ مَعْ تَطَوْا يَطَوْا مُتَّكًا».
+        expect(r.mention, contains(32), reason: '$id ${v.surah}:${v.ayah}');
+      }
+      // «أنبُوني» of the book (البقرة ٣١), in the same bab.
+      final anbi = variants
+          .at([id], 2, 31, 9)
+          .where((v) => v.kind == VariantKind.hamza)
+          .single;
+      expect(anbi.text, 'أَنۢبُونِي');
+      expect(manzumat.referenceOf(anbi, 'أَنۢبِـُٔونِي', 2, surahs).mention, {
+        32,
+      });
+    }
+    // «مُنْشُونَ خُلْفٌ بَدَا»: Ibn Wardan's two faces, Ibn Jammaz as Hafs.
+    final munshi = variants.at(['ibn_wardan'], 56, 72, 5).single;
+    expect(munshi.usulWays, hasLength(2));
+    expect(munshi.usulWays.first, contains('المقدّم'));
+    expect(variants.at(['ibn_jammaz'], 56, 72, 5), isEmpty);
+  });
+
+  test(
+    'Nafi\'s hamza of «النبيء» and without it in «الصابئين»: usul',
+    () async {
+      final quran = await QuranRepository.load();
+      final variants = await VariantRepository.discover();
+      await variants.ensureLoaded([
+        'qalun',
+        'warsh',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]);
+      for (final id in ['qalun', 'warsh']) {
+        final nabiyyin = variants
+            .at([id], 2, 61, 51)
+            .where((v) => v.rule == 'hamza_zaida')
+            .single;
+        expect(nabiyyin.isUsul, isTrue, reason: id);
+        expect(nabiyyin.inHamesh, isFalse, reason: id);
+        expect(nabiyyin.description, isNot(contains('والمد')), reason: id);
+        expect(
+          nabiyyin.description,
+          id == 'warsh'
+              ? 'بزيادة الهمزة وإسكان الياء مخففة وحذف الياء مع ثلاثة البدل'
+              : 'بزيادة الهمزة وإسكان الياء مخففة وحذف الياء',
+        );
+        // Its small ya after the hamza, apart from it.
+        expect(nabiyyin.text, matches(RegExp('ـ[ِٕ]+ـۧ')), reason: id);
+        expect(
+          manzumat
+              .referenceOf(nabiyyin, quran.ayah(2, 61).words[51], 2, surahs)
+              .mention,
+          {458},
+        );
+        // No farsh of the book beside it.
+        expect(
+          variants.at([id], 2, 61, 51).where((v) => v.inHamesh),
+          isEmpty,
+          reason: id,
+        );
+      }
+      for (final id in ['qalun', 'warsh', 'ibn_wardan', 'ibn_jammaz']) {
+        for (final (s, a, w) in [(2, 62, 6), (5, 69, 5), (22, 17, 5)]) {
+          final rows = variants.at([id], s, a, w).toList();
+          final v = rows.single;
+          expect(v.rule, 'hamza_hadhf', reason: '$id $s:$a');
+          // The dagger alif, as Hafs's rasm; vowelled.
+          expect(v.text, contains('صَّٰب'), reason: '$id $s:$a');
+          expect(
+            manzumat
+                .referenceOf(v, quran.ayah(s, a).words[w], s, surahs)
+                .mention,
+            {460},
+            reason: '$id $s:$a',
+          );
+        }
+      }
+    },
+  );
+
+  test('«هزؤا، كفؤا» with the hamza, one usul for six', () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    const ids = [
+      'qalun',
+      'bazzi',
+      'qunbul',
+      'ibn_wardan',
+      'ibn_jammaz',
+      'warsh',
+    ];
+    await variants.ensureLoaded(ids);
+    var places = 0;
+    for (var p = quran.firstPage; p < quran.firstPage + quran.pageCount; p++) {
+      for (final a in quran.page(p)) {
+        for (final (w, word) in a.words.indexed) {
+          if (!RegExp('^(هُزُو|كُفُو)[ًٗ]ا').hasMatch(word)) continue;
+          places++;
+          for (final id in ids) {
+            final rows = variants
+                .at([id], a.surah, a.number, w)
+                .where(
+                  (v) =>
+                      v.description.contains('همز') && v.rule != 'naql_source',
+                );
+            final v = rows.single;
+            expect(v.rule, 'hamza_zaida', reason: '$id ${a.surah}:${a.number}');
+            expect(v.description, 'بإبدال الواو همزة');
+            expect((v.word, v.count), (w, 1));
+            expect(v.inHamesh, isFalse);
+            expect(manzumat.referenceOf(v, word, a.surah, surahs).mention, {
+              460,
+              461,
+            }, reason: '$id ${a.surah}:${a.number}');
+          }
+        }
+      }
+    }
+    expect(places, 12);
+  });
+
+  test("«الآن»: Ibn Wardan's naql, Qalun and Ibn Jammaz as Hafs", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['qalun', 'ibn_wardan', 'ibn_jammaz']);
+    for (final (s, a, w) in [
+      (2, 71, 17),
+      (2, 187, 23),
+      (4, 18, 13),
+      (8, 66, 0),
+      (12, 51, 19),
+      (72, 9, 8),
+    ]) {
+      final naql = variants.at(['ibn_wardan'], s, a, w).single;
+      expect(naql.rule, 'naql', reason: '$s:$a');
+      expect((naql.word, naql.count), (w, 1));
+      expect(
+        naql.description,
+        s == 2 && a == 71 ? 'بحذف الواو وصلًا وبالنقل' : 'بالنقل',
+      );
+      expect(naql.inHamesh, isFalse);
+      // «وَلاَ نَقْلَ إِلاَّ الآنَ مَعْ يُوْنُسٍ بَدَا».
+      expect(manzumat.referenceOf(naql, naql.text, s, surahs).mention, {36});
+      for (final id in ['qalun', 'ibn_jammaz']) {
+        expect(variants.at([id], s, a, w), isEmpty, reason: '$id $s:$a');
+      }
+    }
+  });
+
+  test("Abu Ja'far's «هو وهي» cite «هُوْ وَهِيْ يُمِلَّ هْوَ»", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ibn_wardan']);
+    for (final (s, a, w) in [
+      (2, 29, 15),
+      (2, 74, 6),
+      (3, 62, 2),
+      (28, 61, 11),
+    ]) {
+      final v = variants
+          .at(['ibn_wardan'], s, a, w)
+          .where((v) => v.description.contains('إسكان الهاء'))
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        v.text,
+        s,
+        surahs,
+        entries: book.at(s, a, w),
+      );
+      expect(r.mention, {64}, reason: '$s:$a');
+    }
+  });
+
+  test(
+    '«خطيئاته» in the plural, one text for Nafi\' and Abu Ja\'far',
+    () async {
+      final variants = await VariantRepository.discover();
+      await variants.ensureLoaded([
+        'qalun',
+        'ibn_wardan',
+        'ibn_jammaz',
+        'warsh',
+      ]);
+      final qalun = variants
+          .at(['qalun'], 2, 81, 6)
+          .where((v) => v.inHamesh)
+          .single;
+      // Its alif the dagger one, as the rasm.
+      expect(qalun.text, contains('ٰ'));
+      for (final id in ['ibn_wardan', 'ibn_jammaz', 'warsh']) {
+        final v = variants.at([id], 2, 81, 6).where((v) => v.inHamesh).single;
+        expect(v.text, qalun.text, reason: id);
+        expect(v.description, 'بإثبات الألف', reason: id);
+      }
+      // «تَظَّٰهَرُونَ» too, as Qalun's.
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final v = variants.at([id], 2, 85, 10).single;
+        expect(v.text, matches(RegExp('ظ[َّ]+ٰ')), reason: id);
+        expect(v.description, 'بتشديد الظاء', reason: id);
+      }
+    },
+  );
+
+  test("al-Bazzi's «فَلِمَهۡ» and the four with it: two faces", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['bazzi']);
+    final rows = variants.allOf('bazzi').where((v) => v.rule == 'ha_sakt');
+    expect(rows, hasLength(25));
+    final lima = rows.where((v) => v.surah == 2 && v.ayah == 91).single;
+    expect(lima.stopOnly, isTrue);
+    expect(lima.stopText, startsWith('فَلِ'));
+    expect(lima.stopText, endsWith('هۡ'));
+    expect(lima.usulWays, [
+      'الوقف بدون هاء السكت، وهو المقدم',
+      'الوقف بهاء السكت',
+    ]);
+    for (final v in rows) {
+      // «وَفِيمَهْ وَمِمَّهْ قِفْ وَعَمَّهْ لِمَهْ بِمَهْ بِخُلْفٍ عَنِ الْبَزِّيِّ».
+      expect(manzumat.referenceOf(v, v.stopText, v.surah, surahs).mention, {
+        386,
+      }, reason: '${v.surah}:${v.ayah}');
+    }
+  });
+
+  test("Abu Ja'far's ikhfa cites «وَبِخَا وَغَيْنِ الاِخْفَا»", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ibn_wardan', 'ibn_jammaz']);
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final rows = variants.allOf(id).where((v) => v.rule == 'ikhfa');
+      expect(rows.length, greaterThan(200), reason: id);
+      for (final v in rows) {
+        final r = manzumat.referenceOf(v, v.text, v.surah, surahs);
+        expect(r.mention, {42}, reason: '$id ${v.surah}:${v.ayah}');
+      }
+    }
+  });
+
+  test('«اتخذتم، أخذتم» merged cite «فَازَ اتَخَذْتُمْ أَخَذْتُمْ»', () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    const ids = [
+      'shubah', 'qalun', 'ibn_wardan', 'ibn_jammaz', 'warsh', 'hisham', //
+      'ibn_dhakwan',
+    ];
+    await variants.ensureLoaded([...ids, 'rawh']);
+    for (final id in ids) {
+      final rows = [
+        for (final v in variants.allOf(id))
+          if (v.description == 'بإدغام الذال في التاء' &&
+              quran.ayah(v.surah, v.ayah).words[v.word].contains('خَذۡت'))
+            v,
+      ];
+      expect(rows, hasLength(18), reason: id);
+      for (final v in rows) {
+        final hafs = quran.ayah(v.surah, v.ayah).words[v.word];
+        // From the page (Hafs's word) and from the usul (the word as read).
+        for (final word in [hafs, if (v.text.isNotEmpty) v.text]) {
+          final r = manzumat.referenceOf(
+            v,
+            word,
+            v.surah,
+            surahs,
+            entries: book.at(v.surah, v.ayah, v.word),
+          );
+          expect(r.poem, Poem.shatibiyya, reason: '$id ${v.surah}:${v.ayah}');
+          expect(r.mention, {283}, reason: '$id ${v.surah}:${v.ayah}');
+        }
+      }
+    }
+    // Rawh by the Durrah's «أَخَذْتُ طُلُ»: Ruways alone shows it.
+    final rawh = variants
+        .at(['rawh'], 2, 51, 6)
+        .where((v) => v.rule == 'idgham_saghir')
+        .single;
+    expect(manzumat.referenceOf(rawh, rawh.text, 2, surahs).mention, {40});
+  });
+
+  test(
+    "Abu Ja'far's «إسرائيل» cites «أَرَيْتَ وَإِسْرَائِيْلَ كَائِنْ»",
+    () async {
+      final variants = await VariantRepository.discover();
+      await variants.ensureLoaded(['ibn_wardan', 'ibn_jammaz']);
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final rows = [
+          for (final v in variants.allOf(id))
+            if (v.text.contains('سۡرَٰٓءِ۬يل')) v,
+        ];
+        expect(rows, hasLength(40), reason: id);
+        for (final v in rows) {
+          // From the page (Hafs's word) and from the usul (its own text).
+          for (final word in ['إِسۡرَٰٓءِيلَ', v.text]) {
+            final r = manzumat.referenceOf(
+              v,
+              word,
+              v.surah,
+              surahs,
+              entries: book.at(v.surah, v.ayah, v.word),
+            );
+            expect(r.mention, {34}, reason: '$id ${v.surah}:${v.ayah}');
+          }
+        }
+      }
+    },
+  );
+
+  test("Qunbul's second hamza changed: its letter and one length", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['qunbul']);
+    const tasheel = 'تسهيل الهمزة الثانية، وهو المقدم';
+    for (final (s, a, w, ibdal) in [
+      (2, 31, 12, 'ياءً مدية مع المد المشبع (٦ حركات)'),
+      (32, 5, 4, 'ياءً مدية مع القصر (حركتان)'),
+      // The kasra of wasl: as هَٰٓؤُلَآءِ إِن.
+      (33, 32, 6, 'ياءً مدية مع المد المشبع (٦ حركات)'),
+      (11, 40, 3, 'ألفًا مع المد المشبع (٦ حركات)'),
+      (4, 43, 27, 'ألفًا مع القصر (حركتان)'),
+      // Before the alif of «ءَالَ»: the qasr alone.
+      (15, 61, 2, 'ألفًا مع القصر (حركتان)'),
+      (54, 41, 2, 'ألفًا مع القصر (حركتان)'),
+      (46, 32, 14, 'واوًا مدية مع القصر (حركتان)'),
+    ]) {
+      final v = variants
+          .at(['qunbul'], s, a, w)
+          .where((v) => v.rule == 'tasheel_pair')
+          .single;
+      expect(v.usulWays, [
+        tasheel,
+        'إبدال الهمزة الثانية $ibdal',
+      ], reason: '$s:$a');
+    }
+  });
+
+  test("Abu Ja'far's «أنبئهم، ونبئهم» keep the hamza", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ibn_wardan', 'ibn_jammaz']);
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      for (final (s, a, w) in [(2, 33, 2), (15, 51, 0), (54, 28, 0)]) {
+        expect(
+          variants.at([id], s, a, w).where((v) => v.kind == VariantKind.hamza),
+          isEmpty,
+          reason: '$id $s:$a',
+        );
+      }
+      // The rule stays elsewhere: «يُؤۡمِنُونَ» with a waw.
+      expect(
+        variants.allOf(id).where((v) => v.rule == 'ibdal_single').length,
+        greaterThan(1000),
+      );
+    }
+  });
+
+  test('only Hamzah and Hisham read a hamza change on stopping alone', () {
+    // «يستهزُون»: Abu Ja'far in wasl and waqf, Hamzah on stopping; «وبيس»:
+    // Warsh and al-Susi always.
+    for (final (s, a, w, always) in [
+      (6, 5, 11, 'ibn_wardan'),
+      (6, 10, 12, 'ibn_jammaz'),
+      (3, 12, 7, 'warsh'),
+      (3, 12, 7, 'susi'),
+    ]) {
+      final readings = [for (final e in book.at(s, a, w)) ...e.readings];
+      final own = readings.where((r) => r.riwayat.contains(always));
+      expect(own, isNotEmpty, reason: '$s:$a');
+      expect(own.every((r) => !r.stopOnly), isTrue, reason: '$s:$a');
+      expect(
+        readings.where((r) => r.riwayat.contains('khallad') && r.stopOnly),
+        isNotEmpty,
+        reason: '$s:$a',
+      );
+    }
+  });
+
   test('an isri quotes bayt 765 of the book for Warsh', () {
     const v = Variant(
       riwayaId: 'warsh',

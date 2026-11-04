@@ -93,14 +93,19 @@ void main() {
         displayed: null,
         selected: ['warsh'],
       );
+      // «ٱلۡأَنۢبِيَآءَ» with its hamza: in the usul below, not the hamesh.
       expect(
-        compared.where((v) => v.inHamesh).isNotEmpty,
+        compared.where((v) => v.inHamesh),
+        isEmpty,
+        reason: 'word $w: ${ayah.words[w]}',
+      );
+      expect(
+        compared.any((v) => v.rule == 'hamza_zaida'),
         w == 15,
         reason: 'word $w: ${ayah.words[w]}',
       );
       if (w == 15) {
         expect(compared.any((v) => v.rule == 'naql'), isTrue);
-        expect(compared.where((v) => v.inHamesh).single.count, 1);
       }
     }
     // Preserve Hamzah's lexical changes and its explicit tanween/idgham span.

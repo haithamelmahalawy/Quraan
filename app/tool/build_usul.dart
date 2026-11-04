@@ -30,6 +30,7 @@ import 'dart:io';
 import 'package:qiraat_mushaf/data/arabic.dart' show hasWarshTarqiq;
 
 import 'apply_first_sakin.dart';
+import 'apply_hamza_zaida.dart';
 import 'apply_idgham_dhal.dart';
 import 'build_warsh_usul.dart' show correctWarshUsul;
 
@@ -394,6 +395,7 @@ void main() {
     }
     applyFirstSakin(id, quran, variants);
     applyIdghamDhal(id, quran, variants);
+    applyHamzaZaida(id, quran, variants);
     file.writeAsStringSync(jsonEncode(json));
     stdout.writeln(
       '$id: dropped $dropped written as Hafs'

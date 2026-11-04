@@ -100,21 +100,23 @@ class Kharouf {
         section: e[4] as String,
         readings: [
           for (final g in e[5] as List)
-            KharoufReading(
-              text: g[0] as String,
-              riwayat: (g[1] as List).cast<String>(),
-              disputed: (g[2] as List).cast<String>(),
-              how: withoutPageReference(g[3] as String),
-              stopOnly: g[4] as bool,
-              taqlil: g.length > 5 && g[5] == true,
-              notes: [
-                if (g.length > 6)
-                  for (final n in g[6] as List)
-                    (
-                      withoutPageReference(n[0] as String),
-                      (n[1] as List).cast<String>(),
-                    ),
-              ],
+            ..._stopApart(
+              KharoufReading(
+                text: g[0] as String,
+                riwayat: (g[1] as List).cast<String>(),
+                disputed: (g[2] as List).cast<String>(),
+                how: withoutPageReference(g[3] as String),
+                stopOnly: g[4] as bool,
+                taqlil: g.length > 5 && g[5] == true,
+                notes: [
+                  if (g.length > 6)
+                    for (final n in g[6] as List)
+                      (
+                        withoutPageReference(n[0] as String),
+                        (n[1] as List).cast<String>(),
+                      ),
+                ],
+              ),
             ),
         ],
         verses: (e[6] as List).cast<String>(),
@@ -138,6 +140,39 @@ class Kharouf {
       index,
     );
   }();
+
+  /// Hamzah's narrators, and Hisham with them, change the hamza when stopping
+  /// only. The book tells them with those who read it so in wasl too
+  /// («يستهزُون» of Abu Ja'far، «وبيس» of Warsh and al-Susi), marked «وقفاً» as
+  /// a whole: the mark is theirs alone.
+  static const _hamzaStop = {'khalaf_hamzah', 'khallad', 'hisham'};
+
+  static List<KharoufReading> _stopApart(KharoufReading r) {
+    if (!r.stopOnly ||
+        !r.riwayat.any(const {'khalaf_hamzah', 'khallad'}.contains)) {
+      return [r];
+    }
+    KharoufReading part(bool stop) => KharoufReading(
+      text: r.text,
+      riwayat: [
+        for (final id in r.riwayat)
+          if (_hamzaStop.contains(id) == stop) id,
+      ],
+      disputed: [
+        for (final id in r.disputed)
+          if (_hamzaStop.contains(id) == stop) id,
+      ],
+      how: r.how,
+      stopOnly: stop,
+      taqlil: r.taqlil,
+      notes: r.notes,
+    );
+    final always = part(false);
+    return [
+      if (always.riwayat.isNotEmpty || always.disputed.isNotEmpty) always,
+      part(true),
+    ];
+  }
 
   static int _key(int surah, int ayah, int word) =>
       surah * 1000000 + ayah * 1000 + word;

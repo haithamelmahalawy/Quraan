@@ -12,6 +12,7 @@ import 'package:qiraat_mushaf/ui/hamza_replacement_mark.dart';
 import 'package:qiraat_mushaf/ui/letter_above_mark.dart';
 import 'package:qiraat_mushaf/ui/quran_word_text.dart';
 import 'package:qiraat_mushaf/ui/mushaf_page.dart';
+import 'package:qiraat_mushaf/ui/reading_colors.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
 void main() {
@@ -129,6 +130,9 @@ void main() {
       ('ibn_wardan', 6, 31, 12, 'إِ'),
       ('ibn_jammaz', 6, 31, 12, 'إِ'),
       ('qalun', 20, 133, 3, 'إِ'),
+      // إِسۡرَٰٓءِ۬يلَ: the hamza after the alif, not the first.
+      ('ibn_wardan', 7, 40, 1, 'ءِ'),
+      ('ibn_jammaz', 7, 40, 1, 'ءِ'),
     ]) {
       await page(t, id, number: number, selected: {id});
       final mark = t.widget<HamzaReplacementMark>(
@@ -171,6 +175,97 @@ void main() {
       isTrue,
     );
     expect(t.takeException(), isNull);
+  });
+
+  testWidgets("Abu Ja'far's ikhfa colours the letter it is hidden before", (
+    t,
+  ) async {
+    final number = quran.ayah(2, 59).page;
+    for (final shown in ['ibn_wardan', 'qalun']) {
+      await page(
+        t,
+        shown,
+        number: number,
+        selected: {'qalun', 'ibn_wardan'},
+        alert: DiffAlert.glow,
+      );
+      // «قَوۡلًا غَيۡرَ»: the tanween, and the ghayn after it.
+      final ghayr = t.widget<InkText>(word(2, 59, 4));
+      final colour = ReadingColors.forLabel('الإخفاء');
+      expect(ghayr.parts?.first.$2, colour, reason: shown);
+      expect(ghayr.parts?.skip(1).every((p) => p.$2 == null), isTrue);
+      for (final w in [3, 4]) {
+        expect(
+          find.ancestor(
+            of: word(2, 59, w),
+            matching: find.byWidgetPredicate(
+              (x) => x.runtimeType.toString() == '_Alerting',
+            ),
+          ),
+          findsOneWidget,
+          reason: '$shown 2:59:$w',
+        );
+      }
+      // Below, with both words.
+      final item = find.byWidgetPredicate(
+        (x) =>
+            x.key is ValueKey<String> &&
+            (x.key! as ValueKey<String>).value.startsWith(
+              'usul-reference:الإخفاء:2:59:3:',
+            ),
+      );
+      expect(item, findsOneWidget, reason: shown);
+      expect(
+        find.descendant(
+          of: item,
+          matching: find.byWidgetPredicate(
+            (x) => x is RichText && x.text.toPlainText().contains(' غَيۡرَ'),
+          ),
+        ),
+        findsWidgets,
+        reason: shown,
+      );
+      expect(t.takeException(), isNull);
+    }
+  });
+
+  testWidgets("Abu Ja'far's إسرائيل is coloured against the others", (t) async {
+    for (final shown in ['ibn_wardan', 'qalun']) {
+      await page(
+        t,
+        shown,
+        number: 7,
+        selected: {'qalun', 'bazzi', 'ibn_wardan'},
+      );
+      final w = t.widget<InkText>(word(2, 40, 1));
+      // Its hamza hidden under the dot, which takes the hamza's colour.
+      final dot = t.widgetList<HamzaReplacementMark>(
+        find.ancestor(
+          of: word(2, 40, 1),
+          matching: find.byType(HamzaReplacementMark),
+        ),
+      );
+      final colours = {
+        w.style.color,
+        for (final m in dot) m.color,
+        ...?w.parts?.map((p) => p.$2),
+      };
+      expect(colours, contains(ReadingColors.hamza), reason: shown);
+      // In the usul below, by its own chapter.
+      expect(
+        find.byWidgetPredicate(
+          (x) =>
+              x.key is ValueKey<String> &&
+              (x.key! as ValueKey<String>).value.startsWith(
+                'usul-reference:',
+              ) &&
+              (x.key! as ValueKey<String>).value.endsWith(':2:40:1:ibn_wardan'),
+        ),
+        findsOneWidget,
+        reason: shown,
+      );
+      expect(t.takeException(), isNull);
+    }
   });
 
   testWidgets(

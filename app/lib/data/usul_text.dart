@@ -250,6 +250,24 @@ String usulReadingText(
       return madinahScript('$target $second');
     }
   }
+  // Abu Ja'far's ikhfa of the nun before kha and ghayn is of two words
+  // (قَوۡلًا غَيۡرَ): the one it is hidden before as well.
+  if (reading.rule == 'ikhfa' && reading.count == 1 && !target.contains(' ')) {
+    final following = reading.word + 1 < ayah.words.length ? ayah : nextAyah;
+    final nextWord = following == ayah ? reading.word + 1 : 0;
+    if (following != null) {
+      final second = readingText(
+        variants,
+        reading.riwayaId,
+        following,
+        nextWord,
+        nextWord + 1,
+      );
+      if (RegExp('^[خغ]').hasMatch(second)) {
+        return madinahScript('$target $second');
+      }
+    }
+  }
   if (reading.usulText.isEmpty) return target;
   final context = reading.usulText.split(RegExp(r'\s+'));
   // A context opening with the word itself gives what follows it (the

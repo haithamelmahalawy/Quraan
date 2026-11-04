@@ -98,6 +98,14 @@ List<String> usulOf(Variant v) {
     ];
   }
   if (v.rule == 'ha_antum') return ['الهمز المفرد (الهمز المتحرك)'];
+  if (v.rule == 'hamza_hadhf') return ['الهمز المفرد (حذف الهمزة)'];
+  // «ٱلنَّبِيٓءُ» and its bab, for Warsh as for Qalun.
+  if (v.rule == 'hamza_zaida') {
+    return [
+      'الهمز المفرد (زيادة الهمزة)',
+      if (d.contains('صلة ميم الجمع')) 'صلة ميم الجمع',
+    ];
+  }
   if (isWarshHamzaNaql(v)) return ['النقل'];
   if (unified &&
       RegExp('صلة الهاء|الهاء مع الصلة|هاء مضمومة دون صلة').hasMatch(d)) {

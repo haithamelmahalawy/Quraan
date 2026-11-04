@@ -218,8 +218,10 @@ void main() {
     // 19 + 2 + 36 + 34 words, and the 10 of مد الفرق.
     expect(lin['الهمزتان من كلمة'], hasLength(101));
     expect(usulGuideLabel('الهمز المفرد (الهمز المتحرك)'), 'الهمز المفرد');
-    // هأنتم 4, the ibdal of the single hamza 986, مِنسَاتَهُۥ.
-    expect(lin['الهمز المفرد'], hasLength(991));
+    // هأنتم 4, the ibdal of the single hamza 986, مِنسَاتَهُۥ; the 80 of
+    // «ٱلنَّبِيٓءُ» and its bab, the 12 of «هُزُؤًا، كُفُؤًا» and the 3 of
+    // «وَٱلصَّٰبِـِٔينَ».
+    expect(lin['الهمز المفرد'], hasLength(1086));
     expect(
       kinds('الهمز المفرد')
           .where((k) => !k.startsWith('همز «ائتنا» ابتداءً: ')),
@@ -228,6 +230,8 @@ void main() {
         'الإبدال واوًا',
         'الإبدال ألفًا',
         'الإبدال ياءً',
+        'زيادة الهمزة',
+        'حذف الهمزة',
       ]),
     );
     expect(

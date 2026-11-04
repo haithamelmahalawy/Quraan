@@ -1896,7 +1896,8 @@ class _MushafPageState extends State<MushafPage>
   }
 
   /// The word the word before is merged into (حُرِّمَت ظُّهُورُهَا، قَد
-  /// ضَّلُّواْ): its first letter in the idgham's colour, the rest in ink.
+  /// ضَّلُّواْ), or Abu Ja'far's nun hidden before (قَوۡلًا غَيۡرَ): its first
+  /// letter in the rule's colour, the rest in ink.
   List<(String, Color?)>? _idghamInto(Ayah ayah, int w, String text) {
     if (w == 0) return null;
     final s = widget.settings;
@@ -1905,6 +1906,21 @@ class _MushafPageState extends State<MushafPage>
       ..._readingsAt(widget.variants, s, ayah, w - 1).shown,
     ];
     final letters = lettersOf(text);
+    final hidden = before
+        .where(
+          (v) =>
+              v.word == w - 1 &&
+              v.rule == 'ikhfa' &&
+              s.kinds.contains(v.kind) &&
+              RegExp('^[خغ]').hasMatch(letters.firstOrNull ?? ''),
+        )
+        .firstOrNull;
+    if (hidden != null) {
+      return [
+        for (final (i, l) in letters.indexed)
+          (l, i == 0 ? ReadingColors.of(hidden) : null),
+      ];
+    }
     final into = before
         .where(
           (v) =>
@@ -2747,6 +2763,31 @@ Widget _withHiddenHamza(String shown, int? hidden, TextStyle style) =>
         textDirection: TextDirection.rtl,
         style: style,
       );
+
+/// The surahs opening with separate letters; al-Shura's second ayah too.
+const _openingSurahs = {
+  2, 3, 7, 10, 11, 12, 13, 14, 15, 19, 20, 26, 27, 28, 29, 30, 31, 32, //
+  36, 38, 40, 41, 42, 43, 44, 45, 46, 50, 68,
+};
+
+bool _openingLetters(Ayah ayah, int word) =>
+    word == 0 &&
+    _openingSurahs.contains(ayah.surah) &&
+    (ayah.number == 1 || ayah.surah == 42 && ayah.number == 2);
+
+/// The descriptions of [readings], each once; with its readers when the
+/// readings are not told alike.
+List<(String, String?)> _descriptionsOf(List<Variant> readings) {
+  final by = <String, List<String>>{};
+  for (final v in readings) {
+    if (v.shownDescription.isEmpty) continue;
+    (by[v.shownDescription] ??= []).add(v.riwayaId);
+  }
+  return [
+    for (final MapEntry(key: d, value: ids) in by.entries)
+      (d, by.length > 1 ? readersAr(ids, const []) : null),
+  ];
+}
 
 class _UsulItem {
   _UsulItem(this.ayah, this.word, this.text, this.stopOnly, this.replacement);
@@ -3803,6 +3844,14 @@ class _UsulBox extends StatelessWidget {
                 : ' (بإسكان الياء)',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
+        // How the opening letters are read, whatever the chapter (الٓمٓ:
+        // بالسكت على كل حرف، الٓرۚ: بإمالة الراء), by each reader if they differ.
+        if (_openingLetters(i.ayah, i.word))
+          for (final (d, readers) in _descriptionsOf(i.readings))
+            Text(
+              readers == null ? ' ($d)' : ' ($d: $readers)',
+              style: TextStyle(fontSize: 9 * scale, color: g.color),
+            ),
         // Warsh's taqlil of يُجَٰزِيٓ, read with another face.
         if (i.readings.any(
           (v) =>

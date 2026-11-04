@@ -369,6 +369,10 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
           }
           // Do not duplicate an existing rule as a lexical book variant.
           if ((p[4] as String).isEmpty && _matchesUsul(v, how)) found = true;
+          // Nafi''s «ٱلنَّبِيٓءُ» and its bab, told in the usul; the book's
+          // «مع المد المتصل» with it is the madd of the added hamza.
+          // And «وَٱلصَّٰبِـِٔينَ» without it.
+          if (v.rule == 'hamza_zaida' || v.rule == 'hamza_hadhf') found = true;
           // Nor the riwaya's own hamza turned to a letter, which the book
           // writes out (يُوَدِّهِ، تَامَنْهُ): told in the usul.
           if (const {

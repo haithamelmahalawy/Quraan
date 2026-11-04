@@ -1193,16 +1193,17 @@ void main() {
     }
   });
 
-  test('Warsh Sabiin and Sabiun are farsh without madd al-badal', () {
+  test('Warsh Sabiin and Sabiun drop the hamza, without madd al-badal', () {
     for (final (s, a, w) in [(2, 62, 6), (5, 69, 5), (22, 17, 5)]) {
       final word = quran.ayah(s, a).words[w];
       expect(usul_builder.hasBadal(word, '$s:$a'), isFalse);
       final readings = variants.at(['warsh'], s, a, w).toList();
       expect(readings, hasLength(1));
-      expect(readings.single.kind, VariantKind.farsh);
-      expect(readings.single.inHamesh, isTrue);
-      expect(readings.single.isUsul, isFalse);
-      expect(readings.single.description, 'بلا همز');
+      // «الهمز المفرد (حذف الهمزة)», as Qalun's.
+      expect(readings.single.rule, 'hamza_hadhf');
+      expect(readings.single.inHamesh, isFalse);
+      expect(readings.single.isUsul, isTrue);
+      expect(readings.single.description, contains('حذف الهمزة'));
     }
     expect(usul_builder.hasBadal(quran.ayah(2, 62).words[2], '2:62'), isTrue);
   });
@@ -2887,7 +2888,7 @@ void main() {
     }
   });
 
-  testWidgets('page 10 keeps Sabiin in farsh and out of the badal footer', (
+  testWidgets('page 10 tells Sabiin in the single hamza, not the badal', (
     t,
   ) async {
     for (final displayed in [null, 'warsh']) {
@@ -2898,25 +2899,23 @@ void main() {
           ..compareHafs = true
           ..displayed = displayed,
       );
-      final notes = find.byKey(const ValueKey('usul-notes'));
       expect(
-        find.descendant(
-          of: notes,
-          matching: find.byWidgetPredicate(
-            (widget) =>
-                widget is Text &&
-                skeleton(widget.data ?? widget.textSpan?.toPlainText() ?? '')
-                    .contains('لصبين'),
+        find.byKey(
+          const ValueKey(
+            'usul-reference:الهمز المفرد (حذف الهمزة):2:62:6:warsh',
           ),
         ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('usul-reference:مد البدل:2:62:6:warsh')),
         findsNothing,
       );
-      if (displayed == null) {
-        expect(
-          find.byKey(const ValueKey('margin-reference:2:62:6')),
-          findsOneWidget,
-        );
-      }
+      // In the usul below only, not beside the page.
+      expect(
+        find.byKey(const ValueKey('margin-reference:2:62:6')),
+        findsNothing,
+      );
       expect(find.text('مد البدل:'), findsOneWidget);
       expect(t.takeException(), isNull);
     }

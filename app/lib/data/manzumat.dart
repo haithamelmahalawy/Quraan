@@ -121,11 +121,18 @@ class Manzumat {
     List<String> surahNames, {
     Iterable<KharoufEntry> entries = const [],
   }) {
-    final poem = _yaqubShatibiyya(reading) != null
+    final poem =
+        _yaqubShatibiyya(reading) != null ||
+            (_idghamDhal(reading, hafs) ||
+                    const {
+                      'hamza_hadhf',
+                      'hamza_zaida',
+                    }.contains(reading.rule)) &&
+                qiraaOf(reading.riwayaId).id == 'abu_jafar'
         ? Poem.shatibiyya
         : Poem.of(reading.riwayaId);
     var chapter =
-        _usulChapter(poem, reading) ??
+        _usulChapter(poem, reading, hafs) ??
         _surahChapter(poem, surah, surahNames) ??
         chapters(poem).first;
     var inChapter = [
@@ -210,6 +217,16 @@ class Manzumat {
   }
 
   bool _citationFits(Poem poem, Variant v, int n) {
+    // «سراط» with the sin is told in its verse alone, wherever it comes.
+    final sirat = _sirat(poem, v);
+    if (sirat.isNotEmpty) return sirat.contains(n);
+    final huwa = _abuJafarHuwa(poem, v);
+    if (huwa.isNotEmpty) return huwa.contains(n);
+    // «وَالصَّادُ زَاياً اشِمَّهَا لَدَى خَلَفٍ وَاشْمِمْ لِخَلاَّدِ الاَوَّلَا» is
+    // Hamzah's ishmam, not evidence of another reader.
+    if (poem == Poem.shatibiyya && n == 109) {
+      return const {'khalaf_hamzah', 'khallad'}.contains(v.riwayaId);
+    }
     if (poem == Poem.shatibiyya && v.riwayaId == 'warsh' && v.isLinHamz) {
       return v.rule == 'lin_hamz' ? {179, 180}.contains(n) : n == 182;
     }
@@ -336,13 +353,6 @@ class Manzumat {
     // The nun of «يسٓ» and «نٓ» merged into the waw: «وَيَاسِيْنَ أَظْهِرْ عنْ
     // فَتًى حَقُهُ بَدَا وَنُونَ», Ibn 'Amir not among those who show it.
     if (v.description.startsWith('بإدغام النون من «')) return {281};
-    // The dhal of «أَخَذتُّمۡ / ٱتَّخَذتُّمُ» merged into the ta: «فَازَ اتَخَذْتُمْ
-    // أَخَذْتُمْ وَفِي الإِفْرَادِ عاشَرَ دَغْفَلَا».
-    if (v.rule == 'idgham_saghir' &&
-        v.description.contains('الذال في التاء') &&
-        v.text.contains('خَذت')) {
-      return {283};
-    }
     // Ibn Dhakwan's «أَدۡر۪ىٰكَ», imala or fath: «وَبَصْرٍ وَهُمْ أَدْرَى
     // وَبِالْخُلْفِ مُثِّلَا».
     if (v.riwayaId == 'ibn_dhakwan' && v.text.contains('أَدۡر۪')) return {740};
@@ -531,9 +541,125 @@ class Manzumat {
       ? _yaqubInShatibiyya['${v.surah}:${v.ayah}:${v.word}']
       : null;
 
+  /// «سراط، الصراط» with the sin (written صِۜ), wherever it comes: Qunbul's
+  /// «وَعَنْدَ سِرَاطٍ وَالسِّرَاطَ لِ قُنْبُلَا» in the Shatibiyya, Ruways's
+  /// «وَالصِرَاطَ فَأَسْجِلَا وَبِالسِّيْنِ طِبْ» in the Durrah.
+  Set<int> _sirat(Poem poem, Variant v) {
+    if (v.isUsul || !v.text.replaceAll(RegExp('[ً-ٰ]'), '').contains('صۜرط')) {
+      return {};
+    }
+    if (poem == Poem.shatibiyya && v.riwayaId == 'qunbul') return {108};
+    if (poem == Poem.durrah && v.riwayaId == 'ruways') return {10, 11};
+    return {};
+  }
+
+  /// Abu Ja'far drops the hamza of «مستهزءون» and its bab: «وَيَحْذِفُ
+  /// مُسْتَهْزُونَ وَالْبَابَ مَعْ تَطَوْا يَطَوْا مُتَّكًا خَاطِيْنَ مُتَّكِئِي أُولا
+  /// كَمُسْتَهْزِئِيْ مُنْشُونَ خُلْفٌ بَدَا».
+  Set<int> _abuJafarHamzaBab(Poem poem, Variant v) {
+    if (poem != Poem.durrah ||
+        qiraaOf(v.riwayaId).id != 'abu_jafar' ||
+        v.kind != VariantKind.hamza ||
+        !v.description.contains('حذف الهمزة')) {
+      return {};
+    }
+    final read = _letters(v.text);
+    if (RegExp('تهزين|منشو').hasMatch(read)) return {32, 33};
+    return RegExp('تهزو|طفوا|واطوا|تطو|متك|يتكو|خاطي|خطين|خاطو|مالو|نبو')
+            .hasMatch(read)
+        ? {32}
+        : {};
+  }
+
+  /// The dhal of «أَخَذتُّمۡ / ٱتَّخَذتُّمُ» merged into the ta, for all who merge
+  /// it: «فَازَ اتَخَذْتُمْ أَخَذْتُمْ وَفِي الإِفْرَادِ عاشَرَ دَغْفَلَا»; Abu
+  /// Ja'far with Nafi', the Durrah silent. Rawh has the Durrah's «أَخَذْتُ طُلُ».
+  /// Its own text or, written by another row (Warsh's naql: قُلَ اَتَّخَذتُّمْ),
+  /// [hafs]'s word.
+  static bool _idghamDhal(Variant v, [String hafs = '']) =>
+      v.rule == 'idgham_saghir' &&
+      v.description.contains('الذال في التاء') &&
+      RegExp('خَذۡ?ت').hasMatch('${v.text} $hafs') &&
+      !const {'ruways', 'rawh'}.contains(v.riwayaId);
+
+  /// Nafi''s hamza of «ٱلنَّبِيٓءُ» and its bab: «وَجَمْعاً وَفَرْداً فِي النَّبِيءِ
+  /// وَفي النُّبُوءَةِ الْهَمْزَ كُلٌّ غَيْرَ نَافِعٍ ابْدَلاَ»; without it in
+  /// «ٱلصَّٰبِـِٔينَ»: «وَفي الصَّابِئِينَ الْهَمْزُ وَالصَّابِئُونَ خُذْ», and Abu
+  /// Ja'far with him.
+  ///
+  /// «هُزُؤًا، كُفُؤًا» with the hamza and the damma: «وَهُزْؤاً وَكُفْؤاً في
+  /// السَّوَاكِنِ فُصِّلَا وَضُمَّ لِبَاقِيهِمْ ... وَحَفْصٌ وَاقِفاً ثُمَّ مُوصِلَا».
+  Set<int> _nafiHamza(Poem poem, Variant v) => poem != Poem.shatibiyya
+      ? {}
+      : v.rule == 'hamza_zaida' && RegExp('^(هُزُؤ|كُفُؤ)').hasMatch(v.text)
+      ? {460, 461}
+      : v.rule == 'hamza_zaida'
+      ? {458}
+      : v.rule == 'hamza_hadhf'
+      ? {460}
+      : {};
+
+  /// Abu Ja'far's ha of «هُوَ، هِيَ» made sakin after waw, fa and lam, and after
+  /// «ثُمَّ، يُمِلَّ»: «هُوْ وَهِيْ يُمِلَّ هْوَ ثُمَّ هْوَ اسْكِنًا أُدْ», not the stop
+  /// of «مَعْ هُوْ وَهِيْ».
+  Set<int> _abuJafarHuwa(Poem poem, Variant v) {
+    if (poem != Poem.durrah ||
+        qiraaOf(v.riwayaId).id != 'abu_jafar' ||
+        !v.description.contains('إسكان الهاء')) {
+      return {};
+    }
+    final words = [
+      for (final w in v.text.trim().split(RegExp(r'\s+'))) _letters(w),
+    ];
+    final huwa = RegExp(r'^[وفل]?ه[وي]$');
+    final ok = words.length == 1
+        ? huwa.hasMatch(words.single)
+        : words.length == 2 &&
+              (huwa.hasMatch(words.first) ||
+                  const {'ثم', 'يمل'}.contains(words.first) &&
+                      huwa.hasMatch(words.last));
+    return ok ? {64} : {};
+  }
+
+  /// Abu Ja'far's eased hamza of «إِسۡرَٰٓءِيلَ», its second, in the single
+  /// hamza: «أَرَيْتَ وَإِسْرَائِيْلَ كَائِنْ وَمَدَّ أُدْ».
+  Set<int> _abuJafarIsrail(Poem poem, Variant v) =>
+      poem == Poem.durrah &&
+          qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+          v.kind == VariantKind.hamza &&
+          v.text.contains('سۡرَٰٓءِ')
+      ? {34}
+      : {};
+
   Set<int> _ruleVerses(Poem poem, Variant v, [String hafs = '']) {
     final yaqub = _yaqubShatibiyya(v);
     if (yaqub != null) return yaqub;
+    final sirat = _sirat(poem, v);
+    if (sirat.isNotEmpty) return sirat;
+    final hamzaBab = _abuJafarHamzaBab(poem, v);
+    if (hamzaBab.isNotEmpty) return hamzaBab;
+    final israil = _abuJafarIsrail(poem, v);
+    if (israil.isNotEmpty) return israil;
+    final huwa = _abuJafarHuwa(poem, v);
+    if (huwa.isNotEmpty) return huwa;
+    // Ibn Wardan's naql of «ٱلۡـَٰٔنَ», and of Yunus's «ءَآلۡـَٰٔنَ»: «وَلاَ
+    // نَقْلَ إِلاَّ الآنَ مَعْ يُوْنُسٍ بَدَا».
+    if (poem == Poem.durrah &&
+        v.riwayaId == 'ibn_wardan' &&
+        const {'naql', 'hamza_wasl'}.contains(v.rule) &&
+        RegExp(r'لا?ن$').hasMatch(_letters(v.text))) {
+      return {36};
+    }
+    if (poem == Poem.shatibiyya && _idghamDhal(v, hafs)) return {283};
+    final nafi = _nafiHamza(poem, v);
+    if (nafi.isNotEmpty) return nafi;
+    // Al-Bazzi's «فَلِمَهۡ» and the four with it: «وَفِيمَهْ وَمِمَّهْ قِفْ وَعَمَّهْ
+    // لِمَهْ بِمَهْ بِخُلْفٍ عَنِ الْبَزِّيِّ».
+    if (poem == Poem.shatibiyya &&
+        v.riwayaId == 'bazzi' &&
+        v.rule == 'ha_sakt') {
+      return {386};
+    }
     final d = v.shownDescription;
     if (poem == Poem.shatibiyya && _anaWasl(v)) return {521};
     if (poem == Poem.shatibiyya && _araayta(v)) return {638};
@@ -541,6 +667,9 @@ class Manzumat {
       // Abu Ja'far's sakt on each letter that opens a sura: «حُرُوفَ
       // التَّهَجِّي افْصِلْ بِسَكْتٍ كَحَا أَلِفْ».
       if (v.rule == 'fawatih') return {62};
+      // His ikhfa of the nun before kha and ghayn: «وَبِخَا وَغَيْنِ الاِخْفَا
+      // سِوَى يُنْغِضْ يَكُنْ مُنْخَنِقْ أَلَا».
+      if (v.rule == 'ikhfa') return {42};
       // 14:2 Ruways's «ٱللَّهُ» when starting: «وَطِبْ رَفْعَ أَللهِ ابْتِدَاءً».
       if (v.riwayaId == 'ruways' && v.surah == 14 && v.ayah == 2) {
         if (v.word == 0) return {138};
@@ -676,10 +805,34 @@ class Manzumat {
 
   /// The chapter of the usul a reading belongs to, by its rule or by the
   /// words of its description.
-  String? _usulChapter(Poem poem, Variant v) {
+  String? _usulChapter(Poem poem, Variant v, [String hafs = '']) {
+    for (final own in [
+      _sirat(poem, v),
+      _abuJafarHamzaBab(poem, v),
+      _abuJafarIsrail(poem, v),
+      _abuJafarHuwa(poem, v),
+      if (poem == Poem.shatibiyya &&
+          v.riwayaId == 'bazzi' &&
+          v.rule == 'ha_sakt')
+        {386},
+      if (poem == Poem.durrah &&
+          v.riwayaId == 'ibn_wardan' &&
+          const {'naql', 'hamza_wasl'}.contains(v.rule) &&
+          RegExp(r'لا?ن$').hasMatch(_letters(v.text)))
+        {36},
+      if (poem == Poem.shatibiyya && _idghamDhal(v, hafs)) {283},
+      _nafiHamza(poem, v),
+    ]) {
+      if (own.isNotEmpty) {
+        return verses(poem).firstWhere((b) => b.n == own.first).chapter;
+      }
+    }
     // Told in the farsh of al-Baqara, not under «السكت».
     if (poem == Poem.durrah && v.rule == 'fawatih') {
       return verses(poem).firstWhere((b) => b.n == 62).chapter;
+    }
+    if (poem == Poem.durrah && v.rule == 'ikhfa') {
+      return verses(poem).firstWhere((b) => b.n == 42).chapter;
     }
     if (poem == Poem.durrah &&
         const {'ruways', 'rawh'}.contains(v.riwayaId) &&

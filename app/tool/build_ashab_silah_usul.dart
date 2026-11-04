@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:qiraat_mushaf/data/arabic.dart';
 
 import 'apply_first_sakin.dart';
+import 'apply_hamza_zaida.dart';
 import 'apply_idgham_dhal.dart';
 
 const ashabSilahSource = 'ashab_silah_pdf';
@@ -39,14 +40,52 @@ String _vowelOf(String? h) => h == null
     ? 'ضم'
     : 'فتح';
 
+/// The second hamza made a letter of madd, worded as Warsh's: its letter by
+/// the vowel, with the full madd before a sakin (هَٰٓؤُلَآءِ إِن), the qasr
+/// before a vowelled letter (ٱلسَّمَآءِ إِلَى) and an alif (جَآءَ ءَالَ).
+List<String> _maddIbdal(String vowel, String second) {
+  final letter = switch (vowel) {
+    'كسر' => 'ياءً مدية',
+    'ضم' => 'واوًا مدية',
+    _ => 'ألفًا',
+  };
+  const madd = 'مع المد المشبع (٦ حركات)', qasr = 'مع القصر (حركتان)';
+  final hamza = _hamzaCluster.matchAsPrefix(second);
+  // The waw of «أُوْلَٰٓئِكَ» is not read.
+  final rest = second
+      .substring(hamza?.end ?? 0)
+      .replaceFirst(RegExp('^وْ'), '');
+  final next = RegExp('^([ء-ي])([ً-ٰۡ-ۭ]*)').firstMatch(rest);
+  // Qunbul's one length: the qasr before «ءَالَ»'s alif; the madd before a
+  // sakin given a vowel for wasl (ٱلنِّسَآءِ إِنِ ٱتَّقَيۡتُنَّ), as هَٰٓؤُلَآءِ إِن.
+  final length = next == null
+      ? madd
+      : next[1] == 'ا'
+      ? qasr
+      : next.end == rest.length
+      ? madd
+      : RegExp('[َُِ]').hasMatch(next[2]!) && !next[2]!.contains('ّ')
+      ? qasr
+      : madd;
+  return ['إبدال الهمزة الثانية $letter $length'];
+}
+
+String _faces(List<String> ways) => switch (ways.length) {
+  1 => 'ب${ways.single}',
+  2 => 'بوجهين: ${ways.join('؛ أو ')}',
+  _ => 'بثلاثة أوجه: ${ways.join('؛ أو ')}',
+};
+
 /// The faces of two hamzas of two words, by the vowels of the first and second.
-List<String> _pairWays(String id, String first, String second) {
+List<String> _pairWays(
+  String id,
+  String first,
+  String second, {
+  String next = '',
+}) {
   if (first == second) {
     if (id == 'qunbul') {
-      return [
-        'تسهيل الهمزة الثانية، وهو المقدم',
-        'إبدال الهمزة الثانية حرف مد',
-      ];
+      return ['تسهيل الهمزة الثانية، وهو المقدم', ..._maddIbdal(second, next)];
     }
     if (_abuJafar(id)) return ['تسهيل الهمزة الثانية'];
     return first == 'فتح'
@@ -320,8 +359,7 @@ Map<String, int> buildAshabSilahUsul(
     count(rule);
   }
 
-  String faces(List<String> ways) =>
-      ways.length == 1 ? 'ب${ways.single}' : 'بوجهين: ${ways.join('؛ أو ')}';
+  String faces(List<String> ways) => _faces(ways);
 
   if (_abuJafar(id)) {
     for (final v in rows) {
@@ -441,7 +479,7 @@ Map<String, int> buildAshabSilahUsul(
     final first = _vowelOf(last.group(0)),
         second = _vowelOf(_hamzaCluster.matchAsPrefix(b.t)?.group(0));
     if (second.isEmpty) continue;
-    final ways = _pairWays(id, first, second);
+    final ways = _pairWays(id, first, second, next: b.t);
     final context = '${a.t} ${b.t}';
     final onFirst = first == second && (id == 'qalun' || id == 'bazzi');
     final keyA = '${a.s}:${a.a}:${a.w}', keyB = '${b.s}:${b.a}:${b.w}';
@@ -792,7 +830,19 @@ Map<String, int> buildAshabSilahUsul(
     for (final w in words) {
       final m = sakin.firstMatch(w.t);
       if (m == null) continue;
-      if (excepted.hasMatch(skeleton(w.t))) continue;
+      // With its hamza: skeleton() drops it. The rows of an earlier run go.
+      if (excepted.hasMatch(w.t.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), ''))) {
+        final key = '${w.s}:${w.a}:${w.w}';
+        final gone = (at[key] ?? const <List>[])
+            .where((v) => v.length > 7 && v[7] == 'ibdal_single')
+            .toList();
+        for (final v in gone) {
+          rows.remove(v);
+          at[key]!.remove(v);
+          count('ibdal_excepted');
+        }
+        continue;
+      }
       if (merged.hasMatch(w.t.replaceAll(RegExp('[ً-ٰٟ\u06E1]'), ''))) continue;
       final key = '${w.s}:${w.a}:${w.w}';
       if ((at[key] ?? const <List>[]).any(
@@ -932,8 +982,87 @@ Map<String, int> buildAshabSilahUsul(
     if (gone) count('same_kasr_ha');
     return gone;
   });
+  // «ٱلۡـَٰٔنَ»: «وَلاَ نَقْلَ إِلاَّ الآنَ مَعْ يُوْنُسٍ بَدَا», Ibn Wardan's naql
+  // wherever it comes, told in the usul on its word; Qalun reads it as Hafs
+  // (his naql is in يونس's «ءَآلۡـَٰٔنَ» alone), Ibn Jammaz too.
+  for (final MapEntry(key: key, value: hafs) in hafsAt.entries) {
+    // And «ٱلۡأَنَ» of al-Jinn, its hamza on the alif.
+    if (!RegExp(r'^[وف]?َ?ٱلۡ(ـ[َٰٔ]+|أَ)نَ').hasMatch(hafs)) continue;
+    final [s, a, w] = [for (final n in key.split(':')) int.parse(n)];
+    bool here(List v) =>
+        v[0] == s &&
+        v[1] == a &&
+        (v[2] as int) <= w &&
+        w < (v[2] as int) + (v[3] as num).toInt() &&
+        !'${v[6]}'.contains('صلة');
+    if (id == 'qalun') {
+      rows.removeWhere((v) => here(v) && '${v[6]}'.contains('الهمزة'));
+    }
+    if (id != 'ibn_wardan') continue;
+    rows.removeWhere(
+      (v) => here(v) && RegExp('نقل|الهمزة').hasMatch('${v[6]}'),
+    );
+    final at = rows.indexWhere(
+      (v) =>
+          (v[0] as int) * 1000000 + (v[1] as int) * 1000 + (v[2] as int) >
+          s * 1000000 + a * 1000 + w,
+    );
+    rows.insert(at < 0 ? rows.length : at, [
+      s,
+      a,
+      w,
+      1,
+      hafs
+          .replaceFirstMapped(RegExp('لۡـ[َٰٔ]+ن'), (_) => 'لَٰن')
+          .replaceFirst('لۡأَن', 'لَان'),
+      'h',
+      // قَالُواْ ٱلۡـَٰٔنَ, as the book has it.
+      '$s:$a' == '2:71' ? 'بحذف الواو وصلًا وبالنقل' : 'بالنقل',
+      'naql',
+    ]);
+    count('al_an');
+  }
+  // Al-Bazzi's ha of the stop on «لِمَ، بِمَ، فِيمَ، مِمَّ، عَمَّ»: «وَفِيمَهْ
+  // وَمِمَّهْ قِفْ وَعَمَّهْ لِمَهْ بِمَهْ بِخُلْفٍ عَنِ الْبَزِّيِّ», without it
+  // first; told in «هاء السكت» as Ya'qub's.
+  if (id == 'bazzi') {
+    rows.removeWhere((v) => v.length > 7 && v[7] == 'ha_sakt');
+    for (final MapEntry(key: key, value: hafs) in hafsAt.entries) {
+      final word = hafs.replaceAll(RegExp('[ۖ-ۜ]'), '');
+      final bare = word.replaceAll(RegExp('[ً-ٰ]'), '');
+      // Not «لَمۡ».
+      if (!RegExp(r'^[وف]?(لم|بم|فيم|مم|عم)$').hasMatch(bare) ||
+          word.contains('ۡ') ||
+          !RegExp('[ِّ]').hasMatch(word)) {
+        continue;
+      }
+      final [s, a, w] = [for (final n in key.split(':')) int.parse(n)];
+      final at = rows.indexWhere(
+        (v) =>
+            (v[0] as int) * 1000000 + (v[1] as int) * 1000 + (v[2] as int) >
+            s * 1000000 + a * 1000 + w,
+      );
+      rows.insert(at < 0 ? rows.length : at, [
+        s,
+        a,
+        w,
+        1,
+        '',
+        'u',
+        'بوجهين وقفًا: بهاء السكت وبدونها؛ والمقدم بدونها',
+        'ha_sakt',
+        {
+          'stopOnly': true,
+          'stopText': '$wordهۡ',
+          'ways': ['الوقف بدون هاء السكت، وهو المقدم', 'الوقف بهاء السكت'],
+        },
+      ]);
+      count('ha_sakt');
+    }
+  }
   applyFirstSakin(id, quran, rows);
   applyIdghamDhal(id, quran, rows);
+  applyHamzaZaida(id, quran, rows);
   data['variants'] = rows;
   data['reviewedUsul'] = true;
   return counts;
@@ -1160,7 +1289,60 @@ void _oneFarsh(
       .replaceAll(RegExp('[ىے]'), 'ي')
       .replaceAll('ٰ', 'ا')
       .replaceAll(RegExp('[أإآٱ]'), 'ا')
-      .replaceAll(RegExp('[ً-ْۖ-ۛۡۥۦـ]'), '');
+      // The hamza on its seat or on a kashida (خَطِيٓـَٰٔتُهُۥ، خطيئَاتُهُ).
+      .replaceAll(RegExp('[ئؤٔ]'), 'ء')
+      // With the madd sign (خَطِيٓـَٰٔتُهُۥ).
+      .replaceAll(RegExp('[ً-ٕۖ-ۛۡۥۦـ]'), '');
+  // Each letter of [t] as [bareLetters] counts them, with its vowels.
+  List<Set<String>> marksOf(String t) {
+    final out = <Set<String>>[];
+    for (final ch in t.split('')) {
+      if (ch == 'ٰ') {
+        out.add({});
+      } else if (RegExp('[ًٌٍَُِّْۡ]').hasMatch(ch)) {
+        if (out.isNotEmpty) out.last.add(ch == 'ۡ' ? 'ْ' : ch);
+      } else if (bareLetters(ch).isNotEmpty) {
+        out.add({});
+      }
+    }
+    return out;
+  }
+
+  // Its source's few vowels (خطيئَاتُهُ، تَظّاهَرُون) on the letters of a
+  // verified reader's text, each where that text has it.
+  // Where that text's vowels differ from Hafs's [hafs] on the same letters,
+  // his source writes the difference (not «بَينكُمُۥ» for «بَيۡنُكُمُۥ»).
+  // Only an alif his source writes out where the rasm has the dagger one
+  // (خطيئَاتُهُ، تَظّاهَرُون): his other words it may tell otherwise.
+  bool fits(String own, String theirs, String hafs) {
+    // The hamza on a kashida first, then its vowel and the dagger alif after
+    // it (ـَٰٔ as ءَٰ), as a seated hamza is written (ئَا).
+    String seated(String t) => t.replaceAllMapped(
+      RegExp('ـ([ًٌٍَُِّْٰ]*)[ٕٔ]'),
+      (m) => 'ء${m[1]!.replaceAll('ٰ', '')}${m[1]!.contains('ٰ') ? 'ٰ' : ''}',
+    );
+    own = seated(own);
+    theirs = seated(theirs);
+    hafs = seated(hafs);
+    int alifs(String t) => 'ا'.allMatches(t).length;
+    if (!theirs.contains('ٰ') || alifs(own) <= alifs(theirs)) return false;
+    if (bareLetters(own) != bareLetters(theirs)) return false;
+    final a = marksOf(own), b = marksOf(theirs);
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!b[i].containsAll(a[i])) return false;
+    }
+    if (bareLetters(hafs) == bareLetters(theirs)) {
+      final h = marksOf(hafs);
+      if (h.length != b.length) return false;
+      for (var i = 0; i < b.length; i++) {
+        final changed = b[i].difference(h[i]).difference(const {'ْ'});
+        if (!a[i].containsAll(changed)) return false;
+      }
+    }
+    return true;
+  }
+
   final vowel = RegExp('[ًٌٍَُِّْۡ]');
   final fontSign = RegExp('[ے۪ۭٜ۬]');
   final hafs = <String, String>{
@@ -1191,7 +1373,17 @@ void _oneFarsh(
         final head = own.take(n).join(' ');
         final bare = own.take(n).every((w) => !vowel.hasMatch(w));
         if (spelling(head) != spelling('${c[4]}') &&
-            !(bare && bareLetters(head) == bareLetters('${c[4]}'))) {
+            !(bare && bareLetters(head) == bareLetters('${c[4]}')) &&
+            (RegExp('سهل|تحقيق|همزتين|إبدال|ابدال|نقل')
+                    .hasMatch('${v.length > 6 ? v[6] : ''}') ||
+                !fits(
+                  head,
+                  '${c[4]}',
+                  [
+                    for (var d = 0; d < n; d++)
+                      hafs['${v[0]}:${v[1]}:${(v[2] as int) + d}'] ?? '',
+                  ].join(' '),
+                ))) {
           return false;
         }
         // The words after it only show where: Hafs's letters, and no vowel
@@ -1201,6 +1393,20 @@ void _oneFarsh(
           if (!asHafs(own[d], h, letters)) return false;
         }
         return true;
+      }
+
+      final hafsHead = [
+        for (var d = 0; d < (v[3] as num).toInt(); d++)
+          hafs['${v[0]}:${v[1]}:${(v[2] as int) + d}'] ?? '',
+      ];
+      // Not his hamzas (أَاءِنَّا «مسهلة»): another may read them otherwise.
+      final hamza = RegExp('سهل|تحقيق|همزتين|إبدال|ابدال|نقل')
+          .hasMatch('${v.length > 6 ? v[6] : ''}');
+      bool daggered(List c) {
+        final n = (c[3] as num).toInt();
+        return !hamza &&
+            own.length >= n &&
+            fits(own.take(n).join(' '), '${c[4]}', hafsHead.take(n).join(' '));
       }
 
       final matching = [
@@ -1217,10 +1423,29 @@ void _oneFarsh(
       final text = fontSign.hasMatch('${c[4]}') ? own.take(n).join(' ') : c[4];
       // His own wording kept: where the letters agree it may still tell what
       // they do not show (زكرياءَ إذ: the second hamza eased).
-      if (v[3] == c[3] && v[4] == text) continue;
+      // Its wording too where the alif made it his, one note in the hamesh,
+      // unless his tells more.
+      final how =
+          daggered(c) &&
+              c.length > 6 &&
+              '${c[6]}'.isNotEmpty &&
+              !RegExp('تسهيل|إبدال|ابدال|نقل')
+                  .hasMatch('${v.length > 6 ? v[6] : ''}')
+          // Without «، »: his rows' clauses are split there.
+          ? '${c[6]}'.replaceAll('، و', ' و').replaceAll('، ', ' و')
+          : null;
+      if (v[3] == c[3] && v[4] == text && (how == null || v[6] == how)) {
+        continue;
+      }
       v
         ..[3] = c[3]
         ..[4] = text;
+      if (how != null) {
+        while (v.length < 7) {
+          v.add('');
+        }
+        v[6] = how;
+      }
       counts[id]!.update('one_farsh', (k) => k + 1, ifAbsent: () => 1);
     }
   }
@@ -1541,6 +1766,74 @@ void _bookGaps(
       place(15, 46, 0),
       (v) => told(v, 'بضم العين وبضم نون التنوين لالتقاء الساكنين'),
     );
+    // «مستهزءون» (البقرة ١٤) is the first of its bab, told with the others in
+    // the hamza: «وَيَحْذِفُ مُسْتَهْزُونَ وَالْبَابَ».
+    for (final v in at['2:14:15'] ?? const <List>[]) {
+      if (v[5] != 'f' || !'${v[4]}'.startsWith('مُسْتَهْزُون')) continue;
+      v
+        ..[4] = 'مُسْتَهْزُونَ'
+        ..[5] = 'h'
+        ..length = 6
+        ..addAll(['بضم الزاي وحذف الهمزة', '']);
+      count('hamza_bab');
+    }
+    // «إِسۡرَٰٓءِيلَ»: the hamza after the alif eased, not the first; written
+    // on its word with the dot of the tasheel.
+    for (final v in rows) {
+      final how = '${v[6]}';
+      if (v[5] != 'h' ||
+          !RegExp('^بتسهيل الهمزة (الثانية )?مع التوسط أو القصر\$')
+              .hasMatch(how)) {
+        continue;
+      }
+      for (var d = 0; d < (v[3] as num).toInt(); d++) {
+        final hafs =
+            (byAyah['${v[0]}:${v[1]}'] ?? const <_Word>[])
+                .where((w) => w.w == (v[2] as int) + d)
+                .firstOrNull
+                ?.t ??
+            '';
+        if (!hafs.contains('رَٰٓءِيل')) continue;
+        v
+          ..[2] = (v[2] as int) + d
+          ..[3] = 1
+          ..[4] = hafs.replaceFirst('رَٰٓءِيل', 'رَٰٓءِ۬يل')
+          ..[6] = 'بتسهيل الهمزة الثانية مع التوسط أو القصر';
+        count('israil');
+        break;
+      }
+    }
+    // «أَنۢبِـُٔونِي» (البقرة ٣١) of the bab, «أنبُوني» in the book; the source
+    // has no row for it.
+    if (!(at['2:31:9'] ?? const <List>[]).any((v) => v[5] == 'h')) {
+      put(
+        place(2, 31, 9),
+        'h',
+        'بضم الباء وحذف الهمزة',
+        '',
+        text: 'أَنۢبُونِي',
+      );
+    }
+    // «ٱلۡمُنشِـُٔونَ» (الواقعة ٧٢): «مُنْشُونَ خُلْفٌ بَدَا», Ibn Wardan's two
+    // faces, the hadhf preferred «من طريق الدرة والتحبير»; Ibn Jammaz as Hafs.
+    if (id == 'ibn_wardan') {
+      const how =
+          'بوجهين: ضم الشين وحذف الهمزة وهو المقدّم؛ أو كسر الشين وبعدها '
+          'همزة مضمومة';
+      for (final v in at['56:72:5'] ?? const <List>[]) {
+        if (v[5] != 'h' || !'${v[6]}'.contains('حذف الهمزة')) continue;
+        v
+          ..[6] = how
+          ..length = 8
+          ..add({
+            'ways': [
+              'ضم الشين وحذف الهمزة، وهو المقدّم',
+              'كسر الشين وبعدها همزة مضمومة',
+            ],
+          });
+        count('two_faces');
+      }
+    }
     // «فيغرقكم» بالتاء: Ibn Wardan with two faces, the takhfif preferred,
     // and «وشدد لخلف بن» of «ونغرق»; Ibn Jammaz the takhfif alone.
     if (id == 'ibn_wardan') {
@@ -1577,6 +1870,31 @@ void _bookGaps(
   }
 
   if (id == 'qunbul') {
+    // The ibdal of the second of two hamzas alike, written before as «حرف
+    // مد»: its letter and length, as Warsh's.
+    for (final v in rows) {
+      if (v.length < 9 || v[8] is! Map) continue;
+      final meta = v[8] as Map;
+      final ways = (meta['ways'] as List?)?.cast<String>();
+      if (ways == null || !ways.contains('إبدال الهمزة الثانية حرف مد')) {
+        continue;
+      }
+      final second = '${meta['context']}'.split(' ').last;
+      final vowel = _vowelOf(_hamzaCluster.matchAsPrefix(second)?.group(0));
+      meta['ways'] = [
+        for (final w in ways)
+          if (w == 'إبدال الهمزة الثانية حرف مد')
+            ..._maddIbdal(vowel, second)
+          else
+            w,
+      ];
+      // Its first face has a «، » in it: what follows the faces is the silah.
+      v[6] = [
+        _faces(meta['ways'] as List<String>),
+        if ('${v[6]}'.endsWith('بصلة ميم الجمع')) 'بصلة ميم الجمع',
+      ].join('، ');
+      count('madd_ibdal');
+    }
     final la = find(75, 1, r'^لا$');
     if (la != null) {
       drop(la, (v) => true);

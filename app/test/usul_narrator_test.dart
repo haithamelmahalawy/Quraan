@@ -156,6 +156,96 @@ void main() {
     },
   );
 
+  testWidgets('the opening letters are told with how they are read', (t) async {
+    t.view.physicalSize = const Size(1080, 2000);
+    t.view.devicePixelRatio = 2.5;
+    addTearDown(t.view.reset);
+    const sakt = 'بالسكت على كل حرف من الحروف المقطعة';
+    final variants = _Variants([
+      const Variant(
+        riwayaId: 'ibn_wardan',
+        surah: 2,
+        ayah: 1,
+        word: 0,
+        count: 1,
+        text: '',
+        kind: VariantKind.usul,
+        rule: 'fawatih',
+        description: sakt,
+      ),
+    ]);
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: MushafPage(
+              page: 2,
+              quran: quran,
+              variants: variants,
+              mutashabihat: mutashabihat,
+              settings: ReaderSettings.memory(selected: {'ibn_wardan'})
+                ..displayed = 'ibn_wardan',
+              onWordTap: (_, _) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.pump();
+    final item = find.byKey(
+      const ValueKey('usul-reference:فواتح السور:2:1:0:ibn_wardan'),
+    );
+    expect(item, findsOneWidget);
+    expect(
+      find.descendant(of: item, matching: find.text(' ($sakt)')),
+      findsOneWidget,
+    );
+    // Every reader's, in its own chapter: Hisham's imala of «الٓرۚ».
+    final page = quran.ayah(10, 1).page;
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: MushafPage(
+              page: page,
+              quran: quran,
+              variants: _Variants([
+                for (final (id, rule, text, d) in [
+                  ('ibn_wardan', 'fawatih', '', sakt),
+                  ('hisham', '', 'الٓر۪ۚ', 'بإمالة الراء'),
+                ])
+                  Variant(
+                    riwayaId: id,
+                    surah: 10,
+                    ayah: 1,
+                    word: 0,
+                    count: 1,
+                    text: text,
+                    kind: VariantKind.usul,
+                    rule: rule,
+                    description: d,
+                  ),
+              ]),
+              mutashabihat: mutashabihat,
+              settings: ReaderSettings.memory(
+                selected: {'ibn_wardan', 'hisham'},
+              )..displayed = 'hisham',
+              onWordTap: (_, _) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.pump();
+    expect(find.text(' ($sakt)'), findsOneWidget);
+    expect(find.text(' (بإمالة الراء)'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets(
     'displayed narrator owns the colour when two rules target one letter',
     (t) async {
@@ -203,7 +293,14 @@ void main() {
 
 class _Variants extends VariantRepository {
   _Variants(this.rows)
-    : super({'hisham', 'ibn_dhakwan', 'ruways', 'warsh', 'shubah'});
+    : super({
+        'hisham',
+        'ibn_dhakwan',
+        'ruways',
+        'warsh',
+        'shubah',
+        'ibn_wardan',
+      });
   final List<Variant> rows;
   @override
   bool isLoaded(String id) => available.contains(id);
