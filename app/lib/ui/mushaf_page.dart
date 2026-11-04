@@ -1787,7 +1787,8 @@ class _MushafPageState extends State<MushafPage>
           !d.contains('نقل') &&
           (const {'hamza_zaida', 'hamza_hadhf'}.contains(v.rule) ||
               v.rule.isEmpty &&
-                  !RegExp('إبدال|ابدال|تسهيل|تخفيف الهمزة|إسقاط').hasMatch(d))) {
+                  !RegExp('إبدال|ابدال|تسهيل|تخفيف الهمزة|إسقاط')
+                      .hasMatch(d))) {
         for (var i = 0; i < letters.length; i++) {
           if (!colors.containsKey(i)) mark(i, ReadingColors.hamza);
         }
@@ -2231,6 +2232,9 @@ class _MushafPageState extends State<MushafPage>
       ayah,
       w,
     ).shown.where((v) => v.word == w).toList();
+    readings.addAll(
+      _otherBodies(widget.variants, widget.settings, ayah, w, readings),
+    );
     if (readings.isEmpty) return;
     final shown = _display(ayah, w)?.font == 'Hafs'
         ? _display(ayah, w)!.text
@@ -2817,6 +2821,27 @@ class _UsulItem {
 /// Hamesh entries of [ayahs] in page order: one per word where a reading
 /// of the selected riwayat starts. The same word read the same way again on
 /// the page is listed once.
+/// The word of each selected reader who does not read a rule of the shown
+/// reader's that changes its body (النَّبِيٓـِٕينَ, for those who read it without
+/// the hamza).
+List<Variant> _otherBodies(
+  VariantRepository variants,
+  ReaderSettings s,
+  Ayah ayah,
+  int w,
+  List<Variant> told,
+) => otherBodyNotes(
+  variants,
+  ayah,
+  w,
+  s.displayed,
+  {
+    ...s.selected.where((id) => variants.isLoaded(id)),
+    if (s.compareHafs) hafsId,
+  }.where((id) => id != s.displayed),
+  told,
+);
+
 List<HameshEntry> _entriesOf(
   List<Ayah> ayahs,
   VariantRepository variants,
@@ -2829,7 +2854,11 @@ List<HameshEntry> _entriesOf(
       final m = _readingsAt(variants, settings, ayah, w);
       // Usul are told once by their colour, in the page's key; beside the
       // farsh, only what the certified source states.
-      final starting = m.shown.where((v) => v.word == w && v.inHamesh).toList();
+      final own = m.shown.where((v) => v.word == w && v.inHamesh).toList();
+      final starting = [
+        ...own,
+        ..._otherBodies(variants, settings, ayah, w, m.shown),
+      ];
       if (starting.isEmpty) continue;
       final end = starting
           .map((v) => v.word + v.count)
@@ -2850,7 +2879,9 @@ List<HameshEntry> _entriesOf(
           ayah,
           w,
           spacedAwa(hafs),
-          ReadingColors.ofReadings(starting) ?? m.color ?? MushafColors.ink,
+          (own.isEmpty ? m.color : ReadingColors.ofReadings(starting)) ??
+              m.color ??
+              MushafColors.ink,
           starting,
         ),
       );
@@ -3856,6 +3887,16 @@ class _UsulBox extends StatelessWidget {
                 : ' (بإسكان الياء)',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
+        // Abu Ja'far's ya of the zawaid, in wasl alone (ٱلدَّاعِۦ، دَعَانِۦ).
+        if (i.readings.any(
+          (v) =>
+              v.rule == 'ya_zaida' &&
+              const {'ibn_wardan', 'ibn_jammaz'}.contains(v.riwayaId),
+        ))
+          Text(
+            ' (وصلًا فقط)',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
         // How the opening letters are read, whatever the chapter (الٓمٓ:
         // بالسكت على كل حرف، الٓرۚ: بإمالة الراء), by each reader if they differ.
         if (_openingLetters(i.ayah, i.word))
@@ -4061,32 +4102,14 @@ class _EntryView extends StatelessWidget {
     // at a glance.
     final quran = (compact ? 10.5 : 13.0) * scale;
     final reading = (compact ? 14.0 : 17.0) * scale;
-    final word = Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(
-            text: e.hafs,
-            style: TextStyle(
-              fontFamily: 'Hafs',
-              fontSize: quran,
-              height: 1.4,
-              color: e.color,
-              backgroundColor: e.readings.every((v) => v.isMarginNote)
-                  ? null
-                  : e.color.withAlpha(28),
-            ),
-          ),
-          // Confirmed by the certified source (التسهيل).
-          if (e.readings.every((v) => v.certified))
-            TextSpan(
-              text: ' ✓',
-              style: TextStyle(
-                fontSize: quran * 0.8,
-                color: MushafColors.green,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-        ],
+    // Confirmed by the certified source (التسهيل).
+    final certified = e.readings.every((v) => v.certified);
+    final tick = TextSpan(
+      text: ' ✓',
+      style: TextStyle(
+        fontSize: quran * 0.8,
+        color: MushafColors.green,
+        fontWeight: FontWeight.bold,
       ),
     );
     return InkWell(
@@ -4094,59 +4117,83 @@ class _EntryView extends StatelessWidget {
         'margin-reference:${e.ayah.surah}:${e.ayah.number}:${e.word}',
       ),
       onTap: () => onTap(e.ayah, e.word),
-      child: LayoutBuilder(
-        builder: (context, box) =>
-            box.maxWidth >= _tableMinWidth &&
-                e.readings.every((v) => usulUnifiedRiwayat.contains(v.riwayaId))
-            ? _table(e, word, label, reading * 0.85)
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  word,
-                  for (final g in _readings(
-                    e.readings,
-                    e.ayah.words
-                        .sublist(e.word, e.word + e.readings.first.count)
-                        .join(' '),
-                  ))
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          for (var i = 0; i < g.names.length; i++)
-                            TextSpan(
-                              text: i == 0
-                                  ? g.names[i].$1
-                                  : ' و${g.names[i].$1}',
-                              style: label.copyWith(
-                                color: g.names[i].$2,
-                                fontWeight: FontWeight.w600,
+      child: _noteLine(
+        LayoutBuilder(
+          builder: (context, box) =>
+              box.maxWidth >= _tableMinWidth &&
+                  e.readings.every(
+                    (v) => usulUnifiedRiwayat.contains(v.riwayaId),
+                  )
+              ? _table(e, certified ? tick : null, label, reading * 0.85)
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final g in _readings(
+                      e.readings,
+                      e.ayah.words
+                          .sublist(e.word, e.word + e.readings.first.count)
+                          .join(' '),
+                    ))
+                      Text.rich(
+                        textAlign: TextAlign.start,
+                        TextSpan(
+                          children: [
+                            for (var i = 0; i < g.names.length; i++)
+                              TextSpan(
+                                text: i == 0
+                                    ? g.names[i].$1
+                                    : ' و${g.names[i].$1}',
+                                style: label.copyWith(
+                                  color: g.names[i].$2,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                          TextSpan(text: ': ', style: label),
-                          if (g.text.isNotEmpty ||
-                              g.description.isEmpty ||
-                              g.imala)
-                            _wordSpan(g, e, reading),
-                          if (g.description.isNotEmpty)
-                            TextSpan(
-                              text: ' ${g.description}',
-                              style: label.copyWith(color: MushafColors.frame),
-                            ),
-                        ],
+                            TextSpan(text: ': ', style: label),
+                            if (g.text.isNotEmpty ||
+                                g.description.isEmpty ||
+                                g.imala)
+                              _wordSpan(g, e, reading),
+                            if (g.description.isNotEmpty)
+                              TextSpan(
+                                text: ' ${g.description}',
+                                style: label.copyWith(
+                                  color: MushafColors.frame,
+                                ),
+                              ),
+                            if (certified) tick,
+                          ],
+                        ),
                       ),
-                    ),
-                ],
-              ),
+                  ],
+                ),
+        ),
       ),
     );
   }
 
+  /// The line under a note, parting it from the next.
+  static Widget _noteLine(Widget note) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.only(bottom: 2),
+    decoration: BoxDecoration(
+      border: Border(
+        bottom: BorderSide(color: MushafColors.gold.withAlpha(160), width: .6),
+      ),
+    ),
+    child: note,
+  );
+
   /// A verified reader's farsh: the word, the reader and the reading.
-  Widget _table(HameshEntry e, Widget word, TextStyle label, double reading) {
+  Widget _table(
+    HameshEntry e,
+    InlineSpan? tick,
+    TextStyle label,
+    double reading,
+  ) {
     Widget cell(Widget child) => Padding(padding: _cellPadding, child: child);
     return Table(
-      columnWidths: _tightColumns,
+      columnWidths: const {0: IntrinsicColumnWidth(), 1: FlexColumnWidth()},
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       border: _tableBorder,
       children: [
@@ -4158,7 +4205,6 @@ class _EntryView extends StatelessWidget {
         ))
           TableRow(
             children: [
-              cell(word),
               cell(
                 Text.rich(
                   TextSpan(
@@ -4186,6 +4232,7 @@ class _EntryView extends StatelessWidget {
                           text: ' ${g.description}',
                           style: label.copyWith(color: MushafColors.frame),
                         ),
+                      ?tick,
                     ],
                   ),
                 ),

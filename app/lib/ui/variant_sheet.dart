@@ -78,21 +78,14 @@ class VariantSheet extends StatelessWidget {
           if (settings.compareHafs) hafsId,
         }..remove(settings.displayed ?? hafsId);
         final selectedReadings = ready
-            ? [
-                ...variants.at(
-                  [?settings.displayed],
-                  ayah.surah,
-                  ayah.number,
-                  word,
-                ),
-                ...compareReadings(
-                  repository: variants,
-                  ayah: ayah,
-                  word: word,
-                  displayed: settings.displayed,
-                  selected: comparedIds,
-                ),
-              ]
+            ? wordEvidence(
+                repository: variants,
+                ayah: ayah,
+                word: word,
+                displayed: settings.displayed,
+                selected: settings.selected,
+                compared: comparedIds,
+              )
             : <Variant>[];
         // The Hafs span covered by any reading of this word.
         var from = word, to = word + 1;

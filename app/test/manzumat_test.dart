@@ -278,7 +278,7 @@ void main() {
       (2, 29, 15),
       (2, 74, 6),
       (3, 62, 2),
-      (28, 61, 11),
+      (28, 61, 12),
     ]) {
       final v = variants
           .at(['ibn_wardan'], s, a, w)
@@ -448,7 +448,7 @@ void main() {
           for (final v in variants.allOf(id))
             if (v.text.contains('سۡرَٰٓءِ۬يل')) v,
         ];
-        expect(rows, hasLength(40), reason: id);
+        expect(rows, hasLength(39), reason: id);
         for (final v in rows) {
           // From the page (Hafs's word) and from the usul (its own text).
           for (final word in ['إِسۡرَٰٓءِيلَ', v.text]) {

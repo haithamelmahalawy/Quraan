@@ -222,6 +222,12 @@ class Manzumat {
     final sirat = _sirat(poem, v);
     if (sirat.isNotEmpty) return sirat.contains(n);
     if (_nansaha(poem, v)) return n == 475;
+    if (_innaQuwwa(poem, v)) return n == 70;
+    if (_abuJafarYahsab(poem, v)) return n == 83;
+    final yaghfir = _yaghfirYuadhib(poem, v);
+    if (yaghfir.isNotEmpty) return yaghfir.contains(n);
+    final bazziTa = _bazziTa(poem, v);
+    if (bazziTa.isNotEmpty) return bazziTa.contains(n);
     final huwa = _abuJafarHuwa(poem, v);
     if (huwa.isNotEmpty) return huwa.contains(n);
     // «وَالصَّادُ زَاياً اشِمَّهَا لَدَى خَلَفٍ وَاشْمِمْ لِخَلاَّدِ الاَوَّلَا» is
@@ -632,6 +638,62 @@ class Manzumat {
       v.ayah == 106 &&
       v.word == 5;
 
+  /// «فَيَغۡفِرُ … وَيُعَذِّبُ» (البقرة ٢٨٤): Abu Ja'far's raf', «يَغْفِرْ يُعَذِّبْ
+  /// حَمَى الْعُلَا بِرَفْعٍ»; Qalun's idgham of the ba, «وَفِي
+  /// الْبَقَرَهْ فَقُلْ يُعَذِّبْ دَنَا بِالْخُلْفِ».
+  Set<int> _yaghfirYuadhib(Poem poem, Variant v) {
+    if (v.surah != 2 || v.ayah != 284) return const {};
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        (v.word == 17 || v.word == 20)) {
+      return {84, 85};
+    }
+    if (poem == Poem.shatibiyya && v.riwayaId == 'qalun' && v.word == 20) {
+      return {285};
+    }
+    return const {};
+  }
+
+  /// Abu Ja'far's «يَحۡسَبُ» with the fatha, as Hafs, against Qalun's kasra:
+  /// «وَمَيْسَرَةِ افْتَحَاً كَيَحْسَبُ أُدْ».
+  bool _abuJafarYahsab(Poem poem, Variant v) =>
+      poem == Poem.durrah &&
+      qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+      RegExp(
+        '^[وفأ]?[يت]حسب(?!ن)',
+      ).hasMatch(v.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), ''));
+
+  /// Al-Bazzi's ta shaddaed in wasl, each in the verse that names it, from
+  /// «وَفي الْوَصْلِ لِلْبَزِّيِّ شَدِّدْ تَيَمَّمُوا» on.
+  Set<int> _bazziTa(Poem poem, Variant v) {
+    if (poem != Poem.shatibiyya ||
+        v.riwayaId != 'bazzi' ||
+        v.rule != 'bazzi_ta') {
+      return const {};
+    }
+    return switch ('${v.surah}:${v.ayah}') {
+      '2:267' || '4:97' => {526},
+      '3:103' || '6:153' => {527},
+      '5:2' || '7:117' || '20:69' || '26:45' => {528},
+      '26:221' || '26:222' || '97:4' || '37:25' || '92:14' || '24:15' => {529},
+      '11:105' || '11:3' || '11:57' || '24:54' || '60:9' => {530},
+      '8:20' => {530, 531},
+      '8:46' || '33:33' || '33:52' => {531},
+      '9:52' => {532},
+      '67:8' || '68:38' || '80:10' => {533},
+      '49:11' || '49:12' || '49:13' => {534},
+      _ => const {},
+    };
+  }
+
+  /// Abu Ja'far's and Yaqub's «إِنَّ ٱلۡقُوَّةَ لِلَّهِ» and «وَإِنَّ ٱللَّهَ»
+  /// (البقرة ١٦٥): «وَأَنَّ اكْسِرْ مَعًا حَائِزَ الْعُلَا».
+  bool _innaQuwwa(Poem poem, Variant v) =>
+      poem == Poem.durrah &&
+      v.surah == 2 &&
+      v.ayah == 165 &&
+      (v.word == 23 || v.word == 27);
+
   /// Abu Ja'far's eased hamza of «إِسۡرَٰٓءِيلَ», its second, in the single
   /// hamza: «أَرَيْتَ وَإِسْرَائِيْلَ كَائِنْ وَمَدَّ أُدْ».
   Set<int> _abuJafarIsrail(Poem poem, Variant v) =>
@@ -652,6 +714,12 @@ class Manzumat {
     final israil = _abuJafarIsrail(poem, v);
     if (israil.isNotEmpty) return israil;
     if (_nansaha(poem, v)) return {475};
+    if (_innaQuwwa(poem, v)) return {70};
+    if (_abuJafarYahsab(poem, v)) return {83};
+    final yaghfir = _yaghfirYuadhib(poem, v);
+    if (yaghfir.isNotEmpty) return yaghfir;
+    final bazziTa = _bazziTa(poem, v);
+    if (bazziTa.isNotEmpty) return bazziTa;
     final huwa = _abuJafarHuwa(poem, v);
     if (huwa.isNotEmpty) return huwa;
     // Ibn Wardan's naql of «ٱلۡـَٰٔنَ», and of Yunus's «ءَآلۡـَٰٔنَ»: «وَلاَ

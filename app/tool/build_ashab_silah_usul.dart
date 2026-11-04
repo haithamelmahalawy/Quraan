@@ -825,6 +825,10 @@ Map<String, int> buildAshabSilahUsul(
 
   // ---- الهمز المفرد: every sakin hamza of Abu Ja'far, save those excepted.
   if (_abuJafar(id)) {
+    final earlier = {
+      for (var n = 1; n < words.length; n++)
+        '${words[n].s}:${words[n].a}:${words[n].w}': words[n - 1].t,
+    };
     final excepted = RegExp('^[وف]?(أنبئهم|نبئهم)\$');
     final sakin = RegExp('[ءأإئؤ]ۡ|ـۡٔ|ـٔۡ');
     // رءيا and its like are merged, told apart.
@@ -853,7 +857,15 @@ Map<String, int> buildAshabSilahUsul(
         continue;
       }
       final before = w.t.substring(0, m.start);
-      final vowel = RegExp('[َُِ]').allMatches(before).lastOrNull?.group(0);
+      // After a wasl (ٱؤۡتُمِنَ، ٱئۡتُونِي), by the vowel it is joined to: «ٱلَّذِي
+      // ٱيتُمِنَ», «يَٰصَٰلِحُ ٱوتِنَا»، «قَالَ ٱاتُونِي».
+      final afterWasl = before == 'ٱ';
+      final joined = afterWasl
+          ? RegExp('[َُِ]').allMatches(earlier[key] ?? '').lastOrNull?.group(0)
+          : null;
+      final vowel = afterWasl
+          ? joined
+          : RegExp('[َُِ]').allMatches(before).lastOrNull?.group(0);
       final letter = vowel == 'ُ'
           ? 'و'
           : vowel == 'ِ'
@@ -864,12 +876,21 @@ Map<String, int> buildAshabSilahUsul(
           : letter == 'ي'
           ? 'ياءً'
           : 'ألفًا';
+      // One word: its silah told beside it, as a word told otherwise.
+      final silah = (at[key] ?? const <List>[]).where(
+        (v) => '${v.length > 6 ? v[6] : ''}' == 'بصلة ميم الجمع',
+      );
+      final read = '${w.t.substring(0, m.start)}$letter${w.t.substring(m.end)}';
+      final mim = silah.isNotEmpty;
+      for (final v in silah) {
+        v[4] = '';
+      }
       add(
         w,
         'ibdal_single',
         'بإبدال الهمزة $name',
         kind: 'h',
-        text: '${w.t.substring(0, m.start)}$letter${w.t.substring(m.end)}',
+        text: mim ? _withSilah(read.replaceAll(_pauseSigns, ''), false) : read,
       );
     }
     // الإخفاء: the nun sakina and tanween before kha and ghayn.
@@ -959,15 +980,50 @@ Map<String, int> buildAshabSilahUsul(
   for (var n = 0; n + 1 < words.length; n++) {
     next['${words[n].s}:${words[n].a}:${words[n].w}'] = words[n + 1].t;
   }
+  // Abu Ja'far's source tells it of no word, so that Hafs's sign stayed: as
+  // Qalun's, «بِمَا» «بالقصر», where no row writes the word.
+  if (_abuJafar(id)) {
+    final written = <String>{};
+    for (final v in rows) {
+      if ('${v[4]}'.isEmpty) continue;
+      for (var d = 0; d < (v[3] as num).toInt(); d++) {
+        written.add('${v[0]}:${v[1]}:${(v[2] as int) + d}');
+      }
+    }
+    final signed = RegExp('ٓ(ا[ْ۟]?)?([ۖ-ۜ]*)\$');
+    for (final w in words) {
+      final key = '${w.s}:${w.a}:${w.w}';
+      if (written.contains(key) || !signed.hasMatch(w.t)) continue;
+      if (!RegExp('^[ءأإآ]').hasMatch(next[key] ?? '')) continue;
+      if ((at[key] ?? const <List>[]).any(
+        (v) => v.length > 7 && v[7] == 'fawatih',
+      )) {
+        continue;
+      }
+      add(
+        w,
+        '',
+        'بالقصر',
+        text: w.t.replaceFirstMapped(signed, (m) => '${m[1] ?? ''}${m[2]}'),
+      );
+    }
+  }
+  // Qalun's «فَٱذۡكُرُونِي» (البقرة ١٥٢), written as Hafs's without the sign.
+  if (id == 'qalun') {
+    for (final v in rows) {
+      if (v[0] == 2 && v[1] == 152 && v[2] == 0) v[4] = 'فَٱذۡكُرُونِي';
+    }
+  }
   for (final v in rows) {
     if (v.length > 7 && v[7] == 'fawatih') continue;
     final text = '${v[4]}';
-    final end = RegExp('ٓ([ۖ-ۜ]*)\$');
+    // «تَأۡكُلُوٓاْ أَمۡوَٰلَكُم»: before the alif of its waw too.
+    final end = RegExp('ٓ(ا[ْ۟]?)?([ۖ-ۜ]*)\$');
     if (!end.hasMatch(text)) continue;
     final last = (v[2] as int) + (v[3] as num).toInt() - 1;
     final after = next['${v[0]}:${v[1]}:$last'] ?? '';
     if (!RegExp('^[ءأإآ]').hasMatch(after)) continue;
-    v[4] = text.replaceFirstMapped(end, (m) => m[1]!);
+    v[4] = text.replaceFirstMapped(end, (m) => '${m[1] ?? ''}${m[2]}');
     count('qasr_munfasil_sign');
   }
   // A farsh telling only the ha read with kasra, where Hafs reads it so
@@ -1228,7 +1284,12 @@ void main() {
     final file = File('assets/data/qiraat/$id.json');
     final data = jsonDecode(file.readAsStringSync()) as Map;
     // Each row on the words its text reads, before the rest looks at them.
-    if (_abuJafar(id)) applyWordSpan(quran, data['variants'] as List);
+    if (_abuJafar(id)) {
+      applyWordTrim(quran, data['variants'] as List);
+      applyWordSpan(quran, data['variants'] as List);
+      // Before the rest looks at them: a row all as Hafs's goes now.
+      applyVowelsFromHafs(quran, data['variants'] as List);
+    }
     final counts = buildAshabSilahUsul(
       quran,
       data,
@@ -1271,6 +1332,10 @@ void main() {
   );
   for (final MapEntry(key: id, value: (file, data, counts)) in built.entries) {
     // Last, after the texts taken from others: an added alif a dagger one.
+    if (_abuJafar(id)) {
+      applyAlFromHafs(quran, data['variants'] as List);
+      applyVowelsFromHafs(quran, data['variants'] as List);
+    }
     final daggers = applyDaggerAlif(quran, data['variants'] as List);
     if (daggers > 0) counts['dagger_alif'] = daggers;
     file.writeAsStringSync(jsonEncode(data));

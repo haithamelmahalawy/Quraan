@@ -344,6 +344,138 @@ List<Variant> displayedRulesNotReadBy({
   ];
 }
 
+/// The body of a word as written: a hamza on a seat is its seat, a hamza alone
+/// a letter of its own. A rule that adds or drops a letter changes it
+/// (ٱلنَّبِيٓـِٕينَ); a naql, an ibdal, an idgham, a silah or a madd do not.
+String _bodyKey(String text) => text
+    .replaceAll('ٰ', 'ا')
+    .replaceAll(RegExp('[ٱآأإ]'), 'ا')
+    .replaceAll('ؤ', 'و')
+    .replaceAll(RegExp('[ئىیے]'), 'ي')
+    // A hamza on the line or on a kashida, no seat of its own.
+    .replaceAll(RegExp('ـ[ً-ٓ]*[ٕٔ]'), 'ء')
+    .replaceAll(RegExp('[ً-ٟۖ-ۭـ]'), '');
+
+/// A rule of the displayed reader that changes the body of a word (النَّبِيٓـِٕينَ،
+/// يَاتِي، لَبِتُّ): a reader who does not read by it has another word, shown in
+/// the hamesh with what he reads. Only there: the word keeps its colour on the
+/// page, as the rule's.
+List<Variant> otherBodyNotes(
+  VariantRepository repository,
+  Ayah ayah,
+  int word,
+  String? displayed,
+  Iterable<String> ids,
+  List<Variant> told,
+) {
+  if (displayed == null || word >= ayah.words.length) return const [];
+  final rules = _rows(repository, displayed, ayah, word, word + 1).where(
+    (v) =>
+        v.isUsul &&
+        !v.isMarginNote &&
+        !v.readsAsHafs &&
+        !v.stopOnly &&
+        v.text.isNotEmpty &&
+        v.word == word &&
+        v.count == 1 &&
+        v.rule != 'ya_zaida' &&
+        !v.rule.startsWith('naql') &&
+        !v.description.contains('نقل') &&
+        !v.rule.startsWith('tasheel') &&
+        // A hamza eased: its body is not told by the letters written for it.
+        !RegExp('[۪۬]').hasMatch(v.text) &&
+        !RegExp('تسهيل|تخفيف').hasMatch(v.description),
+  );
+  if (rules.isEmpty) return const [];
+  // An idgham too: its letter merged, told by the shadda it leaves.
+  int shaddas(String t) => RegExp('ّ').allMatches(t).length;
+  bool changes(Variant v, String other) =>
+      _bodyKey(v.text) != _bodyKey(other) ||
+      v.rule.startsWith('idgham') &&
+          shaddas(v.text.substring(1)) != shaddas(other.substring(1));
+
+  return [
+    for (final id in ids)
+      if (!told.any(
+        (v) =>
+            v.riwayaId == id &&
+            v.inHamesh &&
+            v.word <= word &&
+            word < v.word + v.count,
+      ))
+        if (readingText(repository, id, ayah, word, word + 1) case final other
+            when other.isNotEmpty && rules.any((v) => changes(v, other)))
+          Variant(
+            riwayaId: id,
+            surah: ayah.surah,
+            ayah: ayah.number,
+            word: word,
+            count: 1,
+            text: other,
+            kind: VariantKind.farsh,
+            rule: 'comparison',
+          ),
+  ];
+}
+
+/// Everything to cite for the word tapped on the page: the displayed reader's
+/// rows, what the others differ in, and, where the word is read otherwise by
+/// any of them, every selected reader's own reading, those who read it as Hafs
+/// or as the displayed reader too (ٱلۡبُيُوتَ of Abu Ja'far).
+List<Variant> wordEvidence({
+  required VariantRepository repository,
+  required Ayah ayah,
+  required int word,
+  required String? displayed,
+  required Iterable<String> selected,
+  required Iterable<String> compared,
+}) {
+  final out = <Variant>[
+    if (displayed != null)
+      ...repository.at([displayed], ayah.surah, ayah.number, word),
+    ...compareReadings(
+      repository: repository,
+      ayah: ayah,
+      word: word,
+      displayed: displayed,
+      selected: compared,
+    ),
+  ];
+  final ids = {
+    ?displayed,
+    ...selected.where((id) => id == 'hafs' || repository.isLoaded(id)),
+    ...compared,
+  };
+  final lexical = {
+    for (final id in ids)
+      id: _rows(repository, id, ayah, word, word + 1).where(_lexical).toList(),
+  };
+  if (lexical.values.every((rows) => rows.isEmpty)) return out;
+  bool has(String id) => out.any(
+    (v) => v.riwayaId == id && (v.inHamesh || v.rule == 'comparison'),
+  );
+  for (final id in ids) {
+    for (final v in lexical[id]!) {
+      if (!out.contains(v)) out.add(v);
+    }
+    if (!has(id) && lexical[id]!.isEmpty) {
+      out.add(
+        Variant(
+          riwayaId: id,
+          surah: ayah.surah,
+          ayah: ayah.number,
+          word: word,
+          count: 1,
+          text: readingText(repository, id, ayah, word, word + 1),
+          kind: VariantKind.farsh,
+          rule: 'comparison',
+        ),
+      );
+    }
+  }
+  return out;
+}
+
 /// Compare each selected narrator with the displayed narrator. A missing
 /// lexical delta means agreement with Hafs, rather than no comparison.
 /// Usul keep their separate annotations; shared explicit rules are omitted.

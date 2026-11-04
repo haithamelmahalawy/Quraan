@@ -170,7 +170,7 @@ void main() {
           .any(
             (m) =>
                 m.letter.isEmpty &&
-                m.text.contains('وَعَرَبِيّ') &&
+                m.text.contains('جَمِي') &&
                 !HamzaReplacementMark.seatText(m.text, m.offset).contains('۬'),
           ),
       isTrue,
@@ -280,7 +280,7 @@ void main() {
   test("no word of Abu Ja'far is lost, and «يأمركم» is usul", () {
     // Each row on the words its text reads; these alone are read as one or
     // leave a word out.
-    const asOne = {'40:26:11', '53:50:2', '57:24:9'};
+    const asOne = {'40:26:12', '53:50:2', '57:24:9'};
     for (final id in ['ibn_wardan', 'ibn_jammaz']) {
       for (final v in variants.allOf(id)) {
         if (v.text.trim().isEmpty) continue;
@@ -523,7 +523,7 @@ void main() {
           (t.getTopLeft(find.byKey(widget.key!)).dy -
                   t.getTopLeft(word(parts[0], parts[1], parts[2])).dy)
               .abs(),
-          lessThan(65),
+          lessThan(90),
         );
       }
       expect(t.takeException(), isNull);

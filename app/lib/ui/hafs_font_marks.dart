@@ -600,6 +600,12 @@ class _QuranMarkPainter extends CustomPainter {
                           // Close under the ba's dot (صَبّ۪ارٖ).
                           : source.startsWith('ب', at)
                           ? .28
+                          // Clear of the kasra of the letter before (فَنِع۪مَّا).
+                          : source.startsWith('ع', at) &&
+                                RegExp(
+                                  'ِ[ً-ْ]*\$',
+                                ).hasMatch(source.substring(0, at))
+                          ? .56
                           : .40)
                     : kasra
                     // The hamza hangs lower under the waw's tail.

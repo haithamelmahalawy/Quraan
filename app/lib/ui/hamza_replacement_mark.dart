@@ -170,10 +170,16 @@ class _ReplacementPainter extends CustomPainter {
     // A selection box covers the line's font metrics, not the hamza's ink.
     // Anchor to the alif's baseline instead of the top/bottom of that box.
     final hamza = originalHamza ?? text.substring(offset, end);
+    // On the alif of «لَا۬»: its box is the whole ligature, whose middle is under
+    // the lam's fatha.
+    final inLigature =
+        letter.isEmpty &&
+        text.startsWith('ا', offset) &&
+        RegExp('ل[ً-ْ]*\$').hasMatch(text.substring(0, offset));
     final center = Offset(
       HamzaReplacementMark.beforeAlif(letter, hamza, text, offset)
           ? box.right + diameter * .55
-          : (box.left + box.right) / 2,
+          : (box.left + box.right) / 2 - (inLigature ? fontSize * .30 : 0),
       line.baseline +
           fontSize *
               (hamza.startsWith('ء')

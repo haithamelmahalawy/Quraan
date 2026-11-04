@@ -131,6 +131,30 @@ void applyMikail(String id, List rows) {
       v[6] = 'بهمزة مكسورة بعد الألف وبعدها ياء ساكنة';
     }
   }
+  // «فَنِعۡمَّا» (البقرة ٢٧١) of Qalun: the sukun first, or the kasra stolen.
+  if (id == 'qalun') {
+    for (final v in rows.cast<List>()) {
+      if (v[0] != 2 || v[1] != 271 || v[2] != 3 || v[5] != 'f') continue;
+      v
+        ..[4] = 'فَنِعۡمَّا'
+        ..[6] = 'بوجهين: إسكان العين، وهو المقدم؛ أو اختلاس كسرة العين';
+    }
+  }
+  // «لَأَعۡنَتَكُمۡ» (البقرة ٢٢٠) of al-Bazzi: eased or not, the easing first.
+  if (id == 'bazzi') {
+    for (final v in rows.cast<List>()) {
+      if (v[0] != 2 || v[1] != 220 || v[2] != 21 || v[5] != 'h') continue;
+      while (v.length < 9) {
+        v.add('');
+      }
+      v
+        ..[6] = 'بوجهين: تسهيل الهمزة، وهو المقدم؛ أو تحقيق الهمزة'
+        ..[8] = {
+          if (v[8] is Map) ...(v[8] as Map),
+          'ways': ['تسهيل الهمزة، وهو المقدم', 'تحقيق الهمزة'],
+        };
+    }
+  }
   for (final v in rows.cast<List>()) {
     if (v[5] != 'f') continue;
     // «وَأَوْصَىٰ» (البقرة ١٣٢): Abu Ja'far's as Qalun's, one note.

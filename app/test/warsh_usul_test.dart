@@ -2986,10 +2986,10 @@ void main() {
         find.byKey(const ValueKey('usul-reference:مد البدل:2:62:6:warsh')),
         findsNothing,
       );
-      // In the usul below only, not beside the page.
+      // Hafs's word beside the page when Warsh is shown: his hamza is dropped.
       expect(
         find.byKey(const ValueKey('margin-reference:2:62:6')),
-        findsNothing,
+        displayed == null ? findsNothing : findsOneWidget,
       );
       expect(find.text('مد البدل:'), findsOneWidget);
       expect(t.takeException(), isNull);
