@@ -148,7 +148,8 @@ void main() {
     await lib.download(reciter);
     final state = lib.stateOf(reciter);
     expect(state.error, contains('الاتصال'));
-    expect(state.status, DownloadStatus.paused);
+    expect(state.status, isNot(DownloadStatus.downloading));
+    expect(lib.isRunning(reciter), isFalse);
     expect(asked, lessThan(100));
   });
 
@@ -166,7 +167,8 @@ void main() {
     );
     await lib.download(reciter);
     final paused = lib.stateOf(reciter);
-    expect(paused.status, DownloadStatus.paused);
+    expect(lib.isRunning(reciter), isFalse);
+    expect(paused.status, isNot(DownloadStatus.complete));
     expect(paused.done, lessThan(total));
     await lib.download(reciter);
     expect(lib.stateOf(reciter).status, DownloadStatus.complete);
@@ -184,6 +186,63 @@ void main() {
     await lib.delete(reciter);
     expect(clip('x').parent.existsSync(), isFalse);
     expect(lib.stateOf(reciter).status, DownloadStatus.notStarted);
+  });
+
+  test('one surah alone downloads, and is told apart', () async {
+    final asked = <Uri>[];
+    final lib = library(serving(asked: asked));
+    await lib.download(reciter, surah: 114);
+    expect(asked, hasLength(6));
+    expect(asked.every((u) => u.path.contains('/114')), isTrue);
+    expect(lib.surahProgress(reciter, 114), (done: 6, total: 6));
+    expect(lib.surahProgress(reciter, 1), (done: 0, total: 7));
+    expect(lib.isSurahRunning(reciter, 114), isFalse);
+    expect(lib.clipUri(reciter, 114, 1).scheme, 'file');
+    expect(lib.clipUri(reciter, 1, 1).scheme, 'https');
+    // The whole is partly there, and goes on from it.
+    final state = lib.stateOf(reciter);
+    expect(state.status, DownloadStatus.paused);
+    expect(state.done, 6);
+    expect(state.bytes, 30);
+    asked.clear();
+    await lib.download(reciter);
+    expect(asked, hasLength(total - 6));
+    expect(lib.stateOf(reciter).status, DownloadStatus.complete);
+  });
+
+  test('a surah can be paused and deleted alone', () async {
+    final gate = Completer<void>();
+    late AudioLibrary lib;
+    lib = library(
+      MockClient((request) async {
+        if (!gate.isCompleted) {
+          lib.pause(reciter, surah: 2);
+          gate.complete();
+        }
+        return http.Response.bytes(utf8.encode('audio'), 200);
+      }),
+    );
+    await lib.download(reciter, surah: 2);
+    expect(lib.surahProgress(reciter, 2).done, lessThan(21));
+    expect(lib.isSurahRunning(reciter, 2), isFalse);
+    await lib.download(reciter, surah: 2);
+    expect(lib.surahProgress(reciter, 2).done, 21);
+    await lib.download(reciter, surah: 1);
+    await lib.deleteSurah(reciter, 2);
+    expect(lib.surahProgress(reciter, 2).done, 0);
+    expect(lib.surahProgress(reciter, 1).done, 7);
+    expect(clip('002001.mp3').existsSync(), isFalse);
+    expect(clip('001001.mp3').existsSync(), isTrue);
+  });
+
+  test('two downloads never fetch one clip twice', () async {
+    final asked = <Uri>[];
+    final lib = library(serving(asked: asked));
+    await Future.wait([
+      lib.download(reciter, surah: 114),
+      lib.download(reciter),
+    ]);
+    expect(asked.toSet(), hasLength(asked.length));
   });
 
   test('estimates the whole from a few clips', () async {
@@ -240,6 +299,14 @@ void main() {
     final first = recitations!.of('qalun').first;
     expect(find.byKey(ValueKey('audio-reciter-${first.id}')), findsOneWidget);
     expect(find.byKey(ValueKey('audio-download-${first.id}')), findsOneWidget);
+    // Each surah has its own download beside it.
+    await t.tap(find.byKey(ValueKey('audio-reciter-${first.id}')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('audio-surah-1')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('audio-surah-download-1')),
+      findsOneWidget,
+    );
     expect(t.takeException(), isNull);
   });
 }

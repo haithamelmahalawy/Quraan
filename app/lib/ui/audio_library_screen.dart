@@ -123,20 +123,96 @@ class _AudioLibraryScreenState extends State<AudioLibraryScreen> {
       builder: (context, controller) => ListView.builder(
         controller: controller,
         itemCount: widget.quran.surahs.length,
-        itemBuilder: (context, i) => ListTile(
-          key: ValueKey('audio-surah-${i + 1}'),
-          leading: CircleAvatar(radius: 15, child: Text('${i + 1}')),
-          title: Text('سورة ${widget.quran.surahs[i].nameAr}'),
-          trailing: const Icon(Icons.play_arrow_rounded),
-          onTap: () {
-            Navigator.pop(context);
-            _player.continuous = true;
-            _player.play(i + 1, 1, reciter);
-          },
+        itemBuilder: (context, i) => ListenableBuilder(
+          listenable: _library,
+          builder: (context, _) => _surahTile(context, reciter, i + 1),
         ),
       ),
     ),
   );
+
+  /// A surah: tapped to hear it, with its own download beside it.
+  Widget _surahTile(BuildContext context, Reciter reciter, int surah) {
+    final (:done, :total) = _library.surahProgress(reciter, surah);
+    final running = _library.isSurahRunning(reciter, surah);
+    final complete = total > 0 && done >= total;
+    final name = widget.quran.surah(surah).nameAr;
+    return ListTile(
+      key: ValueKey('audio-surah-$surah'),
+      leading: CircleAvatar(radius: 15, child: Text('$surah')),
+      title: Text('سورة $name'),
+      subtitle: complete
+          ? const Text('على الجهاز')
+          : running || done > 0
+          ? Text('$done من $total آية')
+          : null,
+      onTap: () {
+        Navigator.pop(context);
+        _player.continuous = true;
+        _player.play(surah, 1, reciter);
+      },
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.play_arrow_rounded),
+          if (complete)
+            IconButton(
+              key: ValueKey('audio-surah-delete-$surah'),
+              tooltip: 'حذف السورة من الجهاز',
+              onPressed: () => _deleteSurah(reciter, surah, name),
+              icon: Icon(
+                Icons.download_done_rounded,
+                color: MushafColors.green,
+              ),
+            )
+          else if (running)
+            IconButton(
+              key: ValueKey('audio-surah-pause-$surah'),
+              tooltip: 'إيقاف التحميل مؤقتًا',
+              // The whole's download is stopped from the reciter's line.
+              onPressed: _library.isRunning(reciter)
+                  ? null
+                  : () => _library.pause(reciter, surah: surah),
+              icon: SizedBox.square(
+                dimension: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  value: total == 0 ? null : done / total,
+                ),
+              ),
+            )
+          else
+            IconButton(
+              key: ValueKey('audio-surah-download-$surah'),
+              tooltip: 'تحميل السورة',
+              onPressed: () => _library.download(reciter, surah: surah),
+              icon: const Icon(Icons.download_rounded),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteSurah(Reciter reciter, int surah, String name) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('حذف سورة $name من الجهاز؟'),
+        content: Text('ويمكن تحميلها أو سماعها بصوت ${reciter.name} لاحقًا.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await _library.deleteSurah(reciter, surah);
+  }
 
   Widget _reciterTile(Reciter reciter) => ListenableBuilder(
     listenable: _library,
@@ -148,7 +224,7 @@ class _AudioLibraryScreenState extends State<AudioLibraryScreen> {
         DownloadStatus.notStarted => 'عبر الإنترنت',
         DownloadStatus.complete => 'على الجهاز • ${size(state.bytes)}',
         _ when running => 'جارٍ التحميل $percent٪ • ${size(state.bytes)}',
-        _ => 'متوقف عند $percent٪ • ${size(state.bytes)}',
+        _ => 'محمَّل منها $percent٪ • ${size(state.bytes)}',
       };
       return Column(
         mainAxisSize: MainAxisSize.min,
