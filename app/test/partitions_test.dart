@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/ui/partition_marker.dart';
-
+ 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   for (final edition in MushafEdition.values) {
