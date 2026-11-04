@@ -13,6 +13,7 @@ import 'apply_first_sakin.dart';
 import 'apply_dagger_alif.dart';
 import 'apply_hamza_zaida.dart';
 import 'apply_idgham_dhal.dart';
+import 'apply_word_span.dart';
 
 const ashabSilahSource = 'ashab_silah_pdf';
 const ashabSilahRiwayat = [
@@ -983,6 +984,69 @@ Map<String, int> buildAshabSilahUsul(
     if (gone) count('same_kasr_ha');
     return gone;
   });
+  if (_abuJafar(id)) {
+    // Two words his source writes joined, or on the word before.
+    for (final (key, before) in const [
+      ('10:16:7', 'أَد'),
+      ('16:63:11', 'وَل'),
+      ('40:41:1', 'لِ'),
+    ]) {
+      for (final v in rows) {
+        if ('${v[0]}:${v[1]}:${v[2]}' != key || '${v[4]}'.contains(' ')) {
+          continue;
+        }
+        v[4] = '${v[4]}'.replaceFirst(before, ' $before');
+      }
+    }
+    for (final v in rows) {
+      // «ٱلَّٰٓـِٔي» (المجادلة ٢), not «إِلَّا» with it.
+      if (v[0] == 58 && v[1] == 2 && v[2] == 10 && v[3] == 2) {
+        v
+          ..[2] = 11
+          ..[3] = 1;
+      }
+    }
+    // «يَأۡمُرُكُمۡ» and its like, in «الهمز المفرد (إبدال الهمز)» on the word
+    // alone; of the farsh only the raf' of آل عمران ٨٠ (يَأۡمُرَكُمۡ).
+    for (final MapEntry(key: key, value: hafs) in hafsAt.entries) {
+      final bare = hafs.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '');
+      if (!RegExp(r'^[وف]?[يت]أمر(كم|هم|ك)$').hasMatch(bare)) continue;
+      final [s, a, w] = [for (final n in key.split(':')) int.parse(n)];
+      bool here(List v) =>
+          v[0] == s &&
+          v[1] == a &&
+          (v[2] as int) <= w &&
+          w < (v[2] as int) + (v[3] as num).toInt();
+      bool silah(List v) => '${v[6]}'.trim() == 'بصلة ميم الجمع';
+      var hasSilah = false;
+      for (final v in rows) {
+        if (here(v) && silah(v)) {
+          hasSilah = true;
+          v[4] = '';
+        }
+      }
+      rows.removeWhere((v) => here(v) && !silah(v));
+      var text = hafs.replaceFirst('أۡ', 'ا');
+      if (hasSilah) {
+        text = text.replaceFirstMapped(
+          RegExp(r'مۡ?([ۖ-ۜ]*)$'),
+          (m) => 'مُۥ${m[1]}',
+        );
+      }
+      final raf = text.contains('مُرَ');
+      text = text.replaceFirst('مُرَ', 'مُرُ');
+      final at = rows.indexWhere(
+        (v) =>
+            (v[0] as int) * 1000000 + (v[1] as int) * 1000 + (v[2] as int) >
+            s * 1000000 + a * 1000 + w,
+      );
+      rows.insertAll(at < 0 ? rows.length : at, [
+        [s, a, w, 1, text, 'h', 'بإبدال الهمزة ألفًا', 'ibdal_single'],
+        if (raf) [s, a, w, 1, text, 'f', 'برفع الراء', ''],
+      ]);
+      count('ya_muru');
+    }
+  }
   // «ٱلۡـَٰٔنَ»: «وَلاَ نَقْلَ إِلاَّ الآنَ مَعْ يُوْنُسٍ بَدَا», Ibn Wardan's naql
   // wherever it comes, told in the usul on its word; Qalun reads it as Hafs
   // (his naql is in يونس's «ءَآلۡـَٰٔنَ» alone), Ibn Jammaz too.
@@ -1125,6 +1189,8 @@ void main() {
   for (final id in ashabSilahRiwayat) {
     final file = File('assets/data/qiraat/$id.json');
     final data = jsonDecode(file.readAsStringSync()) as Map;
+    // Each row on the words its text reads, before the rest looks at them.
+    if (_abuJafar(id)) applyWordSpan(quran, data['variants'] as List);
     final counts = buildAshabSilahUsul(
       quran,
       data,

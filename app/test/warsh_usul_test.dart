@@ -2765,6 +2765,81 @@ void main() {
     expect(word.style.color, MushafColors.ink);
   });
 
+  testWidgets('word details: «as the displayed» only for those who read so', (
+    t,
+  ) async {
+    await t.runAsync(() async {
+      await variants.ensureLoaded(variants.available);
+      await Manzumat.load();
+      await Kharouf.load();
+    });
+    final settings =
+        ReaderSettings.memory(selected: {'qalun', 'bazzi', 'ibn_wardan'})
+          ..displayed = 'ibn_wardan';
+    await page(t, quran.ayah(2, 62).page, settings: settings);
+    VariantSheet.show(
+      t.element(find.byType(MushafPage)),
+      VariantSheet(
+        // «وَٱلصَّٰبِـِٔينَ»: Abu Ja'far and Nafi' without the hamza.
+        ayah: quran.ayah(2, 62),
+        word: 6,
+        surahName: quran.surah(2).nameAr,
+        settings: settings,
+        variants: variants,
+        surahNames: [for (final s in quran.surahs) s.nameAr],
+      ),
+    );
+    await t.pump();
+    await t.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 30)),
+    );
+    await t.pumpAndSettle();
+    final sheet = find.byType(VariantSheet);
+    Finder tile(String name) => find
+        .ancestor(
+          of: find.descendant(of: sheet, matching: find.textContaining(name)),
+          matching: find.byWidgetPredicate(
+            (x) => x.runtimeType.toString() == '_ReadingTile',
+          ),
+        )
+        .first;
+    Finder same(String name) => find.descendant(
+      of: tile(name),
+      matching: find.byWidgetPredicate(
+        (x) => x is QuranWordText && x.text == 'كالرواية المعروضة',
+      ),
+    );
+    await t.scrollUntilVisible(
+      find.descendant(of: sheet, matching: find.textContaining('رواية البزي')),
+      150,
+      scrollable: find
+          .descendant(of: sheet, matching: find.byType(Scrollable))
+          .first,
+    );
+    await t.pumpAndSettle();
+    expect(same('رواية ورش'), findsOneWidget);
+    expect(same('رواية البزي'), findsNothing);
+    expect(
+      find.descendant(
+        of: tile('رواية البزي'),
+        matching: find.text('بخلاف الرواية المعروضة: بحذف الهمزة'),
+      ),
+      findsOneWidget,
+    );
+    // Hafs too.
+    expect(
+      displayedRulesNotReadBy(
+        repository: variants,
+        ayah: quran.ayah(2, 62),
+        word: 6,
+        displayed: 'ibn_wardan',
+        id: 'hafs',
+      ).map((v) => v.rule),
+      ['hamza_hadhf'],
+    );
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets(
     'word details name the displayed base and resolve an implicit Shubah reading',
     (t) async {

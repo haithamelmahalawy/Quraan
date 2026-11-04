@@ -124,10 +124,11 @@ class Manzumat {
     final poem =
         _yaqubShatibiyya(reading) != null ||
             (_idghamDhal(reading, hafs) ||
-                    const {
-                      'hamza_hadhf',
-                      'hamza_zaida',
-                    }.contains(reading.rule)) &&
+                    reading.rule == 'hamza_zaida' ||
+                    // «ٱلصَّٰبِـِٔينَ» with Nafi'; his bab of «مُسۡتَهۡزُونَ» has
+                    // its verse in the Durrah.
+                    reading.rule == 'hamza_hadhf' &&
+                        RegExp('صب[يو]ن').hasMatch(_letters(reading.text))) &&
                 qiraaOf(reading.riwayaId).id == 'abu_jafar'
         ? Poem.shatibiyya
         : Poem.of(reading.riwayaId);

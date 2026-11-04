@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/variant_repository.dart';
 import '../data/reading_comparison.dart';
+import '../data/usul_text.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../state/reader_settings.dart';
@@ -216,6 +217,26 @@ class VariantSheet extends StatelessWidget {
     final list = compared;
     final title = '${qiraa.nameAr} - رواية ${riwaya.nameAr}';
     if (list.isEmpty) {
+      // A rule of the displayed riwaya it does not read: its own reading, not
+      // «as the displayed» (وَٱلصَّٰبِـِٔينَ of Hafs under Abu Ja'far's).
+      final unread = displayedRulesNotReadBy(
+        repository: variants,
+        ayah: ayah,
+        word: word,
+        displayed: settings.displayed,
+        id: id,
+      ).where((v) => !isRoutineMadd(v));
+      if (unread.isNotEmpty) {
+        return _ReadingTile(
+          color: qiraa.color,
+          title: title,
+          text: readingText(variants, id, ayah, from, to),
+          font: riwaya.fontFamily ?? 'Hafs',
+          description:
+              'بخلاف الرواية المعروضة: '
+              '${unread.map((v) => v.shownDescription).join('؛ ')}',
+        );
+      }
       return _ReadingTile(
         color: qiraa.color,
         title: title,

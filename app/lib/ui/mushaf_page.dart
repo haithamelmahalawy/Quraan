@@ -1780,6 +1780,18 @@ class _MushafPageState extends State<MushafPage>
       if (v.rule == 'ikhfa') {
         mark(letters.length - 1, ReadingColors.of(v));
       }
+      // A hamza dropped or added has no letter of its own (مُسۡتَهۡزُونَ،
+      // ٱلنَّبِيٓـِٕـۧنَ): the word in its colour, what else is coloured kept.
+      if (v.kind == VariantKind.hamza &&
+          kind == null &&
+          !d.contains('نقل') &&
+          (const {'hamza_zaida', 'hamza_hadhf'}.contains(v.rule) ||
+              v.rule.isEmpty &&
+                  !RegExp('إبدال|ابدال|تسهيل|تخفيف الهمزة|إسقاط').hasMatch(d))) {
+        for (var i = 0; i < letters.length; i++) {
+          if (!colors.containsKey(i)) mark(i, ReadingColors.hamza);
+        }
+      }
       if (RegExp('إبدال|ابدال|تسهيل|تخفيف الهمزة|إسقاط').hasMatch(d)) {
         final hafs = lettersOf(ayah.words[w]);
         final hamzas = [

@@ -229,6 +229,66 @@ void main() {
     }
   });
 
+  test("no word of Abu Ja'far is lost, and «يأمركم» is usul", () {
+    // Each row on the words its text reads; these alone are read as one or
+    // leave a word out.
+    const asOne = {'40:26:11', '53:50:2', '57:24:9'};
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      for (final v in variants.allOf(id)) {
+        if (v.text.trim().isEmpty) continue;
+        final n = v.text.trim().split(RegExp(r'\s+')).length;
+        final place = '${v.surah}:${v.ayah}:${v.word}';
+        if (!asOne.contains(place)) {
+          expect(n, greaterThanOrEqualTo(v.count), reason: '$id $place');
+        }
+      }
+      final v = variants
+          .at([id], 2, 67, 6)
+          .where((v) => v.rule == 'ibdal_single')
+          .single;
+      expect(v.count, 1);
+      expect(v.text, startsWith('يَامُرُ'));
+      expect(variants.at([id], 2, 67, 6).where((v) => v.inHamesh), isEmpty);
+      expect(variants.at([id], 2, 67, 7).where((v) => v.word == 6), isEmpty);
+      // آل عمران ٨٠: its raf' alone in the farsh, «وَلَا» untouched.
+      expect(variants.at([id], 3, 80, 0).where((v) => v.word == 0), isEmpty);
+      final raf = variants.at([id], 3, 80, 1).where((v) => !v.isUsul).single;
+      expect(raf.description, 'برفع الراء');
+    }
+  });
+
+  testWidgets('a hamza dropped or added colours its word on the page', (
+    t,
+  ) async {
+    const ashab = {'qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz'};
+    for (final (shown, a, w, n) in [
+      // «مُسۡتَهۡزُونَ»: Abu Ja'far's, shown or compared.
+      ('ibn_jammaz', 14, 15, 3),
+      ('qalun', 14, 15, 3),
+      // «يَامُرُكُمُۥ»: his ibdal, told by no rule of its own.
+      ('ibn_jammaz', 93, 21, null),
+      // «ٱلنَّبِيٓـِٕـۧنَ»: Qalun's added hamza against al-Bazzi.
+      ('qalun', 61, 51, null),
+      ('bazzi', 61, 51, null),
+    ]) {
+      await page(t, shown, number: n ?? quran.ayah(2, a).page, selected: ashab);
+      final ink = t.widget<InkText>(word(2, a, w));
+      expect(
+        {ink.style.color, ...?ink.parts?.map((p) => p.$2)},
+        contains(ReadingColors.hamza),
+        reason: '$shown 2:$a:$w',
+      );
+      expect(t.takeException(), isNull);
+    }
+    // Shown alone, nothing of it is coloured.
+    await page(t, 'ibn_jammaz', number: 3, selected: {'ibn_jammaz'});
+    final alone = t.widget<InkText>(word(2, 14, 15));
+    expect({
+      alone.style.color,
+      ...?alone.parts?.map((p) => p.$2),
+    }, isNot(contains(ReadingColors.hamza)));
+  });
+
   testWidgets("Abu Ja'far's إسرائيل is coloured against the others", (t) async {
     for (final shown in ['ibn_wardan', 'qalun']) {
       await page(

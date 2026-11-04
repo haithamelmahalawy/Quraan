@@ -280,7 +280,20 @@ class Variant {
           isQasr ||
           (isImala &&
               (description.isEmpty || _imalaOnly.hasMatch(description))) ||
-          _onlyGeneralRules(description));
+          _onlyGeneralRules(description) ||
+          _hamzaUntold);
+
+  /// A hamza told by no rule and outside the book's farsh (يَامُرُكُمُۥ
+  /// «بإبدال الهمزة وضم الراء»): usul, as the page's key tells it, so that it
+  /// is compared and coloured. Its hamza kept is as Hafs (بتحقيق الهمزتين،
+  /// فَٱدَّٰرَْٰٔتُمۡ «الهمز وحذف الهمزة»).
+  bool get _hamzaUntold =>
+      kind == VariantKind.hamza &&
+      rule.isEmpty &&
+      !certified &&
+      !bookFarsh &&
+      !description.contains('تحقيق') &&
+      !RegExp('^ب?الهمز وحذف').hasMatch(description);
 
   /// Qasr of the separated madd (Qalun, Ibn Kathir, al-Susi): بِمَا أُنزِلَ.
   bool get isQasr => description == 'بالقصر';

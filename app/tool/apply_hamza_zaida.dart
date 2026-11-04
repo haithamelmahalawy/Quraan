@@ -43,6 +43,24 @@ void applyHamzaHadhf(String id, List rows) {
       ..[6] = told.$2
       ..[7] = 'hamza_hadhf';
   }
+  if (id == 'qalun' || id == 'warsh') return;
+  // Abu Ja'far's bab of «مُسۡتَهۡزُونَ»: «وَيَحْذِفُ مُسْتَهْزُونَ وَالْبَابَ مَعْ تَطَوْا
+  // يَطَوْا مُتَّكًا خَاطِيْنَ مُتَّكِئِي أُولا كَمُسْتَهْزِئِيْ مُنْشُونَ».
+  final bab = RegExp(
+    'تهزو|تهزي|طفوا|واطوا|تطو|متك|يتكو|خاطي|خطين|خاطو|خطو|مالو|نبو|منشو',
+  );
+  for (final v in rows.cast<List>()) {
+    if (v[5] != 'h' ||
+        !'${v[6]}'.contains('حذف الهمزة') ||
+        v.length > 7 && '${v[7]}'.isNotEmpty ||
+        !bab.hasMatch(_bare('${v[4]}').replaceAll(RegExp('[أإآٱ]'), 'ا'))) {
+      continue;
+    }
+    while (v.length < 8) {
+      v.add('');
+    }
+    v[7] = 'hamza_hadhf';
+  }
 }
 
 /// «هُزُوٗا، كُفُوًا» with the hamza for the waw of Hafs, in their usul with

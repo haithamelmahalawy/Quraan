@@ -317,6 +317,33 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
   return '${readingTextKey(applied, baseline: ayah.words.sublist(from, to).join(' '))}#${[...unresolved, ...noStopAlif].join(';')}';
 }
 
+/// The displayed narrator's own rules at [word] that [id] does not read:
+/// [compareReadings] looks only from [id] to the displayed one, so a reader
+/// with no row (Hafs, al-Bazzi in «وَٱلصَّٰبِـِٔينَ») would seem to read as him.
+List<Variant> displayedRulesNotReadBy({
+  required VariantRepository repository,
+  required Ayah ayah,
+  required int word,
+  required String? displayed,
+  required String id,
+}) {
+  final own = _rows(
+    repository,
+    id,
+    ayah,
+    word,
+    word + 1,
+  ).where((v) => v.isUsul).map(readingVariantKey).toSet();
+  return [
+    for (final v in _rows(repository, displayed, ayah, word, word + 1))
+      if (v.isUsul &&
+          !v.isMarginNote &&
+          !v.readsAsHafs &&
+          !own.contains(readingVariantKey(v)))
+        v,
+  ];
+}
+
 /// Compare each selected narrator with the displayed narrator. A missing
 /// lexical delta means agreement with Hafs, rather than no comparison.
 /// Usul keep their separate annotations; shared explicit rules are omitted.
