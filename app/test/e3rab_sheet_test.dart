@@ -149,6 +149,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('waqf-tab')));
     await settle();
     expect(settings.besideAyah, BesideAyah.waqf);
+    // Beside them, what stopping is and its kinds.
+    expect(find.byKey(const ValueKey('waqf-guide-button')), findsOneWidget);
     expect(
       find.text('المكتفى في الوقف والابتدا — أبو عمرو الداني'),
       findsOneWidget,

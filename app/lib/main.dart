@@ -6,6 +6,7 @@ import 'data/mutashabihat_repository.dart';
 import 'data/quran_repository.dart';
 import 'data/variant_repository.dart';
 import 'state/reader_settings.dart';
+import 'services/audio_library.dart';
 import 'services/ayah_player.dart';
 import 'ui/ayah_sheet.dart';
 import 'ui/home_screen.dart';
@@ -19,12 +20,15 @@ Future<void> main() async {
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  final (mushafs, variants, mutashabihat, settings) = await (
+  final (mushafs, variants, mutashabihat, settings, _) = await (
     Mushafs.load(),
     VariantRepository.discover(),
     MutashabihatRepository.load(),
     ReaderSettings.load(),
+    AudioLibrary.instance.init(),
   ).wait;
+  // A recitation kept on the device plays from it, with no connection.
+  AyahPlayer.instance.clipUri = AudioLibrary.instance.clipUri;
   runApp(
     QiraatApp(
       mushafs: mushafs,

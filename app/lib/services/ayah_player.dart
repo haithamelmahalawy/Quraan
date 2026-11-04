@@ -54,6 +54,11 @@ class AyahPlayer extends ChangeNotifier {
   /// Always expressed in the displayed Hafs/Kufan verse numbering.
   ({int surah, int ayah, Reciter reciter})? current;
 
+  /// Where a clip is played from: streamed, unless the library has it on the
+  /// device.
+  Uri Function(Reciter reciter, int surah, int native) clipUri =
+      (reciter, surah, native) => reciter.ayah(surah, native);
+
   /// Retained for callers supplying displayed verse counts.
   List<int> ayahCounts = const [];
   bool continuous = true;
@@ -146,7 +151,7 @@ class AyahPlayer extends ChangeNotifier {
     notifyListeners();
     if (request != _request) return;
     try {
-      await _player.setUrl(c.reciter.ayah(c.surah, native).toString());
+      await _player.setUrl(clipUri(c.reciter, c.surah, native).toString());
       if (request != _request) return;
       _preparing = false;
       _armed = true;

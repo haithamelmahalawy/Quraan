@@ -17,6 +17,7 @@ import '../state/reader_settings.dart';
 import 'raised.dart';
 import 'recitation_player.dart';
 import 'theme.dart';
+import 'waqf_guide_sheet.dart';
 
 /// An ayah: listen to it in a riwaya, by a sheikh of that riwaya, and read
 /// its tafsir in several books.
@@ -610,6 +611,17 @@ class _TafsirState extends State<_Tafsir> {
             ),
           ],
         ),
+        // What stopping is, its kinds and the mushaf's signs.
+        if (_beside == BesideAyah.waqf)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              key: const ValueKey('waqf-guide-button'),
+              onPressed: () => WaqfGuideSheet.show(context, widget.quran),
+              icon: const Icon(Icons.help_outline_rounded),
+              label: const Text('شرح الوقف والابتداء وأنواعه'),
+            ),
+          ),
         const SizedBox(height: 8),
         SizedBox(
           height: 40,

@@ -7,6 +7,7 @@ import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../state/reader_settings.dart';
+import 'audio_library_screen.dart';
 import 'qiraat_sheet.dart';
 import 'qurra_guide_screen.dart';
 import 'reading_library_screen.dart';
@@ -91,8 +92,8 @@ class HomeScreen extends StatelessWidget {
   void _search(BuildContext context) =>
       _pick(context, SearchScreen(quran: quran));
 
-  void _openQurraGuide(BuildContext context) => Navigator.of(context)
-      .push<void>(
+  void _openQurraGuide(BuildContext context) =>
+      Navigator.of(context).push<void>(
         MaterialPageRoute(
           builder: (_) =>
               QurraGuideScreen(variants: variants, quran: mushafs.madani),
@@ -102,6 +103,12 @@ class HomeScreen extends StatelessWidget {
   void _openLibrary(BuildContext context) => Navigator.of(context).push<void>(
     MaterialPageRoute(
       builder: (_) => ReadingLibraryScreen(quran: mushafs.madani),
+    ),
+  );
+
+  void _openAudio(BuildContext context) => Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      builder: (_) => AudioLibraryScreen(quran: mushafs.madani),
     ),
   );
 
@@ -178,6 +185,12 @@ class HomeScreen extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             final buttons = <Widget>[
+              _RoundButton(
+                icon: Icons.headphones_rounded,
+                tooltip: 'المسموعات',
+                onTap: () => _openAudio(context),
+              ),
+              const SizedBox(width: 10),
               _RoundButton(
                 icon: Icons.local_library_outlined,
                 tooltip: 'المتون ومصادر القراءات',
@@ -357,6 +370,13 @@ class HomeScreen extends StatelessWidget {
                 title: 'القراء العشرة ورواتهم',
                 subtitle: 'نبذات وتصنيف بحسب المدن والقراءات',
                 onTap: () => _openQurraGuide(context),
+              ),
+              _Row(
+                icon: Icons.headphones_rounded,
+                color: const Color(0xFF3D8BE8),
+                title: 'المسموعات',
+                subtitle: 'كل القراء والرواة، والاستماع دون إنترنت',
+                onTap: () => _openAudio(context),
               ),
               _Row(
                 icon: Icons.local_library_outlined,

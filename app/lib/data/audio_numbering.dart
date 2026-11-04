@@ -138,6 +138,10 @@ class AudioNumbering {
   List<int> displayedVerses(String system, int surah, int nativeAyah) =>
       _reverse[system]![surah - 1][nativeAyah]!;
 
+  /// Every clip of a surah's recording, the uncounted basmala's 0 included.
+  List<int> nativeClips(String system, int surah) =>
+      _reverse[system]![surah - 1].keys.toList()..sort();
+
   int nativeCount(String system, int surah) =>
       _reverse[system]![surah - 1].keys.reduce((a, b) => a > b ? a : b);
 
