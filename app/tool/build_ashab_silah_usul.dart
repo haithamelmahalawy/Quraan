@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:qiraat_mushaf/data/arabic.dart';
 
 import 'apply_first_sakin.dart';
+import 'apply_dagger_alif.dart';
 import 'apply_hamza_zaida.dart';
 import 'apply_idgham_dhal.dart';
 
@@ -1165,6 +1166,9 @@ void main() {
     {for (final e in built.entries) e.key: e.value.$3},
   );
   for (final MapEntry(key: id, value: (file, data, counts)) in built.entries) {
+    // Last, after the texts taken from others: an added alif a dagger one.
+    final daggers = applyDaggerAlif(quran, data['variants'] as List);
+    if (daggers > 0) counts['dagger_alif'] = daggers;
     file.writeAsStringSync(jsonEncode(data));
     stdout.writeln('$id: $counts');
   }

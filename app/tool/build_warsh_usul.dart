@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:qiraat_mushaf/data/arabic.dart';
 
 import 'apply_first_sakin.dart';
+import 'apply_dagger_alif.dart';
 import 'apply_hamza_zaida.dart';
 import 'apply_idgham_dhal.dart';
 import 'correct_warsh_lin_hamz.dart';
@@ -635,6 +636,7 @@ Map<String, int> correctWarshUsul(
   applyFirstSakin('warsh', quran, variants);
   applyIdghamDhal('warsh', quran, variants);
   applyHamzaZaida('warsh', quran, variants);
+  applyDaggerAlif(quran, variants);
   variants.sort((a, b) {
     for (var i = 0; i < 3; i++) {
       final c = (a[i] as int).compareTo(b[i] as int);

@@ -15,8 +15,15 @@ void main() {
         );
         for (final v in (d['variants'] as List).cast<List>()) {
           if (v.length < 9 || v[8]['vocalizationSource'] == null) continue;
-          final before = lettersOf(v[8]['vocalizationSource'] as String);
-          final after = lettersOf(v[4] as String);
+          // An alif added to Hafs's rasm is written as the dagger one
+          // (tool/apply_dagger_alif.dart): the same letter.
+          String dagger(String t) => t
+              .replaceAll(RegExp('آ[ًٌٍَُِ]?'), 'ٰٓ')
+              .replaceAll(RegExp('ا[ًٌٍَُِ]?'), 'ٰ');
+          final before = lettersOf(
+            dagger(v[8]['vocalizationSource'] as String),
+          );
+          final after = lettersOf(dagger(v[4] as String));
           final reason = '$id ${v[0]}:${v[1]}:${v[2]} ${v[4]}';
           expect(after.length, before.length, reason: reason);
           for (var i = 0; i < before.length; i++) {
