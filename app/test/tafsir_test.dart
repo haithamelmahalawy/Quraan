@@ -7,7 +7,7 @@ import 'package:qiraat_mushaf/data/recitations.dart';
 import 'package:qiraat_mushaf/data/tafsir_repository.dart';
 import 'package:qiraat_mushaf/data/tafsir_text.dart';
 import 'package:qiraat_mushaf/models/qiraat_catalog.dart';
- 
+  
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
