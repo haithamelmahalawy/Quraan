@@ -104,23 +104,6 @@ bool _easesFirstHamza(Variant v) =>
       : null;
 }
 
-/// How much of the page's right the list of the riwayat lies over: what is
-/// told under the page stays clear of it, as the printed page does.
-class PageCover extends InheritedWidget {
-  const PageCover({super.key, required this.right, required super.child});
-
-  final double right;
-
-  static double rightOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<PageCover>()?.right ?? 0;
-
-  @override
-  bool updateShouldNotify(PageCover old) => right != old.right;
-}
-
-/// A hamesh's width for a page's: a share of it, within two bounds.
-typedef MarginRule = ({double share, double least, double most});
-
 /// One mushaf page: Hafs text with the selected riwayat's differences
 /// applied according to [ReaderSettings.mode], and mutashabihat underlined.
 class MushafPage extends StatefulWidget {
@@ -138,12 +121,12 @@ class MushafPage extends StatefulWidget {
     this.qcf = false,
     this.onAyahTap,
     this.onAyahWordTap,
-    this.onRightMargin,
+    this.onMarginSide,
   });
 
-  /// How wide the hamesh at the page's right is for a page's width, if it has
-  /// one: what the list of the riwayat may cover in place of the mushaf.
-  final ValueChanged<MarginRule?>? onRightMargin;
+  /// The side of the hamesh beside the page: at its right or not; null with
+  /// none. The list of the riwayat opens on the other side.
+  final ValueChanged<bool?>? onMarginSide;
 
   final int page;
   final QuranRepository quran;
@@ -442,9 +425,7 @@ class _MushafPageState extends State<MushafPage>
     ], _showFarshMargins ? _hameshEntries(ayahs) : []);
     final rail = notes.isEmpty ? 0.0 : (size.width * 0.20).clamp(60.0, 220.0);
     _reportMargin(
-      notes.isNotEmpty && widget.quran.isRightPage(widget.page)
-          ? (share: .20, least: 60, most: 220)
-          : null,
+      notes.isNotEmpty ? widget.quran.isRightPage(widget.page) : null,
     );
     final textHeight = math.max(
       1.0,
@@ -529,11 +510,11 @@ class _MushafPageState extends State<MushafPage>
   /// A large, continuously scrolling print. Fixed side margins follow
   /// only the lines currently in view; their own scroll keeps dense
   /// readings accessible without reducing the font or dropping notes.
-  void _reportMargin(MarginRule? rule) {
-    final report = widget.onRightMargin;
+  void _reportMargin(bool? atRight) {
+    final report = widget.onMarginSide;
     if (report == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) report(rule);
+      if (mounted) report(atRight);
     });
   }
 
@@ -875,9 +856,7 @@ class _MushafPageState extends State<MushafPage>
         ? (size.width * 0.16).clamp(52.0, 104.0)
         : 0.0;
     final rightPage = widget.quran.isRightPage(widget.page);
-    _reportMargin(
-      rightPage && withHamesh ? (share: .16, least: 52, most: 104) : null,
-    );
+    _reportMargin(withHamesh ? rightPage : null);
     final rightWidth = rightPage ? marginWidth : 0.0;
     final leftWidth = rightPage ? 0.0 : marginWidth;
     final pageWidth = size.width - rightWidth - leftWidth;
@@ -1014,12 +993,7 @@ class _MushafPageState extends State<MushafPage>
           ),
           if (overflow)
             Padding(
-              padding: EdgeInsets.fromLTRB(
-                4,
-                1,
-                4 + PageCover.rightOf(context),
-                4,
-              ),
+              padding: const EdgeInsets.fromLTRB(4, 1, 4, 4),
               child: KeyedSubtree(
                 key: const ValueKey('bottom-notes'),
                 child: _HameshBox(
@@ -1030,11 +1004,7 @@ class _MushafPageState extends State<MushafPage>
                 ),
               ),
             ),
-          if (usulBox != null)
-            Padding(
-              padding: EdgeInsets.only(right: PageCover.rightOf(context)),
-              child: usulBox,
-            ),
+          ?usulBox,
         ],
       ),
     );

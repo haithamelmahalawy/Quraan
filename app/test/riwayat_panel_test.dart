@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/qiraat_catalog.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
-import 'package:qiraat_mushaf/ui/mushaf_page.dart' show MarginRule, PageCover;
 import 'package:qiraat_mushaf/ui/riwayat_panel.dart';
 
 void main() {
@@ -20,7 +19,7 @@ void main() {
     WidgetTester t,
     ReaderSettings settings, {
     bool open = true,
-    ValueNotifier<MarginRule?>? margin,
+    ValueNotifier<bool?>? margin,
   }) async {
     t.view.physicalSize = const Size(400, 900);
     t.view.devicePixelRatio = 1;
@@ -33,7 +32,7 @@ void main() {
             body: RiwayatPanel(
               settings: settings,
               variants: VariantRepository({'warsh', 'qalun', 'bazzi'}),
-              rightMargin: margin,
+              marginSide: margin,
               child: const SizedBox.expand(key: ValueKey('mushaf')),
             ),
           ),
@@ -82,33 +81,40 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('the list covers the hamesh, never the mushaf', (t) async {
-    final margin = ValueNotifier<MarginRule?>((
-      share: .16,
-      least: 52,
-      most: 104,
-    ));
-    await pump(t, ReaderSettings.memory(), margin: margin);
-    final page = t.getSize(mushaf).width;
-    final hamesh = (page * .16).clamp(52.0, 104.0);
-    // Smaller by less than the list: by what the hamesh does not give it.
-    expect(page, greaterThan(400 - RiwayatPanel.width));
-    expect(page, lessThan(400));
-    // The printed page stops where the list begins.
-    expect(page - hamesh, moreOrLessEquals(t.getTopLeft(panel).dx, epsilon: 1));
-    // What the list lies over is told to what is written under the page.
+  testWidgets('the list opens across from the hamesh, both in sight', (
+    t,
+  ) async {
+    final side = ValueNotifier<bool?>(true);
+    await pump(t, ReaderSettings.memory(), open: false, margin: side);
+    // The hamesh at the right: the arrow at the left, and the page whole.
+    expect(t.getTopLeft(openIt).dx, 0);
+    expect(t.getSize(mushaf).width, 400);
+    await t.tap(openIt);
+    await t.pumpAndSettle();
+    expect(t.getTopLeft(panel).dx, 0);
+    expect(t.getTopLeft(mushaf).dx, RiwayatPanel.width);
+    expect(t.getTopRight(mushaf).dx, 400);
+    expect(t.getSize(mushaf).width, 400 - RiwayatPanel.width);
+    // The arrow at the list's edge, on the side of the mushaf.
     expect(
-      t.widget<PageCover>(find.byType(PageCover)).right,
-      moreOrLessEquals(hamesh, epsilon: 1),
+      t.getTopRight(closeIt).dx,
+      moreOrLessEquals(t.getTopRight(panel).dx, epsilon: 1),
     );
-    // A hamesh as wide as the list costs the mushaf nothing.
-    margin.value = (share: .5, least: 0, most: 400);
+    // The hamesh at the left: the list at the right.
+    side.value = false;
+    await t.pumpAndSettle();
+    expect(t.getTopRight(panel).dx, 400);
+    expect(t.getTopLeft(mushaf).dx, 0);
+    expect(t.getSize(mushaf).width, 400 - RiwayatPanel.width);
+    // No hamesh: at the right too.
+    side.value = null;
+    await t.pumpAndSettle();
+    expect(t.getTopRight(panel).dx, 400);
+    expect(t.getSize(mushaf).width, 400 - RiwayatPanel.width);
+    await t.tap(closeIt);
     await t.pumpAndSettle();
     expect(t.getSize(mushaf).width, 400);
-    // No hamesh at the right (a left page): the whole of it comes off.
-    margin.value = null;
-    await t.pumpAndSettle();
-    expect(t.getSize(mushaf).width, 400 - RiwayatPanel.width);
+    expect(t.getTopRight(openIt).dx, 400);
     expect(t.takeException(), isNull);
   });
 

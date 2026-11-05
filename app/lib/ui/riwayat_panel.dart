@@ -1,19 +1,16 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../state/reader_settings.dart';
-import 'mushaf_page.dart' show MarginRule, PageCover;
 import 'theme.dart';
 
-/// An arrow at the right of the screen, named «الرواة», that can be called at
-/// any time. It opens a narrow list over the hamesh at the page's right, never
-/// over the mushaf: wider than the hamesh, the mushaf grows smaller by the rest
-/// and stays whole, as large again once it is closed. The arrow stays, at the
-/// list's edge, pointing in to close it. A check box on a qari ticks his two
+/// An arrow across from the page's hamesh, or at the right of the screen on a
+/// page with none, named «الرواة», that can be called at any time. It opens a
+/// narrow list on that side, and the mushaf and its hamesh grow smaller beside
+/// it, both still in sight, and as large again once it is closed. The arrow
+/// stays, at the list's edge, pointing in to close it. A check box on a qari ticks his two
 /// riwayat; beside each riwaya a second one shows the mushaf in it, one riwaya
 /// at a time.
 class RiwayatPanel extends StatefulWidget {
@@ -22,7 +19,7 @@ class RiwayatPanel extends StatefulWidget {
     required this.settings,
     required this.variants,
     required this.child,
-    this.rightMargin,
+    this.marginSide,
   });
 
   final ReaderSettings settings;
@@ -31,25 +28,12 @@ class RiwayatPanel extends StatefulWidget {
   /// The mushaf.
   final Widget child;
 
-  /// The hamesh at the page's right, that the list may cover.
-  final ValueListenable<MarginRule?>? rightMargin;
+  /// The side of the page's hamesh: at its right or not; null with none.
+  final ValueListenable<bool?>? marginSide;
 
   /// As narrow as the names, two check boxes and the arrow allow, not to shrink
-  /// the page.
+  /// the page much.
   static const width = 136.0;
-
-  /// The mushaf's width with the list open on a screen [total] wide: the list
-  /// covers the hamesh, and what it wants more comes off the mushaf. The hamesh
-  /// grows narrower with the page, so the two are settled together.
-  static double pageWidth(double total, MarginRule? rule) {
-    var page = total - width;
-    if (rule == null) return page;
-    for (var i = 0; i < 12; i++) {
-      final margin = (page * rule.share).clamp(rule.least, rule.most);
-      page = math.min(total, total - width + margin);
-    }
-    return page;
-  }
 
   @override
   State<RiwayatPanel> createState() => _RiwayatPanelState();
@@ -201,16 +185,16 @@ class _RiwayatPanelState extends State<RiwayatPanel> {
     );
   }
 
-  Widget _list() => Container(
+  Widget _list({required bool atRight}) => Container(
     key: const ValueKey('riwayat-panel'),
     width: RiwayatPanel.width,
     color: MushafColors.page,
     child: Row(
       // The arrow on the side of the mushaf, whatever the text's direction.
-      textDirection: TextDirection.ltr,
+      textDirection: atRight ? TextDirection.ltr : TextDirection.rtl,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Center(child: _arrow(open: true)),
+        Center(child: _arrow(open: true, atRight: atRight)),
         Expanded(
           child: Directionality(
             textDirection: TextDirection.rtl,
@@ -262,17 +246,23 @@ class _RiwayatPanelState extends State<RiwayatPanel> {
 
   /// The arrow: at the screen's edge pointing in to open the list, then at the
   /// list's edge pointing back to close it.
-  Widget _arrow({required bool open}) => Semantics(
+  Widget _arrow({required bool open, required bool atRight}) => Semantics(
     button: true,
     expanded: open,
     label: open ? 'إخفاء الرواة' : 'إظهار الرواة',
     child: Material(
       color: MushafColors.goldLight,
       elevation: 3,
-      borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
+      borderRadius: BorderRadius.horizontal(
+        left: atRight ? const Radius.circular(10) : Radius.zero,
+        right: atRight ? Radius.zero : const Radius.circular(10),
+      ),
       child: InkWell(
         key: ValueKey(open ? 'riwayat-panel-close' : 'riwayat-panel-open'),
-        borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
+        borderRadius: BorderRadius.horizontal(
+          left: atRight ? const Radius.circular(10) : Radius.zero,
+          right: atRight ? Radius.zero : const Radius.circular(10),
+        ),
         onTap: () => setState(() => _open = !open),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
@@ -281,7 +271,10 @@ class _RiwayatPanelState extends State<RiwayatPanel> {
             children: [
               CustomPaint(
                 size: const Size(12, 18),
-                painter: _Chevron(MushafColors.green, pointsRight: open),
+                painter: _Chevron(
+                  MushafColors.green,
+                  pointsRight: open == atRight,
+                ),
               ),
               const SizedBox(height: 4),
               RotatedBox(
@@ -307,44 +300,47 @@ class _RiwayatPanelState extends State<RiwayatPanel> {
     listenable: s,
     builder: (context, _) => LayoutBuilder(
       builder: (context, box) {
-        final margin = widget.rightMargin;
-        Widget laidOut(MarginRule? rule) {
-          final page = _open
-              ? RiwayatPanel.pageWidth(box.maxWidth, rule)
-              : box.maxWidth;
+        final side = widget.marginSide;
+        Widget laidOut(bool? marginAtRight) {
+          // Across from the hamesh; with none, at the right.
+          final atRight = !(marginAtRight ?? false);
+          final page = _open ? box.maxWidth - RiwayatPanel.width : box.maxWidth;
           return Stack(
             children: [
-              // The mushaf at the left: only what the list leaves it.
+              // The mushaf on the other side: only what the list leaves it.
               Positioned(
-                left: 0,
+                left: atRight ? 0 : null,
+                right: atRight ? null : 0,
                 top: 0,
                 bottom: 0,
                 width: page,
-                child: PageCover(
-                  right: _open
-                      ? math.max(0.0, page - box.maxWidth + RiwayatPanel.width)
-                      : 0,
-                  child: widget.child,
-                ),
+                child: widget.child,
               ),
               if (_open)
-                Positioned(right: 0, top: 0, bottom: 0, child: _list())
-              else
                 Positioned(
-                  right: 0,
+                  left: atRight ? null : 0,
+                  right: atRight ? 0 : null,
                   top: 0,
                   bottom: 0,
-                  child: Center(child: _arrow(open: false)),
+                  child: _list(atRight: atRight),
+                )
+              else
+                Positioned(
+                  left: atRight ? null : 0,
+                  right: atRight ? 0 : null,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(child: _arrow(open: false, atRight: atRight)),
                 ),
             ],
           );
         }
 
-        return margin == null
+        return side == null
             ? laidOut(null)
             : ValueListenableBuilder(
-                valueListenable: margin,
-                builder: (context, rule, _) => laidOut(rule),
+                valueListenable: side,
+                builder: (context, atRight, _) => laidOut(atRight),
               );
       },
     ),
