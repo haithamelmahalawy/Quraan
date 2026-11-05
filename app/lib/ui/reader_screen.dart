@@ -86,7 +86,6 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   /// Full-screen reading: no bars, no hamesh.
   bool _fullScreen = false;
-  final _marginSide = ValueNotifier<bool?>(null);
 
   /// While a page is zoomed in, drags pan it instead of turning pages.
   bool _zoomed = false;
@@ -458,11 +457,6 @@ class _ReaderScreenState extends State<ReaderScreen>
       showHamesh: hamesh,
       onZoomChanged: (z) => setState(() => _zoomed = z),
       onPageNumberTap: _pickPage,
-      // The list of the riwayat opens across from the hamesh of the page in
-      // sight.
-      onMarginSide: number == _page
-          ? (atRight) => _marginSide.value = atRight
-          : null,
       // The QCF page fonts draw the Madinah pages only.
       qcf:
           widget.settings.qcfFont &&
@@ -507,11 +501,10 @@ class _ReaderScreenState extends State<ReaderScreen>
             : page(_pageAt(i), hamesh: !_fullScreen),
       ),
     );
-    // «الرواة» at the right of the screen, the mushaf smaller beside it.
+    // «الرواة» at the top, the mushaf shorter beneath it.
     final pages = RiwayatPanel(
       settings: widget.settings,
       variants: widget.variants,
-      marginSide: two ? null : _marginSide,
       child: _withHint(book),
     );
 

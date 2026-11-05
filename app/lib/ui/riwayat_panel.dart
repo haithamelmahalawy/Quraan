@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../data/variant_repository.dart';
@@ -6,20 +7,18 @@ import '../models/qiraat_catalog.dart';
 import '../state/reader_settings.dart';
 import 'theme.dart';
 
-/// An arrow across from the page's hamesh, or at the right of the screen on a
-/// page with none, named «الرواة», that can be called at any time. It opens a
-/// narrow list on that side, and the mushaf and its hamesh grow smaller beside
-/// it, both still in sight, and as large again once it is closed. The arrow
-/// stays, at the list's edge, pointing in to close it. A check box on a qari ticks his two
-/// riwayat; beside each riwaya a second one shows the mushaf in it, one riwaya
-/// at a time.
+/// An arrow at the top of the mushaf, named «الرواة», that can be called at any
+/// time. It lets down the qurra on a ring in depth, turned by dragging: the one
+/// in front bold and marked, the others fainter the farther back they are. The
+/// mushaf grows shorter beneath it and stays whole, as large again once the
+/// arrow sends it back up. A check box on a qari ticks his two riwayat; beside
+/// each riwaya a second one shows the mushaf in it, one riwaya at a time.
 class RiwayatPanel extends StatefulWidget {
   const RiwayatPanel({
     super.key,
     required this.settings,
     required this.variants,
     required this.child,
-    this.marginSide,
   });
 
   final ReaderSettings settings;
@@ -28,19 +27,26 @@ class RiwayatPanel extends StatefulWidget {
   /// The mushaf.
   final Widget child;
 
-  /// The side of the page's hamesh: at its right or not; null with none.
-  final ValueListenable<bool?>? marginSide;
-
-  /// As narrow as the names, two check boxes and the arrow allow, not to shrink
-  /// the page much.
-  static const width = 136.0;
+  /// As low as a qari and his two riwayat allow, not to shrink the page much.
+  static const height = 112.0;
 
   @override
   State<RiwayatPanel> createState() => _RiwayatPanelState();
 }
 
-class _RiwayatPanelState extends State<RiwayatPanel> {
+class _RiwayatPanelState extends State<RiwayatPanel>
+    with SingleTickerProviderStateMixin {
+  static const _cellWidth = 150.0;
+
+  /// Which qari is in front, between one and the next as the ring turns.
+  late final _turn = AnimationController.unbounded(vsync: this);
   bool _open = false;
+
+  @override
+  void dispose() {
+    _turn.dispose();
+    super.dispose();
+  }
 
   ReaderSettings get s => widget.settings;
 
@@ -91,6 +97,30 @@ class _RiwayatPanelState extends State<RiwayatPanel> {
     s.displayed = id;
   }
 
+  /// The ring opens with the qari of the riwaya shown in front.
+  void _toggle() {
+    if (!_open) {
+      final shown = s.displayed ?? hafsId;
+      final at = qiraat.indexWhere((q) => q.riwayat.any((r) => r.id == shown));
+      _turn.value = math.max(at, 0).toDouble();
+    }
+    setState(() => _open = !_open);
+  }
+
+  void _settle(double target) => _turn.animateTo(
+    target,
+    duration: const Duration(milliseconds: 280),
+    curve: Curves.easeOut,
+  );
+
+  /// Brings the qari [i] to the front, the shorter way round.
+  void _bringToFront(int i) {
+    final n = qiraat.length;
+    var by = (i - _turn.value) % n;
+    if (by > n / 2) by -= n;
+    _settle(_turn.value + by);
+  }
+
   Widget _box({
     required Key key,
     required bool? value,
@@ -110,183 +140,251 @@ class _RiwayatPanelState extends State<RiwayatPanel> {
     ),
   );
 
-  Widget _qari(Qiraa q) {
+  /// A qari's cell: his check box and name, and under them his riwayat, each
+  /// with its check box and, at the cell's other side, the one that shows it.
+  Widget _qari(Qiraa q, {required bool front}) {
     final ids = [
       for (final r in q.riwayat)
         if (_available(r.id)) r.id,
     ];
     final chosen = ids.where(_chosen).length;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            _box(
-              key: ValueKey('qari-check-${q.id}'),
-              tristate: true,
-              // Both ticked, one, or none.
-              value: chosen == ids.length && ids.isNotEmpty
-                  ? true
-                  : chosen == 0
-                  ? false
-                  : null,
-              color: q.color,
-              onChanged: ids.isEmpty
-                  ? null
-                  : (_) => _setChosen(ids, chosen < ids.length),
-            ),
-            Expanded(
-              child: Text(
-                q.shortAr,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: q.color,
+    return Container(
+      key: front ? ValueKey('riwayat-front-${q.id}') : null,
+      width: _cellWidth,
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+      decoration: BoxDecoration(
+        color: MushafColors.page,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: front ? q.color : MushafColors.gold.withAlpha(150),
+          width: front ? 2 : .8,
+        ),
+        boxShadow: front
+            ? [BoxShadow(color: q.color.withAlpha(90), blurRadius: 8)]
+            : null,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _box(
+                key: ValueKey('qari-check-${q.id}'),
+                tristate: true,
+                // Both ticked, one, or none.
+                value: chosen == ids.length && ids.isNotEmpty
+                    ? true
+                    : chosen == 0
+                    ? false
+                    : null,
+                color: q.color,
+                onChanged: ids.isEmpty
+                    ? null
+                    : (_) => _setChosen(ids, chosen < ids.length),
+              ),
+              Expanded(
+                child: Text(
+                  q.shortAr,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: front ? 13 : 12,
+                    fontWeight: front ? FontWeight.w900 : FontWeight.normal,
+                    color: q.color,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        for (final r in q.riwayat)
-          if (_available(r.id))
-            Row(
-              children: [
-                _box(
-                  key: ValueKey('riwaya-check-${r.id}'),
-                  value: _chosen(r.id),
-                  color: q.color,
-                  onChanged: (v) => _setChosen([r.id], v ?? false),
-                ),
-                Expanded(
-                  child: Text(
-                    r.nameAr,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11, color: MushafColors.ink),
+            ],
+          ),
+          for (final r in q.riwayat)
+            if (_available(r.id))
+              Row(
+                children: [
+                  _box(
+                    key: ValueKey('riwaya-check-${r.id}'),
+                    value: _chosen(r.id),
+                    color: q.color,
+                    onChanged: (v) => _setChosen([r.id], v ?? false),
                   ),
-                ),
-                Tooltip(
-                  message: 'عرض المصحف برواية ${r.nameAr}',
-                  child: _box(
-                    key: ValueKey('riwaya-show-${r.id}'),
-                    value: r.id == hafsId
-                        ? s.displayed == null
-                        : s.displayed == r.id,
-                    color: MushafColors.green,
-                    onChanged: (_) => _show(r.id),
+                  Expanded(
+                    child: Text(
+                      r.nameAr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: front ? FontWeight.bold : FontWeight.normal,
+                        color: MushafColors.ink,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-        Divider(height: 5, color: MushafColors.gold.withAlpha(140)),
-      ],
+                  Tooltip(
+                    message: 'عرض المصحف برواية ${r.nameAr}',
+                    child: _box(
+                      key: ValueKey('riwaya-show-${r.id}'),
+                      value: r.id == hafsId
+                          ? s.displayed == null
+                          : s.displayed == r.id,
+                      color: MushafColors.green,
+                      onChanged: (_) => _show(r.id),
+                    ),
+                  ),
+                ],
+              ),
+        ],
+      ),
     );
   }
 
-  Widget _list({required bool atRight}) => Container(
-    key: const ValueKey('riwayat-panel'),
-    width: RiwayatPanel.width,
-    color: MushafColors.page,
-    child: Row(
-      // The arrow on the side of the mushaf, whatever the text's direction.
-      textDirection: atRight ? TextDirection.ltr : TextDirection.rtl,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Center(child: _arrow(open: true, atRight: atRight)),
-        Expanded(
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: _names(),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _names() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Text(
-          'المربع الأيسر لعرض المصحف',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 9, color: MushafColors.frame),
-        ),
+  /// The ring: each qari by his place on it, the nearest painted last. Only the
+  /// one in front answers; another, tapped, comes to the front.
+  Widget _ring(double width) {
+    final n = qiraat.length;
+    final radius = math.max(0.0, (width - _cellWidth) / 2);
+    return GestureDetector(
+      key: const ValueKey('riwayat-ring'),
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragUpdate: (d) {
+        // Dragged to the right, the next at the left comes round to the front.
+        _turn.value += d.delta.dx / math.max(radius, 60) * n / (2 * math.pi);
+      },
+      onHorizontalDragEnd: (d) {
+        final flick = (d.primaryVelocity ?? 0) / 900;
+        _settle((_turn.value + flick.clamp(-1.0, 1.0)).roundToDouble());
+      },
+      child: AnimatedBuilder(
+        animation: _turn,
+        builder: (context, _) {
+          final front = _turn.value.round() % n;
+          final places = [
+            for (var i = 0; i < n; i++)
+              (i: i, theta: (i - _turn.value) * 2 * math.pi / n),
+          ]..sort((a, b) => math.cos(a.theta).compareTo(math.cos(b.theta)));
+          return ClipRect(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                for (final (:i, :theta) in places)
+                  // The back of the ring is out of sight.
+                  if (math.cos(theta) > -.45)
+                    () {
+                      final near = (math.cos(theta) + 1) / 2;
+                      final isFront = i == front;
+                      return Transform.translate(
+                        // The next qari at the left, as the text runs.
+                        offset: Offset(-radius * math.sin(theta), 0),
+                        child: Transform.scale(
+                          scale: .62 + .38 * near,
+                          child: Opacity(
+                            opacity: isFront
+                                ? 1
+                                : (math.pow(near, 2.2) * .75).clamp(.08, .7),
+                            child: GestureDetector(
+                              key: ValueKey('qari-cell-${qiraat[i].id}'),
+                              // Hit though its check boxes do not answer.
+                              behavior: HitTestBehavior.opaque,
+                              onTap: isFront ? null : () => _bringToFront(i),
+                              child: IgnorePointer(
+                                ignoring: !isFront,
+                                child: _qari(qiraat[i], front: isFront),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }(),
+              ],
+            ),
+          );
+        },
       ),
-      Expanded(
-        child: ListView(
-          padding: EdgeInsets.zero,
+    );
+  }
+
+  Widget _panel() => Material(
+    key: const ValueKey('riwayat-panel'),
+    color: MushafColors.paper,
+    elevation: 3,
+    child: SizedBox(
+      height: RiwayatPanel.height,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final q in qiraat) _qari(q),
-            if (s.selected.isNotEmpty || s.compareHafs)
-              TextButton(
-                key: const ValueKey('riwayat-clear'),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  visualDensity: VisualDensity.compact,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '  اسحب لتدوير القراء • المربع الأيسر لعرض المصحف',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 9, color: MushafColors.frame),
+                  ),
                 ),
-                onPressed: () {
-                  s.setSelected({});
-                  s.compareHafs = false;
-                  s.displayed = null;
-                },
-                child: const Text(
-                  'إلغاء الكل (حفص فقط)',
-                  style: TextStyle(fontSize: 11),
-                ),
+                if (s.selected.isNotEmpty || s.compareHafs)
+                  InkWell(
+                    key: const ValueKey('riwayat-clear'),
+                    onTap: () {
+                      s.setSelected({});
+                      s.compareHafs = false;
+                      s.displayed = null;
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text(
+                        'إلغاء الكل',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: MushafColors.green,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, box) => _ring(box.maxWidth),
               ),
+            ),
           ],
         ),
       ),
-    ],
+    ),
   );
 
-  /// The arrow: at the screen's edge pointing in to open the list, then at the
-  /// list's edge pointing back to close it.
-  Widget _arrow({required bool open, required bool atRight}) => Semantics(
+  /// The arrow, drawn: pointing down to let the ring down, up to send it back.
+  Widget _arrow() => Semantics(
     button: true,
-    expanded: open,
-    label: open ? 'إخفاء الرواة' : 'إظهار الرواة',
+    expanded: _open,
+    label: _open ? 'إخفاء الرواة' : 'إظهار الرواة',
     child: Material(
       color: MushafColors.goldLight,
       elevation: 3,
-      borderRadius: BorderRadius.horizontal(
-        left: atRight ? const Radius.circular(10) : Radius.zero,
-        right: atRight ? Radius.zero : const Radius.circular(10),
-      ),
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
       child: InkWell(
-        key: ValueKey(open ? 'riwayat-panel-close' : 'riwayat-panel-open'),
-        borderRadius: BorderRadius.horizontal(
-          left: atRight ? const Radius.circular(10) : Radius.zero,
-          right: atRight ? Radius.zero : const Radius.circular(10),
-        ),
-        onTap: () => setState(() => _open = !open),
+        key: const ValueKey('riwayat-panel-toggle'),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
+        onTap: _toggle,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-          child: Column(
+          padding: const EdgeInsets.fromLTRB(10, 1, 10, 3),
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CustomPaint(
-                size: const Size(12, 18),
-                painter: _Chevron(
-                  MushafColors.green,
-                  pointsRight: open == atRight,
+              Text(
+                'الرواة',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: MushafColors.green,
                 ),
               ),
-              const SizedBox(height: 4),
-              RotatedBox(
-                quarterTurns: 3,
-                child: Text(
-                  'الرواة',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: MushafColors.green,
-                  ),
-                ),
+              const SizedBox(width: 5),
+              CustomPaint(
+                size: const Size(14, 9),
+                painter: _Chevron(MushafColors.green, pointsUp: _open),
               ),
             ],
           ),
@@ -298,76 +396,45 @@ class _RiwayatPanelState extends State<RiwayatPanel> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: s,
-    builder: (context, _) => LayoutBuilder(
-      builder: (context, box) {
-        final side = widget.marginSide;
-        Widget laidOut(bool? marginAtRight) {
-          // Across from the hamesh; with none, at the right.
-          final atRight = !(marginAtRight ?? false);
-          final page = _open ? box.maxWidth - RiwayatPanel.width : box.maxWidth;
-          return Stack(
+    builder: (context, _) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_open) _panel(),
+        Expanded(
+          child: Stack(
             children: [
-              // The mushaf on the other side: only what the list leaves it.
-              Positioned(
-                left: atRight ? 0 : null,
-                right: atRight ? null : 0,
-                top: 0,
-                bottom: 0,
-                width: page,
-                child: widget.child,
-              ),
-              if (_open)
-                Positioned(
-                  left: atRight ? null : 0,
-                  right: atRight ? 0 : null,
-                  top: 0,
-                  bottom: 0,
-                  child: _list(atRight: atRight),
-                )
-              else
-                Positioned(
-                  left: atRight ? null : 0,
-                  right: atRight ? 0 : null,
-                  top: 0,
-                  bottom: 0,
-                  child: Center(child: _arrow(open: false, atRight: atRight)),
-                ),
+              Positioned.fill(child: widget.child),
+              // Clear of the page's header: its surah, its «الأصول», its juz.
+              Align(alignment: const Alignment(-.62, -1), child: _arrow()),
             ],
-          );
-        }
-
-        return side == null
-            ? laidOut(null)
-            : ValueListenableBuilder(
-                valueListenable: side,
-                builder: (context, atRight, _) => laidOut(atRight),
-              );
-      },
+          ),
+        ),
+      ],
     ),
   );
 }
 
 /// An arrow head, drawn: no font to be missing.
 class _Chevron extends CustomPainter {
-  const _Chevron(this.color, {required this.pointsRight});
+  const _Chevron(this.color, {required this.pointsUp});
 
   final Color color;
-  final bool pointsRight;
+  final bool pointsUp;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final (near, far) = pointsRight
-        ? (size.width * .2, size.width * .8)
-        : (size.width * .8, size.width * .2);
+    final (near, far) = pointsUp
+        ? (size.height * .85, size.height * .15)
+        : (size.height * .15, size.height * .85);
     canvas.drawPath(
       Path()
-        ..moveTo(near, size.height * .1)
-        ..lineTo(far, size.height / 2)
-        ..lineTo(near, size.height * .9),
+        ..moveTo(size.width * .1, near)
+        ..lineTo(size.width / 2, far)
+        ..lineTo(size.width * .9, near),
       Paint()
         ..color = color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.6
+        ..strokeWidth = 2.4
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round,
     );
@@ -375,5 +442,5 @@ class _Chevron extends CustomPainter {
 
   @override
   bool shouldRepaint(_Chevron old) =>
-      color != old.color || pointsRight != old.pointsRight;
+      color != old.color || pointsUp != old.pointsUp;
 }

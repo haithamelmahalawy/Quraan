@@ -121,12 +121,7 @@ class MushafPage extends StatefulWidget {
     this.qcf = false,
     this.onAyahTap,
     this.onAyahWordTap,
-    this.onMarginSide,
   });
-
-  /// The side of the hamesh beside the page: at its right or not; null with
-  /// none. The list of the riwayat opens on the other side.
-  final ValueChanged<bool?>? onMarginSide;
 
   final int page;
   final QuranRepository quran;
@@ -424,9 +419,6 @@ class _MushafPageState extends State<MushafPage>
         if (line is TextLine) ...line.words,
     ], _showFarshMargins ? _hameshEntries(ayahs) : []);
     final rail = notes.isEmpty ? 0.0 : (size.width * 0.20).clamp(60.0, 220.0);
-    _reportMargin(
-      notes.isNotEmpty ? widget.quran.isRightPage(widget.page) : null,
-    );
     final textHeight = math.max(
       1.0,
       size.height - 30 - 2 * OrnamentFrame.inset - _PageFrame.numberHeight,
@@ -510,16 +502,7 @@ class _MushafPageState extends State<MushafPage>
   /// A large, continuously scrolling print. Fixed side margins follow
   /// only the lines currently in view; their own scroll keeps dense
   /// readings accessible without reducing the font or dropping notes.
-  void _reportMargin(bool? atRight) {
-    final report = widget.onMarginSide;
-    if (report == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) report(atRight);
-    });
-  }
-
   Widget _landscapePage(List<Ayah> ayahs, List<MushafLine> lines, Size size) {
-    _reportMargin(null);
     final scroll = _landscapeScroll;
     final sides = widget.showHamesh;
     final entries = _showFarshMargins
@@ -856,7 +839,6 @@ class _MushafPageState extends State<MushafPage>
         ? (size.width * 0.16).clamp(52.0, 104.0)
         : 0.0;
     final rightPage = widget.quran.isRightPage(widget.page);
-    _reportMargin(withHamesh ? rightPage : null);
     final rightWidth = rightPage ? marginWidth : 0.0;
     final leftWidth = rightPage ? 0.0 : marginWidth;
     final pageWidth = size.width - rightWidth - leftWidth;
