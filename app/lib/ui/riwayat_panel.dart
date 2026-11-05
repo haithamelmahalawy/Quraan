@@ -8,8 +8,10 @@ import '../state/reader_settings.dart';
 import 'theme.dart';
 
 /// An arrow at the top of the mushaf, named «الرواة», that can be called at any
-/// time. It lets down the qurra on a ring in depth, turned by dragging: the one
-/// in front bold and marked, the others fainter the farther back they are. The
+/// time. It lets down all the qurra on a ring in depth: as many in the front row
+/// as the width holds, bold and marked with their check boxes, and dragging turns
+/// it to as many others; the rest by name behind, smaller and fainter the farther
+/// back they are. The
 /// mushaf grows shorter beneath it and stays whole, as large again once the
 /// arrow sends it back up. A check box on a qari ticks his two riwayat; beside
 /// each riwaya a second one shows the mushaf in it, one riwaya at a time.
@@ -27,8 +29,12 @@ class RiwayatPanel extends StatefulWidget {
   /// The mushaf.
   final Widget child;
 
+  /// How many qurra the front row holds on a screen so wide.
+  @visibleForTesting
+  static int frontRowFor(double width) => _RiwayatPanelState.frontRow(width);
+
   /// As low as a qari and his two riwayat allow, not to shrink the page much.
-  static const height = 112.0;
+  static const height = 124.0;
 
   @override
   State<RiwayatPanel> createState() => _RiwayatPanelState();
@@ -36,7 +42,22 @@ class RiwayatPanel extends StatefulWidget {
 
 class _RiwayatPanelState extends State<RiwayatPanel>
     with SingleTickerProviderStateMixin {
-  static const _cellWidth = 150.0;
+  /// The narrowest a qari in the front row may be: his names and two boxes.
+  static const _leastCell = 112.0;
+
+  /// How many qurra stand in front on a screen so wide, and how many a turn
+  /// brings: as many as the room holds.
+  static int frontRow(double width) =>
+      ((width - 8) / _leastCell).floor().clamp(1, qiraat.length);
+
+  /// The width of a qari in the front row, by the screen's.
+  double _cell = 140;
+
+  /// How many there are in the front row now.
+  int _row = 3;
+
+  /// The first of the front row, where the ring comes to rest.
+  double _base = 0;
 
   /// Which qari is in front, between one and the next as the ring turns.
   late final _turn = AnimationController.unbounded(vsync: this);
@@ -102,7 +123,10 @@ class _RiwayatPanelState extends State<RiwayatPanel>
     if (!_open) {
       final shown = s.displayed ?? hafsId;
       final at = qiraat.indexWhere((q) => q.riwayat.any((r) => r.id == shown));
-      _turn.value = math.max(at, 0).toDouble();
+      // That qari in the middle of the front row.
+      _row = frontRow(context.size?.width ?? 400);
+      _base = (math.max(at, 0) - (_row - 1) ~/ 2).toDouble();
+      _turn.value = _base;
     }
     setState(() => _open = !_open);
   }
@@ -113,12 +137,13 @@ class _RiwayatPanelState extends State<RiwayatPanel>
     curve: Curves.easeOut,
   );
 
-  /// Brings the qari [i] to the front, the shorter way round.
+  /// Brings the qari [i] to the middle of the front, the shorter way round.
   void _bringToFront(int i) {
     final n = qiraat.length;
-    var by = (i - _turn.value) % n;
+    var by = (i - (_row - 1) ~/ 2 - _turn.value) % n;
     if (by > n / 2) by -= n;
-    _settle(_turn.value + by);
+    _base = _turn.value + by;
+    _settle(_base);
   }
 
   Widget _box({
@@ -150,7 +175,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
     final chosen = ids.where(_chosen).length;
     return Container(
       key: front ? ValueKey('riwayat-front-${q.id}') : null,
-      width: _cellWidth,
+      width: _cell,
       padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
       decoration: BoxDecoration(
         color: MushafColors.page,
@@ -237,63 +262,143 @@ class _RiwayatPanelState extends State<RiwayatPanel>
     );
   }
 
-  /// The ring: each qari by his place on it, the nearest painted last. Only the
-  /// one in front answers; another, tapped, comes to the front.
+  /// A qari elsewhere on the ring: a chip with his name, smaller and fainter the
+  /// farther back, with a mark if a riwaya of his is chosen.
+  Widget _name(Qiraa q, double near) {
+    final chosen = q.riwayat.any((r) => _available(r.id) && _chosen(r.id));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(9),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color.lerp(q.color, Colors.white, .22)!,
+            Color.lerp(q.color, Colors.black, .28)!,
+          ],
+        ),
+        border: Border.all(
+          color: chosen ? Colors.white : Colors.white.withAlpha(70),
+          width: chosen ? 1.2 : .6,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(150),
+            blurRadius: 3 + 5 * near,
+            offset: Offset(0, 1 + 3 * near),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (chosen)
+            Icon(Icons.check, size: 9 + 3 * near, color: Colors.white),
+          Text(
+            q.shortAr,
+            maxLines: 1,
+            style: TextStyle(
+              fontSize: 9 + 3 * near,
+              fontWeight: chosen ? FontWeight.bold : FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The ring: all the qurra at once, the nearest painted last. As many as the
+  /// room holds stand in the front row with their check boxes, and a turn brings
+  /// as many others; those behind stand on the row above by name. One of them,
+  /// tapped, comes to the middle of the front.
   Widget _ring(double width) {
     final n = qiraat.length;
-    final radius = math.max(0.0, (width - _cellWidth) / 2);
+    _row = frontRow(width);
+    _cell = math.min((width - 4 - 2 * (_row - 1)) / _row, 170);
+    final reach = width / 2 - 28;
+    // The middle of the front row, from the first of it.
+    final middle = (_row - 1) / 2;
     return GestureDetector(
       key: const ValueKey('riwayat-ring'),
       behavior: HitTestBehavior.opaque,
-      onHorizontalDragUpdate: (d) {
-        // Dragged to the right, the next at the left comes round to the front.
-        _turn.value += d.delta.dx / math.max(radius, 60) * n / (2 * math.pi);
-      },
+      // Dragged to the right, those at the left come round to the front.
+      onHorizontalDragUpdate: (d) => _turn.value += d.delta.dx / (_cell / _row),
       onHorizontalDragEnd: (d) {
-        final flick = (d.primaryVelocity ?? 0) / 900;
-        _settle((_turn.value + flick.clamp(-1.0, 1.0)).roundToDouble());
+        final moved = _turn.value - _base;
+        final flick = d.primaryVelocity ?? 0;
+        final way = moved.abs() > .5 || flick.abs() > 300
+            ? (moved + flick / 900).sign
+            : 0.0;
+        _base += way * _row;
+        _settle(_base);
       },
       child: AnimatedBuilder(
         animation: _turn,
         builder: (context, _) {
-          final front = _turn.value.round() % n;
+          // Each qari's place from the middle of the front: its nearest way.
           final places = [
             for (var i = 0; i < n; i++)
-              (i: i, theta: (i - _turn.value) * 2 * math.pi / n),
-          ]..sort((a, b) => math.cos(a.theta).compareTo(math.cos(b.theta)));
+              (i: i, d: ((i - _turn.value - middle + n / 2) % n) - n / 2),
+          ]..sort((a, b) => b.d.abs().compareTo(a.d.abs()));
           return ClipRect(
             child: Stack(
               alignment: Alignment.center,
               children: [
-                for (final (:i, :theta) in places)
-                  // The back of the ring is out of sight.
-                  if (math.cos(theta) > -.45)
-                    () {
-                      final near = (math.cos(theta) + 1) / 2;
-                      final isFront = i == front;
-                      return Transform.translate(
-                        // The next qari at the left, as the text runs.
-                        offset: Offset(-radius * math.sin(theta), 0),
-                        child: Transform.scale(
-                          scale: .62 + .38 * near,
-                          child: Opacity(
-                            opacity: isFront
-                                ? 1
-                                : (math.pow(near, 2.2) * .75).clamp(.08, .7),
-                            child: GestureDetector(
-                              key: ValueKey('qari-cell-${qiraat[i].id}'),
-                              // Hit though its check boxes do not answer.
-                              behavior: HitTestBehavior.opaque,
-                              onTap: isFront ? null : () => _bringToFront(i),
-                              child: IgnorePointer(
-                                ignoring: !isFront,
-                                child: _qari(qiraat[i], front: isFront),
-                              ),
-                            ),
-                          ),
+                // The ring they stand on.
+                const Positioned.fill(child: CustomPaint(painter: _Stage())),
+                for (final (:i, :d) in places)
+                  () {
+                    final isFront = d.abs() <= _row / 2;
+                    // 1 next to the front row, 0 at the very back.
+                    final near = isFront || _row >= n
+                        ? 1.0
+                        : (1 - (d.abs() - _row / 2) / (n / 2 - _row / 2)).clamp(
+                            0.0,
+                            1.0,
+                          );
+                    // Along the front row, from its middle to its ends: they
+                    // curve back, as a part of the ring, and still answer.
+                    final along = _row < 2 ? 0.0 : d / (_row / 2);
+                    return Transform.translate(
+                      // The next qari at the left, as the text runs.
+                      offset: isFront
+                          ? Offset(-d * (_cell + 2), 12 - 14 * along * along)
+                          : Offset(-d.sign * reach * near, -44 + 8 * near),
+                      child: Opacity(
+                        opacity: isFront ? 1 : .35 + .6 * near,
+                        child: GestureDetector(
+                          key: ValueKey('qari-cell-${qiraat[i].id}'),
+                          behavior: HitTestBehavior.opaque,
+                          onTap: isFront ? null : () => _bringToFront(i),
+                          child: isFront
+                              ? Transform(
+                                  alignment: Alignment.center,
+                                  transform: Matrix4.identity()
+                                    ..setEntry(3, 2, .0012)
+                                    ..rotateY(-along * .5)
+                                    ..scaleByDouble(
+                                      1 - .14 * along * along,
+                                      1 - .14 * along * along,
+                                      1,
+                                      1,
+                                    ),
+                                  child: _qari(qiraat[i], front: true),
+                                )
+                              : Transform(
+                                  alignment: Alignment.center,
+                                  // In perspective, turned as the ring turns.
+                                  transform: Matrix4.identity()
+                                    ..setEntry(3, 2, .004)
+                                    ..rotateY(-d.sign * .6 * near)
+                                    ..rotateX(-.25 * (1 - near)),
+                                  child: _name(qiraat[i], near),
+                                ),
                         ),
-                      );
-                    }(),
+                      ),
+                    );
+                  }(),
               ],
             ),
           );
@@ -304,8 +409,8 @@ class _RiwayatPanelState extends State<RiwayatPanel>
 
   Widget _panel() => Material(
     key: const ValueKey('riwayat-panel'),
-    color: MushafColors.paper,
-    elevation: 3,
+    color: const Color(0xFF0B1F18),
+    elevation: 6,
     child: SizedBox(
       height: RiwayatPanel.height,
       child: Directionality(
@@ -317,10 +422,13 @@ class _RiwayatPanelState extends State<RiwayatPanel>
               children: [
                 Expanded(
                   child: Text(
-                    '  اسحب لتدوير القراء • المربع الأيسر لعرض المصحف',
+                    '  اسحب لقراء آخرين • المربع الأيسر لعرض المصحف',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 9, color: MushafColors.frame),
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.white.withAlpha(170),
+                    ),
                   ),
                 ),
                 if (s.selected.isNotEmpty || s.compareHafs)
@@ -337,7 +445,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                         'إلغاء الكل',
                         style: TextStyle(
                           fontSize: 10,
-                          color: MushafColors.green,
+                          color: Colors.white.withAlpha(220),
                         ),
                       ),
                     ),
@@ -412,6 +520,43 @@ class _RiwayatPanelState extends State<RiwayatPanel>
       ],
     ),
   );
+}
+
+/// The stage of the ring: a glow beneath, and the ellipse the qurra stand on.
+class _Stage extends CustomPainter {
+  const _Stage();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const RadialGradient(
+          center: Alignment(0, .35),
+          radius: 1.1,
+          colors: [Color(0xFF2E7D5B), Color(0xFF123427), Color(0xFF0B1F18)],
+          stops: [0, .55, 1],
+        ).createShader(rect),
+    );
+    final center = size.center(const Offset(0, -6));
+    for (final (grow, alpha) in [(1.0, 90), (.82, 45), (.64, 25)]) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: center,
+          width: (size.width - 30) * grow,
+          height: (size.height - 16) * grow,
+        ),
+        Paint()
+          ..color = Colors.white.withAlpha(alpha)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Stage old) => false;
 }
 
 /// An arrow head, drawn: no font to be missing.

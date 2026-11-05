@@ -5,6 +5,8 @@ import 'package:qiraat_mushaf/models/qiraat_catalog.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
 import 'package:qiraat_mushaf/ui/riwayat_panel.dart';
 
+int _rowOf(double width) => RiwayatPanel.frontRowFor(width);
+
 void main() {
   Qiraa of(String id) =>
       qiraat.firstWhere((q) => q.riwayat.any((r) => r.id == id));
@@ -22,8 +24,9 @@ void main() {
     WidgetTester t,
     ReaderSettings settings, {
     bool open = true,
+    Size size = const Size(400, 900),
   }) async {
-    t.view.physicalSize = const Size(400, 900);
+    t.view.physicalSize = size;
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
     await t.pumpWidget(
@@ -49,7 +52,7 @@ void main() {
   /// Turns the ring by dragging until [q] is in front.
   Future<void> turnTo(WidgetTester t, Qiraa q) async {
     for (var i = 0; i < qiraat.length && inFront(q).evaluate().isEmpty; i++) {
-      await t.timedDrag(ring, const Offset(45, 0), const Duration(seconds: 1));
+      await t.timedDrag(ring, const Offset(70, 0), const Duration(seconds: 1));
       await t.pumpAndSettle();
     }
     expect(inFront(q), findsOneWidget);
@@ -83,12 +86,42 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('one qari in front, bold and larger; the others fainter', (
+  testWidgets('three in the front row, the others behind by name, fainter', (
     t,
   ) async {
-    await pump(t, ReaderSettings.memory());
-    await turnTo(t, qiraat.first);
-    expect(inFront(qiraat.first), findsOneWidget);
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..displayed = 'warsh';
+    await pump(t, settings);
+    final n = qiraat.length;
+    final at = qiraat.indexOf(nafi);
+    final right = qiraat[(at - 1) % n], left = qiraat[(at + 1) % n];
+    for (final q in [right, nafi, left]) {
+      expect(inFront(q), findsOneWidget);
+      expect(qari(q), findsOneWidget);
+    }
+    // In one row, the next at the left, all in sight on the screen.
+    // Curving back: its ends higher up and smaller than its middle.
+    expect(
+      t.getCenter(inFront(left)).dy,
+      lessThan(t.getCenter(inFront(nafi)).dy),
+    );
+    expect(
+      t.getCenter(inFront(left)).dy,
+      moreOrLessEquals(t.getCenter(inFront(right)).dy, epsilon: 1),
+    );
+    expect(
+      t.getBottomLeft(inFront(left)).dy - t.getTopLeft(inFront(left)).dy,
+      lessThan(
+        t.getBottomLeft(inFront(nafi)).dy - t.getTopLeft(inFront(nafi)).dy,
+      ),
+    );
+    expect(t.getCenter(qari(left)).dx, lessThan(t.getCenter(qari(nafi)).dx));
+    expect(
+      t.getCenter(qari(right)).dx,
+      greaterThan(t.getCenter(qari(nafi)).dx),
+    );
+    expect(t.getTopLeft(inFront(left)).dx, greaterThanOrEqualTo(0));
+    expect(t.getTopRight(inFront(right)).dx, lessThanOrEqualTo(400));
     double opacityOf(Qiraa q) => t
         .widget<Opacity>(
           find
@@ -99,21 +132,93 @@ void main() {
               .first,
         )
         .opacity;
-    expect(opacityOf(qiraat.first), 1);
-    expect(opacityOf(qiraat[1]), lessThan(.7));
-    expect(opacityOf(qiraat[1]), greaterThan(opacityOf(qiraat[2])));
+    final behind = qiraat[(at + 5) % n], beside = qiraat[(at + 2) % n];
+    expect(opacityOf(nafi), 1);
+    expect(opacityOf(beside), lessThan(1));
+    expect(opacityOf(beside), greaterThan(opacityOf(behind)));
+    // All of them in sight, none with check boxes but the three.
+    for (final q in qiraat) {
+      expect(find.text(q.shortAr), findsOneWidget);
+    }
+    expect(qari(beside), findsNothing);
     final name = t.widget<Text>(
-      find.descendant(
-        of: inFront(qiraat.first),
-        matching: find.text(qiraat.first.shortAr),
-      ),
+      find.descendant(of: inFront(nafi), matching: find.text(nafi.shortAr)),
     );
     expect(name.style!.fontWeight, FontWeight.w900);
-    // The next at the left, as the text runs.
-    expect(
-      t.getCenter(qari(qiraat[1])).dx,
-      lessThan(t.getCenter(qari(qiraat.first)).dx),
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('the front row holds as many as the width does', (t) async {
+    expect(_rowOf(360), 3);
+    expect(_rowOf(430), 3);
+    expect(_rowOf(600), 5);
+    expect(_rowOf(860), 7);
+    // All ten at last, with none behind.
+    expect(_rowOf(1400), qiraat.length);
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..displayed = 'warsh';
+    await pump(t, settings, size: const Size(860, 400));
+    final n = qiraat.length;
+    final at = qiraat.indexOf(nafi);
+    // The qari shown in the middle, three each side.
+    for (var by = -3; by <= 3; by++) {
+      final q = qiraat[(at + by) % n];
+      expect(inFront(q), findsOneWidget, reason: q.shortAr);
+      expect(t.getTopLeft(inFront(q)).dx, greaterThanOrEqualTo(0));
+      expect(t.getTopRight(inFront(q)).dx, lessThanOrEqualTo(860));
+    }
+    expect(inFront(qiraat[(at + 4) % n]), findsNothing);
+    // A turn brings seven others.
+    await t.timedDrag(ring, const Offset(70, 0), const Duration(seconds: 1));
+    await t.pumpAndSettle();
+    expect(inFront(qiraat[(at + 4) % n]), findsOneWidget);
+    expect(inFront(qiraat[(at + 3) % n]), findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('all ten stand in front on a wide screen', (t) async {
+    await pump(t, ReaderSettings.memory(), size: const Size(1400, 600));
+    for (final q in qiraat) {
+      expect(inFront(q), findsOneWidget, reason: q.shortAr);
+    }
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('those at the ends of the front row still answer', (t) async {
+    final settings = ReaderSettings.memory();
+    await pump(t, settings, size: const Size(860, 400));
+    // Each riwaya of the row's end, by a tap on its box where it is drawn.
+    final n = qiraat.length;
+    final shown = qiraat.indexWhere(
+      (q) => q.riwayat.any((r) => r.id == hafsId),
     );
+    final end = qiraat[(shown - 3) % n];
+    await t.tap(qari(end));
+    await t.pumpAndSettle();
+    expect(settings.selected, contains("bazzi"));
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('a turn brings three others', (t) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..displayed = 'warsh';
+    await pump(t, settings);
+    final n = qiraat.length;
+    final at = qiraat.indexOf(nafi);
+    await t.timedDrag(ring, const Offset(70, 0), const Duration(seconds: 1));
+    await t.pumpAndSettle();
+    for (final by in [2, 3, 4]) {
+      expect(inFront(qiraat[(at + by) % n]), findsOneWidget);
+    }
+    expect(inFront(nafi), findsNothing);
+    // And back.
+    await t.timedDrag(ring, const Offset(-70, 0), const Duration(seconds: 1));
+    await t.pumpAndSettle();
+    expect(inFront(nafi), findsOneWidget);
+    // A slight touch turns nothing.
+    await t.timedDrag(ring, const Offset(8, 0), const Duration(seconds: 1));
+    await t.pumpAndSettle();
+    expect(inFront(nafi), findsOneWidget);
     expect(t.takeException(), isNull);
   });
 
@@ -130,19 +235,16 @@ void main() {
     },
   );
 
-  testWidgets('a qari behind, tapped, comes to the front, unticked', (t) async {
-    final settings = ReaderSettings.memory();
+  testWidgets('a qari behind, tapped, comes to the front', (t) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..displayed = 'warsh';
     await pump(t, settings);
-    await turnTo(t, qiraat.first);
-    final next = qiraat[1];
-    // Its part in sight, beside the one in front.
-    await t.tapAt(
-      t.getTopLeft(find.byKey(ValueKey('qari-cell-${next.id}'))) +
-          const Offset(8, 30),
-    );
+    final behind = qiraat[(qiraat.indexOf(nafi) + 5) % qiraat.length];
+    expect(inFront(behind), findsNothing);
+    await t.tap(find.byKey(ValueKey('qari-cell-${behind.id}')));
     await t.pumpAndSettle();
-    expect(inFront(next), findsOneWidget);
-    expect(settings.selected, isEmpty);
+    expect(inFront(behind), findsOneWidget);
+    expect(settings.selected, {'warsh'});
     expect(t.takeException(), isNull);
   });
 
