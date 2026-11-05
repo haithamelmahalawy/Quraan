@@ -444,7 +444,7 @@ void main() {
       expect(usulOfRiwaya(variants, quran, id)['مد أنا'], hasLength(12));
       expect(
         rowOf(id, 9, 44, 1, 'ibdal_single')!.text,
-        contains('يَسۡتَاذِنُكَ'),
+        contains('يَسۡتَٰذِنُكَ'),
         reason: id,
       );
       expect(

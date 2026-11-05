@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
+import '../services/reading_downloads.dart';
 import 'tafsir_text.dart';
 
 /// A book of tafsir.
@@ -36,9 +37,13 @@ class TafsirBook {
 /// online per ayah (its licence allows use inside apps) and kept for the
 /// session.
 class TafsirRepository {
-  TafsirRepository({AssetBundle? bundle, http.Client? client})
-    : _bundle = bundle ?? rootBundle,
-      _client = client ?? http.Client();
+  TafsirRepository({
+    AssetBundle? bundle,
+    http.Client? client,
+    Future<(bool, String?)> Function(int book, int surah, int ayah)? local,
+  }) : _bundle = bundle ?? rootBundle,
+       _client = client ?? http.Client(),
+       _local = local ?? ReadingDownloads.instance.lookup;
 
   static const source = 'الموسوعة القرآنية quranpedia.net';
 
@@ -102,6 +107,9 @@ class TafsirRepository {
   final AssetBundle _bundle;
   final http.Client _client;
 
+  /// A book read online, as kept on the device: read from there first.
+  final Future<(bool, String?)> Function(int book, int surah, int ayah) _local;
+
   /// Offline books, loaded on first use: text by surah * 1000 + ayah.
   final _offline = <int, Future<Map<int, String>>>{};
   final _online = <String, String?>{};
@@ -115,23 +123,9 @@ class TafsirRepository {
     }
     final key = '${book.id}:$surah:$ayah';
     if (_online.containsKey(key)) return _online[key];
-    final uri = Uri.parse(
-      'https://api.quranpedia.net/v1/ayah/$surah/$ayah/book/${book.id}',
-    );
-    final response = await _client
-        .get(uri)
-        .timeout(const Duration(seconds: 20));
-    if (response.statusCode == 404) return _online[key] = null;
-    if (response.statusCode != 200) {
-      throw http.ClientException('HTTP ${response.statusCode}', uri);
-    }
-    final json = jsonDecode(utf8.decode(response.bodyBytes));
-    final text = [
-      for (final c
-          in (json is Map ? json['content'] as List? : null) ?? const [])
-        tafsirText((c as Map)['text'] as String? ?? ''),
-    ].where((t) => t.isNotEmpty).join('\n\n');
-    return _online[key] = text.isEmpty ? null : text;
+    final (kept, stored) = await _local(book.id, surah, ayah);
+    if (kept) return stored;
+    return _online[key] = await fetchTafsirAyah(_client, book.id, surah, ayah);
   }
 
   /// The book's texts of the ayahs [from] to [to] of [surah], each once and
@@ -157,6 +151,30 @@ class TafsirRepository {
       data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
     );
   }
+}
+
+/// An ayah's text in a book read online; null when the book has none for it.
+/// Throws when it cannot be reached.
+Future<String?> fetchTafsirAyah(
+  http.Client client,
+  int book,
+  int surah,
+  int ayah,
+) async {
+  final uri = Uri.parse(
+    'https://api.quranpedia.net/v1/ayah/$surah/$ayah/book/$book',
+  );
+  final response = await client.get(uri).timeout(const Duration(seconds: 20));
+  if (response.statusCode == 404) return null;
+  if (response.statusCode != 200) {
+    throw http.ClientException('HTTP ${response.statusCode}', uri);
+  }
+  final json = jsonDecode(utf8.decode(response.bodyBytes));
+  final text = [
+    for (final c in (json is Map ? json['content'] as List? : null) ?? const [])
+      tafsirText((c as Map)['text'] as String? ?? ''),
+  ].where((t) => t.isNotEmpty).join('\n\n');
+  return text.isEmpty ? null : text;
 }
 
 Map<int, String> _decode(Uint8List bytes) {

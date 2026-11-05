@@ -497,6 +497,58 @@ void main() {
       }
     });
 
+    test('tasawwa as Qalun\'s, the dagger over its ya', () {
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        expect(
+          where(id, 4, 42, 7).single[4],
+          where('qalun', 4, 42, 7).single[4],
+        );
+      }
+    });
+
+    test('Qalun has nothing of his own in layyan', () {
+      expect(where('qalun', 4, 46, 14), isEmpty);
+    });
+
+    test('the answers on the open words', () {
+      for (final id in ['bazzi', 'qunbul']) {
+        for (final (s, a) in [(38, 8), (54, 25)]) {
+          final v = where(id, s, a, 0).single;
+          expect(v[6], 'بتسهيل الهمزة الثانية بلا إدخال');
+          expect(v[7], 'tasheel_word');
+        }
+      }
+      final nisa = where('qalun', 4, 58, 17).single;
+      expect('${nisa[6]}', startsWith('بوجهين: إسكان العين'));
+      expect('${nisa[4]}', isNot(contains('۪')));
+      final inna = where('qalun', 27, 55, 0).firstWhere((v) => v[5] == 'h');
+      expect('${inna[4]}', contains('۬'));
+      expect(inna[7], 'tasheel_word');
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        expect(where(id, 4, 58, 17).single[6], 'بإسكان العين');
+        expect(
+          where(id, 4, 40, 9).single[4],
+          where('bazzi', 4, 40, 9).single[4],
+        );
+        expect(where(id, 42, 20, 14).single[7], 'ibdal_single');
+        expect(where(id, 15, 48, 7), isEmpty);
+        expect(where(id, 18, 2, 0), isEmpty);
+        expect(
+          where(id, 67, 27, 3).single[4],
+          where('qalun', 67, 27, 3).single[4],
+        );
+        for (final (s, a, w) in [(7, 123, 2), (20, 71, 1), (26, 49, 1)]) {
+          final v = where(id, s, a, w).firstWhere((v) => v[5] == 'h');
+          final q = where('qalun', s, a, w).firstWhere((v) => v[5] == 'h');
+          expect(v[4], q[4], reason: '$s:$a');
+          expect(v[6], q[6], reason: '$s:$a');
+        }
+        final dagger = where(id, 9, 44, 1).firstWhere((v) => v[5] == 'h');
+        expect('${dagger[4]}', contains('ٰ'));
+        expect('${dagger[4]}', isNot(contains('تَا')));
+      }
+    });
+
     test('yuaddih, the hamza after a damma, in the ibdal', () {
       for (final id in ['ibn_wardan', 'ibn_jammaz']) {
         for (final (s, a, w) in [

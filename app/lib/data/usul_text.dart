@@ -123,6 +123,17 @@ bool showYaqubMimExample(Variant reading, String hafs) {
 String withoutSeparatedMaddSign(String text) =>
     text.replaceFirst(RegExp(r'ٓ(?=[ً-ٰٟۖ-ۭ]*(?:ا[ْ۟۠][ً-ٰٟۖ-ۭ]*)?$)'), '');
 
+/// The wording beside «ٱلتقاء الساكنين»: «بضم نون التنوين وصلًا», «بضم النون
+/// وصلًا», as the row tells it, without the chapter's name.
+String firstSakinNote(String description) {
+  final told = description
+      .replaceFirst(' لالتقاء الساكنين', '')
+      .replaceFirst(RegExp(r'\s*وصلاً$'), '')
+      .replaceFirst(RegExp(r'\s*وصلًا$'), '')
+      .trim();
+  return '$told وصلًا';
+}
+
 /// Ha of tanbih and ya of nida joined in the rasm to a hamza (هَٰٓؤُلَآءِ،
 /// هَٰٓأَنتُمۡ، يَٰٓأَيُّهَا، يَٰٓـَٔادَمُ) carry a separated madd within one word.
 final _joinedSeparatedMadd = RegExp(

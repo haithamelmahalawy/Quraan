@@ -11,6 +11,7 @@ import 'audio_library_screen.dart';
 import 'qiraat_sheet.dart';
 import 'qurra_guide_screen.dart';
 import 'reading_library_screen.dart';
+import 'readings_screen.dart';
 import 'reader_screen.dart';
 import 'scan_screen.dart';
 import 'search_screen.dart';
@@ -104,6 +105,10 @@ class HomeScreen extends StatelessWidget {
     MaterialPageRoute(
       builder: (_) => ReadingLibraryScreen(quran: mushafs.madani),
     ),
+  );
+
+  void _openReadings(BuildContext context) => Navigator.of(context).push<void>(
+    MaterialPageRoute(builder: (_) => ReadingsScreen(quran: mushafs.madani)),
   );
 
   void _openAudio(BuildContext context) => Navigator.of(context).push<void>(
@@ -377,6 +382,13 @@ class HomeScreen extends StatelessWidget {
                 title: 'المسموعات',
                 subtitle: 'كل القراء والرواة، والاستماع دون إنترنت',
                 onTap: () => _openAudio(context),
+              ),
+              _Row(
+                icon: Icons.menu_book_rounded,
+                color: const Color(0xFF8D6FD1),
+                title: 'المقروءات',
+                subtitle: 'التفسير والإعراب والتوجيه، والقراءة دون إنترنت',
+                onTap: () => _openReadings(context),
               ),
               _Row(
                 icon: Icons.local_library_outlined,

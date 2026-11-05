@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/reading_comparison.dart';
+import 'package:qiraat_mushaf/data/usul_text.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/quran.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
@@ -74,6 +75,14 @@ void main() {
     });
   }
 
+  test('the first of two sakins tells its letter, joined', () {
+    expect(
+      firstSakinNote('بضم نون التنوين وصلاً لالتقاء الساكنين'),
+      'بضم نون التنوين وصلًا',
+    );
+    expect(firstSakinNote('بضم النون لالتقاء الساكنين'), 'بضم النون وصلًا');
+  });
+
   test('a reader with a farsh in the word is cited for it alone', () {
     Variant row(String id, VariantKind kind, String d, {String rule = ''}) =>
         Variant(
@@ -140,6 +149,39 @@ void main() {
       expect(singular.map((v) => v.riwayaId), ['bazzi']);
     },
   );
+
+  for (final id in ['qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz']) {
+    testWidgets('$id: no separated madd drawn anywhere in the mushaf', (
+      t,
+    ) async {
+      addTearDown(t.view.reset);
+      t.view.physicalSize = const Size(620, 1000);
+      t.view.devicePixelRatio = 1;
+      await shown(t, id, 1, 1, 0);
+      final display = t.widget<MushafLines>(find.byType(MushafLines)).display!;
+      final signed = RegExp('ٓ(ا[ْ۟]?)?[ۖ-ۜ]*\$');
+      final bad = <String>[];
+      var sites = 0;
+      for (var s = 1; s <= 114; s++) {
+        for (var a = 1; a <= quran.surah(s).ayahCount; a++) {
+          final ayah = quran.ayah(s, a);
+          for (var w = 0; w + 1 < ayah.words.length; w++) {
+            if (!signed.hasMatch(ayah.words[w]) ||
+                !RegExp('^[ءأإآ]').hasMatch(ayah.words[w + 1])) {
+              continue;
+            }
+            sites++;
+            final text = display(ayah, w)?.text;
+            if (text != null && signed.hasMatch(text)) {
+              bad.add('$s:$a:$w $text');
+            }
+          }
+        }
+      }
+      expect(sites, greaterThan(2900));
+      expect(bad, isEmpty);
+    });
+  }
 
   testWidgets('ha antum in the hamesh: a row for each face', (t) async {
     addTearDown(t.view.reset);

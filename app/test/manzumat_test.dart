@@ -195,6 +195,39 @@ void main() {
     }
   });
 
+  test("«وَأُحِلَّ» cites «وَضَمٌّ وَكَسْرٌ فِي أَحَلَّ»", () {
+    for (final id in ['qalun', 'bazzi', 'qunbul']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 4,
+        ayah: 24,
+        word: 10,
+        count: 1,
+        text: 'وَأَحَلَّ',
+        kind: VariantKind.farsh,
+        description: 'بفتح الهمزة والحاء',
+      );
+      final r = manzumat.referenceOf(v, 'وَأُحِلَّ', 4, surahs);
+      expect(r.mention, {597}, reason: id);
+    }
+  });
+
+  test("Abu Ja'far's «يُظۡلَمُونَ» cites «وَلَا يُظْلَمُوا أُدْ»", () {
+    final v = Variant(
+      riwayaId: 'ibn_wardan',
+      surah: 4,
+      ayah: 77,
+      word: 45,
+      count: 1,
+      text: 'يُظۡلَمُونَ',
+      kind: VariantKind.farsh,
+      description: 'بالياء',
+    );
+    final r = manzumat.referenceOf(v, 'تُظۡلَمُونَ', 4, surahs);
+    expect(r.poem, Poem.durrah);
+    expect(r.mention, {96});
+  });
+
   test("Abu Ja'far's «وَكَآئِ۬ن» cites «كَائِنْ»", () {
     final v = Variant(
       riwayaId: 'ibn_wardan',

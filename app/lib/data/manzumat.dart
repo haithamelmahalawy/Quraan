@@ -731,6 +731,13 @@ class Manzumat {
       qiraaOf(v.riwayaId).id == 'abu_jafar' &&
       RegExp('ي[ً-ْۡ]*ح[ً-ْۡ]*ز[ُِ]ن').hasMatch('$hafs ${v.text}');
 
+  bool _abuJafarYuzlamun(Poem poem, Variant v, String hafs) =>
+      poem == Poem.durrah &&
+      qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+      v.surah == 4 &&
+      v.ayah == 77 &&
+      _letters('$hafs ${v.text}').contains('ظلمون');
+
   /// His «وَكَآئِن» with the hamza eased: «أَرَيْتَ وَإِسْرَائِيْلَ كَائِنْ».
   bool _abuJafarKaayin(Poem poem, Variant v) =>
       poem == Poem.durrah &&
@@ -754,6 +761,15 @@ class Manzumat {
         v.ayah == 73) {
       return {188};
     }
+    // «وَأُحِلَّ» (النساء ٢٤): «وَضَمٌّ وَكَسْرٌ فِي أَحَلَّ صِحَابُهُ وُجُوهٌ».
+    if (poem == Poem.shatibiyya &&
+        v.surah == 4 &&
+        v.ayah == 24 &&
+        v.word == 10) {
+      return {597};
+    }
+    // «وَلَا يُظۡلَمُونَ» (النساء ٧٧): «وَلَا يُظْلَمُوا أُدْ يَا».
+    if (_abuJafarYuzlamun(poem, v, hafs)) return {96};
     if (_abuJafarYadurrukum(poem, v)) return {88};
     if (_abuJafarKaayin(poem, v)) return {34};
     if (_abuJafarYahzun(poem, v, hafs)) return {91};
@@ -965,6 +981,9 @@ class Manzumat {
     }
     if (_abuJafarYadurrukum(poem, v)) {
       return verses(poem).firstWhere((b) => b.n == 88).chapter;
+    }
+    if (_abuJafarYuzlamun(poem, v, hafs)) {
+      return verses(poem).firstWhere((b) => b.n == 96).chapter;
     }
     if (_abuJafarKaayin(poem, v)) {
       return verses(poem).firstWhere((b) => b.n == 34).chapter;

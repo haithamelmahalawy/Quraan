@@ -141,9 +141,11 @@ void applyMikail(String id, List rows) {
   // «فَنِعۡمَّا» (البقرة ٢٧١) of Qalun: the sukun first, or the kasra stolen.
   if (id == 'qalun') {
     for (final v in rows.cast<List>()) {
-      if (v[0] != 2 || v[1] != 271 || v[2] != 3 || v[5] != 'f') continue;
+      final twoFaces = v[0] == 2 && v[1] == 271 && v[2] == 3;
+      final inNisa = v[0] == 4 && v[1] == 58 && v[2] == 17;
+      if (!twoFaces && !inNisa || v[5] != 'f') continue;
       v
-        ..[4] = 'فَنِعۡمَّا'
+        ..[4] = inNisa ? 'نِعۡمَّا' : 'فَنِعۡمَّا'
         ..[6] = 'بوجهين: إسكان العين، وهو المقدم؛ أو اختلاس كسرة العين';
     }
   }

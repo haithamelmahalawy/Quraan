@@ -3954,6 +3954,16 @@ class _UsulBox extends StatelessWidget {
               readers == null ? ' ($d)' : ' ($d: $readers)',
               style: TextStyle(fontSize: 9 * scale, color: g.color),
             ),
+        // The first of two sakins: what it is read with, joined.
+        for (final d in {
+          for (final v in i.readings)
+            if (v.rule == 'first_sakin' && _ashabSilah.contains(v.riwayaId))
+              firstSakinNote(v.description),
+        })
+          Text(
+            ' ($d)',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
         // Qalun's ٱلتَّوۡرَىٰةَ: its two faces, the fath preferred.
         for (final v in i.readings.where((v) => v.fathPreferred))
           Text(

@@ -362,6 +362,15 @@ const Map<String, (String, String, String)?> _toldAs = {
   '3:119:16': null,
   // «فَوَٰحِدَةٌ» (النساء ٣): raised with its tanween, shown before «أَوۡ».
   '4:3:19': ('فَوَٰحِدَةٌ', 'f', 'بتنوين الضم'),
+  // «نِعۡمَّا» (النساء ٥٨), as «فَنِعۡمَّا» of البقرة.
+  '4:58:17': ('نِعۡمَّا', 'f', 'بإسكان العين'),
+  // Told of no word they belong to, Hafs's letters all.
+  '15:48:7': null,
+  '18:2:0': null,
+  // «سِيٓـَٔتۡ» as Qalun's: its text was left out.
+  '67:27:3': ('س۬يَٓٔتْ', 'f', 'بإسكان السين والإشمام'),
+  // «تَسَّوَّىٰ» as Qalun's: the dagger alif over its ya.
+  '4:42:7': ('تَسَّوَّىٰ', 'f', 'بفتح التاء وتشديد السين'),
   // «رِيَآءَ»: its hamza a ya, in the usul.
   '2:264:11': ('رِيَآءَ', 'h', 'بإبدال الهمزة ياءً'),
   '8:47:7': ('وَرِيَآءَ', 'h', 'بإبدال الهمزة ياءً'),
@@ -851,6 +860,21 @@ List<String> applyWordTrim(Map quran, List rows) {
       if (v[0] == s && v[1] == a && v[2] == w) gone.add(v);
     }
     added.add([s, a, w, 1, text, 'h', 'بتخفيف الهمزة', '']);
+  }
+  // «يُضَعِّفۡهَا» (النساء ٤٠) as Ibn Kathir's, left out.
+  if (!rows.cast<List>().any(
+    (v) => v[0] == 4 && v[1] == 40 && v[2] == 9 && v[5] == 'f',
+  )) {
+    added.add([
+      4,
+      40,
+      9,
+      1,
+      'يُضَعِّفۡهَا',
+      'f',
+      'بحذف الألف وتشديد العين',
+      '',
+    ]);
   }
   // «الٓمٓ» of آل عمران told on the ayah after it, on «ٱللَّهُ»; and «حمٓ» of
   // الشورى left out, its «عٓسٓقٓ» told alone.

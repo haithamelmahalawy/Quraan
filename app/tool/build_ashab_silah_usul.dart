@@ -1059,6 +1059,32 @@ Map<String, int> buildAshabSilahUsul(
       if (at == '11:72:2') v[4] = 'ءَٰا۬لِدُ';
       if (at == '8:66:7') v[4] = 'ضُعَفَآءَۚ';
       if (at == '19:7:0') v[3] = 1;
+      // «ءَامَنتُمۡ» as Qalun's: no idkhal in it.
+      if (at == '7:123:2' || at == '20:71:1' || at == '26:49:1') {
+        v.replaceRange(4, v.length, <Object>[
+          at == '7:123:2' ? 'ءَاٰ۬مَنتُمُۥ' : 'ءَاٰ۬مَنتُمُۥ',
+          'h',
+          'بتسهيل الهمزة الثانية بلا إدخال، بصلة ميم الجمع',
+          'tasheel_word',
+          {
+            'context': hafsAt[at] ?? '',
+            'ways': const ['تسهيل الهمزة الثانية بلا إدخال'],
+          },
+        ]);
+      }
+      // «نُوتِهۡ» of الشورى as of آل عمران.
+      if (at == '42:20:14') {
+        while (v.length < 8) {
+          v.add('');
+        }
+        v[6] = 'بإبدال الهمزة واوًا وإسكان الهاء';
+        v[7] = 'ibdal_single';
+      }
+      // The hamza of «يَسۡتَـٔۡذِنُكَ» an alif: a dagger one, not in the body.
+      if (RegExp('تَـ.?ٔ').hasMatch(hafsAt[at] ?? '') &&
+          '${v[4]}'.contains('تَا')) {
+        v[4] = '${v[4]}'.replaceFirst('تَا', 'تَٰ');
+      }
       // «نُوتِهۡ», both of آل عمران ١٤٥: the ha sakin, no silah, told with the ibdal.
       if (at == '3:145:14' || at == '3:145:20') {
         while (v.length < 8) {
@@ -1147,6 +1173,49 @@ Map<String, int> buildAshabSilahUsul(
       }
     }
   }
+  // Qalun's «أَٰئِنَّكُمُۥ»: told by the alif alone, its hamza eased too.
+  if (id == 'qalun') {
+    for (final v in rows) {
+      final text = '${v[4]}';
+      if (!text.startsWith('أَٰئِ')) continue;
+      while (v.length < 9) {
+        v.add(v.length == 8 ? <String, Object>{} : '');
+      }
+      v.replaceRange(4, v.length, <Object>[
+        text.contains('۬') ? text : text.replaceFirst('أَٰئِ', 'أَٰئِ۬'),
+        'h',
+        text.contains('مُۥ')
+            ? 'بتسهيل الهمزة الثانية مع الإدخال، بصلة ميم الجمع'
+            : 'بتسهيل الهمزة الثانية مع الإدخال',
+        'tasheel_word',
+        {
+          'context': hafsAt['${v[0]}:${v[1]}:${v[2]}'] ?? '',
+          'ways': const ['تسهيل الهمزة الثانية مع الإدخال'],
+        },
+      ]);
+    }
+  }
+  // «أَءُنزِلَ»، «أَءُلۡقِيَ» of Ibn Kathir: eased, as «أَؤُنَبِّئُكُمۡ», not dropped.
+  if (id == 'bazzi' || id == 'qunbul') {
+    for (final v in rows) {
+      final at = '${v[0]}:${v[1]}:${v[2]}';
+      if ((at == '38:8:0' || at == '54:25:0') && v[5] == 'h') {
+        v.replaceRange(5, v.length, <Object>[
+          'h',
+          'بتسهيل الهمزة الثانية بلا إدخال',
+          'tasheel_word',
+          {
+            'context': hafsAt[at] ?? '',
+            'ways': const ['تسهيل الهمزة الثانية بلا إدخال'],
+          },
+        ]);
+      }
+    }
+  }
+  // Qalun's «لَيَّۢا» (النساء ٤٦): told a sukun he does not read, nothing differs.
+  if (id == 'qalun') {
+    rows.removeWhere((v) => v[0] == 4 && v[1] == 46 && v[2] == 14);
+  }
   // Qalun's «نُؤْتِهِ»، «يُؤَدِّهِ»: the ha with its kasra, short; told sakin.
   if (id == 'qalun') {
     for (final v in rows) {
@@ -1209,7 +1278,7 @@ Map<String, int> buildAshabSilahUsul(
   for (final v in rows) {
     if (v[0] != 3 || v[1] != 15 || v[2] != 1 || v[5] != 'h') continue;
     if (id == 'bazzi' || id == 'qunbul') {
-      v.replaceRange(4, v.length, [
+      v.replaceRange(4, v.length, <Object>[
         'أَؤُ۬نَبِّئُكُمُۥ',
         'h',
         'بتسهيل الهمزة الثانية بلا إدخال، بصلة ميم الجمع',
