@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/reading_comparison.dart';
 import '../data/kharouf.dart';
 import '../data/manzumat.dart';
 import '../models/qiraat_catalog.dart';
@@ -135,7 +136,7 @@ class _ReadingReferencesState extends State<ReadingReferences> {
                 riwayat: {for (final v in widget.readings) v.riwayaId},
                 showVerses: false,
               ),
-            for (final v in widget.readings) ...[
+            for (final v in citedReadings(widget.readings)) ...[
               const SizedBox(height: 14),
               _ReadingReference(
                 reading: v,

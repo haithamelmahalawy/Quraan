@@ -21,7 +21,9 @@ class HafsFontMarks extends StatelessWidget {
     r'([ًٗ])ا([ۖ-ۭ]*)(?=\s|$)|ا[ًٗ]([ۖ-ۭ]*)(?=\s|$)',
   );
   static final _cluster = RegExp('[^ً-ٰٟۖ-ۭ][ً-ٰٟۖ-ۭ]*');
-  static final _boundarySakt = RegExp(r'ۜ([اى]?[ً-ٰٟۖ-ۭ]*)(?=\s|$)');
+  static final _boundarySakt = RegExp(
+    r'ۜ([اى]?[ً-ٰٟۖ-ۭ]*)(?:(?=\s|$)|(?<=(?:^|\s)اۜ))',
+  );
 
   /// Reserve a narrow inter-word anchor for boundary sakt. Source spelling
   /// and semantics retain the original sign; internal al/شيء are untouched.
@@ -282,6 +284,11 @@ class HafsFontMarks extends StatelessWidget {
       previous = m[0]!;
     }
     final sakt = {for (final m in _boundarySakt.allMatches(full)) m.start: m};
+    // Abu Ja'far's sakt drawn out between two letters (الٓـۜـمٓۜ): painted over
+    // its kashida, at the height of the one after the last letter.
+    for (final m in RegExp('(?<=ـ)ۜ').allMatches(full)) {
+      if (!sakt.containsKey(m.start)) marks[m.start] = placed[m.start].$2;
+    }
     if (marks.isEmpty &&
         sakt.isEmpty &&
         dots.isEmpty &&

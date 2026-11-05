@@ -350,6 +350,20 @@ List<Variant> displayedRulesNotReadBy({
   ];
 }
 
+/// What to cite for [readings]: a reader with a farsh in a word is cited for
+/// his farsh alone, not for the usul in the same word (يَضِرۡكُمُۥ: not its silah).
+List<Variant> citedReadings(List<Variant> readings) {
+  bool farsh(Variant v) => !v.isUsul && v.rule != 'comparison';
+  final withFarsh = {
+    for (final v in readings)
+      if (farsh(v)) '${v.riwayaId}:${v.word}',
+  };
+  return [
+    for (final v in readings)
+      if (!v.isUsul || !withFarsh.contains('${v.riwayaId}:${v.word}')) v,
+  ];
+}
+
 /// The body of a word as written: a hamza on a seat is its seat, a hamza alone
 /// a letter of its own. A rule that adds or drops a letter changes it
 /// (ٱلنَّبِيٓـِٕينَ); a naql, an ibdal, an idgham, a silah or a madd do not.
@@ -395,8 +409,11 @@ List<Variant> otherBodyNotes(
   if (rules.isEmpty) return const [];
   // An idgham too: its letter merged, told by the shadda it leaves.
   int shaddas(String t) => RegExp('ّ').allMatches(t).length;
+  // A hamza added on a seat of the word's own letter (أَنۢبِئَآءَ، هُزُؤٗا).
+  int hamzas(String t) => RegExp('[ءأإآؤئٕٔ]').allMatches(t).length;
   bool changes(Variant v, String other) =>
       _bodyKey(v.text) != _bodyKey(other) ||
+      v.rule == 'hamza_zaida' && hamzas(v.text) > hamzas(other) ||
       v.rule.startsWith('idgham') &&
           shaddas(v.text.substring(1)) != shaddas(other.substring(1));
 

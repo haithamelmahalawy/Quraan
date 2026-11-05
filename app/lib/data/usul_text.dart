@@ -214,7 +214,7 @@ String usulReadingText(
       text = _silah(text, actual.shownDescription);
     }
     if (v.isStoppingTaqlil) return text.replaceAll(RegExp('[۪ٜ]'), '');
-    return v.isImala ? withImalaSign(text, v.text) : text;
+    return v.isImala && !v.fathPreferred ? withImalaSign(text, v.text) : text;
   }
 
   final hafs = ayah.words
@@ -299,7 +299,9 @@ String usulReadingText(
         : withNaqlVowel(actual.text, a.words[w]);
     if (actual != null) {
       text = _silah(text, actual.shownDescription);
-      if (actual.isImala) text = withImalaSign(text, actual.text);
+      if (actual.isImala && !actual.fathPreferred) {
+        text = withImalaSign(text, actual.text);
+      }
     }
     prefix.add(text);
   }

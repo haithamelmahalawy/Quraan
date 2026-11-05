@@ -26,6 +26,16 @@ String skeleton(String word) {
   return b.toString();
 }
 
+/// A ya of the zawaid, added to Hafs's rasm: the small one beside the word, not
+/// a letter in its body, as agreed for every reader (ٱتَّبَعَنِۦ، يَٰعِبَادِۦ،
+/// يُرِدۡنِۦَ with its fatha, دُعَآءِۦ with Hafs's hamza).
+String withSmallYa(String text) => text
+    .replaceFirst(RegExp('آئ(?=ِ[يىےۦ])'), 'آء')
+    .replaceFirstMapped(
+      RegExp('ِ[يىے](َ?)([ۖ-ۜ]*)\$'),
+      (m) => 'ِۦ${m[1]}${m[2]}',
+    );
+
 /// A riwaya's text in the script of the Madinah (Hafs) mushaf, so it reads
 /// like the page around it: the Maghribi yeh barree ے of the KFGQPC Warsh
 /// and Qalun texts becomes ى, ya before a dagger alef (أَر۪يٰكُمْ) becomes

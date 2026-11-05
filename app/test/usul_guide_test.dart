@@ -429,7 +429,7 @@ void main() {
     }
     expect(
       usulOfRiwaya(variants, quran, 'bazzi')['تاءات البزي'],
-      hasLength(30),
+      hasLength(32),
     );
     expect(rowOf('bazzi', 92, 14, 2, 'bazzi_ta')!.text, startsWith('تّ'));
     // What «الجامع» told that the earlier sources missed.

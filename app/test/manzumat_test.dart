@@ -61,6 +61,203 @@ void main() {
     }
   });
 
+  test("al-Bazzi's «لَا تَّفَرَّقُواْ» cites the head of the rule too", () {
+    final v = Variant(
+      riwayaId: 'bazzi',
+      surah: 3,
+      ayah: 103,
+      word: 5,
+      count: 1,
+      text: 'تَّفَرَّقُواْ',
+      kind: VariantKind.usul,
+      description: 'بتشديد التاء وصلاً مع المد المشبع قبلها',
+      rule: 'bazzi_ta',
+    );
+    final r = manzumat.referenceOf(v, 'تَفَرَّقُواْ', 3, surahs);
+    expect(r.poem, Poem.shatibiyya);
+    expect(r.mention, {526, 527});
+  });
+
+  test("Ibn Kathir's «ءَا۬ن» cites «يُشَفَّعُ أَنْ يُؤْتَى»", () {
+    for (final id in ['bazzi', 'qunbul']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 3,
+        ayah: 73,
+        word: 11,
+        count: 1,
+        text: 'ءَا۬ن',
+        kind: VariantKind.hamza,
+        description: 'بهمزتين مع تسهيل الثانية',
+        rule: 'ha_antum',
+      );
+      final r = manzumat.referenceOf(v, 'أَن', 3, surahs);
+      expect(r.mention, {188}, reason: id);
+    }
+  });
+
+  test("Abu Ja'far's «يَضُرُّكُمۡ» cites its farsh, not its silah", () {
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 3,
+        ayah: 120,
+        word: 13,
+        count: 1,
+        text: 'يَضُرُّكُمُۥ',
+        kind: VariantKind.usul,
+        description: 'بصلة ميم الجمع',
+      );
+      final r = manzumat.referenceOf(v, 'يَضُرُّكُمۡ', 3, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {88}, reason: id);
+    }
+  });
+
+  test("al-Bazzi's «تَمَنَّوۡنَ» and «تَفَكَّهُونَ» cite their two faces", () {
+    for (final (s, a, w, hafs) in [
+      (3, 143, 2, 'تَمَنَّوۡنَ'),
+      (56, 65, 5, 'تَفَكَّهُونَ'),
+    ]) {
+      final v = Variant(
+        riwayaId: 'bazzi',
+        surah: s,
+        ayah: a,
+        word: w,
+        count: 1,
+        text: '',
+        kind: VariantKind.usul,
+        description: 'بوجهين: بتخفيف التاء، وهو المقدم والأرجح؛ وبتشديدها مع المد المشبع',
+        rule: 'bazzi_ta',
+      );
+      final r = manzumat.referenceOf(v, hafs, s, surahs);
+      expect(r.poem, Poem.shatibiyya);
+      expect(r.mention, {526, 535}, reason: '$s:$a');
+    }
+  });
+
+  test("«قَٰتَلَ» cites «وَقَاتَلَ بَعْدَهُ يُمَدُّ»", () {
+    for (final id in ['qalun', 'bazzi', 'qunbul']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 3,
+        ayah: 146,
+        word: 3,
+        count: 1,
+        text: 'قُتِلَ',
+        kind: VariantKind.farsh,
+        description: 'بضم القاف وحذف الألف وكسر التاء',
+      );
+      final r = manzumat.referenceOf(v, 'قَٰتَلَ', 3, surahs);
+      expect(r.mention, {571}, reason: id);
+    }
+  });
+
+  test(
+    "Abu Ja'far's «يَحۡزُنكَ» cites its couplet, «يَحۡزَنُونَ» does not",
+    () {
+      Reference of(String hafs, int s, int a, int w, String text) =>
+          manzumat.referenceOf(
+            Variant(
+              riwayaId: 'ibn_wardan',
+              surah: s,
+              ayah: a,
+              word: w,
+              count: 1,
+              text: text,
+              kind: VariantKind.farsh,
+            ),
+            hafs,
+            s,
+            surahs,
+          );
+      expect(of('يَحۡزُنكَ', 3, 176, 1, '').mention, {91});
+      expect(of('لَيَحۡزُنُنِيٓ', 12, 13, 2, 'لَيَحۡزُنُنِيَ').mention, {91});
+      expect(of('يَحۡزُنُهُمُ', 21, 103, 1, 'يُحۡزِنُهُمُ').mention, {91});
+      expect(of('يَحۡزَنُونَ', 2, 38, 13, '').mention, isNot(contains(91)));
+    },
+  );
+
+  test("Ibn Kathir's «وَقُتِّلُواْ» cites «بِمَا قُتِلُوا التَّشْدِيدُ»", () {
+    for (final id in ['bazzi', 'qunbul']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 3,
+        ayah: 195,
+        word: 25,
+        count: 1,
+        text: 'وَقُتِّلُواْ',
+        kind: VariantKind.farsh,
+        description: 'بتشديد التاء',
+      );
+      final r = manzumat.referenceOf(v, 'وَقُتِلُواْ', 3, surahs);
+      expect(r.mention, {576, 577}, reason: id);
+    }
+  });
+
+  test("Abu Ja'far's «وَكَآئِ۬ن» cites «كَائِنْ»", () {
+    final v = Variant(
+      riwayaId: 'ibn_wardan',
+      surah: 3,
+      ayah: 146,
+      word: 0,
+      count: 1,
+      text: 'وَكَآئِ۬ن',
+      kind: VariantKind.farsh,
+      description: 'بألف بعد الكاف وبعدها همزة مكسورة مسهلة ثم نون ساكنة',
+    );
+    final r = manzumat.referenceOf(v, 'وَكَأَيِّن', 3, surahs);
+    expect(r.poem, Poem.durrah);
+    expect(r.mention, {34});
+  });
+
+  test("Ibn Wardan's «مِلُ» cites «وَأَبْدِلْ أَمَّ مِلْءُ بِهِ انْقُلَا»", () {
+    final r = ref(
+      'ibn_wardan',
+      3,
+      'مِّلۡءُ',
+      text: 'مِلُ',
+      description: 'بضم اللام وحذف الهمزة',
+      rule: 'naql',
+      kind: VariantKind.hamza,
+    );
+    expect(r.poem, Poem.durrah);
+    expect(r.mention, {36});
+  });
+
+  test("Abu Ja'far's «هَٰٓأَنتُمۡ» cites the Durrah", () {
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final r = ref(
+        id,
+        3,
+        'هَٰا۬نتُمُۥ',
+        description: 'بإثبات الألف وهمزة مسهلة',
+        rule: 'ha_antum',
+        kind: VariantKind.hamza,
+      );
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {34}, reason: id);
+    }
+  });
+
+  test(
+    "Qalun's two faces of «ٱلتَّوۡرَىٰةَ» cite «وَبِالْخُلْفِ بَلَّلَا»",
+    () {
+      for (final surah in [3, 5, 62]) {
+        final r = ref(
+          'qalun',
+          surah,
+          'ٱلتَّوۡرَىٰةَ',
+          description: 'بالفتح والتقليل، والراجح الفتح',
+          rule: 'fath_taqlil',
+          kind: VariantKind.usul,
+        );
+        expect(r.poem, Poem.shatibiyya);
+        expect(r.mention, {546}, reason: '$surah');
+      }
+    },
+  );
+
   test('«سراط» with the sin cites its own verse in every place', () async {
     final quran = await QuranRepository.load();
     final variants = await VariantRepository.discover();
@@ -448,7 +645,7 @@ void main() {
           for (final v in variants.allOf(id))
             if (v.text.contains('سۡرَٰٓءِ۬يل')) v,
         ];
-        expect(rows, hasLength(39), reason: id);
+        expect(rows, hasLength(43), reason: id);
         for (final v in rows) {
           // From the page (Hafs's word) and from the usul (its own text).
           for (final word in ['إِسۡرَٰٓءِيلَ', v.text]) {

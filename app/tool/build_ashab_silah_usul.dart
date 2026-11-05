@@ -573,6 +573,10 @@ Map<String, int> buildAshabSilahUsul(
         (c) => RegExp(r'^ب?(ال)?إدغام$').hasMatch(c) && !said.contains('القصر'),
       );
     }
+    // Qalun's «نُؤْتِهِ»: its short kasra is what it tells, no silah to take off.
+    if (id == 'qalun' && v[6] == 'بكسر الهاء' && '${v[4]}'.endsWith('هِ')) {
+      continue;
+    }
     final hadSilah = clauses.any(_silahClause.hasMatch);
     for (var c = clauses.length - 1; c >= 0; c--) {
       if (!_silahClause.hasMatch(clauses[c])) continue;
@@ -947,7 +951,7 @@ Map<String, int> buildAshabSilahUsul(
     // All of it the one sakt; what else it told of them is as Hafs.
     for (final v in rows) {
       if (v.length > 7 && v[7] == 'fawatih') {
-        v[4] = '';
+        v[4] = saktLetters(hafsAt['${v[0]}:${v[1]}:${v[2]}'] ?? '');
         v[6] = 'بالسكت على كل حرف من الحروف المقطعة';
       }
     }
@@ -963,6 +967,22 @@ Map<String, int> buildAshabSilahUsul(
         v[7] = 'bazzi_ta';
         count('bazzi_ta');
       }
+    }
+    // «كُنتُمۡ تَمَنَّوۡنَ» and «فَظَلۡتُمۡ تَفَكَّهُونَ»: «عَنْهُ عَلَى وَجْهَيْنِ», the
+    // light ta first, so written as Hafs's.
+    for (final key in const ['3:143:2', '56:65:5']) {
+      final hafs = hafsAt[key];
+      if (hafs == null) continue;
+      final p = key.split(':').map(int.parse).toList();
+      add(
+        (s: p[0], a: p[1], w: p[2], t: hafs),
+        'bazzi_ta',
+        'بوجهين: بتخفيف التاء، وهو المقدم والأرجح؛ وبتشديدها مع المد المشبع',
+        ways: const [
+          'تخفيف التاء، وهو المقدم والأرجح',
+          'تشديد التاء مع المد المشبع',
+        ],
+      );
     }
     // Told at the end of each sura, no difference of its word.
     final lastOf = <int, _Word>{};
@@ -1008,6 +1028,217 @@ Map<String, int> buildAshabSilahUsul(
       );
     }
   }
+  // Qalun's «ٱلتَّوۡرَىٰةَ» wherever it comes: «وَبِالْخُلْفِ بَلَّلَا», the fath
+  // preferred, so written as Hafs's, without the taqlil's sign.
+  if (id == 'qalun') {
+    final marks = RegExp('[ً-ٰٟۖ-ۭ]');
+    for (final w in words) {
+      if (RegExp('^[وب]?ٱلتورى?ة\$').hasMatch(w.t.replaceAll(marks, ''))) {
+        add(
+          w,
+          'fath_taqlil',
+          'بالفتح والتقليل، والراجح الفتح',
+          ways: const ['الفتح', 'التقليل'],
+        );
+      }
+    }
+  }
+  if (_abuJafar(id)) {
+    // The alif of the idkhal written in the word's body (أَآئِمَّةً، أَاءِذَا):
+    // a dagger one, the second hamza as Hafs's with the tasheel dot.
+    final opened = RegExp('^أَ[اآ](?=[ءئ])');
+    for (final v in rows) {
+      final text = '${v[4]}';
+      if (!opened.hasMatch(text)) continue;
+      v[4] = text
+          .replaceFirst(opened, 'أَٰ')
+          .replaceFirstMapped(RegExp('^(أَٰ[ءئ])ِ?'), (m) => '${m[1]}ِ۬');
+    }
+    for (final v in rows) {
+      final at = '${v[0]}:${v[1]}:${v[2]}';
+      if (at == '11:72:2') v[4] = 'ءَٰا۬لِدُ';
+      if (at == '8:66:7') v[4] = 'ضُعَفَآءَۚ';
+      if (at == '19:7:0') v[3] = 1;
+      // «نُوتِهۡ», both of آل عمران ١٤٥: the ha sakin, no silah, told with the ibdal.
+      if (at == '3:145:14' || at == '3:145:20') {
+        while (v.length < 8) {
+          v.add('');
+        }
+        v[4] = 'نُوتِهۡ';
+        v[5] = 'h';
+        v[6] = 'بإبدال الهمزة واوًا وإسكان الهاء';
+        v[7] = 'ibdal_single';
+      }
+      // «وَكَآئِن»: as written, its hamza eased after the madd.
+      if (const {
+        '3:146:0',
+        '12:105:0',
+        '22:45:0',
+        '22:48:0',
+        '29:60:0',
+        '47:13:0',
+        '65:8:0',
+      }.contains(at)) {
+        final text = '${v[4]}';
+        if (text.isNotEmpty && !text.contains('۬')) {
+          v[4] = text.replaceFirst('ئِ', 'ئِ۬');
+        }
+        v[6] = 'بألف بعد الكاف وبعدها همزة مكسورة مسهلة ثم نون ساكنة';
+      }
+      // Ibn Wardan's «مِلُ»: «وَأَبْدِلْ أَمَّ مِلْءُ بِهِ انْقُلَا», told in the naql.
+      if (at == '3:91:10' && id == 'ibn_wardan') {
+        while (v.length < 8) {
+          v.add('');
+        }
+        v[7] = 'naql';
+      }
+      // The hamza after a damma a waw, told as farsh: in the ibdal.
+      if (at == '3:75:7' || at == '3:75:15') {
+        while (v.length < 8) {
+          v.add('');
+        }
+        v[5] = 'h';
+        v[6] = 'بإبدال الهمزة واوًا وإسكان الهاء';
+        v[7] = 'ibdal_single';
+      }
+      if (at == '4:58:4' || at == '16:61:11' || at == '35:45:1') {
+        if (v[5] == 'f') {
+          while (v.length < 8) {
+            v.add('');
+          }
+          v[5] = 'h';
+          v[6] = 'بإبدال الهمزة واوًا';
+          v[7] = 'ibdal_single';
+        }
+      }
+      if (at == '3:49:15' || at == '5:110:30') {
+        while (v.length < 8) {
+          v.add('');
+        }
+        v[7] = 'ibdal_single';
+      }
+    }
+  }
+  // «هَٰٓأَنتُمۡ», each by his face, Qalun and Abu Ja'far told alike; the rows
+  // of the same word that write nothing say no more.
+  rows.removeWhere(
+    (v) => v.length > 7 && v[7] == 'ha_antum' && '${v[4]}'.isEmpty,
+  );
+  for (final v in rows) {
+    if (v.length > 7 && v[7] == 'ha_antum') {
+      v[6] = switch (id) {
+        _ when v[0] == 3 && v[1] == 73 => v[6],
+        'bazzi' => 'بإثبات الألف وهمزة محققة بعدها',
+        'qunbul' => 'بحذف الألف مع تحقيق الهمزة',
+        _ => 'بإثبات الألف وهمزة مسهلة',
+      };
+    }
+  }
+  // Ibn Kathir's «ءَا۬ن» (آل عمران ٧٣): told as farsh, in the moved hamza.
+  if (id == 'bazzi' || id == 'qunbul') {
+    for (final v in rows) {
+      if (v[0] == 3 && v[1] == 73 && v[2] == 11 && '${v[4]}'.isNotEmpty) {
+        while (v.length < 8) {
+          v.add('');
+        }
+        v[5] = 'h';
+        v[6] = 'بهمزتين مع تسهيل الثانية';
+        v[7] = 'ha_antum';
+      }
+    }
+  }
+  // Qalun's «نُؤْتِهِ»، «يُؤَدِّهِ»: the ha with its kasra, short; told sakin.
+  if (id == 'qalun') {
+    for (final v in rows) {
+      if (v.length > 6 && v[6] == 'بإسكان الهاء' && '${v[4]}'.endsWith('هِ')) {
+        v[6] = 'بكسر الهاء';
+      }
+    }
+  }
+  // Qalun's «ٱلنَّبِيُّونَ»: its ya sakin too, not its added hamza alone.
+  if (id == 'qalun') {
+    for (final v in rows) {
+      if (const {
+        '2:136:20',
+        '3:84:18',
+        '5:44:8',
+      }.contains('${v[0]}:${v[1]}:${v[2]}')) {
+        if (v.length > 7 && v[7] == 'hamza_zaida') {
+          v[6] = 'بإسكان الياء وزيادة الهمزة';
+        }
+      }
+    }
+  }
+  // «طَٰٓئِرَۢا»: Qalun and Abu Ja'far agree, in one wording and one writing.
+  if (id == 'qalun') {
+    for (final v in rows) {
+      final at = '${v[0]}:${v[1]}:${v[2]}';
+      if (at == '3:49:20' || at == '5:110:36') {
+        v[4] = 'طَٰٓئِرَۢا';
+        v[6] = 'بألف بعد الطاء وبعدها همزة مكسورة';
+      }
+    }
+  }
+  // «إِسۡرَٰٓءِيلَ», eased wherever it comes; its source left these out.
+  if (_abuJafar(id)) {
+    for (final key in const ['3:93:9', '10:90:2', '26:17:4', '32:23:13']) {
+      final hafs = hafsAt[key];
+      final p = key.split(':').map(int.parse).toList();
+      if (hafs == null ||
+          rows.any(
+            (v) =>
+                v[0] == p[0] &&
+                v[1] == p[1] &&
+                v[2] == p[2] &&
+                '${v[4]}'.isNotEmpty,
+          )) {
+        continue;
+      }
+      add(
+        (s: p[0], a: p[1], w: p[2], t: hafs),
+        '',
+        'بتسهيل الهمزة الثانية مع التوسط أو القصر',
+        text: hafs.replaceFirst('ءِ', 'ءِ۬'),
+        kind: 'h',
+      );
+    }
+  }
+  // «أَؤُنَبِّئُكُمۡ»: the first hamza as it is, the second eased on its waw, with
+  // the dagger alif of the idkhal between them; Ibn Kathir's without it, where
+  // the source told an ibdal.
+  for (final v in rows) {
+    if (v[0] != 3 || v[1] != 15 || v[2] != 1 || v[5] != 'h') continue;
+    if (id == 'bazzi' || id == 'qunbul') {
+      v.replaceRange(4, v.length, [
+        'أَؤُ۬نَبِّئُكُمُۥ',
+        'h',
+        'بتسهيل الهمزة الثانية بلا إدخال، بصلة ميم الجمع',
+        'tasheel_word',
+        {
+          'context': 'أَؤُنَبِّئُكُم',
+          'ways': ['تسهيل الهمزة الثانية بلا إدخال'],
+        },
+      ]);
+    } else {
+      v[4] = 'أَٰؤُ۬نَبِّئُكُمُۥ';
+    }
+  }
+  // «تُوتُونِۦ»، «يُوتِيَنِۦ»: another row of the word writes it without the
+  // ya of the zawaid told beside it; the page shows the first it finds.
+  for (final z in rows.toList()) {
+    if (z.length < 8 || z[7] != 'ya_zaida') continue;
+    final text = '${z[4]}';
+    if (!text.contains('ۦ')) continue;
+    for (final v in rows) {
+      if (!identical(v, z) &&
+          v[0] == z[0] &&
+          v[1] == z[1] &&
+          v[2] == z[2] &&
+          '${v[4]}' == text.replaceFirst('ۦ', '')) {
+        v[4] = text;
+      }
+    }
+  }
   // Qalun's «فَٱذۡكُرُونِي» (البقرة ١٥٢), written as Hafs's without the sign.
   if (id == 'qalun') {
     for (final v in rows) {
@@ -1036,7 +1267,11 @@ Map<String, int> buildAshabSilahUsul(
       for (var d = 0; d < (v[3] as num).toInt(); d++)
         hafsAt['${v[0]}:${v[1]}:${(v[2] as int) + d}'] ?? '',
     ].join(' ');
-    final gone = hafs.contains('هِ') && !RegExp('ه[ُۡۥ]').hasMatch(hafs);
+    // Not where Hafs gives it a silah (نُؤۡتِهِۦ): his kasra is long, theirs short.
+    final gone =
+        hafs.contains('هِ') &&
+        !hafs.contains('هِۦ') &&
+        !RegExp('ه[ُۡۥ]').hasMatch(hafs);
     if (gone) count('same_kasr_ha');
     return gone;
   });

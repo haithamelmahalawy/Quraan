@@ -239,6 +239,10 @@ class Variant {
       (description.contains('بين بين') &&
           !RegExp('همز|تسهيل').hasMatch(description));
 
+  /// Qalun's «ٱلتَّوۡرَىٰةَ», fath and taqlil with the fath preferred: told as
+  /// taqlil, and written as Hafs's without its sign.
+  bool get fathPreferred => rule == 'fath_taqlil';
+
   /// Lesser imala that applies only when stopping on this word.
   bool get isStoppingTaqlil =>
       stopOnly && isImala && description.contains('تقليل');

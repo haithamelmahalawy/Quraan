@@ -325,6 +325,43 @@ const _writtenAs = {
 /// they read, how they are kept, and their wording; `null` where they read as
 /// Hafs.
 const Map<String, (String, String, String)?> _toldAs = {
+  // «زَكَرِيَّآءَ» as Qalun and Ibn Kathir: its added hamza in the usul, the
+  // madd on the alif before it.
+  '3:37:8': ('زَكَرِيَّآءُۖ', 'h', 'بزيادة الهمزة والمد'),
+  '3:37:12': ('زَكَرِيَّآءُ', 'h', 'بزيادة الهمزة والمد'),
+  '3:38:2': ('زَكَرِيَّآءُ', 'h', 'بزيادة الهمزة والمد'),
+  '6:85:0': ('وَزَكَرِيَّآءَ', 'h', 'بزيادة الهمزة والمد'),
+  '19:2:4': ('زَكَرِيَّآءَ', 'h', 'بزيادة الهمزة'),
+  '19:7:0': ('يَٰزَكَرِيَّآءُ', 'h', 'بزيادة الهمزة'),
+  // «كَهَيۡـَٔةِ» with the ya doubled, in the single hamza's ibdal.
+  '3:49:15': ('كَهَيَّةِ', 'h', 'بإبدال الهمزة ياءً وإدغام الياء فيها'),
+  '5:110:30': ('كَهَيَّةِ', 'h', 'بإبدال الهمزة ياءً وإدغام الياء فيها'),
+  // The alif added to Hafs's «ٱلطَّيۡرِ», a dagger one.
+  '3:49:16': ('ٱلطَّٰٓئِرِ', 'f', 'بألف بعد الطاء وبعدها همزة مكسورة'),
+  '3:49:20': ('طَٰٓئِرَۢا', 'f', 'بألف بعد الطاء وبعدها همزة مكسورة'),
+  '5:110:31': ('ٱلطَّٰٓئِرِ', 'f', 'بألف بعد الطاء وبعدها همزة مكسورة'),
+  '5:110:36': ('طَٰٓئِرَۢا', 'f', 'بألف بعد الطاء وبعدها همزة مكسورة'),
+  // «ءَاتَيْنَٰكُمُۥ» (آل عمران ٨١) as Qalun's, his wording and his dagger alif.
+  '3:81:6': ('ءَاتَيْنَٰكُمُۥ', 'f', 'بالنون وإثبات الألف'),
+  // The ya of the zawaid, told as farsh with the letter in the word's body.
+  '3:20:7': ('ٱتَّبَعَنِۦۗ', 'f', 'بإثبات الياء'),
+  '14:22:36': ('أَشۡرَكۡتُمُونِۦ', 'f', 'بإثبات الياء'),
+  '20:93:1': ('تَتَّبِعَنِۦۖ', 'f', 'بإثبات الياء'),
+  // «ٱلۡأَنۢبِيَآءَ»: its ya Hafs's own, no hamza of it to change.
+  '3:112:27': null,
+  '3:181:15': null,
+  '4:155:7': null,
+  // «مُّضَعَّفَةٗ» and its like as Ibn Kathir's: no alif, the 'ayn doubled.
+  '2:245:7': ('فَيُضَعِّفُهُۥ', 'f', 'بحذف الألف وتشديد العين وضم الفاء'),
+  '2:261:18': ('يُضَعِّفُ', 'f', 'بحذف الألف وتشديد العين'),
+  '3:130:7': ('مُّضَعَّفَةٗۖ', 'f', 'بحذف الألف وتشديد العين'),
+  '25:69:0': ('يُضَعَّفۡ', 'f', 'بحذف الألف وتشديد العين'),
+  '57:11:7': ('فَيُضَعِّفُهُۥ', 'f', 'بحذف الألف وتشديد العين وضم الفاء'),
+  '64:17:5': ('يُضَعِّفۡهُۥ', 'f', 'بحذف الألف وتشديد العين'),
+  // «ٱلۡأَنَامِلَ»: its hamza kept, as Hafs's; his naql is of the words he names.
+  '3:119:16': null,
+  // «فَوَٰحِدَةٌ» (النساء ٣): raised with its tanween, shown before «أَوۡ».
+  '4:3:19': ('فَوَٰحِدَةٌ', 'f', 'بتنوين الضم'),
   // «رِيَآءَ»: its hamza a ya, in the usul.
   '2:264:11': ('رِيَآءَ', 'h', 'بإبدال الهمزة ياءً'),
   '8:47:7': ('وَرِيَآءَ', 'h', 'بإبدال الهمزة ياءً'),
@@ -342,6 +379,21 @@ const Map<String, (String, String, String)?> _toldAs = {
 const _toldTwice = {'2:269:5', '2:279:3'};
 
 String text0(List v) => '${v[4]}';
+
+/// Abu Ja'far's opening letters with the sign of his sakt after each: drawn out
+/// between the letters that join (الٓـۜمٓۜ), for the sign to stand between them.
+String saktLetters(String word) {
+  const sakt = 'ۜ';
+  final letters = RegExp('.[ً-ٰٓ]*')
+      .allMatches(word.replaceAll(RegExp('[ۖ-ۜ]'), ''));
+  final out = StringBuffer();
+  final all = [for (final m in letters) m[0]!];
+  for (final (i, letter) in all.indexed) {
+    final joins = i + 1 < all.length && !'ادذرزو'.contains(letter[0]);
+    out.write(joins ? '$letterــ$saktـ' : '$letter$sakt');
+  }
+  return '$out';
+}
 
 /// One letter of a word, and the marks after it.
 class _Letter {
@@ -606,6 +658,8 @@ int applyVowelsFromHafs(Map quran, List rows) {
     final text = '${v[4]}';
     if (text.isEmpty || text.contains('[')) continue;
     if (RegExp('[۪۬]').hasMatch(text)) continue;
+    // Qalun's «نُؤْتِهِ»: the kasra is all it has, no silah for Hafs's to give it.
+    if (v[6] == 'بكسر الهاء' && text.endsWith('هِ')) continue;
     // «لَبِثتُّ» and «لَبِثتَّ»: the tha bare, the ta with its shadda.
     if ('${v[6]}'.contains('إدغام الثاء في التاء') && (v[3] as num) == 1) {
       final ayahWords = words['${v[0]}:${v[1]}'];
@@ -781,6 +835,36 @@ List<String> applyWordTrim(Map quran, List rows) {
       gone.add(v);
       report.add('GONE\t${v[0]}:${v[1]}:${v[2]} «$hafs»\t${v[6]}');
     }
+  }
+  // «وَزَكَرِيَّآءَ» (الأنبياء ٨٩) left out, told short as Hafs's; and the hamza
+  // after it, as after the other two (مريم ٣، ٧), eased.
+  for (final v in rows.cast<List>()) {
+    if (v[0] == 21 && v[1] == 89 && v[2] == 0) gone.add(v);
+  }
+  added.add([21, 89, 0, 1, 'وَزَكَرِيَّآءَ', 'h', 'بزيادة الهمزة', '']);
+  for (final (s, a, w, text) in const [
+    (19, 3, 0, 'ا۪ذۡ'),
+    (19, 7, 1, 'اِ۪نَّا'),
+    (21, 89, 1, 'ا۪ذۡ'),
+  ]) {
+    for (final v in rows.cast<List>()) {
+      if (v[0] == s && v[1] == a && v[2] == w) gone.add(v);
+    }
+    added.add([s, a, w, 1, text, 'h', 'بتخفيف الهمزة', '']);
+  }
+  // «الٓمٓ» of آل عمران told on the ayah after it, on «ٱللَّهُ»; and «حمٓ» of
+  // الشورى left out, its «عٓسٓقٓ» told alone.
+  for (final v in rows.cast<List>()) {
+    if (v.length > 7 && v[7] == 'fawatih' && v[0] == 3 && v[1] == 2) v[1] = 1;
+  }
+  final shura = rows.cast<List>().where(
+    (v) => v.length > 7 && v[7] == 'fawatih' && v[0] == 42 && v[1] == 2,
+  );
+  if (shura.isNotEmpty &&
+      !rows.cast<List>().any(
+        (v) => v.length > 7 && v[7] == 'fawatih' && v[0] == 42 && v[1] == 1,
+      )) {
+    added.add([...shura.first]..[1] = 1);
   }
   // «فَٱذۡكُرُونِيٓ» «بإسكان الياء»: Hafs's ya is sakin too, nothing to tell.
   for (final v in rows.cast<List>()) {

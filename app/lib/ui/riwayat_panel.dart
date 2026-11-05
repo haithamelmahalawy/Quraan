@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/variant_repository.dart';
@@ -10,7 +11,7 @@ import 'theme.dart';
 /// An arrow at the top of the mushaf, named «الرواة», that can be called at any
 /// time. It lets down all the qurra on a ring in depth: as many in the front row
 /// as the width holds, bold and marked with their check boxes, and dragging turns
-/// it to as many others; the rest by name behind, smaller and fainter the farther
+/// it a qari at a time, as far as it goes; the rest by name behind, smaller and fainter the farther
 /// back they are. The
 /// mushaf grows shorter beneath it and stays whole, as large again once the
 /// arrow sends it back up. A check box on a qari ticks his two riwayat; beside
@@ -21,7 +22,12 @@ class RiwayatPanel extends StatefulWidget {
     required this.settings,
     required this.variants,
     required this.child,
+    this.arrowAt,
   });
+
+  /// Where the middle of the page's header is, for the arrow; the middle of the
+  /// screen without it.
+  final ValueListenable<double?>? arrowAt;
 
   final ReaderSettings settings;
   final VariantRepository variants;
@@ -56,9 +62,6 @@ class _RiwayatPanelState extends State<RiwayatPanel>
   /// How many there are in the front row now.
   int _row = 3;
 
-  /// The first of the front row, where the ring comes to rest.
-  double _base = 0;
-
   /// Which qari is in front, between one and the next as the ring turns.
   late final _turn = AnimationController.unbounded(vsync: this);
   bool _open = false;
@@ -75,6 +78,27 @@ class _RiwayatPanelState extends State<RiwayatPanel>
 
   bool _chosen(String id) =>
       id == hafsId ? s.compareHafs : s.selected.contains(id);
+
+  /// The ring's order: those with a riwaya chosen together first, to be changed
+  /// the more easily, the others after them; each in the catalogue's order.
+  List<Qiraa> get _order => [
+    for (final q in qiraat)
+      if (q.riwayat.any((r) => _available(r.id) && _chosen(r.id))) q,
+    for (final q in qiraat)
+      if (!q.riwayat.any((r) => _available(r.id) && _chosen(r.id))) q,
+  ];
+
+  /// Does [change], which may move qari [q] among those chosen: he stays where
+  /// he is under the finger, and the ring moves round him.
+  void _keepingInPlace(Qiraa q, VoidCallback change) {
+    final before = _order.indexOf(q);
+    change();
+    final by = _order.indexOf(q) - before;
+    if (by != 0) {
+      _turn.stop();
+      _turn.value += by;
+    }
+  }
 
   /// The readings chosen, in the order of the catalogue.
   List<String> get _ordered => [
@@ -122,11 +146,10 @@ class _RiwayatPanelState extends State<RiwayatPanel>
   void _toggle() {
     if (!_open) {
       final shown = s.displayed ?? hafsId;
-      final at = qiraat.indexWhere((q) => q.riwayat.any((r) => r.id == shown));
+      final at = _order.indexWhere((q) => q.riwayat.any((r) => r.id == shown));
       // That qari in the middle of the front row.
       _row = frontRow(context.size?.width ?? 400);
-      _base = (math.max(at, 0) - (_row - 1) ~/ 2).toDouble();
-      _turn.value = _base;
+      _turn.value = (math.max(at, 0) - (_row - 1) ~/ 2).toDouble();
     }
     setState(() => _open = !_open);
   }
@@ -142,8 +165,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
     final n = qiraat.length;
     var by = (i - (_row - 1) ~/ 2 - _turn.value) % n;
     if (by > n / 2) by -= n;
-    _base = _turn.value + by;
-    _settle(_base);
+    _settle(_turn.value + by);
   }
 
   Widget _box({
@@ -206,7 +228,10 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                 color: q.color,
                 onChanged: ids.isEmpty
                     ? null
-                    : (_) => _setChosen(ids, chosen < ids.length),
+                    : (_) => _keepingInPlace(
+                        q,
+                        () => _setChosen(ids, chosen < ids.length),
+                      ),
               ),
               Expanded(
                 child: Text(
@@ -230,7 +255,10 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                     key: ValueKey('riwaya-check-${r.id}'),
                     value: _chosen(r.id),
                     color: q.color,
-                    onChanged: (v) => _setChosen([r.id], v ?? false),
+                    onChanged: (v) => _keepingInPlace(
+                      q,
+                      () => _setChosen([r.id], v ?? false),
+                    ),
                   ),
                   Expanded(
                     child: Text(
@@ -252,7 +280,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                           ? s.displayed == null
                           : s.displayed == r.id,
                       color: MushafColors.green,
-                      onChanged: (_) => _show(r.id),
+                      onChanged: (_) => _keepingInPlace(q, () => _show(r.id)),
                     ),
                   ),
                 ],
@@ -323,20 +351,18 @@ class _RiwayatPanelState extends State<RiwayatPanel>
     return GestureDetector(
       key: const ValueKey('riwayat-ring'),
       behavior: HitTestBehavior.opaque,
-      // Dragged to the right, those at the left come round to the front.
-      onHorizontalDragUpdate: (d) => _turn.value += d.delta.dx / (_cell / _row),
-      onHorizontalDragEnd: (d) {
-        final moved = _turn.value - _base;
-        final flick = d.primaryVelocity ?? 0;
-        final way = moved.abs() > .5 || flick.abs() > 300
-            ? (moved + flick / 900).sign
-            : 0.0;
-        _base += way * _row;
-        _settle(_base);
-      },
+      // Under the finger, a qari at a time: dragged to the right, those at the
+      // left come round to the front, as many as it goes.
+      onHorizontalDragUpdate: (d) => _turn.value += d.delta.dx / (_cell + 2),
+      // Coming to rest on a qari, a flick carrying it on by as many as it is quick.
+      onHorizontalDragEnd: (d) => _settle(
+        (_turn.value + (d.primaryVelocity ?? 0) / (_cell + 2) * .18)
+            .roundToDouble(),
+      ),
       child: AnimatedBuilder(
         animation: _turn,
         builder: (context, _) {
+          final order = _order;
           // Each qari's place from the middle of the front: its nearest way.
           final places = [
             for (var i = 0; i < n; i++)
@@ -369,7 +395,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                       child: Opacity(
                         opacity: isFront ? 1 : .35 + .6 * near,
                         child: GestureDetector(
-                          key: ValueKey('qari-cell-${qiraat[i].id}'),
+                          key: ValueKey('qari-cell-${order[i].id}'),
                           behavior: HitTestBehavior.opaque,
                           onTap: isFront ? null : () => _bringToFront(i),
                           child: isFront
@@ -384,7 +410,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                                       1,
                                       1,
                                     ),
-                                  child: _qari(qiraat[i], front: true),
+                                  child: _qari(order[i], front: true),
                                 )
                               : Transform(
                                   alignment: Alignment.center,
@@ -393,7 +419,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                                     ..setEntry(3, 2, .004)
                                     ..rotateY(-d.sign * .6 * near)
                                     ..rotateX(-.25 * (1 - near)),
-                                  child: _name(qiraat[i], near),
+                                  child: _name(order[i], near),
                                 ),
                         ),
                       ),
@@ -422,7 +448,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
               children: [
                 Expanded(
                   child: Text(
-                    '  اسحب لقراء آخرين • المربع الأيسر لعرض المصحف',
+                    '  اسحب لتحريك القراء • المربع الأيسر لعرض المصحف',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -509,12 +535,31 @@ class _RiwayatPanelState extends State<RiwayatPanel>
       children: [
         if (_open) _panel(),
         Expanded(
-          child: Stack(
-            children: [
-              Positioned.fill(child: widget.child),
-              // Clear of the page's header: its surah, its «الأصول», its juz.
-              Align(alignment: const Alignment(-.62, -1), child: _arrow()),
-            ],
+          child: LayoutBuilder(
+            builder: (context, box) {
+              Widget placed(double? at) => Stack(
+                children: [
+                  Positioned.fill(child: widget.child),
+                  // Over the middle of the page's header, between its surah and
+                  // its juz.
+                  Positioned(
+                    left: at ?? box.maxWidth / 2,
+                    top: 0,
+                    child: FractionalTranslation(
+                      translation: const Offset(-.5, 0),
+                      child: _arrow(),
+                    ),
+                  ),
+                ],
+              );
+              final arrowAt = widget.arrowAt;
+              return arrowAt == null
+                  ? placed(null)
+                  : ValueListenableBuilder(
+                      valueListenable: arrowAt,
+                      builder: (context, at, _) => placed(at),
+                    );
+            },
           ),
         ),
       ],

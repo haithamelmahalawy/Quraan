@@ -52,7 +52,7 @@ void main() {
   /// Turns the ring by dragging until [q] is in front.
   Future<void> turnTo(WidgetTester t, Qiraa q) async {
     for (var i = 0; i < qiraat.length && inFront(q).evaluate().isEmpty; i++) {
-      await t.timedDrag(ring, const Offset(70, 0), const Duration(seconds: 1));
+      await t.timedDrag(ring, const Offset(135, 0), const Duration(seconds: 1));
       await t.pumpAndSettle();
     }
     expect(inFront(q), findsOneWidget);
@@ -64,9 +64,9 @@ void main() {
     await pump(t, ReaderSettings.memory(), open: false);
     expect(panel, findsNothing);
     expect(t.getSize(mushaf).height, 900);
-    // At the top, clear of the middle where the page's «الأصول» is.
+    // At the top, in the middle.
     expect(t.getTopLeft(toggle).dy, 0);
-    expect((t.getCenter(toggle).dx - 200).abs(), greaterThan(40));
+    expect(t.getCenter(toggle).dx, moreOrLessEquals(200, epsilon: 1));
     await t.tap(toggle);
     await t.pumpAndSettle();
     // Above the mushaf, which grows shorter by as much, as wide as it was.
@@ -168,11 +168,12 @@ void main() {
       expect(t.getTopRight(inFront(q)).dx, lessThanOrEqualTo(860));
     }
     expect(inFront(qiraat[(at + 4) % n]), findsNothing);
-    // A turn brings seven others.
-    await t.timedDrag(ring, const Offset(70, 0), const Duration(seconds: 1));
+    // A drag brings one on, and takes one off.
+    await t.timedDrag(ring, const Offset(120, 0), const Duration(seconds: 1));
     await t.pumpAndSettle();
     expect(inFront(qiraat[(at + 4) % n]), findsOneWidget);
-    expect(inFront(qiraat[(at + 3) % n]), findsNothing);
+    expect(inFront(qiraat[(at - 3) % n]), findsNothing);
+    expect(inFront(qiraat[(at - 2) % n]), findsOneWidget);
     expect(t.takeException(), isNull);
   });
 
@@ -199,26 +200,64 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('a turn brings three others', (t) async {
+  testWidgets('a drag turns it by one, a longer one by more', (t) async {
     final settings = ReaderSettings.memory(selected: {'warsh'})
       ..displayed = 'warsh';
     await pump(t, settings);
     final n = qiraat.length;
     final at = qiraat.indexOf(nafi);
-    await t.timedDrag(ring, const Offset(70, 0), const Duration(seconds: 1));
+    // The width of one: the next comes in, nafi's right neighbour goes.
+    await t.timedDrag(ring, const Offset(130, 0), const Duration(seconds: 1));
     await t.pumpAndSettle();
-    for (final by in [2, 3, 4]) {
-      expect(inFront(qiraat[(at + by) % n]), findsOneWidget);
-    }
-    expect(inFront(nafi), findsNothing);
-    // And back.
-    await t.timedDrag(ring, const Offset(-70, 0), const Duration(seconds: 1));
-    await t.pumpAndSettle();
+    expect(inFront(qiraat[(at + 2) % n]), findsOneWidget);
     expect(inFront(nafi), findsOneWidget);
+    expect(inFront(qiraat[(at - 1) % n]), findsNothing);
+    // And back.
+    await t.timedDrag(ring, const Offset(-130, 0), const Duration(seconds: 1));
+    await t.pumpAndSettle();
+    expect(inFront(qiraat[(at - 1) % n]), findsOneWidget);
+    // The width of three brings three.
+    await t.timedDrag(ring, const Offset(390, 0), const Duration(seconds: 2));
+    await t.pumpAndSettle();
+    expect(inFront(qiraat[(at + 4) % n]), findsOneWidget);
+    expect(inFront(nafi), findsNothing);
+    await t.timedDrag(ring, const Offset(-390, 0), const Duration(seconds: 2));
+    await t.pumpAndSettle();
     // A slight touch turns nothing.
     await t.timedDrag(ring, const Offset(8, 0), const Duration(seconds: 1));
     await t.pumpAndSettle();
     expect(inFront(nafi), findsOneWidget);
+    expect(inFront(qiraat[(at - 1) % n]), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('the arrow stands over the middle of the header', (t) async {
+    final at = ValueNotifier<double?>(150);
+    t.view.physicalSize = const Size(400, 900);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: RiwayatPanel(
+              settings: ReaderSettings.memory(),
+              variants: VariantRepository({'warsh'}),
+              arrowAt: at,
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(t.getCenter(toggle).dx, moreOrLessEquals(150, epsilon: 1));
+    at.value = 260;
+    await t.pump();
+    expect(t.getCenter(toggle).dx, moreOrLessEquals(260, epsilon: 1));
+    at.value = null;
+    await t.pump();
+    expect(t.getCenter(toggle).dx, moreOrLessEquals(200, epsilon: 1));
     expect(t.takeException(), isNull);
   });
 
@@ -253,6 +292,42 @@ void main() {
       ..displayed = 'bazzi';
     await pump(t, settings);
     expect(inFront(of('bazzi')), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('those chosen gather on the ring, the one tapped staying put', (
+    t,
+  ) async {
+    final settings = ReaderSettings.memory();
+    await pump(t, settings);
+    final asim = of(hafsId);
+    // Hafs's qari opens in the middle; tick his riwaya.
+    expect(inFront(asim), findsOneWidget);
+    final x = t.getCenter(check(hafsId)).dx;
+    await t.tap(check(hafsId));
+    await t.pumpAndSettle();
+    expect(settings.compareHafs, isTrue);
+    // He stays under the finger, though first on the ring now.
+    expect(t.getCenter(check(hafsId)).dx, moreOrLessEquals(x, epsilon: 1));
+    expect(inFront(asim), findsOneWidget);
+    // Beside him now, the first of those not chosen: at his left.
+    expect(inFront(nafi), findsOneWidget);
+    expect(t.getCenter(inFront(nafi)).dx, lessThan(x));
+    // Another chosen: the two next to each other, in the catalogue's order.
+    final y = t.getCenter(check('warsh')).dx;
+    await t.tap(check('warsh'));
+    await t.pumpAndSettle();
+    expect(settings.selected, {'warsh'});
+    expect(t.getCenter(check('warsh')).dx, moreOrLessEquals(y, epsilon: 1));
+    expect(
+      t.getCenter(find.byKey(ValueKey('qari-cell-${asim.id}'))).dx,
+      lessThan(y),
+    );
+    // Taken off, he goes back among the others, still under the finger.
+    await t.tap(check('warsh'));
+    await t.pumpAndSettle();
+    expect(settings.selected, isEmpty);
+    expect(t.getCenter(check('warsh')).dx, moreOrLessEquals(y, epsilon: 1));
     expect(t.takeException(), isNull);
   });
 

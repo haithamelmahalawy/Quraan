@@ -121,7 +121,12 @@ class MushafPage extends StatefulWidget {
     this.qcf = false,
     this.onAyahTap,
     this.onAyahWordTap,
+    this.onHeaderMiddle,
   });
+
+  /// Where the middle of the page's header is, across the page: the arrow of
+  /// the riwayat stands there, between the surah and the juz.
+  final ValueChanged<double>? onHeaderMiddle;
 
   final int page;
   final QuranRepository quran;
@@ -419,6 +424,10 @@ class _MushafPageState extends State<MushafPage>
         if (line is TextLine) ...line.words,
     ], _showFarshMargins ? _hameshEntries(ayahs) : []);
     final rail = notes.isEmpty ? 0.0 : (size.width * 0.20).clamp(60.0, 220.0);
+    _reportHeaderMiddle(
+      (size.width - rail) / 2 +
+          (widget.quran.isRightPage(widget.page) ? 0 : rail),
+    );
     final textHeight = math.max(
       1.0,
       size.height - 30 - 2 * OrnamentFrame.inset - _PageFrame.numberHeight,
@@ -502,6 +511,14 @@ class _MushafPageState extends State<MushafPage>
   /// A large, continuously scrolling print. Fixed side margins follow
   /// only the lines currently in view; their own scroll keeps dense
   /// readings accessible without reducing the font or dropping notes.
+  void _reportHeaderMiddle(double x) {
+    final report = widget.onHeaderMiddle;
+    if (report == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) report(x);
+    });
+  }
+
   Widget _landscapePage(List<Ayah> ayahs, List<MushafLine> lines, Size size) {
     final scroll = _landscapeScroll;
     final sides = widget.showHamesh;
@@ -539,6 +556,12 @@ class _MushafPageState extends State<MushafPage>
         (sequential
             ? (anyNotes ? rail : 0)
             : (hasUsul ? rail : 0) + (hasFarsh ? rail : 0));
+    _reportHeaderMiddle(
+      pageWidth / 2 +
+          (sequential
+              ? (anyNotes && !widget.quran.isRightPage(widget.page) ? rail : 0)
+              : (hasUsul ? rail : 0)),
+    );
     const outer = 4.0, header = 22.0;
     const contentTop = outer + header + OrnamentFrame.inset;
     final textWidth =
@@ -842,6 +865,7 @@ class _MushafPageState extends State<MushafPage>
     final rightWidth = rightPage ? marginWidth : 0.0;
     final leftWidth = rightPage ? 0.0 : marginWidth;
     final pageWidth = size.width - rightWidth - leftWidth;
+    _reportHeaderMiddle(leftWidth + pageWidth / 2);
     // Full screen: no bands at the sides, the text has the whole width.
     final textWidth =
         pageWidth - 2 * outer - 2 * OrnamentFrame.sideInset(sides);
@@ -1396,11 +1420,25 @@ class _MushafPageState extends State<MushafPage>
           .map((v) => hamzaPairMaddText(v, source))
           .whereType<String>()
           .firstOrNull;
-      return source.isEmpty ? null : (text: marked ?? source, font: 'Hafs');
+      if (source.isEmpty) return null;
+      // Warsh's complete text writes يَٰعِبَادِے with the ya in the word's body.
+      final written = base.any((v) => v.word == w && v.rule == 'ya_zaida')
+          ? withSmallYa(marked ?? source)
+          : marked ?? source;
+      return (text: written, font: 'Hafs');
     }
     // The riwaya shown in place of Hafs: its reading takes the place of the
     // Hafs word(s).
-    final v = base.where((v) => v.canReplaceText).firstOrNull;
+    final v =
+        base.where((v) => v.canReplaceText).firstOrNull ??
+        // Their separated madd short, written without Hafs's sign (يُؤَدِّهِۦ
+        // إِلَيۡكَ، مَا أُوتِيتُمۡ): no colour nor note, the word as it is read.
+        (_ashabSilah.contains(s.displayed)
+            ? widget.variants
+                  .at([s.displayed!], ayah.surah, ayah.number, w)
+                  .where((v) => v.word == w && v.isQasr && v.text.isNotEmpty)
+                  .firstOrNull
+            : null);
     if (v != null) {
       if (v.word != w || v.text.isEmpty) return null;
       if (const {'ruways', 'rawh'}.contains(s.displayed) &&
@@ -1423,10 +1461,15 @@ class _MushafPageState extends State<MushafPage>
         : null;
     // Drawn with the word before.
     if (glyph != null && glyph.isEmpty) return null;
-    final imala = [
-      ...base,
-      ..._readingsAt(widget.variants, s, ayah, w).shown,
-    ].where((v) => v.word == w && v.isImala && !v.isStoppingTaqlil).firstOrNull;
+    final imala = [...base, ..._readingsAt(widget.variants, s, ayah, w).shown]
+        .where(
+          (v) =>
+              v.word == w &&
+              v.isImala &&
+              !v.isStoppingTaqlil &&
+              !v.fathPreferred,
+        )
+        .firstOrNull;
     // The page font has no imala sign to add: such a word is drawn in the
     // Hafs font, with the sign under the letters the reading marks.
     if (imala != null) {
@@ -1479,7 +1522,7 @@ class _MushafPageState extends State<MushafPage>
             v.rule == 'ishmam_sad' ||
             v.rule == 'ya_zaida' ||
             v.isLinHamz ||
-            v.isImala ||
+            v.isImala && !v.fathPreferred ||
             v.isTarqiqOrTaghliz ||
             _naqlKind(v) != null ||
             isWarshRabbahuMadd(v) ||
@@ -3046,7 +3089,9 @@ class _PageHeader extends StatelessWidget {
           Expanded(
             child: onUsul == null
                 ? const SizedBox()
-                : Center(
+                : Align(
+                    // Clear of the arrow of the riwayat, in the middle.
+                    alignment: const AlignmentDirectional(.78, 0),
                     child: InkWell(
                       onTap: onUsul,
                       child: Text(
@@ -3651,7 +3696,9 @@ class _UsulBox extends StatelessWidget {
         final place = places.putIfAbsent(
           // A madd written in one reader's word only is a word of its own.
           '${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.stopOnly}:'
-          '${i.text.endsWith('\u0653')}',
+          '${i.text.endsWith('\u0653')}:'
+          // Told by its wording: each wording a row of its own (\u0647\u064e\u0670\u0653\u0623\u064e\u0646\u062a\u064f\u0645\u06e1).
+          '${g.ways.isEmpty ? i.readings.first.description : ''}',
           () => (i, {}),
         );
         place.$2.addAll(i.riwayat);
@@ -3907,6 +3954,12 @@ class _UsulBox extends StatelessWidget {
               readers == null ? ' ($d)' : ' ($d: $readers)',
               style: TextStyle(fontSize: 9 * scale, color: g.color),
             ),
+        // Qalun's ٱلتَّوۡرَىٰةَ: its two faces, the fath preferred.
+        for (final v in i.readings.where((v) => v.fathPreferred))
+          Text(
+            ' (${v.description})',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
         // Warsh's taqlil of يُجَٰزِيٓ, read with another face.
         if (i.readings.any(
           (v) =>

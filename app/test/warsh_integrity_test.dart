@@ -122,36 +122,18 @@ void main() {
       // And the non-joiner that keeps the hamza of لَأَتَوْهَا in place.
       .replaceAll('\u200c', '')
       // And حِينِۭ (ص 88) with Hafs's iqlab mim, for the source's offset tanween.
-      .replaceAll(
-        RegExp('حِينِ[ۭۢ]'),
-        'حِينٖ',
-      )
+      .replaceAll(RegExp('حِينِ[ۭۢ]'), 'حِينٖ')
       // And وَجِاْيٓءَ (الزمر 69، الفجر 23) as Hafs writes it, the source without
       // its alif.
-      .replaceAll(
-        RegExp('جِا[ْۡ]يٓء'),
-        'جِىٓء',
-      )
+      .replaceAll(RegExp('جِا[ْۡ]يٓء'), 'جِىٓء')
       // And وَجَنَى (الرحمن 54) as Hafs writes it, for the source's وَجَنَا.
-      .replaceAll(
-        'وَجَنَى',
-        'وَجَنَا',
-      )
+      .replaceAll('وَجَنَى', 'وَجَنَا')
       // And ٱلۡمُنشَـَٔاتُ (الرحمن 24) as Hafs writes it, the source's أَٰ.
-      .replaceAll(
-        RegExp('نشَ(?:أَ|َٔ|َٔ)ا'),
-        'نشَأَا',
-      )
+      .replaceAll(RegExp('نشَ(?:أَ|َٔ|َٔ)ا'), 'نشَأَا')
       // And ٱللُّؤۡلُؤُ (الرحمن 22) as Hafs writes it, the source with an alif.
-      .replaceAll(
-        'لُؤُاْ',
-        'لُؤُ',
-      )
+      .replaceAll('لُؤُاْ', 'لُؤُ')
       // And وَأَلَّوِ (الجن 16) as Hafs writes it, the source's two words.
-      .replaceAll(
-        RegExp('وَأَن\\s?لَّوِ'),
-        'وَأَلَّوِ',
-      )
+      .replaceAll(RegExp('وَأَن\\s?لَّوِ'), 'وَأَلَّوِ')
       // And the reviewed taqlil of بَنَىٰهَا and its neighbours (النازعات، الشمس).
       .replaceAll(
         RegExp('\u06ea(?=[\u064a\u0649]?[\u0670\u0627]\u0647\u064e\u0627)'),
@@ -183,20 +165,11 @@ void main() {
         'بِأَييد',
       )
       // And فَٱسْرِ with its wasl sign, for the source's bare alif.
-      .replaceAll(
-        RegExp('فَٱس[ْۡ]ر'),
-        'فَاسۡر',
-      )
+      .replaceAll(RegExp('فَٱس[ْۡ]ر'), 'فَاسۡر')
       // And جَدَلَۢا (الزخرف 58) as Hafs writes it, for the source's جَدَلاَ.
-      .replaceAll(
-        RegExp('جَدَلَ[ۢ]ا'),
-        'جَدَلاَ',
-      )
+      .replaceAll(RegExp('جَدَلَ[ۢ]ا'), 'جَدَلاَ')
       // And جَزَآءُ (الزمر 34) as Hafs writes it, for the source's waw seat.
-      .replaceAll(
-        'جَزَآؤُاْ',
-        'جَزَآءُ',
-      )
+      .replaceAll('جَزَآؤُاْ', 'جَزَآءُ')
       // And بِلِقَآيِٕ، وَلِقَآيِٕ as Hafs writes them, the source's hamza alone.
       .replaceAll(
         RegExp(
@@ -382,26 +355,11 @@ void main() {
       // And وَأَلَّوِ (الجن 16).
       String ya(String t) => t
           .replaceAll('\u0627\u0650\u06e6\u0644', '\u0627\u0650\u064a\u0644')
-          .replaceAll(
-            RegExp('وَأَن\\s?لَّوِ'),
-            'وَأَلَّوِ',
-          )
-          .replaceAll(
-            'وَجَنَى',
-            'وَجَنَا',
-          )
-          .replaceAll(
-            'لُؤُاْ',
-            'لُؤُ',
-          )
-          .replaceAll(
-            RegExp('جِا[ْۡ]يٓء'),
-            'جِىٓء',
-          )
-          .replaceAll(
-            'جَزَٰٓؤُاْ',
-            'جَزَآءُ',
-          )
+          .replaceAll(RegExp('وَأَن\\s?لَّوِ'), 'وَأَلَّوِ')
+          .replaceAll('وَجَنَى', 'وَجَنَا')
+          .replaceAll('لُؤُاْ', 'لُؤُ')
+          .replaceAll(RegExp('جِا[ْۡ]يٓء'), 'جِىٓء')
+          .replaceAll('جَزَٰٓؤُاْ', 'جَزَآءُ')
           .replaceAll(
             '\u0644\u0650\u0642\u064e\u0627\u0653\u064a\u0655\u0650',
             '\u0644\u0650\u0642\u064e\u0627\u0653\u0621\u0650',
@@ -580,15 +538,27 @@ void main() {
                       v.rule == 'tasheel_pair' &&
                       !v.usulWays.any((u) => u.contains('إبدال')),
                 );
+            // The ya of the zawaid, the small one beside the word in his too
+            // (يَٰعِبَادِۦ); the source keeps its letter.
+            final zaida = variants
+                .at(['warsh'], ayah.surah, ayah.number, w)
+                .any((v) => v.word == w && v.rule == 'ya_zaida');
+            final written = marked ?? rawSource;
             expect(
               shown?.text ?? '',
-              eased ? ayah.words[w] : marked ?? rawSource,
+              eased
+                  ? ayah.words[w]
+                  : zaida
+                  ? withSmallYa(written)
+                  : written,
               reason: 'page $p ${ayah.surah}:${ayah.number}:$w',
             );
             // Only the explicitly tested display madd is additional to the
             // archived source; all other letters and marks remain exact.
             (actual[ayah.surah] ??= StringBuffer()).write(
-              marked == null && !eased ? shown?.text ?? '' : rawSource,
+              marked == null && !eased && !zaida
+                  ? shown?.text ?? ''
+                  : rawSource,
             );
             words++;
           }

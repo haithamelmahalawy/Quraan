@@ -319,10 +319,17 @@ class Manzumat {
       v.isImala &&
       v.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '').contains('تور');
 
+  /// Qalun's two faces of it, in the same place: «وَبِالْخُلْفِ بَلَّلَا».
+  bool _qalunTawrat(Variant v) => v.riwayaId == 'qalun' && v.fathPreferred;
+
   /// Ibn 'Amir's «قُتِّلُواْ» with the shadda, in Al 'Imran and al-Hajj:
   /// «بِمَا قُتِلُوا التَّشْدِيدُ لَبَّى وَبَعْدَهُ وَفي الْحَجِّ لِلشَّامِيْ».
+  /// And Ibn Kathir's, the last of Al 'Imran: «دَرَاكِ».
   bool _ibnAmirQuttilu(Variant v) =>
-      const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId) &&
+      (const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId) ||
+          const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+              v.surah == 3 &&
+              v.ayah == 195) &&
       v.text.contains('تِّلُو');
 
   /// Ibn 'Amir's damma for the first of two sakins before a third letter
@@ -659,9 +666,8 @@ class Manzumat {
   bool _abuJafarYahsab(Poem poem, Variant v) =>
       poem == Poem.durrah &&
       qiraaOf(v.riwayaId).id == 'abu_jafar' &&
-      RegExp(
-        '^[وفأ]?[يت]حسب(?!ن)',
-      ).hasMatch(v.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), ''));
+      RegExp('^[وفأ]?[يت]حسب(?!ن)')
+          .hasMatch(v.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), ''));
 
   /// Al-Bazzi's ta shaddaed in wasl, each in the verse that names it, from
   /// «وَفي الْوَصْلِ لِلْبَزِّيِّ شَدِّدْ تَيَمَّمُوا» on.
@@ -673,7 +679,8 @@ class Manzumat {
     }
     return switch ('${v.surah}:${v.ayah}') {
       '2:267' || '4:97' => {526},
-      '3:103' || '6:153' => {527},
+      // With the head of the rule: «وَفي الْوَصْلِ لِلْبَزِّيِّ شَدِّدْ».
+      '3:103' || '6:153' => {526, 527},
       '5:2' || '7:117' || '20:69' || '26:45' => {528},
       '26:221' || '26:222' || '97:4' || '37:25' || '92:14' || '24:15' => {529},
       '11:105' || '11:3' || '11:57' || '24:54' || '60:9' => {530},
@@ -682,6 +689,8 @@ class Manzumat {
       '9:52' => {532},
       '67:8' || '68:38' || '80:10' => {533},
       '49:11' || '49:12' || '49:13' => {534},
+      // «وَكُنْتُمْ تَمَنَّوْنَ الَّذِي مَعْ تَفَكَّهُونَ عَنْهُ عَلَى وَجْهَيْنِ».
+      '3:143' || '56:65' => {526, 535},
       _ => const {},
     };
   }
@@ -700,9 +709,34 @@ class Manzumat {
       poem == Poem.durrah &&
           qiraaOf(v.riwayaId).id == 'abu_jafar' &&
           v.kind == VariantKind.hamza &&
-          v.text.contains('سۡرَٰٓءِ')
+          // And his «هَٰٓأَنتُمۡ»: «وَمَدَّ أُدْ مَعَ اللاَّءِ هَا أَنْتُمْ».
+          (v.text.contains('سۡرَٰٓءِ') || v.rule == 'ha_antum')
       ? {34}
       : {};
+
+  /// Abu Ja'far's «يَضُرُّكُمۡ» (آل عمران ١٢٠), read as Hafs, against Nafi's and
+  /// Ibn Kathir's: «وَاقْرَأْ يَضُرُّكُمُ أَلَا». Its row tells its silah alone.
+  bool _abuJafarYadurrukum(Poem poem, Variant v) =>
+      poem == Poem.durrah &&
+      qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+      v.surah == 3 &&
+      v.ayah == 120 &&
+      v.word == 13;
+
+  /// His «يَحۡزُنكَ» wherever it comes, «يُحۡزِنُهُمُ» of الأنبياء the one with the
+  /// damma: «وَيَحْزُنُ فَافْتَحْ ضُمَّ كُلًّا سِوَى الَّذِي لَدَى الْأَنْبِيَا». Not
+  /// «يَحۡزَنُونَ», another verb.
+  bool _abuJafarYahzun(Poem poem, Variant v, String hafs) =>
+      poem == Poem.durrah &&
+      qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+      RegExp('ي[ً-ْۡ]*ح[ً-ْۡ]*ز[ُِ]ن').hasMatch('$hafs ${v.text}');
+
+  /// His «وَكَآئِن» with the hamza eased: «أَرَيْتَ وَإِسْرَائِيْلَ كَائِنْ».
+  bool _abuJafarKaayin(Poem poem, Variant v) =>
+      poem == Poem.durrah &&
+      qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+      v.text.contains('۬') &&
+      RegExp('^[وف]?كا?[ئي]ن').hasMatch(_letters(v.text));
 
   Set<int> _ruleVerses(Poem poem, Variant v, [String hafs = '']) {
     final yaqub = _yaqubShatibiyya(v);
@@ -711,6 +745,26 @@ class Manzumat {
     if (sirat.isNotEmpty) return sirat;
     final hamzaBab = _abuJafarHamzaBab(poem, v);
     if (hamzaBab.isNotEmpty) return hamzaBab;
+    // Ibn Kathir's «ءَا۬ن» (٧٣): «وَفِي آلِ عِمْرَانٍ عَنِ ابْنِ كَثِيرِهِمْ يُشَفَّعُ
+    // أَنْ يُؤْتَى».
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        v.rule == 'ha_antum' &&
+        v.surah == 3 &&
+        v.ayah == 73) {
+      return {188};
+    }
+    if (_abuJafarYadurrukum(poem, v)) return {88};
+    if (_abuJafarKaayin(poem, v)) return {34};
+    if (_abuJafarYahzun(poem, v, hafs)) return {91};
+    // «قَٰتَلَ» (آل عمران ١٤٦), for all who read it either way: «وَقَاتَلَ بَعْدَهُ
+    // يُمَدُّ وَفَتْحُ الضَّمِّ وَالْكَسْرِ ذُو وِلَا».
+    if (poem == Poem.shatibiyya &&
+        v.surah == 3 &&
+        v.ayah == 146 &&
+        v.word == 3) {
+      return {571};
+    }
     final israil = _abuJafarIsrail(poem, v);
     if (israil.isNotEmpty) return israil;
     if (_nansaha(poem, v)) return {475};
@@ -727,7 +781,7 @@ class Manzumat {
     if (poem == Poem.durrah &&
         v.riwayaId == 'ibn_wardan' &&
         const {'naql', 'hamza_wasl'}.contains(v.rule) &&
-        RegExp(r'لا?ن$').hasMatch(_letters(v.text))) {
+        RegExp(r'^مل$|لا?ن$').hasMatch(_letters(v.text))) {
       return {36};
     }
     if (poem == Poem.shatibiyya && _idghamDhal(v, hafs)) return {283};
@@ -870,7 +924,9 @@ class Manzumat {
         return {332, 333};
       }
     }
-    if (poem == Poem.shatibiyya && _ibnDhakwanTawrat(v)) return {546};
+    if (poem == Poem.shatibiyya && (_ibnDhakwanTawrat(v) || _qalunTawrat(v))) {
+      return {546};
+    }
     if (poem == Poem.shatibiyya && _ibnAmirQuttilu(v)) {
       // The last of Al 'Imran (3:195): «وَالآخِرُ كَمَّلَا دَرَاكِ».
       return v.surah == 3 && v.ayah == 195 ? {576, 577} : {576};
@@ -898,7 +954,7 @@ class Manzumat {
       if (poem == Poem.durrah &&
           v.riwayaId == 'ibn_wardan' &&
           const {'naql', 'hamza_wasl'}.contains(v.rule) &&
-          RegExp(r'لا?ن$').hasMatch(_letters(v.text)))
+          RegExp(r'^مل$|لا?ن$').hasMatch(_letters(v.text)))
         {36},
       if (poem == Poem.shatibiyya && _idghamDhal(v, hafs)) {283},
       _nafiHamza(poem, v),
@@ -906,6 +962,15 @@ class Manzumat {
       if (own.isNotEmpty) {
         return verses(poem).firstWhere((b) => b.n == own.first).chapter;
       }
+    }
+    if (_abuJafarYadurrukum(poem, v)) {
+      return verses(poem).firstWhere((b) => b.n == 88).chapter;
+    }
+    if (_abuJafarKaayin(poem, v)) {
+      return verses(poem).firstWhere((b) => b.n == 34).chapter;
+    }
+    if (_abuJafarYahzun(poem, v, hafs)) {
+      return verses(poem).firstWhere((b) => b.n == 91).chapter;
     }
     // Told in the farsh of al-Baqara, not under «السكت».
     if (poem == Poem.durrah && v.rule == 'fawatih') {
@@ -932,11 +997,24 @@ class Manzumat {
       final ishmam = _ishmamVerses(v);
       return verses(poem).firstWhere((b) => ishmam.contains(b.n)).chapter;
     }
-    if (poem == Poem.shatibiyya && _ibnDhakwanTawrat(v)) {
+    if (poem == Poem.shatibiyya && (_ibnDhakwanTawrat(v) || _qalunTawrat(v))) {
       return verses(poem).firstWhere((b) => b.n == 546).chapter;
     }
     if (poem == Poem.shatibiyya && _ibnAmirQuttilu(v)) {
       return verses(poem).firstWhere((b) => b.n == 576).chapter;
+    }
+    // Al-Bazzi's ta's, told together in the farsh of al-Baqara, and Ibn Kathir's
+    // «ءَا۬ن», told in its chapter: not in the sura of the word.
+    final bazziTa = _bazziTa(poem, v);
+    if (bazziTa.isNotEmpty) {
+      return verses(poem).firstWhere((b) => bazziTa.contains(b.n)).chapter;
+    }
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        v.rule == 'ha_antum' &&
+        v.surah == 3 &&
+        v.ayah == 73) {
+      return verses(poem).firstWhere((b) => b.n == 188).chapter;
     }
     if (poem == Poem.shatibiyya) {
       final farsh = _ibnAmirFarsh(v);

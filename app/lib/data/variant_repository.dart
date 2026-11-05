@@ -210,13 +210,15 @@ Map<int, List<Variant>> _index((String, String, String?, String?) input) {
       // Read in the script of the Madinah page around it, the tanween as
       // it is written before the next word.
       text: tanweenBefore(
-        madinahScript(
-          hafsStops(
-            v[4] as String,
-            v[0] as int,
-            v[1] as int,
-            v[2] as int,
-            v[3] as int,
+        (_addedYa(v) ? withSmallYa : (String t) => t)(
+          madinahScript(
+            hafsStops(
+              v[4] as String,
+              v[0] as int,
+              v[1] as int,
+              v[2] as int,
+              v[3] as int,
+            ),
           ),
         ),
         after(v[0] as int, v[1] as int, v[2] as int, v[3] as int),
@@ -518,6 +520,16 @@ bool _matchesUsul(Variant v, String how) {
     return true;
   }
   return false;
+}
+
+/// A row adding the ya of the zawaid, by its rule or in its farsh's wording
+/// (يَأۡتِ «وإثبات ياء بعد التاء»).
+bool _addedYa(List v) {
+  final rule = v.length > 7 ? v[7] : '';
+  return rule == 'ya_zaida' ||
+      rule == '' &&
+          v.length > 6 &&
+          RegExp('إثبات (ال)?ياء').hasMatch(v[6] as String);
 }
 
 /// Text without a vowel that tells of a reading rather than writes it.

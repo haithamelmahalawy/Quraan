@@ -172,4 +172,18 @@ void main() {
     // The alif itself is the madd after a fatha (اَ۬لَاخِرَةِ).
     expect(lettersOf('اَ۬لَاخِرَةِ')[at('اَ۬لَاخِرَةِ')!], 'ا');
   });
+
+  test('the ya of the zawaid is the small one beside the word', () {
+    expect(withSmallYa('ٱتَّبَعَنِى'), 'ٱتَّبَعَنِۦ');
+    expect(withSmallYa('يَٰعِبَادِي'), 'يَٰعِبَادِۦ');
+    expect(withSmallYa('يَٰعِبَادِے'), 'يَٰعِبَادِۦ');
+    expect(withSmallYa('يُرِدۡنِىَ'), 'يُرِدۡنِۦَ');
+    expect(withSmallYa('دُعَآئِى'), 'دُعَآءِۦ');
+    expect(withSmallYa('نَبْغِىۚ'), 'نَبْغِۦۚ');
+    expect(withSmallYa('دُعَآئِۦ'), 'دُعَآءِۦ');
+    expect(withSmallYa('دُعَآئِۦ'), 'دُعَآءِۦ');
+    // Already small, or no ya at all.
+    expect(withSmallYa('تَرَنِۦ'), 'تَرَنِۦ');
+    expect(withSmallYa('كِتَٰبِ'), 'كِتَٰبِ');
+  });
 }
