@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 
@@ -388,54 +389,10 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   void _goToPage(int page) => _pager.currentState?.jumpTo(_indexOf(page));
 
-  /// «تنبيه الاختلافات»: how the words that differ from Hafs move, or off.
-  Future<void> _chooseDiffAlert() async {
-    final current = widget.settings.diffAlert;
-    final chosen = await showDialog<Object>(
-      context: context,
-      builder: (context) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: SimpleDialog(
-          title: const Text('تنبيه الاختلافات'),
-          children: [
-            for (final style in DiffAlert.values)
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(context, style),
-                child: Row(
-                  children: [
-                    Icon(
-                      style == current
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(style.labelAr),
-                  ],
-                ),
-              ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, 'off'),
-              child: Row(
-                children: [
-                  Icon(
-                    current == null
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('إيقاف'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (chosen == null) return;
-    widget.settings.diffAlert = chosen is DiffAlert ? chosen : null;
-  }
+  /// «تنبيه الاختلافات»: the lamp lights the words that differ from Hafs,
+  /// or puts them out.
+  void _toggleGlow() => widget.settings.diffAlert =
+      widget.settings.diffAlert == null ? DiffAlert.glow : null;
 
   void _setFullScreen(bool on) {
     SystemChrome.setEnabledSystemUIMode(
@@ -667,16 +624,6 @@ class _ReaderScreenState extends State<ReaderScreen>
                         onTap: () => widget.settings.blinkToOpen =
                             !widget.settings.blinkToOpen,
                       ),
-                      // «تنبيه الاختلافات»: the words that differ
-                      // from Hafs move, in the way chosen.
-                      RaisedIcon(
-                        icon: Icons.notifications_active_rounded,
-                        tooltip: 'تنبيه الاختلافات',
-                        color: widget.settings.diffAlert != null
-                            ? MushafColors.gold
-                            : null,
-                        onTap: _chooseDiffAlert,
-                      ),
                       RaisedIcon(
                         icon: Icons.fullscreen_rounded,
                         tooltip: 'ملء الشاشة',
@@ -804,6 +751,9 @@ class _ReaderScreenState extends State<ReaderScreen>
   Widget _withHint(Widget pages) => Stack(
     children: [
       Positioned.fill(child: pages),
+      Positioned.fill(
+        child: _GlowLamp(settings: widget.settings, onTap: _toggleGlow),
+      ),
       // What the last eye gesture did.
       Positioned(
         left: 0,
@@ -969,4 +919,79 @@ class _EyeIndicator extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The lamp of «تنبيه الاختلافات», faint over the page so it hides
+/// nothing: a tap lights the words that differ from Hafs or puts them out;
+/// dragged, it stays where it is left.
+class _GlowLamp extends StatefulWidget {
+  const _GlowLamp({required this.settings, required this.onTap});
+
+  final ReaderSettings settings;
+  final VoidCallback onTap;
+
+  @override
+  State<_GlowLamp> createState() => _GlowLampState();
+}
+
+class _GlowLampState extends State<_GlowLamp> {
+  static const _size = 40.0;
+  Offset? _dragged;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final room = Size(
+        math.max(box.maxWidth - _size, 1),
+        math.max(box.maxHeight - _size, 1),
+      );
+      final at = _dragged ?? widget.settings.lampAt;
+      final lit = widget.settings.diffAlert != null;
+      return Stack(
+        children: [
+          Positioned(
+            left: at.dx.clamp(0.0, 1.0) * room.width,
+            top: at.dy.clamp(0.0, 1.0) * room.height,
+            child: Tooltip(
+              message: lit ? 'إطفاء توهج الاختلافات' : 'توهج الاختلافات',
+              child: GestureDetector(
+                key: const ValueKey('glow-lamp'),
+                behavior: HitTestBehavior.opaque,
+                onTap: widget.onTap,
+                onPanUpdate: (d) => setState(() {
+                  final from = _dragged ?? widget.settings.lampAt;
+                  _dragged = Offset(
+                    (from.dx + d.delta.dx / room.width).clamp(0.0, 1.0),
+                    (from.dy + d.delta.dy / room.height).clamp(0.0, 1.0),
+                  );
+                }),
+                onPanEnd: (_) {
+                  if (_dragged != null) widget.settings.lampAt = _dragged!;
+                  setState(() => _dragged = null);
+                },
+                child: Opacity(
+                  opacity: lit ? .45 : .25,
+                  child: Container(
+                    width: _size,
+                    height: _size,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: lit
+                          ? MushafColors.gold.withAlpha(90)
+                          : MushafColors.green.withAlpha(40),
+                    ),
+                    child: Icon(
+                      lit ? Icons.lightbulb : Icons.lightbulb_outline,
+                      size: 24,
+                      color: lit ? MushafColors.gold : MushafColors.green,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
 }

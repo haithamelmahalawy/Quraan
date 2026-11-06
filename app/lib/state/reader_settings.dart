@@ -74,6 +74,8 @@ class ReaderSettings extends ChangeNotifier {
         _prefs?.setString(key, v);
       case bool v:
         _prefs?.setBool(key, v);
+      case double v:
+        _prefs?.setDouble(key, v);
     }
     notifyListeners();
   }
@@ -133,6 +135,19 @@ class ReaderSettings extends ChangeNotifier {
   DiffAlert? get diffAlert =>
       DiffAlert.values.asNameMap()[_get('diffAlert') as String? ?? ''];
   set diffAlert(DiffAlert? style) => _set('diffAlert', style?.name ?? '');
+
+  /// Where the lamp of «تنبيه الاختلافات» stands over the page, as
+  /// fractions of its width and height: beside the hamesh at first.
+  Offset get lampAt => Offset(
+    (_get('lampX') as num?)?.toDouble() ?? 0.94,
+    (_get('lampY') as num?)?.toDouble() ?? 0.55,
+  );
+  set lampAt(Offset at) {
+    _memory['lampX'] = at.dx;
+    _memory['lampY'] = at.dy;
+    _prefs?.setDouble('lampX', at.dx);
+    _set('lampY', at.dy);
+  }
 
   /// The riwaya last listened to.
   String? get listenRiwaya => _get('listenRiwaya') as String?;
@@ -277,11 +292,8 @@ class ReaderSettings extends ChangeNotifier {
 /// What the ayah sheet shows beside the ayah.
 enum BesideAyah { tafsir, e3rab, tawjih, waqf }
 
-/// The ways the words that differ from Hafs can move («تنبيه الاختلافات»).
+/// «تنبيه الاختلافات»: the words that differ from Hafs glow, still.
 enum DiffAlert {
-  blink('وميض: يضيء ويخفت'),
-  shake('اهتزاز يميناً ويساراً'),
-  pulse('نبض: يكبر ويصغر'),
   glow('توهج حول الكلمة');
 
   const DiffAlert(this.labelAr);

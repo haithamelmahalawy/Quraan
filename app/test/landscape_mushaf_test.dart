@@ -84,6 +84,41 @@ void main() {
   ScrollController controller(WidgetTester t) =>
       t.widget<SingleChildScrollView>(central()).controller!;
 
+  testWidgets('the lamp lights the differences or puts them out, and moves', (
+    t,
+  ) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..page = 3
+      ..qcfFont = false
+      ..compareHafs = true
+      ..displayed = 'warsh';
+    await show(t, const Size(432, 800), settings: settings, reader: true);
+    final lamp = find.byKey(const ValueKey('glow-lamp'));
+    final glowing = find.byWidgetPredicate(
+      (w) => w.runtimeType.toString() == '_Alerting',
+    );
+    expect(lamp.hitTestable(), findsOneWidget);
+    expect(glowing, findsNothing);
+    await t.tap(lamp);
+    await t.pump();
+    expect(settings.diffAlert, DiffAlert.glow);
+    expect(glowing, findsWidgets);
+    // Still: nothing moves, so nothing is drawn again and again.
+    expect(t.binding.hasScheduledFrame, isFalse);
+    await t.tap(lamp);
+    await t.pump();
+    expect(settings.diffAlert, isNull);
+    expect(glowing, findsNothing);
+    final before = t.getTopLeft(lamp);
+    await t.drag(lamp, const Offset(-200, -150));
+    await t.pump();
+    expect(t.getTopLeft(lamp).dx, lessThan(before.dx - 150));
+    expect(settings.lampAt.dx, lessThan(.9));
+    expect(settings.diffAlert, isNull);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
+
   testWidgets(
     'landscape bars collapse independently without covering the page',
     (t) async {

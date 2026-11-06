@@ -194,21 +194,6 @@ class _MushafPageState extends State<MushafPage>
   final _scroll = ScrollController();
   final _landscapeScroll = ScrollController();
 
-  /// Moves the words that differ from Hafs («تنبيه الاختلافات»).
-  late final _alert = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 650),
-  );
-
-  void _syncAlert() {
-    if (widget.settings.diffAlert == null) {
-      if (_alert.isAnimating) _alert.stop();
-      _alert.value = 0;
-    } else if (!_alert.isAnimating) {
-      _alert.repeat(reverse: true);
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -228,7 +213,6 @@ class _MushafPageState extends State<MushafPage>
     _zoom.dispose();
     _scroll.dispose();
     _landscapeScroll.dispose();
-    _alert.dispose();
     super.dispose();
   }
 
@@ -242,7 +226,6 @@ class _MushafPageState extends State<MushafPage>
   @override
   Widget build(BuildContext context) {
     _disposeRecognizers();
-    _syncAlert();
     // The riwayat or their data may have changed since the last build.
     _readingsMemo.clear();
     final ayahs = widget.quran.page(widget.page);
@@ -2153,12 +2136,7 @@ class _MushafPageState extends State<MushafPage>
         glowFinalAlif: stopping,
         glowStrength: glow,
       );
-      final child = stopping && alert != null
-          ? AnimatedBuilder(
-              animation: _alert,
-              builder: (_, _) => draw(Curves.easeInOut.transform(_alert.value)),
-            )
-          : draw(0);
+      final child = draw(stopping && alert != null ? 1 : 0);
       // Read so only when stopping: the letter's colour tells it, with no
       // sign under it.
       return child;
@@ -2241,7 +2219,7 @@ class _MushafPageState extends State<MushafPage>
       );
     }
     if (alert != null && !stopping && (m.color != null || coloured != null)) {
-      word = _Alerting(animation: _alert, style: alert, child: word);
+      word = _Alerting(child: word);
     }
     if (m.colors.length > 1 && widget.settings.mode == DisplayMode.highlight) {
       word = Stack(
@@ -3477,59 +3455,27 @@ class _NotesLayout extends MultiChildLayoutDelegate {
 }
 
 /// Notes in a box (the continuation below the page), in columns.
-/// A word that differs from Hafs, moving as chosen in «تنبيه الاختلافات».
+/// A word that differs from Hafs, glowing still while the lamp of
+/// «تنبيه الاختلافات» is lit.
 class _Alerting extends StatelessWidget {
-  const _Alerting({
-    required this.animation,
-    required this.style,
-    required this.child,
-  });
+  const _Alerting({required this.child});
 
-  final Animation<double> animation;
-  final DiffAlert style;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final t = CurvedAnimation(parent: animation, curve: Curves.easeInOut);
-    return RepaintBoundary(
-      child: switch (style) {
-        DiffAlert.blink => FadeTransition(
-          opacity: Tween(begin: 1.0, end: 0.15).animate(t),
-          child: child,
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(6),
+      boxShadow: [
+        BoxShadow(
+          color: MushafColors.gold.withAlpha(150),
+          blurRadius: 8,
+          spreadRadius: 1,
         ),
-        DiffAlert.shake => AnimatedBuilder(
-          animation: t,
-          builder: (_, c) => Transform.translate(
-            offset: Offset((t.value - 0.5) * 5, 0),
-            child: c,
-          ),
-          child: child,
-        ),
-        DiffAlert.pulse => ScaleTransition(
-          scale: Tween(begin: 1.0, end: 1.18).animate(t),
-          child: child,
-        ),
-        DiffAlert.glow => AnimatedBuilder(
-          animation: t,
-          builder: (_, c) => DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: [
-                BoxShadow(
-                  color: MushafColors.gold.withAlpha((170 * t.value).round()),
-                  blurRadius: 8,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: c,
-          ),
-          child: child,
-        ),
-      },
-    );
-  }
+      ],
+    ),
+    child: child,
+  );
 }
 
 /// The usul of the page below it: each kind in its colour, then every word
