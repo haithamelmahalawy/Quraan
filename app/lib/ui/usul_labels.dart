@@ -138,7 +138,12 @@ List<String> usulOf(Variant v) {
   // Ya'qub's naql (عَادٗا ٱلُّاولَىٰ) is told in its own chapter only, though its
   // note names the merged tanween; so Ibn Wardan's, «مِلُ» «بضم اللام وحذف الهمزة».
   if (v.rule == 'naql' &&
-      const {'ruways', 'rawh', 'ibn_wardan'}.contains(v.riwayaId)) {
+      const {
+        'ruways',
+        'rawh',
+        'ibn_wardan',
+        'ibn_jammaz',
+      }.contains(v.riwayaId)) {
     return ['النقل'];
   }
   if (v.rule == 'hamza_wasl') {

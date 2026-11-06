@@ -33,5 +33,28 @@ void main() {
       // Applied already: nothing left to change.
       expect(applyDaggerAlif(quran, copy), 0, reason: f.path);
     }
+    // And the complete texts, as Warsh's «وَهَٰمَٰنَ» (القصص ٦).
+    final hafs = {
+      for (final a in quran['ayahs'] as List)
+        '${a[0]}:${a[1]}': (a[4] as String).split(' '),
+    };
+    expect(daggerAlifWord('وَهَامَٰنَ', 'وَهَٰمَٰنَ'), 'وَهَٰمَٰنَ');
+    for (final f in Directory(
+      'assets/data/reading_texts',
+    ).listSync().whereType<File>()) {
+      if (!f.path.endsWith('.json')) continue;
+      final ayahs = (jsonDecode(f.readAsStringSync()) as Map)['ayahs'] as List;
+      for (final a in ayahs) {
+        for (final (i, w) in (a[2] as List).cast<String>().indexed) {
+          if (w.isEmpty) continue;
+          final h = hafs['${a[0]}:${a[1]}']![i];
+          expect(
+            daggerAlifWord(w, h),
+            w,
+            reason: '${f.path} ${a[0]}:${a[1]}:$i',
+          );
+        }
+      }
+    }
   });
 }

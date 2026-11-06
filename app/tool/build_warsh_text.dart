@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'apply_dagger_alif.dart' show daggerAlifWord;
 import 'build_data.dart' show HafsWord, sourceWords, alignSourceWords;
 
 Map<String, Object> buildWarshText(Map base, List<Map> source) {
@@ -116,8 +117,28 @@ Map<String, Object> buildWarshText(Map base, List<Map> source) {
   return {
     'riwaya': 'warsh',
     'source': 'KFGQPC warshData_v10.json; complete source text aligned to Hafs anchors',
-    'ayahs': out,
+    'ayahs': withAddedAlifDagger(base, out),
   };
+}
+
+/// Last, over the whole text: an alif the source writes where Hafs's rasm
+/// writes none is the dagger one (وَهَامَٰنَ → وَهَٰمَٰنَ), as in every riwaya.
+List<List<Object>> withAddedAlifDagger(Map base, List<List<Object>> ayahs) {
+  final hafs = {
+    for (final a in base['ayahs'] as List)
+      '${a[0]}:${a[1]}': (a[4] as String).split(' '),
+  };
+  return [
+    for (final a in ayahs)
+      [
+        a[0],
+        a[1],
+        [
+          for (final (i, w) in (a[2] as List).cast<String>().indexed)
+            w.isEmpty ? w : daggerAlifWord(w, hafs['${a[0]}:${a[1]}']![i]),
+        ],
+      ],
+  ];
 }
 
 void main() {

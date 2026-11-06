@@ -1850,11 +1850,13 @@ class _MushafPageState extends State<MushafPage>
         final second = at(_hamzaCluster);
         // Hafs's word without the second hamza (أَشَهِدُواْ): no letter to mark.
         final noSecond =
+            // Both kept (أَرَءَيۡتُمۡ of Ibn Kathir): as Hafs, no letter to colour.
+            v.description == 'بتحقيق الهمزتين' ||
             v.rule == 'tasheel_word' &&
-            !letters.first.contains('۟') &&
-            // ءَا۬عۡجَمِيّٞ: its second hamza is the alif, eased or changed.
-            !(v.riwayaId == 'warsh' && v.surah == 41 && v.ayah == 44) &&
-            lettersOf(v.usulText).where(_hamzaCluster).length < 2;
+                !letters.first.contains('۟') &&
+                // ءَا۬عۡجَمِيّٞ: its second hamza is the alif, eased or changed.
+                !(v.riwayaId == 'warsh' && v.surah == 41 && v.ayah == 44) &&
+                lettersOf(v.usulText).where(_hamzaCluster).length < 2;
         final target = noSecond
             ? null
             : araayta
@@ -3954,6 +3956,18 @@ class _UsulBox extends StatelessWidget {
               readers == null ? ' ($d)' : ' ($d: $readers)',
               style: TextStyle(fontSize: 9 * scale, color: g.color),
             ),
+        // A naql told in words of its own (مِنِ ٱجۡلِ، مِلُ), not the bare rule.
+        for (final d in {
+          for (final v in i.readings)
+            if (v.rule == 'naql' &&
+                _ashabSilah.contains(v.riwayaId) &&
+                v.description != 'بالنقل')
+              v.description,
+        })
+          Text(
+            ' ($d)',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
         // The first of two sakins: what it is read with, joined.
         for (final d in {
           for (final v in i.readings)

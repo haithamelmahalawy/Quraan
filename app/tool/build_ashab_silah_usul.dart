@@ -577,6 +577,9 @@ Map<String, int> buildAshabSilahUsul(
     if (id == 'qalun' && v[6] == 'بكسر الهاء' && '${v[4]}'.endsWith('هِ')) {
       continue;
     }
+    // Abu Ja'far's «فَإِنَّهُۥ» (الأنعام ٥٤): its kasra against Hafs's fatha, though
+    // «بكسر الهمزة» elsewhere is told of a word Hafs reads so.
+    if (_abuJafar(id) && v[0] == 6 && v[1] == 54 && v[2] == 24) continue;
     final hadSilah = clauses.any(_silahClause.hasMatch);
     for (var c = clauses.length - 1; c >= 0; c--) {
       if (!_silahClause.hasMatch(clauses[c])) continue;
@@ -1059,6 +1062,43 @@ Map<String, int> buildAshabSilahUsul(
       if (at == '11:72:2') v[4] = 'ءَٰا۬لِدُ';
       if (at == '8:66:7') v[4] = 'ضُعَفَآءَۚ';
       if (at == '19:7:0') v[3] = 1;
+      // «فَإِنِّيَ» (المائدة ١١٥) told «بفتح باء الإضافة», as a farsh: as Qalun's.
+      if (at == '5:115:9') {
+        while (v.length < 8) {
+          v.add('');
+        }
+        v[5] = 'u';
+        v[6] = 'بفتح الياء';
+        v[7] = 'ya_idafa';
+      }
+      // «مِنِ ٱجۡلِ» (المائدة ٣٢): in the naql, not the farsh.
+      if (at == '5:32:0') {
+        while (v.length < 8) {
+          v.add('');
+        }
+        v[7] = 'naql';
+      }
+      if (at == '2:173:13') v[6] = 'بكسر الطاء';
+      // «أَمَانِي»: its ya of the word, no ya of the speaker: in the farsh.
+      if (const {'2:111:11', '4:123:1', '4:123:3', '57:14:12'}.contains(at) &&
+          '${v[4]}'.isNotEmpty) {
+        while (v.length < 8) {
+          v.add('');
+        }
+        v[5] = 'f';
+        v[6] = at == '57:14:12' ? 'بإسكان الياء وتخفيفها' : 'بإسكان الياء';
+        v[7] = '';
+      }
+      // «مُؤۡمِنٗا» (النساء ٩٤): a row for each, Ibn Wardan's mim open.
+      if (at == '4:94:16' && v[5] == 'h') {
+        while (v.length < 8) {
+          v.add('');
+        }
+        v[6] = id == 'ibn_wardan'
+            ? 'بإبدال الهمزة واوًا وفتح الميم'
+            : 'بإبدال الهمزة واوًا وكسر الميم';
+        v[7] = 'ibdal_single';
+      }
       // «ءَامَنتُمۡ» as Qalun's: no idkhal in it.
       if (at == '7:123:2' || at == '20:71:1' || at == '26:49:1') {
         v.replaceRange(4, v.length, <Object>[
@@ -1195,6 +1235,62 @@ Map<String, int> buildAshabSilahUsul(
       ]);
     }
   }
+  // «أَرَءَيۡتُمۡ» of Ibn Kathir: both hamzas kept, told in their chapter.
+  if (id == 'bazzi' || id == 'qunbul') {
+    for (final w in words) {
+      if (RegExp('^[وف]?َ?أَرَءَ').hasMatch(w.t)) {
+        add(
+          w,
+          'tasheel_word',
+          'بتحقيق الهمزتين',
+          kind: 'h',
+          context: w.t,
+          ways: const ['تحقيق الهمزتين'],
+        );
+      }
+    }
+  }
+  // «أَءِذَا»، «أَءِنَّا»، «أَءِلَٰهٞ» of Ibn Kathir: eased with no idkhal, told as
+  // the hamza dropped; and «أَئِنَّكُمۡ» (الأنعام ١٩), its text corrupted, as a farsh.
+  if (id == 'bazzi' || id == 'qunbul') {
+    final seconds = RegExp('^[وف]?َ?أَ[ءئ]ِ');
+    for (final v in rows) {
+      final at = '${v[0]}:${v[1]}:${v[2]}';
+      final hafs = hafsAt[at] ?? '';
+      if (!seconds.hasMatch(hafs)) continue;
+      final text = '${v[4]}';
+      final corrupted = text.contains('ٮ');
+      if (!corrupted && v[6] != 'بحذف الهمزة') continue;
+      v.replaceRange(4, v.length, <Object>[
+        text.replaceAll('ٮ', 'ى'),
+        'h',
+        text.contains('مُۥ')
+            ? 'بتسهيل الهمزة الثانية بلا إدخال، بصلة ميم الجمع'
+            : 'بتسهيل الهمزة الثانية بلا إدخال',
+        'tasheel_word',
+        {
+          'context': hafs,
+          'ways': const ['تسهيل الهمزة الثانية بلا إدخال'],
+        },
+      ]);
+    }
+  }
+  // Abu Ja'far's idkhal written in part: the dagger alif and the tasheel dot.
+  if (_abuJafar(id)) {
+    final kept = RegExp('^أَٰ?([ءئ])ِ?(?!۬)');
+    for (final v in rows) {
+      if (!RegExp('^أَ[ءئ]ِ')
+          .hasMatch(hafsAt['${v[0]}:${v[1]}:${v[2]}'] ?? '')) {
+        continue;
+      }
+      final how = '${v.length > 6 ? v[6] : ''}';
+      final text = '${v[4]}';
+      if (!RegExp('الإدخال|ألف|مسهلة').hasMatch(how)) continue;
+      if (text.contains('۬') || text.contains('۟')) continue;
+      final next = text.replaceFirstMapped(kept, (m) => 'أَٰ${m[1]}ِ۬');
+      if (next != text) v[4] = next;
+    }
+  }
   // «أَءُنزِلَ»، «أَءُلۡقِيَ» of Ibn Kathir: eased, as «أَؤُنَبِّئُكُمۡ», not dropped.
   if (id == 'bazzi' || id == 'qunbul') {
     for (final v in rows) {
@@ -1215,6 +1311,39 @@ Map<String, int> buildAshabSilahUsul(
   // Qalun's «لَيَّۢا» (النساء ٤٦): told a sukun he does not read, nothing differs.
   if (id == 'qalun') {
     rows.removeWhere((v) => v[0] == 4 && v[1] == 46 && v[2] == 14);
+    // «فَالِقُ» (الأنعام ٩٥): Qalun reads it as Hafs, nothing to tell.
+    rows.removeWhere((v) => v[0] == 6 && v[1] == 95 && v[2] == 2);
+  }
+  // Qalun's «تَعۡدُّواْ» (النساء ١٥٤): told «بالإشمام», his two faces, as farsh.
+  if (id == 'qalun') {
+    for (final v in rows) {
+      if (v[0] == 4 && v[1] == 154 && v[2] == 12) {
+        v.replaceRange(4, v.length, <Object>[
+          'تَعۡدُّواْ',
+          'f',
+          'بوجهين: إسكان العين وتشديد الدال؛ أو اختلاس فتحة العين',
+        ]);
+      }
+    }
+  }
+  // «هَدۡيَۢا»، «أَبَدَۢا»: his source's tanween before a ba told as a farsh, his
+  // letters as Hafs's: nothing differs.
+  if (id == 'qalun') {
+    rows.removeWhere((v) {
+      if (v[5] != 'f' ||
+          v.length < 7 ||
+          !RegExp(r'^بإسكان \S+ وفتح الألف$').hasMatch('${v[6]}')) {
+        return false;
+      }
+      final hafs = hafsAt['${v[0]}:${v[1]}:${v[2]}'] ?? '';
+      return hafs.contains('ۢ') && skeleton('${v[4]}') == skeleton(hafs);
+    });
+  }
+  // «أَنجَيۡتَنَا» (الأنعام ٦٣): one wording for all who read it.
+  for (final v in rows) {
+    if (v[0] == 6 && v[1] == 63 && v[2] == 11 && v[5] == 'f') {
+      v[6] = 'بإبدال الألف ياءً ثم تاء مفتوحة';
+    }
   }
   // Qalun's «نُؤْتِهِ»، «يُؤَدِّهِ»: the ha with its kasra, short; told sakin.
   if (id == 'qalun') {
@@ -1642,6 +1771,50 @@ void main() {
     }
     final daggers = applyDaggerAlif(quran, data['variants'] as List);
     if (daggers > 0) counts['dagger_alif'] = daggers;
+    // Abu Ja'far's «هَدَىٰنِۦ»: Hafs's tooth under the dagger, the small ya after.
+    if (_abuJafar(id)) {
+      for (final v in (data['variants'] as List).cast<List>()) {
+        // «قَتَلُواْ» (الأنعام ١٤٠) just as Qalun's, the sukun kept on its alif.
+        if (v[0] == 6 && v[1] == 140 && v[2] == 3 && v[5] == 'u') v[4] = 'قَتَلُواْ';
+        if (v[0] == 6 && v[1] == 80 && v[2] == 7) v[4] = 'هَدَىٰنِۦ';
+      }
+    }
+    // «وَمَحۡيَايۡ» (الأنعام ١٦٢): Abu Ja'far's as Qalun's, one farsh and wording.
+    if (id == 'qalun' || _abuJafar(id)) {
+      for (final v in (data['variants'] as List).cast<List>()) {
+        if (v[0] != 6 || v[1] != 162 || v[2] != 4) continue;
+        v[4] = 'وَمَحْيَآےْ';
+        v[5] = 'f';
+        v[6] = 'بإسكان الياء مع المد المشبع';
+        if (v.length > 7) v[7] = '';
+      }
+    }
+    // «ٱلَّيۡلِ» (الأنعام ٩٦): Qalun's as Ibn Kathir's and Abu Ja'far's.
+    if (id == 'qalun') {
+      for (final v in (data['variants'] as List).cast<List>()) {
+        if (v[0] == 6 && v[1] == 96 && v[2] == 3) v[4] = 'ٱلَّيۡلِ';
+      }
+    }
+    // Ibn Kathir's «أَئِ۬نَّكُمۡ»: Hafs's hamza with its kasra and the tasheel dot,
+    // as Abu Ja'far's without the dagger; not its seat, a ya with a dot.
+    if (id == 'bazzi' || id == 'qunbul') {
+      for (final v in (data['variants'] as List).cast<List>()) {
+        if (v.length < 8 || v[7] != 'tasheel_word') continue;
+        v[4] = '${v[4]}'.replaceFirst(RegExp('^أَ[ىي]ِ?۪'), 'أَئِ۬');
+      }
+    }
+    // Abu Ja'far's idkhal, the second hamza with the tasheel dot: last, after
+    // the texts taken from the others.
+    if (_abuJafar(id)) {
+      for (final v in (data['variants'] as List).cast<List>()) {
+        final how = '${v.length > 6 ? v[6] : ''}';
+        if (!RegExp('الإدخال|وبينهما ألف|مسهلة').hasMatch(how)) continue;
+        v[4] = '${v[4]}'.replaceFirstMapped(
+          RegExp('^أَٰ([ءئ])ِ(?!۬)'),
+          (m) => 'أَٰ${m[1]}ِ۬',
+        );
+      }
+    }
     file.writeAsStringSync(jsonEncode(data));
     stdout.writeln('$id: $counts');
   }

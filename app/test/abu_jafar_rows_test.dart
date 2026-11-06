@@ -510,6 +510,266 @@ void main() {
       expect(where('qalun', 4, 46, 14), isEmpty);
     });
 
+    test('muminan: a row for each of Abu Ja\'far\'s two', () {
+      final wardan = where('ibn_wardan', 4, 94, 16).single;
+      final jammaz = where('ibn_jammaz', 4, 94, 16).single;
+      expect(wardan[6], 'بإبدال الهمزة واوًا وفتح الميم');
+      expect(jammaz[6], 'بإبدال الهمزة واوًا وكسر الميم');
+      expect('${wardan[4]}', contains('مَن'));
+      expect('${jammaz[4]}', contains('مِن'));
+      expect(wardan[7], 'ibdal_single');
+      expect(jammaz[7], 'ibdal_single');
+    });
+
+    test('amani: the ya bare, without a sign', () {
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        for (final (s, a, w) in [(2, 111, 11), (4, 123, 1), (4, 123, 3)]) {
+          final v = where(id, s, a, w).firstWhere((v) => v[5] == 'f');
+          expect(v[6], 'بإسكان الياء', reason: '$s:$a');
+          expect('${v[4]}', contains('نِي'), reason: '$s:$a');
+          expect(
+            '${v[4]}',
+            isNot(matches(RegExp('نِي[ّْۡ]'))),
+            reason: '$s:$a',
+          );
+        }
+        final hadid = where(id, 57, 14, 12).firstWhere((v) => v[5] == 'f');
+        expect(hadid[6], 'بإسكان الياء وتخفيفها');
+        expect('${hadid[4]}', isNot(contains('\u0651')));
+        // البقرة ٧٨ with its fatha, as it is.
+        expect(where(id, 2, 78, 6).single[6], 'بتخفيف الياء');
+      }
+    });
+
+    test('ta3dduu: Qalun two faces as farsh, its alif with the sign', () {
+      final q = where('qalun', 4, 154, 12).single;
+      expect(q[5], 'f');
+      expect(q[6], 'بوجهين: إسكان العين وتشديد الدال؛ أو اختلاس فتحة العين');
+      expect('${q[4]}', endsWith('اْ'));
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final v = where(id, 4, 154, 12).single;
+        expect('${v[4]}', endsWith('اْ'));
+        expect(v[6], 'بإسكان العين وتشديد الدال');
+      }
+    });
+
+    test('min ajli with a wasl alif before the jim', () {
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final v = where(id, 5, 32, 0).single;
+        expect(v[3], 2);
+        expect('${v[4]}', startsWith('مِنِ '));
+        expect('${v[4]}', contains('ٱجۡ'));
+        expect(v[5], 'h');
+        expect(v[6], 'بكسر الهمزة ونقل حركتها إلى النون');
+        expect(v[7], 'naql');
+      }
+    });
+
+    test('istuhiqqa on its own word for all but Hafs, istahaqqa as Hafs', () {
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+        'warsh',
+        'hisham',
+        'ibn_dhakwan',
+        'shubah',
+        'susi',
+        'duri_abuamr',
+        'abul_harith',
+        'duri_kisai',
+        'khalaf_hamzah',
+        'khallad',
+        'idris',
+        'ishaq',
+        'ruways',
+        'rawh',
+      ]) {
+        final v = where(id, 5, 107, 11).firstWhere((v) => v[5] == 'f');
+        expect(v[6], 'بضم التاء وكسر الحاء', reason: id);
+      }
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        expect(where(id, 5, 107, 4).where((v) => v[5] == 'f'), isEmpty);
+      }
+    });
+
+    test('the tanween before a ba is no farsh of Qalun, a real one stays', () {
+      expect(where('qalun', 5, 95, 23), isEmpty);
+      expect(where('qalun', 2, 95, 2), isEmpty);
+      expect(where('qalun', 7, 57, 4), isNotEmpty);
+    });
+
+    test('fa-inniya u3adhdhibuhu as Qalun for Abu Ja\'far', () {
+      final q = where('qalun', 5, 115, 9).single;
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final v = where(id, 5, 115, 9).single;
+        expect(v[4], q[4]);
+        expect(v[6], q[6]);
+        expect(v[7], 'ya_idafa');
+      }
+    });
+
+    test(
+      'two hamzas of a word: Ibn Kathir eased, Abu Ja\'far with the idkhal',
+      () {
+        final words = [
+          (6, 19, 18),
+          (13, 5, 4),
+          (17, 49, 5),
+          (27, 60, 20),
+          (32, 10, 1),
+          (37, 52, 1),
+          (79, 11, 0),
+        ];
+        for (final id in ['bazzi', 'qunbul']) {
+          for (final (s, a, w) in words) {
+            final v = where(id, s, a, w).firstWhere((v) => v[5] == 'h');
+            expect(v[7], 'tasheel_word', reason: '$id $s:$a');
+            expect('${v[6]}', contains('بلا إدخال'), reason: '$id $s:$a');
+            expect('${v[4]}', isNot(contains('ٮ')), reason: '$id $s:$a');
+          }
+          for (final (s, a, w) in [(6, 19, 18), (27, 55, 0), (9, 12, 10)]) {
+            final text = '${where(id, s, a, w).first[4]}';
+            expect(text, startsWith('أَئِ۬'), reason: '$id $s:$a');
+          }
+          final silah = where(id, 6, 19, 18).single;
+          expect('${silah[6]}', contains('بصلة ميم الجمع'));
+        }
+        for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+          for (final (s, a, w) in [
+            (6, 19, 18),
+            (17, 49, 5),
+            (27, 67, 7),
+            (28, 5, 9),
+            (32, 10, 5),
+            (36, 19, 3),
+            (37, 86, 0),
+          ]) {
+            final text = '${where(id, s, a, w).first[4]}';
+            expect(text, startsWith('أَٰ'), reason: '$s:$a');
+            expect(text, contains('۬'), reason: '$s:$a');
+          }
+          expect(where(id, 27, 61, 14).single[7], 'tasheel_word');
+        }
+      },
+    );
+
+    test('araaytum of Ibn Kathir: both hamzas kept, in their chapter', () {
+      for (final id in ['bazzi', 'qunbul']) {
+        for (final (s, a, w) in [
+          (6, 40, 1),
+          (6, 46, 1),
+          (18, 63, 1),
+          (25, 43, 0),
+        ]) {
+          final v = where(id, s, a, w).firstWhere((v) => v[5] == 'h');
+          expect(v[6], 'بتحقيق الهمزتين', reason: '$id $s:$a');
+          expect(v[7], 'tasheel_word', reason: '$id $s:$a');
+        }
+      }
+    });
+
+    test('fa-innahu of الأنعام for all of Ashab al-Silah', () {
+      final q = where('qalun', 6, 54, 24).single;
+      for (final id in ['bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz']) {
+        final v = where(id, 6, 54, 24).single;
+        expect(v[4], q[4], reason: id);
+        expect(v[6], 'بكسر الهمزة', reason: id);
+      }
+      // Its first, «أَنَّهُۥ», opened by Qalun and Abu Ja'far as Hafs.
+      expect(where('qalun', 6, 54, 13), isEmpty);
+      expect(where('ibn_wardan', 6, 54, 13), isEmpty);
+    });
+
+    test('anjaytana: one writing and one wording for Ashab al-Silah', () {
+      final bazzi = where('bazzi', 6, 63, 11).single;
+      for (final id in ['ibn_wardan', 'ibn_jammaz', 'qunbul']) {
+        expect(where(id, 6, 63, 11).single[4], bazzi[4], reason: id);
+      }
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        expect(
+          where(id, 6, 63, 11).single[6],
+          'بإبدال الألف ياءً ثم تاء مفتوحة',
+          reason: id,
+        );
+      }
+    });
+
+    test('jaail al-layl of الأنعام ٩٦: one writing and wording', () {
+      for (final w in [2, 3]) {
+        final bazzi = where('bazzi', 6, 96, w).single;
+        for (final id in ['qalun', 'qunbul', 'ibn_wardan', 'ibn_jammaz']) {
+          final row = where(id, 6, 96, w).single;
+          expect(row[4], bazzi[4], reason: '$id $w');
+          expect(row[5], bazzi[5], reason: '$id $w');
+          expect(row[6], bazzi[6], reason: '$id $w');
+        }
+      }
+    });
+
+    test('kharraqu of الأنعام ١٠٠ as Qalun, the sukun on its alif', () {
+      final qalun = where('qalun', 6, 100, 5).single;
+      expect('${qalun[4]}', endsWith('اْ'));
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        expect(where(id, 6, 100, 5).single[4], qalun[4], reason: id);
+      }
+    });
+
+    test('mayyitatun of الأنعام ١٣٩: shadda on the mim and on the ya', () {
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        expect(
+          where(id, 6, 139, 13).single[4],
+          '\u0645\u0651\u064E\u064A\u0651\u0650\u062A\u064E\u0629\u065E',
+          reason: id,
+        );
+      }
+    });
+
+    test('qatalu of الأنعام ١٤٠ just as Qalun', () {
+      final qalun = where('qalun', 6, 140, 3).single;
+      expect('${qalun[4]}', endsWith('اْ'));
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final row = where(id, 6, 140, 3).single;
+        expect(row.sublist(4, 7), qalun.sublist(4, 7), reason: id);
+      }
+    });
+
+    test('mahyay of الأنعام ١٦٢: Abu Jafar just as Qalun', () {
+      final qalun = where('qalun', 6, 162, 4).single;
+      expect(qalun[5], 'f');
+      expect(qalun[6], 'بإسكان الياء مع المد المشبع');
+      expect('${qalun[4]}', contains('آ'));
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final row = where(id, 6, 162, 4).single;
+        expect(row.sublist(4, 7), qalun.sublist(4, 7), reason: id);
+      }
+    });
+
+    test('Qalun reads faliq of الأنعام ٩٥ as Hafs', () {
+      expect(where('qalun', 6, 95, 2), isEmpty);
+      expect(where('warsh', 6, 95, 2), isEmpty);
+    });
+
+    test('atuhajjunni and hadani of الأنعام ٨٠', () {
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final hajj = where(id, 6, 80, 3).firstWhere((v) => v[5] == 'f');
+        expect('${hajj[4]}', isNot(contains('وٓ')));
+        expect(hajj[6], 'بتخفيف النون');
+        final hadani = where(id, 6, 80, 7).single;
+        expect('${hadani[4]}', contains('ىٰ'));
+        expect('${hadani[4]}', contains('ۦ'));
+        expect(hadani[7], 'ya_zaida');
+      }
+    });
+
     test('the answers on the open words', () {
       for (final id in ['bazzi', 'qunbul']) {
         for (final (s, a) in [(38, 8), (54, 25)]) {

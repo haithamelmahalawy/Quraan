@@ -15,6 +15,23 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
       row[6] = 'بإسكان العين وإبدال الهاء تاء مربوطة منونة بالفتح';
     }
   }
+  // «ٱسۡتُحِقَّ» (المائدة ١٠٧): «وَضَمَّ اسْتُحِقَّ افْتَحْ لَحِفْصٍ وَكَسْرَهُ».
+  if (!rows.any(
+    (r) => r[0] == 5 && r[1] == 107 && r[2] <= 11 && r[2] + r[3] > 11,
+  )) {
+    final next = rows.indexWhere(
+      (r) => r[0] > 5 || r[0] == 5 && (r[1] > 107 || r[1] == 107 && r[2] > 11),
+    );
+    rows.insert(next < 0 ? rows.length : next, <Object>[
+      5,
+      107,
+      11,
+      1,
+      'ٱسۡتُحِقَّ',
+      'f',
+      'بضم التاء وكسر الحاء',
+    ]);
+  }
   if (id != 'shubah') return;
 
   void put(List<Object> row) {
