@@ -868,6 +868,33 @@ void main() {
       },
     );
 
+    test(
+      'Warsh\'s rows left in Qalun\'s: shay\', al-shafa\'a, mali, al-la\'i',
+      () {
+        for (final (s, a, w) in [
+          (18, 76, 4),
+          (46, 25, 2),
+          (67, 19, 13),
+          (34, 23, 2),
+        ]) {
+          expect(where('qalun', s, a, w), isEmpty, reason: '$s:$a:$w');
+        }
+        final mali = where('qalun', 27, 20, 3).single;
+        expect(mali[4], 'مَالِي');
+        expect(mali[7], 'ya_idafa');
+        for (final (s, a, w) in [
+          (33, 4, 11),
+          (58, 2, 11),
+          (65, 4, 0),
+          (65, 4, 11),
+        ]) {
+          final v = where('qalun', s, a, w).single;
+          expect('${v[4]}', endsWith('ٱلَّٰٓءِ'), reason: '$s:$a:$w');
+          expect('${v[4]}'.startsWith('وَ'), s == 65, reason: '$s:$a:$w');
+        }
+      },
+    );
+
     test('Qalun reads yasta\'khiruna of الأعراف ٣٤ as Hafs', () {
       expect(where('qalun', 7, 34, 7), isEmpty);
     });

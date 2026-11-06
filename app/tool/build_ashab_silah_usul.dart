@@ -1893,6 +1893,41 @@ void main() {
         }
       }
     }
+    if (id == 'qalun') {
+      final rows = (data['variants'] as List).cast<List>();
+      // Warsh's left in Qalun's: «شَيۡءٍ» (الكهف ٧٦، الأحقاف ٢٥، الملك ١٩)
+      // told of no how, and «ٱلشَّفَٰعَةُ» (سبأ ٢٣): Qalun reads them as Hafs.
+      rows.removeWhere(
+        (v) =>
+            v[5] == 'f' &&
+            const {
+              '18:76:4',
+              '46:25:2',
+              '67:19:13',
+              '34:23:2',
+            }.contains('${v[0]}:${v[1]}:${v[2]}'),
+      );
+      for (final v in rows) {
+        final at = '${v[0]}:${v[1]}:${v[2]}';
+        // «مَالِيَ لَآ أَرَى» (النمل ٢٠): his ya of the idafa still.
+        if (at == '27:20:3') {
+          while (v.length < 8) {
+            v.add('');
+          }
+          v
+            ..[4] = 'مَالِي'
+            ..[5] = 'u'
+            ..[6] = 'بإسكان الياء'
+            ..[7] = 'ya_idafa';
+        }
+        // «ٱلَّٰٓـِٔي»: «اللَّٰٓءِ», the hamza read, broken, no ya after it.
+        if (const {'33:4:11', '58:2:11', '65:4:0', '65:4:11'}.contains(at)) {
+          v[4] = '${v[0] == 65 ? 'وَ' : ''}ٱلَّٰٓءِ';
+          v[5] = 'f';
+          v[6] = 'بهمزة مكسورة دون ياء بعدها';
+        }
+      }
+    }
     // «وَمَحۡيَايۡ» (الأنعام ١٦٢): Abu Ja'far's as Qalun's, one farsh and wording.
     if (id == 'qalun' || _abuJafar(id)) {
       for (final v in (data['variants'] as List).cast<List>()) {
