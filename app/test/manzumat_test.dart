@@ -1044,6 +1044,106 @@ void main() {
     }
   });
 
+  test("Ibn Kathir's «ٱلرِّيحَ» cites 490 and 491, as in الروم", () {
+    for (final id in ['bazzi', 'qunbul']) {
+      for (final (s, a, w) in [(7, 57, 3), (27, 63, 8), (35, 9, 3)]) {
+        final v = Variant(
+          riwayaId: id,
+          surah: s,
+          ayah: a,
+          word: w,
+          count: 1,
+          text: 'ٱلرِّيحَ',
+          kind: VariantKind.farsh,
+          description: 'بإسكان الياء وحذف الألف',
+        );
+        final r = manzumat.referenceOf(
+          v,
+          'ٱلرِّيَٰحَ',
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
+        expect(r.mention, {490, 491}, reason: '$id $s:$a');
+      }
+    }
+  });
+
+  test("Abu Ja'far's «بَصۡطَةٗ» of الأعراف cites Durrah 81", () {
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 7,
+        ayah: 69,
+        word: 21,
+        count: 1,
+        text: 'بَصۡطَةٗ',
+        kind: VariantKind.farsh,
+        description: 'بالصاد',
+      );
+      final r = manzumat.referenceOf(
+        v,
+        'بَصۜۡطَةٗۖ',
+        7,
+        surahs,
+        entries: book.at(7, 69, 21),
+      );
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {81}, reason: id);
+    }
+  });
+
+  test("Abu Ja'far's «عَلَىٰٓ» of الأعراف ١٠٥ cites Durrah 115 and 116", () {
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 7,
+        ayah: 105,
+        word: 1,
+        count: 1,
+        text: 'عَلَىٰٓ',
+        kind: VariantKind.farsh,
+        rule: 'comparison',
+      );
+      final r = manzumat.referenceOf(
+        v,
+        'عَلَىٰٓ',
+        7,
+        surahs,
+        entries: book.at(7, 105, 1),
+      );
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {115, 116}, reason: id);
+    }
+  });
+
+  test('«ءَآمَنتُم» of Ashab al-Silah cites Shatibiyya 189-191', () {
+    for (final id in ['qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz']) {
+      for (final (s, a, w) in [(7, 123, 2), (20, 71, 1), (26, 49, 1)]) {
+        final v = Variant(
+          riwayaId: id,
+          surah: s,
+          ayah: a,
+          word: w,
+          count: 1,
+          text: 'ءَا۬ ٰم',
+          kind: VariantKind.hamza,
+          rule: 'tasheel_word',
+        );
+        final r = manzumat.referenceOf(
+          v,
+          'ءَامَنتُم',
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
+        expect(r.mention, {189, 190, 191}, reason: '$id $s:$a');
+      }
+    }
+  });
+
   test("Abu Ja'far's «يُنَجِّيكُم» cites «بِثَانٍ أَتَى»", () {
     for (final a in [63, 64]) {
       final v = Variant(

@@ -122,7 +122,12 @@ class MushafPage extends StatefulWidget {
     this.onAyahTap,
     this.onAyahWordTap,
     this.onHeaderMiddle,
+    this.onSurahName,
   });
+
+  /// Where the surah's name in the header is, on the screen: the lamp of
+  /// «تنبيه الاختلافات» stands beside it.
+  final ValueChanged<Rect>? onSurahName;
 
   /// Where the middle of the page's header is, across the page: the arrow of
   /// the riwayat stands there, between the surah and the juz.
@@ -435,6 +440,7 @@ class _MushafPageState extends State<MushafPage>
             SizedBox(
               height: 22,
               child: _PageHeader(
+                nameKey: _surahName,
                 surah: widget.quran.surah(ayahs.first.surah).nameAr,
                 juz: ayahs.first.juz,
               ),
@@ -496,11 +502,20 @@ class _MushafPageState extends State<MushafPage>
   /// readings accessible without reducing the font or dropping notes.
   void _reportHeaderMiddle(double x) {
     final report = widget.onHeaderMiddle;
-    if (report == null) return;
+    final name = widget.onSurahName;
+    if (report == null && name == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) report(x);
+      if (!mounted) return;
+      report?.call(x);
+      final box = _surahName.currentContext?.findRenderObject();
+      if (name != null && box is RenderBox && box.hasSize) {
+        name(box.localToGlobal(Offset.zero) & box.size);
+      }
     });
   }
+
+  /// The surah's name in the header shown.
+  final _surahName = GlobalKey();
 
   Widget _landscapePage(List<Ayah> ayahs, List<MushafLine> lines, Size size) {
     final scroll = _landscapeScroll;
@@ -589,6 +604,7 @@ class _MushafPageState extends State<MushafPage>
             SizedBox(
               height: header,
               child: _PageHeader(
+                nameKey: _surahName,
                 surah: widget.quran.surah(first.surah).nameAr,
                 juz: first.juz,
               ),
@@ -880,6 +896,7 @@ class _MushafPageState extends State<MushafPage>
           SizedBox(
             height: header,
             child: _PageHeader(
+              nameKey: _surahName,
               surah: widget.quran.surah(first.surah).nameAr,
               juz: first.juz,
               // The usul are told below the page; the header points there.
@@ -1427,6 +1444,13 @@ class _MushafPageState extends State<MushafPage>
       if (const {'ruways', 'rawh'}.contains(s.displayed) &&
           _replacementAt(ayah, w) != null) {
         return (text: ayah.words[w], font: 'Hafs');
+      }
+      // «يَٰصَٰلِحُ ٱئۡتِنَا»: Hafs's word, its hamza under the mark of the waw,
+      // its seat a ya with its dots, as Warsh's «ٱيتِنَا».
+      if (v.rule == 'ibdal_single' &&
+          RegExp('^ٱ[وي]').hasMatch(v.text) &&
+          _replacementAt(ayah, w) != null) {
+        return (text: ayah.words[w].replaceFirst('ئ', 'ي'), font: 'Hafs');
       }
       if (_dadAsZa(ayah, w) != null) {
         return (text: ayah.words[w], font: 'Hafs');
@@ -3035,9 +3059,17 @@ class _PageFrame extends StatelessWidget {
 /// The line above the frame, as printed: surah name on the right, juz on
 /// the left.
 class _PageHeader extends StatelessWidget {
-  const _PageHeader({required this.surah, required this.juz, this.onUsul});
+  const _PageHeader({
+    required this.surah,
+    required this.juz,
+    this.onUsul,
+    this.nameKey,
+  });
 
   final String surah;
+
+  /// On the surah's name, to find where it stands.
+  final Key? nameKey;
   final int juz;
 
   /// Shows the usul of the page, told below it; null when it has none.
@@ -3065,7 +3097,7 @@ class _PageHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(
         children: [
-          Text('سورة $surah', style: style),
+          Text('سورة $surah', key: nameKey, style: style),
           Expanded(
             child: onUsul == null
                 ? const SizedBox()

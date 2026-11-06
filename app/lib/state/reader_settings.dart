@@ -136,17 +136,27 @@ class ReaderSettings extends ChangeNotifier {
       DiffAlert.values.asNameMap()[_get('diffAlert') as String? ?? ''];
   set diffAlert(DiffAlert? style) => _set('diffAlert', style?.name ?? '');
 
-  /// Where the lamp of «تنبيه الاختلافات» stands over the page, as
-  /// fractions of its width and height: beside the hamesh at first.
-  Offset get lampAt => Offset(
-    (_get('lampX') as num?)?.toDouble() ?? 0.94,
-    (_get('lampY') as num?)?.toDouble() ?? 0.55,
-  );
-  set lampAt(Offset at) {
-    _memory['lampX'] = at.dx;
-    _memory['lampY'] = at.dy;
-    _prefs?.setDouble('lampX', at.dx);
-    _set('lampY', at.dy);
+  /// Where the lamp of «تنبيه الاختلافات» (and the mutashabihat's button
+  /// with it) was dragged over the page, as fractions of its width and
+  /// height; null beside the surah's name.
+  Offset? get lampAt {
+    final x = _get('lamp.x') as num?, y = _get('lamp.y') as num?;
+    return x == null || y == null ? null : Offset(x.toDouble(), y.toDouble());
+  }
+
+  set lampAt(Offset? at) {
+    if (at == null) {
+      _memory
+        ..remove('lamp.x')
+        ..remove('lamp.y');
+      _prefs?.remove('lamp.x');
+      _prefs?.remove('lamp.y');
+      notifyListeners();
+      return;
+    }
+    _memory['lamp.x'] = at.dx;
+    _prefs?.setDouble('lamp.x', at.dx);
+    _set('lamp.y', at.dy);
   }
 
   /// The riwaya last listened to.

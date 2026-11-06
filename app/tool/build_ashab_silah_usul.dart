@@ -1313,6 +1313,11 @@ Map<String, int> buildAshabSilahUsul(
     rows.removeWhere((v) => v[0] == 4 && v[1] == 46 && v[2] == 14);
     // «فَالِقُ» (الأنعام ٩٥): Qalun reads it as Hafs, nothing to tell.
     rows.removeWhere((v) => v[0] == 6 && v[1] == 95 && v[2] == 2);
+    // «يَسۡتَأۡخِرُونَ» (الأعراف ٣٤): as Hafs and Ibn Kathir, its hamza in the
+    // word's body, not on a tooth: nothing to tell.
+    rows.removeWhere(
+      (v) => v[0] == 7 && v[1] == 34 && v[2] == 7 && v[5] == 'f',
+    );
   }
   // Qalun's «تَعۡدُّواْ» (النساء ١٥٤): told «بالإشمام», his two faces, as farsh.
   if (id == 'qalun') {
@@ -1769,14 +1774,123 @@ void main() {
       applyAlFromHafs(quran, data['variants'] as List);
       applyVowelsFromHafs(quran, data['variants'] as List);
     }
+    // A word told «بالقصر» is Hafs's word without the madda of its munfasil;
+    // the source wrote some in Warsh's spelling (اَ۬لذِے for ٱلَّذِي).
+    _qasrAsHafs(quran, data);
+    // And Warsh's way of writing, where it changes nothing read: the tanween
+    // before its alif (بُيُوتٗا, not بُيُوتاٗ), the sukun as Hafs's «ۡ».
+    for (final v in (data['variants'] as List).cast<List>()) {
+      v[4] = '${v[4]}'
+          .replaceAllMapped(RegExp('ا([ًٗ])'), (m) => '${m[1]}ا')
+          .replaceAll(RegExp('(?<!ا)(?<!أُو)ْ'), 'ۡ');
+    }
+    // The munfasil inside a word, after the ha of «هَٰٓؤُلَآءِ» and the ya of the
+    // call («يَٰٓأَيُّهَا»): Abu Ja'far reads it short, as Qalun and Ibn Kathir,
+    // so no madda over it; told as Qalun's.
+    if (_abuJafar(id)) _shortInWord(quran, built['qalun']!.$2, data);
     final daggers = applyDaggerAlif(quran, data['variants'] as List);
     if (daggers > 0) counts['dagger_alif'] = daggers;
     // Abu Ja'far's «هَدَىٰنِۦ»: Hafs's tooth under the dagger, the small ya after.
     if (_abuJafar(id)) {
       for (final v in (data['variants'] as List).cast<List>()) {
         // «قَتَلُواْ» (الأنعام ١٤٠) just as Qalun's, the sukun kept on its alif.
-        if (v[0] == 6 && v[1] == 140 && v[2] == 3 && v[5] == 'u') v[4] = 'قَتَلُواْ';
+        if (v[0] == 6 && v[1] == 140 && v[2] == 3 && v[5] == 'u') {
+          v[4] = 'قَتَلُواْ';
+        }
         if (v[0] == 6 && v[1] == 80 && v[2] == 7) v[4] = 'هَدَىٰنِۦ';
+      }
+    }
+    // Ibn Wardan's «لَا يَخۡرُجُ إِلَّا نَكِدٗا» (الأعراف ٥٨): two faces, Hafs's the
+    // preferred, each word vowelled.
+    if (id == 'ibn_wardan') {
+      for (final v in (data['variants'] as List).cast<List>()) {
+        if (v[0] != 7 || v[1] != 58 || v[2] != 9 || v[5] != 'f') continue;
+        const ways = [
+          'بضم الياء وكسر الراء (يُخۡرِجُ)',
+          'بفتح الياء وضم الراء (يَخۡرُجُ)، وهو الأرجح',
+        ];
+        while (v.length < 9) {
+          v.add(v.length == 8 ? <String, Object>{} : '');
+        }
+        v[6] = 'بخلف: ${ways.join('؛ أو ')}';
+        v[7] = '';
+        v[8] = {...(v[8] is Map ? v[8] as Map : {}), 'ways': ways};
+      }
+    }
+    // «أَرۡجِهۡ» (الأعراف ١١١، الشعراء ٣٦): Ibn Jammaz's ha with its silah, the
+    // small ya written, told in the farsh and in the hā' al-kināya; Ibn
+    // Wardan's, without the silah, in the farsh alone.
+    bool arjih(List v) =>
+        v[0] == 7 && v[1] == 111 && v[2] == 1 ||
+        v[0] == 26 && v[1] == 36 && v[2] == 1;
+    if (id == 'ibn_jammaz') {
+      final rows = (data['variants'] as List).cast<List>();
+      rows.removeWhere((v) => arjih(v) && v[5] == 'u');
+      for (final v in [...rows]) {
+        if (!arjih(v) || v[5] != 'f') continue;
+        v[4] = 'أَرۡجِهِۦ';
+        rows.add([
+          v[0],
+          v[1],
+          v[2],
+          1,
+          'أَرۡجِهِۦ',
+          'u',
+          'بصلة الهاء',
+          'ha_kinaya',
+        ]);
+      }
+    }
+    if (id == 'ibn_wardan') {
+      for (final v in (data['variants'] as List).cast<List>()) {
+        if (arjih(v) && v[5] == 'u' && v.length > 7 && v[7] == 'ha_kinaya') {
+          v[5] = 'f';
+          v[7] = '';
+        }
+      }
+    }
+    // «ءَآمَنتُمُۥ» (الأعراف ١٢٣، طه ٧١، الشعراء ٤٩): the first hamza read, the
+    // second eased, its dot on its alif, the third a small alif on it too, no
+    // kashida under it. Qunbul's in الأعراف its first a waw in the wasl
+    // (فِرۡعَوۡنُ وَاٰ۬مَنتُمُۥ); in طه he drops it, Hafs's word.
+    const aamantum =
+        // The small alif after the eased one, between it and the mim, on a
+        // narrow space: no kashida under it.
+        'ءَا۬ ٰ'
+        'مَنتُمُۥ';
+    for (final v in (data['variants'] as List).cast<List>()) {
+      final at = '${v[0]}:${v[1]}:${v[2]}';
+      if (!const {'7:123:2', '20:71:1', '26:49:1'}.contains(at)) continue;
+      if ('${v[4]}'.isEmpty) continue;
+      if (id == 'qunbul' && at == '20:71:1') {
+        v[4] = 'ءَامَنتُمُۥ';
+        continue;
+      }
+      if (id == 'qunbul' && at == '7:123:2') {
+        const way = 'إبدال الهمزة الأولى واوًا وصلاً وتسهيل الثانية بلا إدخال';
+        v[4] = 'و${aamantum.substring(1)}';
+        while (v.length < 9) {
+          v.add(v.length == 8 ? <String, Object>{} : '');
+        }
+        v[6] = 'ب$way';
+        v[7] = 'tasheel_word';
+        v[8] = {
+          ...(v[8] is Map ? v[8] as Map : {}),
+          'context': 'فِرۡعَوۡنُ ءَامَنتُم',
+          'ways': [way],
+        };
+        continue;
+      }
+      if (v.length > 7 && v[7] == 'tasheel_word') {
+        const way = 'تحقيق الهمزة الأولى وتسهيل الثانية بلا إدخال';
+        v[4] = aamantum;
+        v[6] = 'ب$way';
+        if (v.length > 8 && v[8] is Map) {
+          v[8] = {
+            ...v[8] as Map,
+            'ways': [way],
+          };
+        }
       }
     }
     // «وَمَحۡيَايۡ» (الأنعام ١٦٢): Abu Ja'far's as Qalun's, one farsh and wording.
@@ -1793,6 +1907,21 @@ void main() {
     if (id == 'qalun') {
       for (final v in (data['variants'] as List).cast<List>()) {
         if (v[0] == 6 && v[1] == 96 && v[2] == 3) v[4] = 'ٱلَّيۡلِ';
+      }
+    }
+    // Ibn Kathir's «لَأَتِيَنَّهُمُۥ» (الأعراف ١٧) as Qalun's and Abu Ja'far's:
+    // no madda over its hamza, and no farsh.
+    if (id == 'bazzi' || id == 'qunbul') {
+      (data['variants'] as List).removeWhere(
+        (v) => v[0] == 7 && v[1] == 17 && v[2] == 1 && v[5] == 'f',
+      );
+      for (final v in (data['variants'] as List).cast<List>()) {
+        if (v[0] == 7 && v[1] == 17 && v[2] == 1) {
+          // Qalun's letters, the shadda before its fatha.
+          v[4] =
+              'لَأَتِيَ'
+              'نَّهُمُۥ';
+        }
       }
     }
     // Ibn Kathir's «أَئِ۬نَّكُمۡ»: Hafs's hamza with its kasra and the tasheel dot,
@@ -1817,6 +1946,85 @@ void main() {
     }
     file.writeAsStringSync(jsonEncode(data));
     stdout.writeln('$id: $counts');
+  }
+}
+
+/// Hafs's madda over the dagger alif of a ha or ya at a word's start (after
+/// a wa, fa or the question's hamza): the munfasil inside the word.
+final _inWordMunfasil = RegExp('^((?:[وفأ]َ)?[يه]َ)ٰٓ');
+
+/// Hafs's [word] read short: no madda over its munfasil (one with no hamza
+/// after it in the word), nor inside it after the ha or ya of the call.
+String _qasrOf(String word) {
+  final t = word.replaceFirstMapped(_inWordMunfasil, (m) => '${m[1]}ٰ');
+  final out = StringBuffer();
+  for (var i = 0; i < t.length; i++) {
+    if (t[i] == 'ٓ' && !RegExp('[ءأإؤئ]').hasMatch(t.substring(i + 1))) {
+      continue;
+    }
+    out.write(t[i]);
+  }
+  return out.toString();
+}
+
+/// The letters of a word alone, however its alifs, ya and marks are written.
+String _bareLetters(String t) => t
+    .replaceAll(RegExp('[ٱآأإٰ]'), 'ا')
+    .replaceAll(RegExp('[ىےی]'), 'ي')
+    .replaceAll(RegExp('[ً-ٟۖ-ۤۧ-ۭ‏]'), '')
+    .replaceAll(RegExp(r'ا$'), '');
+
+/// The rows told «بالقصر» written as Hafs's word without the madda, where
+/// their letters (and small waw and ya) are his.
+void _qasrAsHafs(Map quran, Map data) {
+  final hafs = {
+    for (final a in quran['ayahs'] as List)
+      '${a[0]}:${a[1]}': (a[4] as String).split(' '),
+  };
+  String small(String t) => t.replaceAll(RegExp('[^ۥۦ]'), '');
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] != 'u' || v[6] != 'بالقصر' || '${v[4]}'.isEmpty) continue;
+    final h = hafs['${v[0]}:${v[1]}']?.elementAtOrNull(v[2] as int);
+    if (h == null) continue;
+    final want = _qasrOf(h);
+    final t = '${v[4]}';
+    if (_bareLetters(t) == _bareLetters(want) && small(t) == small(want)) {
+      v[4] = want;
+    }
+  }
+}
+
+/// Abu Ja'far's munfasil inside a word, short: Qalun's row where Abu Ja'far
+/// has none; on his own rows there, the madda dropped.
+void _shortInWord(Map quran, Map qalun, Map data) {
+  final hafs = {
+    for (final a in quran['ayahs'] as List)
+      '${a[0]}:${a[1]}': (a[4] as String).split(' '),
+  };
+  bool inWord(List v) =>
+      _inWordMunfasil.hasMatch(hafs['${v[0]}:${v[1]}']?[v[2] as int] ?? '');
+  final rows = (data['variants'] as List).cast<List>();
+  final own = <String>{};
+  for (final v in rows) {
+    if (!inWord(v)) continue;
+    own.add('${v[0]}:${v[1]}:${v[2]}');
+    v[4] = '${v[4]}'.replaceFirstMapped(_inWordMunfasil, (m) => '${m[1]}ٰ');
+    v[4] = '${v[4]}'.replaceFirstMapped(
+      RegExp('^((?:[وفأ]َ)?[يه]َ)آ'),
+      (m) => '${m[1]}ٰ',
+    );
+    // One word, as Hafs writes it: «يَٰأَبَتَ», not «يَا أَبَتَ».
+    v[4] = '${v[4]}'.replaceFirstMapped(
+      RegExp('^((?:[وفأ]َ)?[يه]َٰ) '),
+      (m) => m[1]!,
+    );
+  }
+  for (final v in (qalun['variants'] as List).cast<List>()) {
+    if (v[5] != 'u' || v[6] != 'بالقصر' || !inWord(v)) continue;
+    if (own.contains('${v[0]}:${v[1]}:${v[2]}')) continue;
+    final copy = jsonDecode(jsonEncode(v)) as List;
+    copy[4] = '${copy[4]}'.replaceAll('‏', '');
+    rows.add(copy);
   }
 }
 

@@ -125,6 +125,7 @@ class Manzumat {
         _istuhiqqa(reading) ||
             _kharraqu(reading) ||
             _hisad(reading) ||
+            _aamantum(reading) ||
             _yaqubShatibiyya(reading) != null ||
             (_idghamDhal(reading, hafs) ||
                     reading.rule == 'hamza_zaida' ||
@@ -847,6 +848,22 @@ class Manzumat {
         'ibn_jammaz',
       }.contains(v.riwayaId);
 
+  /// «ءَآمَنتُم» (الأعراف ١٢٣، طه ٧١، الشعراء ٤٩) of Ashab al-Silah, Abu
+  /// Ja'far's too: «وَطه وفِي الأَعْرَافِ وَالشُّعَرَا بِهَا ءَآمَنْتُمُ ...».
+  bool _aamantum(Variant v) =>
+      const {
+        '7:123:2',
+        '20:71:1',
+        '26:49:1',
+      }.contains('${v.surah}:${v.ayah}:${v.word}') &&
+      const {
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      }.contains(v.riwayaId);
+
   /// «وَخَرَّقُواْ» (الأنعام ١٠٠) of Nafi' and Abu Ja'far: «خَرَّقُوا ثِقْلُهُ انْجَلَا».
   bool _kharraqu(Variant v) =>
       v.surah == 6 &&
@@ -865,6 +882,19 @@ class Manzumat {
   Set<int> _reviewedVerses(Poem poem, Variant v, String hafs) {
     if (poem == Poem.shatibiyya && _istuhiqqa(v)) return {627};
     if (poem == Poem.shatibiyya && _kharraqu(v)) return {656};
+    if (poem == Poem.shatibiyya && _aamantum(v)) return {189, 190, 191};
+    // Ibn Kathir's «ٱلرِّيحَ» (الأعراف ٥٧، النمل ٦٣، فاطر ٩): the verse that
+    // starts the word, «وَفِي الرِّيحِ تَوْحِيدٌ», with the one naming them,
+    // as in الروم.
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        const {
+          '7:57:3',
+          '27:63:8',
+          '35:9:3',
+        }.contains('${v.surah}:${v.ayah}:${v.word}')) {
+      return {490, 491};
+    }
     // Qalun's «وَمَحْيَآيْ» (الأنعام ١٦٢): «وَمَحْيَايَ وَالإِسْكَانُ صَحَّ تَحَمُّلَا».
     if (poem == Poem.shatibiyya &&
         v.riwayaId == 'qalun' &&
@@ -873,12 +903,30 @@ class Manzumat {
         v.word == 4) {
       return {680};
     }
+    // Abu Ja'far's «حَقِيقٌ عَلَىٰٓ» (الأعراف ١٠٥) as Hafs, not as Nafi':
+    // «أَلَا ... وَقُلْ عَلَى لَهُ».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        v.surah == 7 &&
+        v.ayah == 105 &&
+        v.word == 1) {
+      return {115, 116};
+    }
+    // Abu Ja'far's «بَصۡطَةٗ» (الأعراف ٦٩): «وَيَبْصُطْ بَصْطَةَ الْخَلْقِ يُعْتَلَا».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        v.surah == 7 &&
+        v.ayah == 69 &&
+        v.word == 21) {
+      return {81};
+    }
     // Abu Ja'far's «كَهَيَّةِ» (آل عمران ٤٩، المائدة ١١٠): «وَجُزْءًا ادْغِمْ كَهَيْئَهْ».
     if (poem == Poem.durrah &&
         qiraaOf(v.riwayaId).id == 'abu_jafar' &&
-        const {'3:49:15', '5:110:30'}.contains(
-          '${v.surah}:${v.ayah}:${v.word}',
-        )) {
+        const {
+          '3:49:15',
+          '5:110:30',
+        }.contains('${v.surah}:${v.ayah}:${v.word}')) {
       return {33};
     }
     // Abu Ja'far's «وَمَحْيَآيْ» (الأنعام ١٦٢): «وَغَيْرَ مَحْيَايَ».

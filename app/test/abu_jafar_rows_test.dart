@@ -758,6 +758,120 @@ void main() {
       expect(where('warsh', 6, 95, 2), isEmpty);
     });
 
+    test('la-atiyannahum of الأعراف ١٧: Ibn Kathir as Qalun, no madda', () {
+      final q = where('qalun', 7, 17, 1).single;
+      expect('${q[4]}', isNot(contains('ٓ')));
+      for (final id in ['bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz']) {
+        final rows = where(id, 7, 17, 1);
+        expect(rows.where((v) => v[5] == 'f'), isEmpty, reason: id);
+        expect(rows.single[4], q[4], reason: id);
+      }
+    });
+
+    test(
+      'the munfasil inside haa\'ulaa and the call is short, as Qalun\'s',
+      () {
+        for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+          for (final (s, a, w) in [(7, 38, 27), (2, 21, 0), (2, 85, 2)]) {
+            final v = where(id, s, a, w).single;
+            final q = where('qalun', s, a, w).single;
+            expect(v[4], q[4], reason: '$id $s:$a:$w');
+            expect(v[6], 'بالقصر');
+          }
+          for (final v in where(id, 12, 4, 4)) {
+            expect('${v[4]}', isNot(contains('ٓ')));
+            expect('${v[4]}', isNot(contains(' ')));
+          }
+        }
+      },
+    );
+
+    test('Ibn Wardan\'s la yukhriju of الأعراف ٥٨: two faces, vowelled', () {
+      final v = where('ibn_wardan', 7, 58, 9).single;
+      expect(v[6], startsWith('بخلف: '));
+      expect(v[6], contains('(يُخۡرِجُ)'));
+      expect(v[6], contains('(يَخۡرُجُ)، وهو الأرجح'));
+      expect((v[8] as Map)['ways'], hasLength(2));
+      expect(where('ibn_jammaz', 7, 58, 9), isEmpty);
+    });
+
+    test('a word told short is Hafs\'s word, its munfasil madda dropped', () {
+      // الأعراف ٧٤-٨٠, ص ١٦٠: Hafs's wasl, shadda and sukun, not Warsh's.
+      final alladhi = '${where('qalun', 7, 76, 4).single[4]}';
+      expect(alladhi, startsWith('بِٱل'));
+      expect(alladhi, contains('ّ'));
+      expect(alladhi, isNot(contains('ٓ')));
+      expect(where('qalun', 7, 74, 0).single[4], 'وَٱذۡكُرُواْ');
+      expect(where('qalun', 7, 74, 17).single[4], 'فَٱذۡكُرُواْ');
+      expect(where('qalun', 7, 74, 16).single[4], 'بِيُوتٗاۖ');
+      // «وَإِن وَجَدۡنَآ» (الأعراف ١٠٢، ص ١٦٣): no shadda on the waw, as Hafs.
+      for (final id in ['qalun', 'bazzi', 'ibn_wardan']) {
+        final v = where(id, 7, 102, 6).firstWhere((v) => '${v[4]}' != '');
+        expect('${v[4]}', isNot(contains('ّ')), reason: id);
+      }
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        for (final v in rowsOf(id)) {
+          expect('${v[4]}', isNot(matches(RegExp('ا[ًٗ]'))), reason: '$id $v');
+          if (v[5] == 'u' && v[6] == 'بالقصر') {
+            expect('${v[4]}', isNot(contains('ے')), reason: '$id $v');
+          }
+        }
+      }
+    });
+
+    test(
+      'arjih: Ibn Jammaz\'s silah in farsh and usul, Ibn Wardan\'s farsh',
+      () {
+        for (final (s, a) in [(7, 111), (26, 36)]) {
+          final j = where('ibn_jammaz', s, a, 1);
+          expect(j.map((v) => v[5]).toSet(), {'f', 'u'}, reason: '$s:$a');
+          for (final v in j) {
+            expect(v[4], 'أَرۡجِهِۦ');
+          }
+          expect(j.firstWhere((v) => v[5] == 'u')[7], 'ha_kinaya');
+          final w = where('ibn_wardan', s, a, 1).single;
+          expect(w[5], 'f');
+          expect('${w[4]}', isNot(contains('ۦ')));
+        }
+      },
+    );
+
+    test(
+      'a-amantum: the small alif on the eased one, no kashida, as Warsh\'s',
+      () {
+        for (final id in ['qalun', 'bazzi', 'ibn_wardan', 'ibn_jammaz']) {
+          for (final (s, a, w) in [(7, 123, 2), (20, 71, 1), (26, 49, 1)]) {
+            final v = where(
+              id,
+              s,
+              a,
+              w,
+            ).firstWhere((v) => v[7] == 'tasheel_word');
+            expect('${v[4]}', startsWith('ءَا۬ ٰ'), reason: '$id $s:$a');
+          }
+        }
+        final aaraf = where(
+          'qunbul',
+          7,
+          123,
+          2,
+        ).firstWhere((v) => '${v[4]}' != '');
+        expect('${aaraf[4]}', startsWith('وَا۬ ٰ'));
+        expect(aaraf[6], contains('واوًا وصلاً'));
+        expect('${where('qunbul', 20, 71, 1).single[4]}', isNot(contains('۬')));
+      },
+    );
+
+    test('Qalun reads yasta\'khiruna of الأعراف ٣٤ as Hafs', () {
+      expect(where('qalun', 7, 34, 7), isEmpty);
+    });
+
     test('atuhajjunni and hadani of الأنعام ٨٠', () {
       for (final id in ['ibn_wardan', 'ibn_jammaz']) {
         final hajj = where(id, 6, 80, 3).firstWhere((v) => v[5] == 'f');

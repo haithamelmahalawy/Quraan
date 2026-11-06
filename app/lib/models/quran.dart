@@ -148,6 +148,9 @@ class Variant {
     // ٱلۡهُدَى ٱئۡتِنَا: after the fatha, an alif in wasl.
     'ibdal_single' when description.startsWith('بإبدال الهمزة ألفًا وصلاً') =>
       'ا',
+    // Abu Ja'far's «يَٰصَٰلِحُ ٱئۡتِنَا»، «ٱؤۡتُمِنَ»: the hamza after the wasl
+    // a waw or a ya, its mark on Hafs's word, not the letter written in.
+    'ibdal_single' when RegExp('^ٱ[وي]').hasMatch(text) => text[1],
     'tasheel_pair'
         when riwayaId == 'warsh' &&
             usulText.contains(' ') &&

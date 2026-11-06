@@ -97,24 +97,60 @@ void main() {
     final glowing = find.byWidgetPredicate(
       (w) => w.runtimeType.toString() == '_Alerting',
     );
+    final rays = find.byKey(const ValueKey('glow-rays'));
+    final similar = find.byKey(const ValueKey('mutashabihat-toggle'));
     expect(lamp.hitTestable(), findsOneWidget);
+    expect(similar.hitTestable(), findsOneWidget);
+    // Beside the surah's name, to its left, on its line.
+    final at = t.getRect(lamp);
+    final names = [
+      for (final e
+          in find
+              .byWidgetPredicate(
+                (w) => w is Text && (w.data?.startsWith('سورة ') ?? false),
+              )
+              .evaluate())
+        t.getRect(find.byWidget(e.widget)),
+    ];
+    expect(
+      names.where(
+        (n) =>
+            n.left - at.right >= 0 &&
+            n.left - at.right < 12 &&
+            (at.center.dy - n.center.dy).abs() < 4,
+      ),
+      isNotEmpty,
+    );
+    expect(t.getRect(similar).right, lessThan(at.left));
     expect(glowing, findsNothing);
+    expect(rays, findsNothing);
+    // Out: nothing moves, so nothing is drawn again and again.
+    await t.pump(const Duration(seconds: 1));
+    expect(t.binding.hasScheduledFrame, isFalse);
     await t.tap(lamp);
     await t.pump();
     expect(settings.diffAlert, DiffAlert.glow);
     expect(glowing, findsWidgets);
-    // Still: nothing moves, so nothing is drawn again and again.
-    expect(t.binding.hasScheduledFrame, isFalse);
+    expect(rays, findsOneWidget);
     await t.tap(lamp);
     await t.pump();
     expect(settings.diffAlert, isNull);
     expect(glowing, findsNothing);
-    final before = t.getTopLeft(lamp);
-    await t.drag(lamp, const Offset(-200, -150));
+    expect(rays, findsNothing);
+    await t.tap(similar);
     await t.pump();
-    expect(t.getTopLeft(lamp).dx, lessThan(before.dx - 150));
-    expect(settings.lampAt.dx, lessThan(.9));
+    expect(settings.showMutashabihat, isFalse);
+    final before = t.getTopLeft(lamp);
+    await t.drag(lamp, const Offset(-150, 200));
+    await t.pump();
+    expect(t.getTopLeft(lamp).dx, lessThan(before.dx - 100));
+    expect(t.getTopLeft(lamp).dy, greaterThan(before.dy + 150));
+    expect(settings.lampAt, isNotNull);
     expect(settings.diffAlert, isNull);
+    await t.longPress(lamp);
+    await t.pump();
+    expect(settings.lampAt, isNull);
+    expect(t.getTopLeft(lamp), before);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();
   });

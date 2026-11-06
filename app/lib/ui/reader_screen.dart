@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
 import 'dart:async';
@@ -88,6 +89,9 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// Full-screen reading: no bars, no hamesh.
   bool _fullScreen = false;
   final _headerMiddle = ValueNotifier<double?>(null);
+
+  /// Where the surah's name of the page read is, on the screen.
+  final _surahName = ValueNotifier<Rect?>(null);
 
   /// While a page is zoomed in, drags pan it instead of turning pages.
   bool _zoomed = false;
@@ -417,6 +421,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       onPageNumberTap: _pickPage,
       // The arrow of the riwayat over the middle of the header in sight.
       onHeaderMiddle: number == _page ? (x) => _headerMiddle.value = x : null,
+      onSurahName: number == _page ? (r) => _surahName.value = r : null,
       // The QCF page fonts draw the Madinah pages only.
       qcf:
           widget.settings.qcfFont &&
@@ -596,19 +601,6 @@ class _ReaderScreenState extends State<ReaderScreen>
                             widget.settings.twoPages = !two;
                           },
                         ),
-                      RaisedIcon(
-                        icon: widget.settings.showMutashabihat
-                            ? Icons.highlight_rounded
-                            : Icons.highlight_off_rounded,
-                        tooltip: widget.settings.showMutashabihat
-                            ? 'إخفاء تظليل المتشابهات'
-                            : 'إظهار تظليل المتشابهات',
-                        color: widget.settings.showMutashabihat
-                            ? MushafColors.gold
-                            : null,
-                        onTap: () => widget.settings.showMutashabihat =
-                            !widget.settings.showMutashabihat,
-                      ),
                       // The double blink: turns the front camera on
                       // or off.
                       RaisedIcon(
@@ -752,7 +744,11 @@ class _ReaderScreenState extends State<ReaderScreen>
     children: [
       Positioned.fill(child: pages),
       Positioned.fill(
-        child: _GlowLamp(settings: widget.settings, onTap: _toggleGlow),
+        child: _GlowLamp(
+          settings: widget.settings,
+          surahName: _surahName,
+          onTap: _toggleGlow,
+        ),
       ),
       // What the last eye gesture did.
       Positioned(
@@ -921,77 +917,221 @@ class _EyeIndicator extends StatelessWidget {
   }
 }
 
-/// The lamp of «تنبيه الاختلافات», faint over the page so it hides
-/// nothing: a tap lights the words that differ from Hafs or puts them out;
-/// dragged, it stays where it is left.
+/// Beside the surah's name: the lamp of «تنبيه الاختلافات» (a tap lights
+/// the words that differ from Hafs, its rays flickering, or puts them out)
+/// and the button of the mutashabihat. Dragged, they stay where they are
+/// left; a long press brings them back beside the name.
 class _GlowLamp extends StatefulWidget {
-  const _GlowLamp({required this.settings, required this.onTap});
+  const _GlowLamp({
+    required this.settings,
+    required this.surahName,
+    required this.onTap,
+  });
 
   final ReaderSettings settings;
+  final ValueListenable<Rect?> surahName;
   final VoidCallback onTap;
 
   @override
   State<_GlowLamp> createState() => _GlowLampState();
 }
 
-class _GlowLampState extends State<_GlowLamp> {
-  static const _size = 40.0;
+class _GlowLampState extends State<_GlowLamp>
+    with SingleTickerProviderStateMixin {
+  static const _size = 34.0;
+  static const _gap = 4.0;
+  static const _width = 2 * _size + _gap;
+
+  /// The rays: flickering only while the lamp is lit, so nothing moves
+  /// (nor is drawn again) when it is out.
+  late final _rays = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+
+  /// Where the lamp is while dragged, in pixels.
   Offset? _dragged;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, box) {
-      final room = Size(
-        math.max(box.maxWidth - _size, 1),
-        math.max(box.maxHeight - _size, 1),
-      );
-      final at = _dragged ?? widget.settings.lampAt;
-      final lit = widget.settings.diffAlert != null;
-      return Stack(
-        children: [
-          Positioned(
-            left: at.dx.clamp(0.0, 1.0) * room.width,
-            top: at.dy.clamp(0.0, 1.0) * room.height,
-            child: Tooltip(
-              message: lit ? 'إطفاء توهج الاختلافات' : 'توهج الاختلافات',
+  void dispose() {
+    _rays.dispose();
+    super.dispose();
+  }
+
+  void _syncRays(bool lit) {
+    if (!lit) {
+      if (_rays.isAnimating) _rays.stop();
+      _rays.value = 0;
+    } else if (!_rays.isAnimating) {
+      _rays.repeat(reverse: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([widget.settings, widget.surahName]),
+    builder: (context, _) => LayoutBuilder(
+      builder: (context, box) {
+        final room = Size(
+          math.max(box.maxWidth - _width, 1),
+          math.max(box.maxHeight - _size, 1),
+        );
+        final lit = widget.settings.diffAlert != null;
+        _syncRays(lit);
+        final at = _dragged ?? _place(context, room);
+        return Stack(
+          children: [
+            Positioned(
+              left: at.dx.clamp(0.0, room.width),
+              top: at.dy.clamp(0.0, room.height),
               child: GestureDetector(
-                key: const ValueKey('glow-lamp'),
-                behavior: HitTestBehavior.opaque,
-                onTap: widget.onTap,
+                behavior: HitTestBehavior.translucent,
+                onPanStart: (_) => _dragged = at,
                 onPanUpdate: (d) => setState(() {
-                  final from = _dragged ?? widget.settings.lampAt;
+                  final p = (_dragged ?? at) + d.delta;
                   _dragged = Offset(
-                    (from.dx + d.delta.dx / room.width).clamp(0.0, 1.0),
-                    (from.dy + d.delta.dy / room.height).clamp(0.0, 1.0),
+                    p.dx.clamp(0.0, room.width),
+                    p.dy.clamp(0.0, room.height),
                   );
                 }),
                 onPanEnd: (_) {
-                  if (_dragged != null) widget.settings.lampAt = _dragged!;
-                  setState(() => _dragged = null);
+                  final p = _dragged;
+                  _dragged = null;
+                  if (p != null) {
+                    widget.settings.lampAt = Offset(
+                      p.dx / room.width,
+                      p.dy / room.height,
+                    );
+                  }
                 },
-                child: Opacity(
-                  opacity: lit ? .45 : .25,
-                  child: Container(
-                    width: _size,
-                    height: _size,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: lit
-                          ? MushafColors.gold.withAlpha(90)
-                          : MushafColors.green.withAlpha(40),
-                    ),
-                    child: Icon(
-                      lit ? Icons.lightbulb : Icons.lightbulb_outline,
-                      size: 24,
-                      color: lit ? MushafColors.gold : MushafColors.green,
-                    ),
+                onLongPress: () => widget.settings.lampAt = null,
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _lamp(lit),
+                      const SizedBox(width: _gap),
+                      _mutashabihat(),
+                    ],
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      );
-    },
+          ],
+        );
+      },
+    ),
   );
+
+  /// Where it was left; else beside the surah's name, to its left.
+  Offset _place(BuildContext context, Size room) {
+    final left = widget.settings.lampAt;
+    if (left != null) {
+      return Offset(left.dx * room.width, left.dy * room.height);
+    }
+    final name = widget.surahName.value;
+    final box = context.findRenderObject();
+    if (name == null || box is! RenderBox || !box.attached) {
+      return Offset(room.width, 0);
+    }
+    final local = box.globalToLocal(name.centerLeft);
+    return Offset(local.dx - _gap - _width, local.dy - _size / 2);
+  }
+
+  Widget _lamp(bool lit) => Tooltip(
+    // The long press brings it back beside the name.
+    triggerMode: TooltipTriggerMode.manual,
+    message: lit ? 'إطفاء توهج الاختلافات' : 'توهج الاختلافات',
+    child: GestureDetector(
+      key: const ValueKey('glow-lamp'),
+      onTap: widget.onTap,
+      child: RepaintBoundary(
+        child: CustomPaint(
+          key: lit ? const ValueKey('glow-rays') : null,
+          painter: lit ? _Rays(_rays, MushafColors.gold) : null,
+          child: Opacity(
+            opacity: lit ? .9 : .65,
+            child: Container(
+              width: _size,
+              height: _size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: (lit ? MushafColors.gold : MushafColors.green).withAlpha(
+                  lit ? 70 : 35,
+                ),
+                border: Border.all(
+                  color: (lit ? MushafColors.gold : MushafColors.green)
+                      .withAlpha(150),
+                ),
+              ),
+              child: Icon(
+                lit ? Icons.lightbulb : Icons.lightbulb_outline,
+                size: 20,
+                color: lit ? MushafColors.gold : MushafColors.green,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _mutashabihat() {
+    final on = widget.settings.showMutashabihat;
+    final colour = on ? MushafColors.gold : MushafColors.green;
+    return Tooltip(
+      triggerMode: TooltipTriggerMode.manual,
+      message: on ? 'إخفاء تظليل المتشابهات' : 'إظهار تظليل المتشابهات',
+      child: GestureDetector(
+        key: const ValueKey('mutashabihat-toggle'),
+        onTap: () => widget.settings.showMutashabihat = !on,
+        child: Opacity(
+          opacity: on ? .9 : .65,
+          child: Container(
+            width: _size,
+            height: _size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colour.withAlpha(on ? 70 : 35),
+              border: Border.all(color: colour.withAlpha(150)),
+            ),
+            // Two pages alike, one over the other.
+            child: Icon(
+              on ? Icons.difference_rounded : Icons.difference_outlined,
+              size: 19,
+              color: colour,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Short rays around the lit lamp, coming and going.
+class _Rays extends CustomPainter {
+  _Rays(this.t, this.color) : super(repaint: t);
+
+  final Animation<double> t;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final v = Curves.easeInOut.transform(t.value);
+    final c = size.center(Offset.zero);
+    final r = size.shortestSide / 2;
+    final paint = Paint()
+      ..color = color.withValues(alpha: .25 + .75 * v)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 8; i++) {
+      final a = i * math.pi / 4;
+      final d = Offset(math.cos(a), math.sin(a));
+      canvas.drawLine(c + d * (r + 2), c + d * (r + 3 + 4 * v), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Rays old) => old.color != color;
 }
