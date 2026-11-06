@@ -57,7 +57,7 @@ class BaytExplanation {
 /// tool/build_manzumat.dart from Quranpedia's books), and the place of a
 /// reading in them.
 class Manzumat {
-  Manzumat._(this._verses, this._explanations);
+  Manzumat._(this._verses, this._explanations, this._durrahExplanations);
 
   final Map<Poem, List<Bayt>> _verses;
   final Map<int, BaytExplanation> _explanations;
@@ -86,23 +86,40 @@ class Manzumat {
     final explanations = jsonDecode(
       await bundle.loadString('assets/data/poem_explanations.json'),
     ) as Map<String, dynamic>;
-    return Manzumat._(
-      {Poem.shatibiyya: verses('shatibiyya'), Poem.durrah: verses('durrah')},
-      {
-        for (final e in explanations['shatibiyya'] as List)
-          e[0] as int: BaytExplanation(
+    Map<int, BaytExplanation> explained(String poem, Object? source) => {
+      for (final e in explanations[poem] as List? ?? const [])
+        // Told once, under each bayt of the group it explains.
+        for (final n in (e[4] as List).cast<int>())
+          n: BaytExplanation(
             e[1] as String,
-            (e.length > 5 ? e[5] : explanations['source']) as String,
+            (e.length > 5 ? e[5] : source) as String,
             e[2] as String,
             e[3] as String,
             (e[4] as List).cast<int>(),
           ),
-      },
+    };
+    final shatibiyya = {
+      for (final e in explanations['shatibiyya'] as List)
+        e[0] as int: BaytExplanation(
+          e[1] as String,
+          (e.length > 5 ? e[5] : explanations['source']) as String,
+          e[2] as String,
+          e[3] as String,
+          (e[4] as List).cast<int>(),
+        ),
+    };
+    return Manzumat._(
+      {Poem.shatibiyya: verses('shatibiyya'), Poem.durrah: verses('durrah')},
+      shatibiyya,
+      explained('durrah', explanations['durrahSource']),
     );
   }
 
+  /// The Durrah's sharh: al-Zubaydi's, under each bayt it explains.
+  final Map<int, BaytExplanation> _durrahExplanations;
+
   BaytExplanation? explanation(Poem poem, int n) =>
-      poem == Poem.shatibiyya ? _explanations[n] : null;
+      poem == Poem.shatibiyya ? _explanations[n] : _durrahExplanations[n];
 
   List<Bayt> verses(Poem poem) => _verses[poem]!;
 

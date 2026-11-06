@@ -1144,6 +1144,39 @@ void main() {
     }
   });
 
+  test("the Durrah's bayts have al-Zubaydi's sharh, its letters put back", () {
+    final told = [
+      for (final b in manzumat.verses(Poem.durrah))
+        if (manzumat.explanation(Poem.durrah, b.n) != null) b.n,
+    ];
+    expect(told.length, greaterThan(200));
+    final e = manzumat.explanation(Poem.durrah, 10)!;
+    expect(e.source, contains('الزبيدي'));
+    expect(e.text, contains('الاستعاذة'));
+    // «أَلَا ... وَقُلْ عَلَى لَهُ» (115-116) told together.
+    expect(manzumat.explanation(Poem.durrah, 115), isNotNull);
+    final all = {
+      for (final b in manzumat.verses(Poem.durrah))
+        manzumat.explanation(Poem.durrah, b.n)?.text ?? '',
+    }.join(' ');
+    // The font's letters: «عمى» for «على»، «ىذا» for «هذا»، «كتابو» for «كتابه».
+    for (final wrong in ['عمى', 'ىذا', 'اليمز', 'كتابو', 'ازلت']) {
+      // A word of its own: «أعمى»، «العمى» are words.
+      expect(
+        all,
+        isNot(
+          matches(RegExp('(^|[^ء-ي])$wrong([^ء-ي]|\$)')),
+        ),
+        reason: wrong,
+      );
+    }
+    // The Shatibiyya's, Abu Shama's, as it was.
+    expect(
+      manzumat.explanation(Poem.shatibiyya, 1)!.source,
+      contains('أبو شامة'),
+    );
+  });
+
   test("Abu Ja'far's «يُنَجِّيكُم» cites «بِثَانٍ أَتَى»", () {
     for (final a in [63, 64]) {
       final v = Variant(
@@ -2866,7 +2899,11 @@ void main() {
         manzumat.explanation(Poem.shatibiyya, 183)!.text,
         isNot(manzumat.explanation(Poem.shatibiyya, 226)!.text),
       );
-      expect(manzumat.explanation(Poem.durrah, 183), isNull);
+      // The Durrah's bayts have a sharh of their own, not Abu Shama's.
+      expect(
+        manzumat.explanation(Poem.durrah, 183)?.source,
+        isNot(contains('أبو شامة')),
+      );
     },
   );
 }

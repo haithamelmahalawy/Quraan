@@ -23,7 +23,11 @@ class RiwayatPanel extends StatefulWidget {
     required this.variants,
     required this.child,
     this.arrowAt,
+    this.onJam,
   });
+
+  /// Opens «الجمع للقراءات العشر» at the page read; no button without it.
+  final VoidCallback? onJam;
 
   /// Where the middle of the page's header is, for the arrow; the middle of the
   /// screen without it.
@@ -457,6 +461,31 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                     ),
                   ),
                 ),
+                if (widget.onJam != null)
+                  InkWell(
+                    key: const ValueKey('riwayat-jam'),
+                    onTap: widget.onJam,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: MushafColors.gold.withAlpha(60),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: MushafColors.gold),
+                      ),
+                      child: const Text(
+                        'الجمع للقراءات العشر',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
                 if (s.selected.isNotEmpty || s.compareHafs)
                   InkWell(
                     key: const ValueKey('riwayat-clear'),

@@ -18,6 +18,7 @@ import '../services/qcf_fonts.dart';
 import '../state/reader_settings.dart';
 import 'ayah_sheet.dart';
 import 'book_pager.dart';
+import 'jam_screen.dart';
 import 'mushaf_page.dart';
 import 'page_side_hint.dart';
 import 'mutashabihat_sheet.dart';
@@ -471,6 +472,17 @@ class _ReaderScreenState extends State<ReaderScreen>
       settings: widget.settings,
       variants: widget.variants,
       arrowAt: two ? null : _headerMiddle,
+      // «الجمع للقراءات العشر»: a screen of its own, at the page read.
+      onJam: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => JamScreen(
+            quran: _quran,
+            variants: widget.variants,
+            page: _page,
+            settings: widget.settings,
+          ),
+        ),
+      ),
       child: _withHint(book),
     );
 
