@@ -271,7 +271,7 @@ class _JamScreenState extends State<JamScreen> {
                       // the small page, down to the player.
                       ConstrainedBox(
                         constraints: BoxConstraints(
-                          maxHeight: box.maxHeight * .5,
+                          maxHeight: box.maxHeight * .62,
                         ),
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
@@ -281,7 +281,7 @@ class _JamScreenState extends State<JamScreen> {
                               // Small enough to leave the ayah in sight.
                               ConstrainedBox(
                                 constraints: BoxConstraints(
-                                  maxHeight: box.maxHeight * .28,
+                                  maxHeight: box.maxHeight * .2,
                                 ),
                                 child: FittedBox(
                                   child: SizedBox(
@@ -303,7 +303,23 @@ class _JamScreenState extends State<JamScreen> {
                               const SizedBox(height: 10),
                               _header(r, readings.length),
                               const SizedBox(height: 8),
-                              _ayahText(r),
+                              // Whole: made smaller as much as it needs to fit.
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight: math.max(
+                                    80.0,
+                                    box.maxHeight * .42 - 60,
+                                  ),
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.topCenter,
+                                  child: SizedBox(
+                                    width: box.maxWidth - 24,
+                                    child: _ayahText(r),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -453,7 +469,15 @@ class _JamScreenState extends State<JamScreen> {
   Widget _ayahText(JamReading r) {
     final ayah = _ayahs[_ayah];
     final numbers = _citations(r).numbers;
-    const size = 30.0;
+    // Smaller as the ayah is longer, so it is seen whole.
+    final words = r.words.where((w) => w.isNotEmpty).length;
+    final size = words <= 12
+        ? 28.0
+        : words <= 30
+        ? 24.0
+        : words <= 60
+        ? 20.0
+        : 16.0;
     return Container(
       key: const ValueKey('jam-ayah-text'),
       padding: const EdgeInsets.all(12),
