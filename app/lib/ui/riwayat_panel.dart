@@ -24,10 +24,15 @@ class RiwayatPanel extends StatefulWidget {
     required this.child,
     this.arrowAt,
     this.onJam,
+    this.onJamSelected,
   });
 
   /// Opens «الجمع للقراءات العشر» at the page read; no button without it.
   final VoidCallback? onJam;
+
+  /// Opens «جمع الروايات المختارة»: the jam' of the riwayat chosen, Hafs
+  /// among them when the mushaf shows him or compares with him.
+  final ValueChanged<Set<String>>? onJamSelected;
 
   /// Where the middle of the page's header is, for the arrow; the middle of the
   /// screen without it.
@@ -278,13 +283,23 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                   ),
                   Tooltip(
                     message: 'عرض المصحف برواية ${r.nameAr}',
-                    child: _box(
-                      key: ValueKey('riwaya-show-${r.id}'),
-                      value: r.id == hafsId
-                          ? s.displayed == null
-                          : s.displayed == r.id,
-                      color: MushafColors.green,
-                      onChanged: (_) => _keepingInPlace(q, () => _show(r.id)),
+                    // On or off: the mushaf shown in this riwaya.
+                    child: SizedBox(
+                      height: 20,
+                      child: FittedBox(
+                        child: Switch(
+                          key: ValueKey('riwaya-show-${r.id}'),
+                          value: r.id == hafsId
+                              ? s.displayed == null
+                              : s.displayed == r.id,
+                          activeThumbColor: Colors.white,
+                          activeTrackColor: MushafColors.green,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          onChanged: (_) =>
+                              _keepingInPlace(q, () => _show(r.id)),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -477,7 +492,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                         border: Border.all(color: MushafColors.gold),
                       ),
                       child: const Text(
-                        'الجمع للقراءات العشر',
+                        'أجمع العشر',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -485,6 +500,45 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                         ),
                       ),
                     ),
+                  ),
+                if (widget.onJamSelected != null)
+                  Builder(
+                    builder: (context) {
+                      final chosen = {
+                        ...s.selected,
+                        if (s.displayed == null || s.compareHafs) hafsId,
+                      };
+                      final enabled = chosen.length >= 2;
+                      return InkWell(
+                        key: const ValueKey('riwayat-jam-selected'),
+                        onTap: enabled
+                            ? () => widget.onJamSelected!(chosen)
+                            : null,
+                        child: Opacity(
+                          opacity: enabled ? 1 : .45,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: MushafColors.green.withAlpha(90),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: MushafColors.gold),
+                            ),
+                            child: const Text(
+                              'أجمع المختار من الروايات',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 if (s.selected.isNotEmpty || s.compareHafs)
                   InkWell(

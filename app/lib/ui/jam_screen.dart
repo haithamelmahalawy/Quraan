@@ -32,7 +32,12 @@ class JamScreen extends StatefulWidget {
     this.settings,
     this.player,
     this.recitations,
+    this.riwayat,
   });
+
+  /// «جمع الروايات المختارة»: these riwayat alone, in the order of the ten;
+  /// the twenty when null.
+  final Set<String>? riwayat;
 
   final QuranRepository quran;
   final VariantRepository variants;
@@ -48,7 +53,9 @@ class JamScreen extends StatefulWidget {
 }
 
 class _JamScreenState extends State<JamScreen> {
-  late final List<Ayah> _ayahs = widget.quran.page(widget.page);
+  /// The page gathered; at its end the next one, from its first ayah.
+  late int _page = widget.page;
+  late List<Ayah> _ayahs = widget.quran.page(_page);
   late final Future<void> _loading = Future.wait([
     widget.variants.ensureLoaded([
       for (final id in jamOrder)
@@ -100,7 +107,9 @@ class _JamScreenState extends State<JamScreen> {
 
   List<String> get _riwayat => [
     for (final id in jamOrder)
-      if (id == hafsId || widget.variants.isAvailable(id)) id,
+      if ((id == hafsId || widget.variants.isAvailable(id)) &&
+          (widget.riwayat?.contains(id) ?? true))
+        id,
   ];
 
   List<JamReading> _readingsOf(int i) =>
@@ -111,9 +120,22 @@ class _JamScreenState extends State<JamScreen> {
     return readings[_reading.clamp(0, readings.length - 1)];
   }
 
-  bool get _atStart => _ayah == 0 && _reading == 0;
+  bool get _atStart => _page == 1 && _ayah == 0 && _reading == 0;
   bool get _atEnd =>
-      _ayah == _ayahs.length - 1 && _reading == _readingsOf(_ayah).length - 1;
+      _page == widget.quran.pageCount &&
+      _ayah == _ayahs.length - 1 &&
+      _reading == _readingsOf(_ayah).length - 1;
+
+  /// Turns to [page], at its first ayah, or its last reading when [last].
+  void _turnTo(int page, {bool last = false}) => setState(() {
+    _page = page;
+    _ayahs = widget.quran.page(page);
+    _byAyah.clear();
+    _read.clear();
+    _ayah = last ? _ayahs.length - 1 : 0;
+    _reading = last ? _readingsOf(_ayah).length - 1 : 0;
+    _read.addAll(_current.riwayat);
+  });
 
   /// Shows the reading at [ayah], [reading], its riwayat ticked.
   void _show(int ayah, int reading) => setState(() {
@@ -128,6 +150,8 @@ class _JamScreenState extends State<JamScreen> {
       _show(_ayah, _reading + 1);
     } else if (_ayah < _ayahs.length - 1) {
       _show(_ayah + 1, 0);
+    } else if (_page < widget.quran.pageCount) {
+      _turnTo(_page + 1);
     }
   }
 
@@ -136,6 +160,8 @@ class _JamScreenState extends State<JamScreen> {
       _show(_ayah, _reading - 1);
     } else if (_ayah > 0) {
       _show(_ayah - 1, _readingsOf(_ayah - 1).length - 1);
+    } else if (_page > 1) {
+      _turnTo(_page - 1, last: true);
     }
   }
 
@@ -209,7 +235,12 @@ class _JamScreenState extends State<JamScreen> {
     textDirection: TextDirection.rtl,
     child: Scaffold(
       backgroundColor: MushafColors.page,
-      appBar: AppBar(title: Text('الجمع للقراءات العشر • ص ${widget.page}')),
+      appBar: AppBar(
+        title: Text(
+          '${widget.riwayat == null ? 'الجمع للقراءات العشر' : 'جمع الروايات المختارة'}'
+          ' • ص $_page',
+        ),
+      ),
       body: FutureBuilder(
         future: _loading,
         builder: (context, snap) {
@@ -228,6 +259,7 @@ class _JamScreenState extends State<JamScreen> {
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
                   children: [
                     _QurraBoard(
+                      shown: _riwayat.toSet(),
                       read: _read,
                       current: r.riwayat.toSet(),
                       onTap: (id) => _manual(() {
@@ -258,6 +290,7 @@ class _JamScreenState extends State<JamScreen> {
   Widget _ayahStrip() => SizedBox(
     height: 44,
     child: ListView(
+      key: ValueKey('jam-strip-$_page'),
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       children: [
@@ -546,11 +579,14 @@ class _JamScreenState extends State<JamScreen> {
 /// raised. Tapped, a riwaya shows its reading.
 class _QurraBoard extends StatelessWidget {
   const _QurraBoard({
+    required this.shown,
     required this.read,
     required this.current,
     required this.onTap,
   });
 
+  /// The riwayat of the jam': the others are left off the board.
+  final Set<String> shown;
   final Set<String> read;
   final Set<String> current;
   final ValueChanged<String> onTap;
@@ -587,7 +623,10 @@ class _QurraBoard extends StatelessWidget {
         alignment: WrapAlignment.center,
         spacing: 5,
         runSpacing: 5,
-        children: [for (final q in qiraat) _qari(q)],
+        children: [
+          for (final q in qiraat)
+            if (q.riwayat.any((r) => shown.contains(r.id))) _qari(q),
+        ],
       ),
     ),
   );
@@ -618,7 +657,8 @@ class _QurraBoard extends StatelessWidget {
             fontSize: 11,
           ),
         ),
-        for (final r in q.riwayat) _riwaya(r.id, q.color),
+        for (final r in q.riwayat)
+          if (shown.contains(r.id)) _riwaya(r.id, q.color),
       ],
     ),
   );

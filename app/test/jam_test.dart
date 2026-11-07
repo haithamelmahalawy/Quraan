@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/jam.dart';
+import 'package:qiraat_mushaf/data/kharouf.dart';
+import 'package:qiraat_mushaf/data/manzumat.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/qiraat_catalog.dart';
@@ -20,6 +22,9 @@ void main() {
     quran = await QuranRepository.load();
     variants = await VariantRepository.discover();
     await variants.ensureLoaded(variants.available);
+    // Loaded here, not in a test's own time, so each screen finds them.
+    await Manzumat.load();
+    await Kharouf.load();
   });
 
   test('the twenty, Qalun first, each once in each ayah, in their order', () {
@@ -140,6 +145,50 @@ void main() {
       expect(find.text(jamName(second.last.lead)), findsOneWidget);
       expect(ticked(other), isTrue);
     }
+    await t.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('at the end of the page, on to the next from its first ayah', (
+    t,
+  ) async {
+    t.view.physicalSize = const Size(430, 860);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: JamScreen(quran: quran, variants: variants, page: 1),
+      ),
+    );
+    for (
+      var i = 0;
+      i < 100 && find.byKey(const ValueKey('jam-lead')).evaluate().isEmpty;
+      i++
+    ) {
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await t.pump();
+    }
+    final steps = [
+      for (final a in quran.page(1)) jamReadings(a, variants).length,
+    ].fold(0, (a, b) => a + b);
+    for (var i = 0; i < steps; i++) {
+      await t.tap(find.byKey(const ValueKey('jam-next')));
+      await t.pump();
+    }
+    expect(find.textContaining('ص 2'), findsOneWidget);
+    expect(
+      t.widget<ChoiceChip>(find.byKey(const ValueKey('jam-ayah-0'))).selected,
+      isTrue,
+    );
+    expect(find.text('قالون عن نافع'), findsOneWidget);
+    // And back: the last reading of the page before.
+    await t.tap(find.byKey(const ValueKey('jam-previous')));
+    await t.pump();
+    expect(find.textContaining('ص 1'), findsOneWidget);
+    final n = jamReadings(quran.page(1).last, variants).length;
+    expect(find.text('القراءة $n من $n'), findsOneWidget);
     await t.pumpWidget(const SizedBox());
   });
 

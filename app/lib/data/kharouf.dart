@@ -1,6 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/services.dart';
+
+import 'background_json.dart';
 
 /// A note of the book without its references to its own pages («انظر ص
 /// ٣٣٢»): the margin tells each word itself, not where else to look.
@@ -88,7 +88,8 @@ class Kharouf {
     final raw = await (bundle ?? rootBundle).loadString(
       'assets/data/kharouf.json',
     );
-    final json = jsonDecode(raw) as Map<String, dynamic>;
+    // Off the thread that draws the pages.
+    final json = await decodeJsonApart(raw) as Map<String, dynamic>;
     final index = <int, List<KharoufEntry>>{};
     final entries = <KharoufEntry>[];
     for (final e in json['entries'] as List) {

@@ -153,6 +153,18 @@ class TafsirRepository {
   }
 }
 
+/// The server reached but not answering with the text: busy (429), failing
+/// (5xx), or a page in its place.
+class TafsirServerException extends http.ClientException {
+  TafsirServerException(this.status, Uri uri, {this.retryAfter})
+    : super('HTTP $status', uri);
+
+  final int status;
+
+  /// The seconds it asks to be left, if it says.
+  final int? retryAfter;
+}
+
 /// An ayah's text in a book read online; null when the book has none for it.
 /// Throws when it cannot be reached.
 Future<String?> fetchTafsirAyah(
@@ -167,9 +179,19 @@ Future<String?> fetchTafsirAyah(
   final response = await client.get(uri).timeout(const Duration(seconds: 20));
   if (response.statusCode == 404) return null;
   if (response.statusCode != 200) {
-    throw http.ClientException('HTTP ${response.statusCode}', uri);
+    throw TafsirServerException(
+      response.statusCode,
+      uri,
+      retryAfter: int.tryParse(response.headers['retry-after'] ?? ''),
+    );
   }
-  final json = jsonDecode(utf8.decode(response.bodyBytes));
+  final Object? json;
+  try {
+    json = jsonDecode(utf8.decode(response.bodyBytes));
+  } on FormatException {
+    // A page in place of the book's answer: the server's, not the connection.
+    throw TafsirServerException(response.statusCode, uri);
+  }
   final text = [
     for (final c in (json is Map ? json['content'] as List? : null) ?? const [])
       tafsirText((c as Map)['text'] as String? ?? ''),

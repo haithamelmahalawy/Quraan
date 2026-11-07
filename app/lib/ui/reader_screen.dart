@@ -8,6 +8,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 
+import '../data/background_json.dart';
+import '../data/kharouf.dart';
+import '../data/manzumat.dart';
 import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
@@ -206,7 +209,17 @@ class _ReaderScreenState extends State<ReaderScreen>
     AyahPlayer.instance.addListener(_onRecitation);
     _onSettings();
     _showSide();
+    // The poems, their sharhs and the book read ahead, after the page is up,
+    // so the first word opened shows its witnesses at once.
+    if (!runningTests) {
+      _readAhead = Timer(const Duration(seconds: 2), () {
+        Manzumat.load();
+        Kharouf.load();
+      });
+    }
   }
+
+  Timer? _readAhead;
 
   /// The ayah recited when last seen.
   (int, int)? _recited;
@@ -233,6 +246,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _blinks?.cancel();
     _blink.dispose();
     _settle?.cancel();
+    _readAhead?.cancel();
     _gestureLabelTimer?.cancel();
     _hint.dispose();
     _currentPicture?.dispose();
@@ -480,6 +494,18 @@ class _ReaderScreenState extends State<ReaderScreen>
             variants: widget.variants,
             page: _page,
             settings: widget.settings,
+          ),
+        ),
+      ),
+      // «جمع الروايات المختارة»: the same, the riwayat chosen alone.
+      onJamSelected: (chosen) => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => JamScreen(
+            quran: _quran,
+            variants: widget.variants,
+            page: _page,
+            settings: widget.settings,
+            riwayat: chosen,
           ),
         ),
       ),

@@ -1,10 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/services.dart';
 
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import 'arabic.dart';
+import 'background_json.dart';
 import 'kharouf.dart';
 
 /// One verse of a poem: its number, its chapter and its two halves.
@@ -71,7 +70,8 @@ class Manzumat {
       _loading ??= _load(bundle ?? rootBundle);
 
   static Future<Manzumat> _load(AssetBundle bundle) async {
-    final json = jsonDecode(
+    // Off the thread that draws the pages.
+    final json = await decodeJsonApart(
       await bundle.loadString('assets/data/manzumat.json'),
     ) as Map<String, dynamic>;
     List<Bayt> verses(String key) => [
@@ -83,7 +83,7 @@ class Manzumat {
           ajz: v[3] as String,
         ),
     ];
-    final explanations = jsonDecode(
+    final explanations = await decodeJsonApart(
       await bundle.loadString('assets/data/poem_explanations.json'),
     ) as Map<String, dynamic>;
     Map<int, BaytExplanation> explained(String poem, Object? source) => {
@@ -132,6 +132,49 @@ class Manzumat {
   /// stated, with the surah names of the mushaf ([surahNames], 1-based by
   /// number - 1) to find the chapter of the farsh.
   Reference referenceOf(
+    Variant reading,
+    String hafs,
+    int surah,
+    List<String> surahNames, {
+    Iterable<KharoufEntry> entries = const [],
+  }) {
+    // Each word's witnesses found once: a word opened again shows at once.
+    final key = [
+      identityHashCode(reading),
+      reading.riwayaId,
+      reading.surah,
+      reading.ayah,
+      reading.word,
+      reading.count,
+      reading.kind.name,
+      reading.rule,
+      reading.text,
+      reading.description,
+      hafs,
+      surah,
+      for (final e in entries) identityHashCode(e),
+    ].join('|');
+    final kept = _references.remove(key);
+    if (kept != null) return _references[key] = kept;
+    final found = _referenceOf(
+      reading,
+      hafs,
+      surah,
+      surahNames,
+      entries: entries,
+    );
+    _references[key] = found;
+    if (_references.length > referencesKept) {
+      _references.remove(_references.keys.first);
+    }
+    return found;
+  }
+
+  /// The words whose witnesses are kept, the last opened.
+  static const referencesKept = 500;
+  final _references = <String, Reference>{};
+
+  Reference _referenceOf(
     Variant reading,
     String hafs,
     int surah,

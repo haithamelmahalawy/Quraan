@@ -24,8 +24,12 @@ void main() {
     return http.Response('{"content":[{"text":"text $surah:$ayah"}]}', 200);
   }
 
-  ReadingDownloads downloads(http.Client client) =>
-      ReadingDownloads(client: client, root: () async => root, concurrency: 2);
+  ReadingDownloads downloads(http.Client client) => ReadingDownloads(
+    client: client,
+    root: () async => root,
+    concurrency: 2,
+    retryDelay: (_) => Duration.zero,
+  );
 
   test('a book comes down whole and is read from the device', () async {
     var calls = 0;
@@ -96,6 +100,61 @@ void main() {
     expect(again.statusOf(book).status, DownloadStatus.complete);
     expect(again.statusOf(book).error, isNull);
   });
+
+  test('a failing ayah tried again does not stop the book', () async {
+    final tries = <String, int>{};
+    final d = downloads(
+      MockClient((r) async {
+        final key = r.url.path;
+        tries[key] = (tries[key] ?? 0) + 1;
+        // Busy twice, then answers.
+        if (tries[key]! <= 2) return http.Response('busy', 429);
+        return answer(r);
+      }),
+    );
+    await d.download(book, counts);
+    expect(d.statusOf(book).status, DownloadStatus.complete);
+    expect(d.statusOf(book).error, isNull);
+  });
+
+  test(
+    'a server that will not answer is told apart from no connection',
+    () async {
+      final d = downloads(MockClient((_) async => http.Response('down', 503)));
+      await d.download(book, counts);
+      expect(d.statusOf(book).status, DownloadStatus.paused);
+      expect(d.statusOf(book).error, ReadingDownloads.serverBusy);
+      // A page in place of the answer: the server's too.
+      final page = downloads(
+        MockClient((_) async => http.Response('<html>', 200)),
+      );
+      await page.download(book, counts);
+      expect(page.statusOf(book).error, ReadingDownloads.serverBusy);
+    },
+  );
+
+  test(
+    'books downloaded together ask no more at once than the limit',
+    () async {
+      var asking = 0, most = 0;
+      final d = downloads(
+        MockClient((r) async {
+          most = asking + 1 > most ? asking + 1 : most;
+          asking++;
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+          asking--;
+          return answer(r);
+        }),
+      );
+      await Future.wait([
+        for (final b in [136, 4, 2, 184]) d.download(b, counts),
+      ]);
+      expect(most, 2);
+      for (final b in [136, 4, 2, 184]) {
+        expect(d.statusOf(b).status, DownloadStatus.complete);
+      }
+    },
+  );
 
   test('deleting takes it off the device', () async {
     final d = downloads(MockClient((r) async => answer(r)));

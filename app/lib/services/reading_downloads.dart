@@ -39,17 +39,33 @@ class ReadingDownloads extends ChangeNotifier {
     http.Client? client,
     Future<Directory> Function()? root,
     this.concurrency = 4,
-  }) : _client = client ?? http.Client(),
+    Duration Function(int attempt)? retryDelay,
+  }) : _retryDelay = retryDelay ?? _backoff,
+       _client = client ?? http.Client(),
        _rootOf = root ?? getApplicationSupportDirectory;
 
   static final instance = ReadingDownloads();
 
   static const noConnection = 'تعذر الاتصال بالإنترنت، أعد المحاولة للإكمال.';
   static const noRoom = 'لا توجد مساحة كافية على الجهاز.';
+  static const serverBusy =
+      'الخادم مشغول أو لا يجيب الآن، أعد المحاولة بعد قليل للإكمال.';
+
+  /// Tries for each ayah before the download stops.
+  static const attempts = 5;
+
+  static Duration _backoff(int attempt) =>
+      Duration(seconds: 1 << (attempt - 1));
 
   final http.Client _client;
   final Future<Directory> Function() _rootOf;
+
+  /// The ayahs asked at once, of all the books downloading together: the
+  /// server refuses many at once.
   final int concurrency;
+  final Duration Function(int attempt) _retryDelay;
+  var _asking = 0;
+  final _waiting = <Completer<void>>[];
 
   Directory? _root;
   final _progress = <int, BookDownload>{};
@@ -166,6 +182,9 @@ class ReadingDownloads extends ChangeNotifier {
     } on FileSystemException {
       done = await _doneOnSafely(book, ayahCounts);
       report(DownloadStatus.paused, noRoom);
+    } on TafsirServerException {
+      done = await _doneOnSafely(book, ayahCounts);
+      report(DownloadStatus.paused, serverBusy);
     } catch (_) {
       done = await _doneOnSafely(book, ayahCounts);
       report(DownloadStatus.paused, noConnection);
@@ -215,12 +234,40 @@ class ReadingDownloads extends ChangeNotifier {
 
   Future<String?> _fetchAyah(int book, int surah, int ayah) async {
     for (var attempt = 1; ; attempt++) {
+      Duration? wait;
+      await _slot();
       try {
         return await fetchTafsirAyah(_client, book, surah, ayah);
+      } on TafsirServerException catch (e) {
+        if (attempt == attempts) rethrow;
+        if (e.retryAfter case final s? when s > 0 && s <= 60) {
+          wait = Duration(seconds: s);
+        }
       } catch (_) {
-        if (attempt == 3) rethrow;
-        await Future<void>.delayed(Duration(milliseconds: 200 * attempt));
+        if (attempt == attempts) rethrow;
+      } finally {
+        _free();
       }
+      await Future<void>.delayed(wait ?? _retryDelay(attempt));
+    }
+  }
+
+  Future<void> _slot() async {
+    if (_asking < concurrency) {
+      _asking++;
+      return;
+    }
+    final turn = Completer<void>();
+    _waiting.add(turn);
+    await turn.future;
+  }
+
+  /// Its place handed to the next waiting, or given up.
+  void _free() {
+    if (_waiting.isNotEmpty) {
+      _waiting.removeAt(0).complete();
+    } else {
+      _asking--;
     }
   }
 

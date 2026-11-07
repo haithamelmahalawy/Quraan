@@ -372,13 +372,13 @@ void main() {
     await t.pumpAndSettle();
     expect(settings.displayed, 'warsh');
     expect(settings.selected, {'warsh'});
-    expect(t.widget<Checkbox>(show('warsh')).value, isTrue);
+    expect(t.widget<Switch>(show('warsh')).value, isTrue);
     await t.tap(show('qalun'));
     await t.pumpAndSettle();
     expect(settings.displayed, 'qalun');
     expect(settings.selected, {'qalun', 'warsh'});
-    expect(t.widget<Checkbox>(show('warsh')).value, isFalse);
-    expect(t.widget<Checkbox>(show('qalun')).value, isTrue);
+    expect(t.widget<Switch>(show('warsh')).value, isFalse);
+    expect(t.widget<Switch>(show('qalun')).value, isTrue);
     // Tapped again it stays: something is always shown.
     await t.tap(show('qalun'));
     await t.pumpAndSettle();
