@@ -292,7 +292,9 @@ void main() {
       await shot(
         t,
         28,
-        ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
+        ReaderSettings.memory(selected: {'warsh'})
+          ..compareHafs = true
+          ..displayed = 'warsh',
         'p28_warsh_naql',
       );
     },
@@ -324,7 +326,9 @@ void main() {
         await shot(
           t,
           page,
-          ReaderSettings.memory(selected: {'warsh'})..compareHafs = true..displayed = 'warsh',
+          ReaderSettings.memory(selected: {'warsh'})
+            ..compareHafs = true
+            ..displayed = 'warsh',
           'p${page}_warsh_letters',
         );
       }

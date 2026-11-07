@@ -21,6 +21,7 @@ import '../services/qcf_fonts.dart';
 import '../state/reader_settings.dart';
 import 'ayah_sheet.dart';
 import 'book_pager.dart';
+import 'glow_usul_screen.dart';
 import 'jam_screen.dart';
 import 'mushaf_page.dart';
 import 'page_side_hint.dart';
@@ -786,6 +787,12 @@ class _ReaderScreenState extends State<ReaderScreen>
           settings: widget.settings,
           surahName: _surahName,
           onTap: _toggleGlow,
+          onLongPress: () => GlowUsulScreen.open(
+            context,
+            settings: widget.settings,
+            variants: widget.variants,
+            quran: _quran,
+          ),
         ),
       ),
       // What the last eye gesture did.
@@ -958,17 +965,22 @@ class _EyeIndicator extends StatelessWidget {
 /// Beside the surah's name: the lamp of «تنبيه الاختلافات» (a tap lights
 /// the words that differ from Hafs, its rays flickering, or puts them out)
 /// and the button of the mutashabihat. Dragged, they stay where they are
-/// left; a long press brings them back beside the name.
+/// left; a long press on the mutashabihat's brings them back beside the name,
+/// on the lamp opens the usul it lights.
 class _GlowLamp extends StatefulWidget {
   const _GlowLamp({
     required this.settings,
     required this.surahName,
     required this.onTap,
+    required this.onLongPress,
   });
 
   final ReaderSettings settings;
   final ValueListenable<Rect?> surahName;
   final VoidCallback onTap;
+
+  /// Held: the usul of the hamesh, each lit or not.
+  final VoidCallback onLongPress;
 
   @override
   State<_GlowLamp> createState() => _GlowLampState();
@@ -1078,12 +1090,13 @@ class _GlowLampState extends State<_GlowLamp>
   }
 
   Widget _lamp(bool lit) => Tooltip(
-    // The long press brings it back beside the name.
+    // Held, it opens the usul it lights.
     triggerMode: TooltipTriggerMode.manual,
     message: lit ? 'إطفاء توهج الاختلافات' : 'توهج الاختلافات',
     child: GestureDetector(
       key: const ValueKey('glow-lamp'),
       onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
       child: RepaintBoundary(
         child: CustomPaint(
           key: lit ? const ValueKey('glow-rays') : null,

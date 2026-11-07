@@ -451,7 +451,11 @@ class _QurraGuideScreenState extends State<QurraGuideScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (node.kind == QurraNodeKind.reader)
-                  _ReaderCard(biography: node.reader!, query: '', onUsul: _onUsul)
+                  _ReaderCard(
+                    biography: node.reader!,
+                    query: '',
+                    onUsul: _onUsul,
+                  )
                 else if (node.kind == QurraNodeKind.narrator) ...[
                   _NarratorInfo(
                     narrator: node.narrator!,

@@ -136,6 +136,27 @@ class ReaderSettings extends ChangeNotifier {
       DiffAlert.values.asNameMap()[_get('diffAlert') as String? ?? ''];
   set diffAlert(DiffAlert? style) => _set('diffAlert', style?.name ?? '');
 
+  /// The usul (by their label in the guide: «صلة ميم الجمع»...) whose words
+  /// the lamp leaves unlit; none at first, every asl glowing.
+  Set<String> get unlitUsul => {
+    for (final l in (_get('unlitUsul') as String? ?? '').split('\n'))
+      if (l.isNotEmpty) l,
+  };
+
+  /// Lets the words of the asl [label] glow, or not.
+  void setUsulLit(String label, bool lit) {
+    final unlit = unlitUsul;
+    lit ? unlit.remove(label) : unlit.add(label);
+    _set('unlitUsul', unlit.join('\n'));
+  }
+
+  /// Every asl glowing again.
+  void lightAllUsul() => _set('unlitUsul', '');
+
+  /// None of [labels] glowing.
+  void putOutUsul(Iterable<String> labels) =>
+      _set('unlitUsul', {...unlitUsul, ...labels}.join('\n'));
+
   /// Where the lamp of «تنبيه الاختلافات» (and the mutashabihat's button
   /// with it) was dragged over the page, as fractions of its width and
   /// height; null beside the surah's name.

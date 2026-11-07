@@ -2773,9 +2773,9 @@ void main() {
       await Manzumat.load();
       await Kharouf.load();
     });
-    final settings =
-        ReaderSettings.memory(selected: {'qalun', 'bazzi', 'ibn_wardan'})
-          ..displayed = 'ibn_wardan';
+    final settings = ReaderSettings.memory(
+      selected: {'qalun', 'bazzi', 'ibn_wardan'},
+    )..displayed = 'ibn_wardan';
     await page(t, quran.ayah(2, 62).page, settings: settings);
     VariantSheet.show(
       t.element(find.byType(MushafPage)),

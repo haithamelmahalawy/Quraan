@@ -2102,6 +2102,19 @@ class _MushafPageState extends State<MushafPage>
   }
 
   /// One word of a printed line.
+  /// Whether a word read so glows under the lamp: its farsh always, its usul
+  /// unless every asl it is told under was put out.
+  bool _glows(List<Variant> readings) {
+    final unlit = widget.settings.unlitUsul;
+    return unlit.isEmpty ||
+        readings.isEmpty ||
+        readings.any(
+          (v) =>
+              v.inHamesh ||
+              usulKindsOf(v).any((k) => !unlit.contains(usulGuideLabel(k.$1))),
+        );
+  }
+
   Widget _word(Ayah ayah, int w, double fontSize, [int kashida = 0]) {
     final m = _mark(ayah, w);
     final shown = _display(ayah, w)!;
@@ -2265,7 +2278,10 @@ class _MushafPageState extends State<MushafPage>
         ],
       );
     }
-    if (alert != null && !stopping && (m.color != null || coloured != null)) {
+    if (alert != null &&
+        !stopping &&
+        (m.color != null || coloured != null) &&
+        _glows([...m.shown, ...?_letterReadings(ayah, w)])) {
       word = _Alerting(child: word);
     }
     if (m.colors.length > 1 && widget.settings.mode == DisplayMode.highlight) {

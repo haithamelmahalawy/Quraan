@@ -147,10 +147,83 @@ void main() {
     expect(t.getTopLeft(lamp).dy, greaterThan(before.dy + 150));
     expect(settings.lampAt, isNotNull);
     expect(settings.diffAlert, isNull);
-    await t.longPress(lamp);
+    await t.longPress(similar);
     await t.pump();
     expect(settings.lampAt, isNull);
     expect(t.getTopLeft(lamp), before);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
+
+  testWidgets('held, the lamp opens the usul it lights, each switched apart', (
+    t,
+  ) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..page = 3
+      ..qcfFont = false
+      ..compareHafs = true
+      ..displayed = 'warsh';
+    await show(t, const Size(432, 800), settings: settings, reader: true);
+    // Lit, its rays never settle: pumped by the clock.
+    settings.diffAlert = DiffAlert.glow;
+    await t.pump();
+    final glowing = find.byWidgetPredicate(
+      (w) => w.runtimeType.toString() == '_Alerting',
+    );
+    final all = glowing.evaluate().length;
+    expect(all, greaterThan(0));
+    Future<void> open() async {
+      await t.longPress(find.byKey(const ValueKey('glow-lamp')));
+      for (
+        var i = 0;
+        i < 50 && find.byType(SwitchListTile).evaluate().isEmpty;
+        i++
+      ) {
+        await t.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await t.pump();
+      }
+      await t.pump(const Duration(seconds: 1));
+    }
+
+    await open();
+    expect(find.text('أصول التوهج'), findsOneWidget);
+    // Every asl on at first.
+    final switches = find.byType(SwitchListTile);
+    expect(switches, findsWidgets);
+    expect(
+      t.widgetList<SwitchListTile>(switches).every((s) => s.value),
+      isTrue,
+    );
+    final first = t.widget<SwitchListTile>(switches.first);
+    final label = (first.key! as ValueKey<String>).value.substring(
+      'glow-usul:'.length,
+    );
+    await t.tap(switches.first);
+    await t.pump();
+    expect(settings.unlitUsul, {label});
+    expect(t.widget<SwitchListTile>(switches.first).value, isFalse);
+    // None, then all again.
+    await t.tap(find.byKey(const ValueKey('glow-usul-none')));
+    await t.pump();
+    expect(
+      t.widgetList<SwitchListTile>(switches).every((s) => !s.value),
+      isTrue,
+    );
+    await t.pageBack();
+    await t.pump();
+    await t.pump(const Duration(seconds: 1));
+    expect(glowing.evaluate().length, lessThan(all));
+    await open();
+    await t.tap(find.byKey(const ValueKey('glow-usul-all')));
+    await t.pump();
+    expect(settings.unlitUsul, isEmpty);
+    await t.pageBack();
+    await t.pump();
+    await t.pump(const Duration(seconds: 1));
+    settings.diffAlert = null;
+    expect(glowing.evaluate().length, all);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();
   });

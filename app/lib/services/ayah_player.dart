@@ -56,8 +56,11 @@ class AyahPlayer extends ChangeNotifier {
 
   /// Where a clip is played from: streamed, unless the library has it on the
   /// device.
-  Uri Function(Reciter reciter, int surah, int native) clipUri =
-      (reciter, surah, native) => reciter.ayah(surah, native);
+  Uri Function(Reciter reciter, int surah, int native) clipUri = (
+    reciter,
+    surah,
+    native,
+  ) => reciter.ayah(surah, native);
 
   /// Retained for callers supplying displayed verse counts.
   List<int> ayahCounts = const [];
