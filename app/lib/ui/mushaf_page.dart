@@ -123,11 +123,15 @@ class MushafPage extends StatefulWidget {
     this.onAyahWordTap,
     this.onHeaderMiddle,
     this.onSurahName,
+    this.ayahShade,
   });
 
   /// Where the surah's name in the header is, on the screen: the lamp of
   /// «تنبيه الاختلافات» stands beside it.
   final ValueChanged<Rect>? onSurahName;
+
+  /// A shade behind an ayah's words (the Jam''s ayah read, and those done).
+  final Color? Function(Ayah ayah)? ayahShade;
 
   /// Where the middle of the page's header is, across the page: the arrow of
   /// the riwayat stands there, between the surah and the juz.
@@ -2236,6 +2240,25 @@ class _MushafPageState extends State<MushafPage>
                 color: _mutashabihGlow,
                 borderRadius: BorderRadius.circular(fontSize * 0.25),
               ),
+            ),
+          ),
+          word,
+        ],
+      );
+    }
+    if (widget.ayahShade?.call(ayah) case final shade?) {
+      // Over the gaps between the words too, so the ayah reads as one.
+      word = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: -fontSize * 0.2,
+            right: -fontSize * 0.2,
+            top: -fontSize * 0.3,
+            bottom: -fontSize * 0.35,
+            child: ColoredBox(
+              key: ValueKey('ayah-shade:${ayah.surah}:${ayah.number}:$w'),
+              color: shade,
             ),
           ),
           word,

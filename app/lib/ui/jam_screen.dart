@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../data/audio_numbering.dart';
 import '../data/jam.dart';
 import '../data/kharouf.dart';
 import '../data/manzumat.dart';
+import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/recitations.dart';
 import '../data/variant_repository.dart';
@@ -13,6 +16,7 @@ import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../services/ayah_player.dart';
 import '../state/reader_settings.dart';
+import 'mushaf_page.dart';
 import 'quran_word_text.dart';
 import 'reading_colors.dart';
 import 'theme.dart';
@@ -132,6 +136,7 @@ class _JamScreenState extends State<JamScreen> {
     _ayahs = widget.quran.page(page);
     _byAyah.clear();
     _read.clear();
+    _done.clear();
     _ayah = last ? _ayahs.length - 1 : 0;
     _reading = last ? _readingsOf(_ayah).length - 1 : 0;
     _read.addAll(_current.riwayat);
@@ -139,7 +144,10 @@ class _JamScreenState extends State<JamScreen> {
 
   /// Shows the reading at [ayah], [reading], its riwayat ticked.
   void _show(int ayah, int reading) => setState(() {
-    if (ayah != _ayah) _read.clear();
+    if (ayah != _ayah) {
+      if (_read.containsAll(_riwayat)) _done.add(_ayah);
+      _read.clear();
+    }
     _ayah = ayah;
     _reading = reading;
     _read.addAll(_current.riwayat);
@@ -255,27 +263,78 @@ class _JamScreenState extends State<JamScreen> {
             children: [
               _ayahStrip(),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                  children: [
-                    _QurraBoard(
-                      shown: _riwayat.toSet(),
-                      read: _read,
-                      current: r.riwayat.toSet(),
-                      onTap: (id) => _manual(() {
-                        final i = readings.indexWhere(
-                          (x) => x.riwayat.contains(id),
-                        );
-                        if (i >= 0) _show(_ayah, i);
-                      }),
-                    ),
-                    const SizedBox(height: 10),
-                    _header(r, readings.length),
-                    const SizedBox(height: 8),
-                    _ayahText(r),
-                    const SizedBox(height: 12),
-                    _hamesh(r),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, box) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // The board and the ayah; below them the hamesh beside
+                      // the small page, down to the player.
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: box.maxHeight * .5,
+                        ),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Small enough to leave the ayah in sight.
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxHeight: box.maxHeight * .28,
+                                ),
+                                child: FittedBox(
+                                  child: SizedBox(
+                                    width: box.maxWidth - 24,
+                                    child: _QurraBoard(
+                                      shown: _riwayat.toSet(),
+                                      read: _read,
+                                      current: r.riwayat.toSet(),
+                                      onTap: (id) => _manual(() {
+                                        final i = readings.indexWhere(
+                                          (x) => x.riwayat.contains(id),
+                                        );
+                                        if (i >= 0) _show(_ayah, i);
+                                      }),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              _header(r, readings.length),
+                              const SizedBox(height: 8),
+                              _ayahText(r),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 8, 8),
+                          child: LayoutBuilder(
+                            builder: (context, row) => Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    child: _hamesh(r),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: math.min(
+                                    row.maxHeight * _pageSize.aspectRatio,
+                                    row.maxWidth * .45,
+                                  ),
+                                  child: _smallPage(r),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               _controls(),
@@ -285,6 +344,60 @@ class _JamScreenState extends State<JamScreen> {
       ),
     ),
   );
+
+  /// The page drawn at this size, then made small.
+  static const _pageSize = Size(400, 660);
+
+  /// The page's settings for each riwaya read: it is drawn as it reads.
+  final _shownAs = <String, ReaderSettings>{};
+
+  /// The ayahs of the page whose readings were all gone through.
+  final _done = <int>{};
+
+  /// The mushaf page as the riwaya read writes it, the ayah read shaded, and
+  /// those gone through more lightly.
+  Widget _smallPage(JamReading r) {
+    final riwaya = r.riwayat.contains(hafsId) ? null : r.lead;
+    final settings = _shownAs[r.lead] ??= ReaderSettings.showing(riwaya);
+    final shown = {for (final (i, a) in _ayahs.indexed) (a.surah, a.number): i};
+    return Container(
+      key: const ValueKey('jam-page'),
+      decoration: BoxDecoration(
+        color: MushafColors.page,
+        border: Border.all(color: MushafColors.gold.withAlpha(150)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: FittedBox(
+        alignment: Alignment.topCenter,
+        child: SizedBox.fromSize(
+          size: _pageSize,
+          child: MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(size: _pageSize, textScaler: TextScaler.noScaling),
+            child: IgnorePointer(
+              child: MushafPage(
+                key: ValueKey('jam-page-$_page-${r.lead}'),
+                page: _page,
+                quran: widget.quran,
+                variants: widget.variants,
+                mutashabihat: MutashabihatRepository.empty,
+                settings: settings,
+                onWordTap: (_, _) {},
+                showHamesh: false,
+                ayahShade: (a) => switch (shown[(a.surah, a.number)]) {
+                  final i? when i == _ayah => MushafColors.gold.withAlpha(110),
+                  final i? when _done.contains(i) =>
+                    MushafColors.green.withAlpha(40),
+                  _ => null,
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   /// The ayahs of the page, the one read marked.
   Widget _ayahStrip() => SizedBox(
@@ -339,6 +452,7 @@ class _JamScreenState extends State<JamScreen> {
   /// (the font's marks set right), its differences from Hafs coloured.
   Widget _ayahText(JamReading r) {
     final ayah = _ayahs[_ayah];
+    final numbers = _citations(r).numbers;
     const size = 30.0;
     return Container(
       key: const ValueKey('jam-ayah-text'),
@@ -356,16 +470,19 @@ class _JamScreenState extends State<JamScreen> {
         children: [
           for (var w = 0; w < r.words.length; w++)
             if (r.words[w].isNotEmpty)
-              QuranWordText(
-                r.words[w],
-                key: ValueKey('jam-word-$w'),
-                style: TextStyle(
-                  fontFamily: 'Hafs',
-                  fontSize: size,
-                  height: 1.9,
-                  color: r.differences[w] == null
-                      ? MushafColors.ink
-                      : ReadingColors.of(r.differences[w]!.first),
+              _numbered(
+                numbers[w],
+                QuranWordText(
+                  r.words[w],
+                  key: ValueKey('jam-word-$w'),
+                  style: TextStyle(
+                    fontFamily: 'Hafs',
+                    fontSize: size,
+                    height: 1.9,
+                    color: r.differences[w] == null
+                        ? MushafColors.ink
+                        : ReadingColors.of(r.differences[w]!.first),
+                  ),
                 ),
               ),
           Text(
@@ -379,6 +496,36 @@ class _JamScreenState extends State<JamScreen> {
         ],
       ),
     );
+  }
+
+  /// [word] with its number over it, the number its witnesses are given by.
+  Widget _numbered(int? n, Widget word) => n == null
+      ? word
+      : Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.topCenter,
+          children: [
+            word,
+            Positioned(
+              top: -2,
+              child: Text(
+                _arabic(n),
+                key: ValueKey('jam-number-$n'),
+                style: TextStyle(
+                  color: MushafColors.green,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  height: 1,
+                ),
+              ),
+            ),
+          ],
+        );
+
+  /// The numbers of [words], as given before a witness: «(١، ٣) ».
+  String _numbersOf(Iterable<int> words, Map<int, int> numbers) {
+    final ns = [for (final w in words) ?numbers[w]]..sort();
+    return ns.isEmpty ? '' : '(${ns.map(_arabic).join('، ')}) ';
   }
 
   /// Who read it alike, how its words differ from Hafs, and the witnesses.
@@ -417,6 +564,13 @@ class _JamScreenState extends State<JamScreen> {
                 TextSpan(
                   children: [
                     TextSpan(
+                      text: _numbersOf([w], _citations(r).numbers),
+                      style: TextStyle(
+                        color: MushafColors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextSpan(
                       text: ayah.words[w],
                       style: const TextStyle(fontFamily: 'Hafs', fontSize: 18),
                     ),
@@ -440,17 +594,26 @@ class _JamScreenState extends State<JamScreen> {
   /// The witnesses of the reading from the Shatibiyya and the Durrah: of the
   /// one it is read with and of those who read it alike, named together
   /// where they share them.
-  List<Widget> _witnesses(JamReading r) {
-    final poems = _poems, book = _book;
-    if (poems == null || book == null || r.differences.isEmpty) return const [];
+  final _cited = <String, _Citations>{};
+
+  /// The reading's witnesses: each riwaya's bayts with the words they are for,
+  /// those who share them named together, and the words that have one
+  /// numbered in their order.
+  _Citations _citations(JamReading r) {
     final ayah = _ayahs[_ayah];
+    final key =
+        '$_page:${ayah.surah}:${ayah.number}:${r.lead}:${r.riwayat.join(',')}';
+    final kept = _cited[key];
+    if (kept != null) return kept;
+    final poems = _poems, book = _book;
+    if (poems == null || book == null || r.differences.isEmpty) {
+      return (numbers: const <int, int>{}, groups: const []);
+    }
     final names = [for (final s in widget.quran.surahs) s.nameAr];
-    // Each riwaya's bayts, by the words the reading differs in.
-    final byRiwaya = <String, List<(Poem, Bayt)>>{};
+    final byRiwaya = <String, List<_Cited>>{};
     for (final id in r.riwayat) {
       if (id == hafsId) continue;
-      final bayts = <(Poem, Bayt)>[];
-      final seen = <String>{};
+      final bayts = <String, _Cited>{};
       for (final w in r.differences.keys) {
         for (final v in widget.variants.at([id], ayah.surah, ayah.number, w)) {
           if (v.word != w || v.stopOnly) continue;
@@ -462,22 +625,41 @@ class _JamScreenState extends State<JamScreen> {
             entries: book.at(ayah.surah, ayah.number, w),
           );
           for (final b in ref.verses) {
-            if (ref.mention.contains(b.n) &&
-                seen.add('${ref.poem.name}:${b.n}')) {
-              bayts.add((ref.poem, b));
-            }
+            if (!ref.mention.contains(b.n)) continue;
+            (bayts['${ref.poem.name}:${b.n}'] ??= (
+              poem: ref.poem,
+              bayt: b,
+              words: <int>{},
+            )).words.add(w);
           }
         }
       }
-      if (bayts.isNotEmpty) byRiwaya[id] = bayts;
+      if (bayts.isNotEmpty) byRiwaya[id] = bayts.values.toList();
     }
-    if (byRiwaya.isEmpty) return const [];
+    final cited = {
+      for (final bayts in byRiwaya.values)
+        for (final b in bayts) ...b.words,
+    }.toList()..sort();
     // The riwayat that share the same bayts, named together.
-    final groups = <String, (List<String>, List<(Poem, Bayt)>)>{};
+    final groups = <String, (List<String>, List<_Cited>)>{};
     for (final MapEntry(key: id, value: bayts) in byRiwaya.entries) {
-      final key = bayts.map((b) => '${b.$1.name}:${b.$2.n}').join(',');
-      (groups[key] ??= (<String>[], bayts)).$1.add(id);
+      final same = bayts
+          .map((b) => '${b.poem.name}:${b.bayt.n}:${b.words.join('.')}')
+          .join(',');
+      (groups[same] ??= (<String>[], bayts)).$1.add(id);
     }
+    return _cited[key] = (
+      numbers: {for (final (i, w) in cited.indexed) w: i + 1},
+      groups: groups.values.toList(),
+    );
+  }
+
+  /// The witnesses of the reading from the Shatibiyya and the Durrah: of the
+  /// one it is read with and of those who read it alike, named together
+  /// where they share them, each after the numbers of its words.
+  List<Widget> _witnesses(JamReading r) {
+    final (:numbers, :groups) = _citations(r);
+    if (groups.isEmpty) return const [];
     return [
       const SizedBox(height: 10),
       Text(
@@ -488,7 +670,7 @@ class _JamScreenState extends State<JamScreen> {
           fontSize: 15,
         ),
       ),
-      for (final (ids, bayts) in groups.values)
+      for (final (ids, bayts) in groups)
         Container(
           key: ValueKey('jam-witness-${ids.first}'),
           margin: const EdgeInsets.only(top: 6),
@@ -509,11 +691,26 @@ class _JamScreenState extends State<JamScreen> {
                   fontSize: 13,
                 ),
               ),
-              for (final (poem, b) in bayts)
+              for (final (:poem, bayt: b, :words) in bayts)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    '${poem.nameAr} (${_arabic(b.n)}): ${b.sadr} ... ${b.ajz}',
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: _numbersOf(words, numbers),
+                          style: TextStyle(
+                            color: MushafColors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              '${poem.nameAr} (${_arabic(b.n)}): '
+                              '${b.sadr} ... ${b.ajz}',
+                        ),
+                      ],
+                    ),
                     style: TextStyle(
                       color: MushafColors.ink,
                       fontSize: 14,
@@ -708,3 +905,12 @@ class _QurraBoard extends StatelessWidget {
     );
   }
 }
+
+/// A bayt of a witness, with the words of the ayah it is for.
+typedef _Cited = ({Poem poem, Bayt bayt, Set<int> words});
+
+/// A reading's witnesses: the words numbered, the bayts by who shares them.
+typedef _Citations = ({
+  Map<int, int> numbers,
+  List<(List<String>, List<_Cited>)> groups,
+});

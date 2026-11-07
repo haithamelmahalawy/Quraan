@@ -211,6 +211,12 @@ class ReaderSettings extends ChangeNotifier {
     return s;
   }
 
+  /// A page drawn apart, as [riwaya] reads (Hafs when null), kept in memory:
+  /// the Jam''s small page.
+  factory ReaderSettings.showing(String? riwaya) => ReaderSettings._(null)
+    .._selected = {?riwaya}
+    .._memory['base'] = riwaya ?? 'hafs';
+
   /// In-memory settings (tests).
   @visibleForTesting
   factory ReaderSettings.memory({

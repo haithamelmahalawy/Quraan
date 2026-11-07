@@ -192,6 +192,44 @@ void main() {
     await t.pumpWidget(const SizedBox());
   });
 
+  testWidgets('the small page shades the ayah; the cited words numbered', (
+    t,
+  ) async {
+    t.view.physicalSize = const Size(430, 900);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: JamScreen(quran: quran, variants: variants, page: 3),
+      ),
+    );
+    for (
+      var i = 0;
+      i < 100 && find.byKey(const ValueKey('jam-lead')).evaluate().isEmpty;
+      i++
+    ) {
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await t.pump();
+    }
+    // Qalun in al-Baqarah 6: «عَلَيۡهِمُۥ» and «تُنذِرۡهُمُۥ» with their bayts.
+    expect(find.byKey(const ValueKey('jam-page')), findsOneWidget);
+    final first = quran.page(3).first;
+    expect(
+      find.byKey(ValueKey('ayah-shade:${first.surah}:${first.number}:0')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('jam-number-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('jam-number-2')), findsOneWidget);
+    expect(
+      find.textContaining('(١، ٢) الشاطبية', findRichText: true),
+      findsWidgets,
+    );
+    await t.pumpWidget(const SizedBox());
+  });
+
   testWidgets('the ayah alone is heard, not the ones after it', (t) async {
     final player = AyahPlayer.instance;
     final before = player.continuous;
