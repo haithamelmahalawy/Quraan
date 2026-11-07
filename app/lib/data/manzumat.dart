@@ -627,7 +627,9 @@ class Manzumat {
   /// ذُبَّلَا» (the others, Abu Amr among them, open both).
   /// 33:10، 66، 67 «...وَهْوَ فِي الْوَقْفِ فِي حُلَا» (the Durrah's «وَالظُّنُونَ
   /// قِفْ مَعَ اخْتَيْهِ مَدًّا فُقْ» is Khalaf's).
+  /// 8:59 «وَبِالْغَيْبِ فِيهَا تَحْسَبَنَّ كَمَا فَشَا» (Abu Amr not among them).
   static const _yaqubInShatibiyya = {
+    '8:59:1': {720},
     '28:32:13': {947},
     '33:10:15': {969},
     '33:66:10': {969},
@@ -992,6 +994,13 @@ class Manzumat {
       return {115, 116};
     }
     final at = '${v.surah}:${v.ayah}:${v.word}';
+    // Khalaf's «تَحۡسِبَنَّ» (الأنفال ٥٩) with the ta, Abu Ja'far's with the ya
+    // as Hafs's: «وَيَحْسَبْ أُدْ وَخَاطَبَ فَاعْتَلَا».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'khalaf' &&
+        at == '8:59:1') {
+      return {119};
+    }
     // Abu Ja'far's «يُقَتِّلُونَ» (الأعراف ١٤١) with the shadda, as Hafs:
     // «أَلَا افْـتَحَنْ يَقْتُلُوا مَعْ يَتْبَعُ اشْدُدْ».
     if (poem == Poem.durrah &&

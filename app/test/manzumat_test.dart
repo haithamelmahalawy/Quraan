@@ -96,6 +96,29 @@ void main() {
     }
   });
 
+  test("Khalaf's «تَحۡسِبَنَّ» (الأنفال ٥٩) cites «وَيَحْسَبْ أُدْ وَخَاطَبَ فَاعْتَلَا»", () {
+    for (final (id, poem, bayt) in [
+      ('ishaq', Poem.durrah, 119),
+      ('idris', Poem.durrah, 119),
+      ('rawh', Poem.shatibiyya, 720),
+      ('ruways', Poem.shatibiyya, 720),
+    ]) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 8,
+        ayah: 59,
+        word: 1,
+        count: 1,
+        text: 'تَحۡسِبَنَّ',
+        kind: VariantKind.farsh,
+        description: 'بالتاء وكسر السين',
+      );
+      final r = manzumat.referenceOf(v, 'يَحۡسَبَنَّ', 8, surahs);
+      expect(r.poem, poem, reason: id);
+      expect(r.mention, {bayt}, reason: id);
+    }
+  });
+
   test("Abu Ja'far's «يَضُرُّكُمۡ» cites its farsh, not its silah", () {
     for (final id in ['ibn_wardan', 'ibn_jammaz']) {
       final v = Variant(
