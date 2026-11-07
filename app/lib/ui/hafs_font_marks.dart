@@ -149,6 +149,16 @@ class HafsFontMarks extends StatelessWidget {
       next != null &&
       RegExp('[ً-ِ]').hasMatch(next);
 
+  /// The dagger alif of a ta with its madd (طَٰٓئِفٞ، الأعراف ٢٠١): the font
+  /// sets it over the ta; it stands beside it, at its left, the madd on it.
+  static bool _daggerBesideTa(String cluster) =>
+      cluster.startsWith('ط') && cluster.contains('ٰ') && cluster.contains('ٓ');
+
+  /// The shadda over the small ya on one tooth (وَلِـِّۧيَ، الأعراف ١٩٦): the font
+  /// sets it across the small ya; it is drawn apart, above it.
+  static bool _shaddaOverSmallYa(String cluster) =>
+      cluster.startsWith('ـ') && cluster.contains('ۧ') && cluster.contains('ّ');
+
   static bool _iqlabApart(String cluster) =>
       cluster.contains('ۭ') || cluster.contains('ۢ') && cluster.contains('ِ');
 
@@ -176,7 +186,9 @@ class HafsFontMarks extends StatelessWidget {
           _easedDot(cluster, _cluster.matchAsPrefix(text, m.end)?[0]) ||
           _smallWawApart(cluster) ||
           _daggerApart(cluster, previous) ||
-          _daggerOffShadda(cluster)) {
+          _daggerOffShadda(cluster) ||
+          _shaddaOverSmallYa(cluster) ||
+          _daggerBesideTa(cluster)) {
         return true;
       }
       previous = cluster;
@@ -281,6 +293,16 @@ class HafsFontMarks extends StatelessWidget {
         final markAt = full.indexOf('ٰ', m.start);
         marks[markAt] = placed[markAt].$2;
       }
+      if (_daggerBesideTa(m[0]!)) {
+        for (final sign in ['ٰ', 'ٓ']) {
+          final markAt = full.indexOf(sign, m.start);
+          marks[markAt] = placed[markAt].$2;
+        }
+      }
+      if (_shaddaOverSmallYa(m[0]!)) {
+        final markAt = full.indexOf('ّ', m.start);
+        marks[markAt] = placed[markAt].$2;
+      }
       previous = m[0]!;
     }
     final sakt = {for (final m in _boundarySakt.allMatches(full)) m.start: m};
@@ -358,6 +380,13 @@ const lamHamzaShift = -.02;
 const lamHamzaRise = -.10;
 const lamHamzaClip = .70;
 
+/// How low the dagger alif beside a ta stands, and its madd, in font sizes.
+const taDaggerDrop = .30;
+const taDaggerMaddDrop = -.02;
+
+/// How high the shadda over a small ya stands, in font sizes (negative: up).
+const shaddaOverSmallYaLift = -.10;
+
 /// How high the small waw of a madd stands over the line, in font sizes.
 const smallWawRise = .55;
 
@@ -389,6 +418,10 @@ class _QuranMarkPainter extends CustomPainter {
     )..layout(maxWidth: size.width);
     final font = scaler.scale(style.fontSize ?? 14);
     final source = parts.map((p) => p.$1).join();
+    final taDaggers = {
+      for (final (at, _, sign) in targets)
+        if (sign == 'ٰ' && source.startsWith('ط', at)) at,
+    };
     for (final (at, color, sign) in targets) {
       final sakt = sign == 'ۜ';
       final imala = sign == '۪' || sign == 'ٜ';
@@ -568,12 +601,17 @@ class _QuranMarkPainter extends CustomPainter {
           !source.startsWith('ى', at) &&
           source.substring(at, end).contains('َ');
       final daggerOffShadda = sign == 'ٰ' && source.startsWith('ف', at);
+      // The dagger alif beside the ta, and its madd over it (طَٰٓئِفٞ).
+      final taDagger = (sign == 'ٰ' || sign == 'ٓ') && taDaggers.contains(at);
+      // The shadda over the small ya on its tooth (وَلِـِّۧيَ).
+      final shaddaOverYa =
+          sign == 'ّ' && source.substring(at, end).contains('ۧ');
       final waqfOverMadd =
           HafsFontMarks._waqf.hasMatch(sign) &&
           source.startsWith('ى', at) &&
           source.substring(at, end).contains('ٓ');
       final origin = Offset(
-        (daggerOffShadda ? box.left : (box.left + box.right) / 2) -
+        (daggerOffShadda || taDagger ? box.left : (box.left + box.right) / 2) -
             mark.width / 2 -
             (besideHamza
                 ? font * .20
@@ -639,6 +677,8 @@ class _QuranMarkPainter extends CustomPainter {
                     // the letters.
                     : waqfOverMadd
                     ? -.52
+                    : taDagger
+                    ? (sign == 'ٰ' ? taDaggerDrop : taDaggerMaddDrop)
                     : daggerOffShadda
                     ? .32
                     : sign == 'ٰ'
@@ -662,6 +702,9 @@ class _QuranMarkPainter extends CustomPainter {
                           : RegExp('[رزو]').hasMatch(source[at])
                           ? -.22
                           : -.12)
+                    // Above the small ya, clear of it.
+                    : shaddaOverYa
+                    ? shaddaOverSmallYaLift
                     // The naql's fatha, over the alif's head.
                     : sign == 'َ'
                     ? -.16

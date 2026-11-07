@@ -69,6 +69,10 @@ void main() {
           final first = words['${v[0]}:${v[1]}:${v[2]}'] ?? '';
           final last =
               words['${v[0]}:${v[1]}:${(v[2] as int) + count - 1}'] ?? '';
+          // The izhar: Hafs's idgham doubles the next word's first letter, the
+          // reading leaves it single (يَلۡهَثۡ ذَٰلِكَ for يَلۡهَثۚ ذَّٰلِكَ).
+          bool doubledFirst(String w) => RegExp(r'^[ء-ي][ً-ِ]*ّ').hasMatch(w);
+          if (doubledFirst(last) && !doubledFirst(own.last)) continue;
           if (sameAsHafs(own.first, first) || sameAsHafs(own.last, last)) {
             wrong.add('${v[0]}:${v[1]}:${v[2]}+$count ${v[4]}');
           }
@@ -894,6 +898,138 @@ void main() {
         }
       },
     );
+
+    test('Warsh\'s rows left in Qalun\'s, after الأعراف', () {
+      for (final (s, a, w) in [
+        (10, 27, 4),
+        (30, 8, 19),
+        (30, 16, 5),
+        (37, 11, 11),
+        (72, 16, 0),
+      ]) {
+        expect(where('qalun', s, a, w), isEmpty, reason: '$s:$a:$w');
+      }
+      for (final (s, a, w, how) in [
+        (20, 77, 4, 'بوصل الهمزة، ويلزم منه كسر النون وصلاً'),
+        (26, 52, 3, 'بوصل الهمزة، ويلزم منه كسر النون وصلاً'),
+        (37, 17, 0, 'بإسكان الواو'),
+        (56, 48, 0, 'بإسكان الواو'),
+        (75, 27, 1, 'بالإدغام دون سكت'),
+        (83, 14, 1, 'بالإدغام دون سكت'),
+      ]) {
+        expect(where('qalun', s, a, w).single[6], how, reason: '$s:$a:$w');
+      }
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        for (final (s, a) in [(37, 17), (56, 48)]) {
+          expect(where(id, s, a, 0).single[6], 'بإسكان الواو', reason: id);
+        }
+      }
+    });
+
+    test('yalhath dhalika of الأعراف ١٧٦: the izhar, Qalun\'s two faces', () {
+      List rowsOf(String id) =>
+          (jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                  as Map)['variants']
+              as List;
+      for (final id in [
+        'qalun',
+        'warsh',
+        'bazzi',
+        'qunbul',
+        'hisham',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final at = [
+          for (final v in rowsOf(id))
+            if (v[0] == 7 && v[1] == 176 && (v[2] == 19 || v[2] == 20)) v,
+        ];
+        expect(at, hasLength(1), reason: id);
+        final v = at.single;
+        expect([v[2], v[3], v[5]], [19, 2, 'f'], reason: id);
+        // The tha quiet, the dhal open, not doubled.
+        expect('${v[4]}', contains('ثۡ ذَ'), reason: id);
+        expect('${v[4]}', isNot(contains('ّ')), reason: id);
+        expect(
+          v[6],
+          id == 'qalun' ? 'بخلف: الإظهار والإدغام' : 'بالإظهار',
+          reason: id,
+        );
+      }
+    });
+
+    test('yumiddunahum of الأعراف ٢٠٢: the dal doubled with its damma', () {
+      final q = where('qalun', 7, 202, 1).firstWhere((v) => v[5] == 'f');
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final v = where(id, 7, 202, 1).firstWhere((v) => v[5] == 'f');
+        expect(v[4], q[4], reason: id);
+      }
+    });
+
+    test('yabtushuna: Abu Ja\'far\'s ta with the damma, wherever it comes', () {
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        for (final (s, a, w) in [(7, 195, 7), (28, 19, 4), (44, 16, 1)]) {
+          final v = where(id, s, a, w).single;
+          expect('${v[4]}', contains('طُ'), reason: '$id $s:$a');
+          expect(v[6], 'بضم الطاء', reason: '$id $s:$a');
+        }
+      }
+    });
+
+    test('shirkan of الأعراف ١٩٠: Abu Ja\'far\'s as Qalun\'s, one wording', () {
+      final q = where('qalun', 7, 190, 5).single;
+      expect(q[6], 'بكسر الشين وتسكين الراء وتنوين الكاف بالفتح');
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final v = where(id, 7, 190, 5).single;
+        expect(v[4], q[4], reason: id);
+        expect(v[6], q[6], reason: id);
+      }
+    });
+
+    test('tughfar and bi\'is of الأعراف told as Abu Ja\'far tells them', () {
+      for (final (s, a, w) in [(7, 161, 15), (7, 165, 14)]) {
+        final aj = where('ibn_wardan', s, a, w).single;
+        expect(where('qalun', s, a, w).single[6], aj[6], reason: '$s:$a:$w');
+      }
+    });
+
+    test('the iqlab\'s small mim under a kasra, as Hafs writes it', () {
+      // «بِعَذَابِۭ بِيسِۭ» (الأعراف ١٦٥): under the sin, as Abu Ja'far's.
+      expect('${where('qalun', 7, 165, 14).single[4]}', endsWith('ِۭ'));
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        for (final v in rowsOf(id)) {
+          expect('${v[4]}', isNot(contains('ِۢ')), reason: '$id $v');
+        }
+      }
+    });
+
+    test('wa-s\'alhum of الأعراف ١٦٣: the hamza on its tooth, as Qalun\'s', () {
+      final q = where('qalun', 7, 163, 0).firstWhere((v) => '${v[4]}' != '');
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        for (final v in where(id, 7, 163, 0)) {
+          if ('${v[4]}'.isEmpty) continue;
+          expect(v[4], q[4], reason: id);
+          expect('${v[4]}', isNot(contains('أ')), reason: id);
+        }
+      }
+    });
+
+    test('bi-risalati of الأعراف ١٤٤: the singular, as Ibn Kathir\'s', () {
+      final bazzi = where('bazzi', 7, 144, 6).single;
+      for (final id in ['qalun', 'ibn_wardan', 'ibn_jammaz']) {
+        final v = where(id, 7, 144, 6).single;
+        expect(v[4], bazzi[4], reason: id);
+        expect(v[6], bazzi[6], reason: id);
+        // The first alif the dagger one, the second gone.
+        expect('${v[4]}'.split('ٰ').length, 2, reason: id);
+      }
+    });
 
     test('Qalun reads yasta\'khiruna of الأعراف ٣٤ as Hafs', () {
       expect(where('qalun', 7, 34, 7), isEmpty);

@@ -139,6 +139,11 @@ class _ReadingReferencesState extends State<ReadingReferences> {
             for (final v in citedReadings(widget.readings)) ...[
               const SizedBox(height: 14),
               _ReadingReference(
+                // Its own state for each reading: the chapter shown or not.
+                key: ValueKey(
+                  'reading-reference:${v.riwayaId}:${v.surah}:${v.ayah}:'
+                  '${v.word}:${v.rule}:${v.text}',
+                ),
                 reading: v,
                 reference: manzumat.referenceOf(
                   v,
@@ -171,6 +176,7 @@ class _ReadingReferencesState extends State<ReadingReferences> {
 
 class _ReadingReference extends StatefulWidget {
   const _ReadingReference({
+    super.key,
     required this.reading,
     required this.reference,
     required this.manzumat,
@@ -187,6 +193,9 @@ class _ReadingReference extends StatefulWidget {
 class _ReadingReferenceState extends State<_ReadingReference> {
   bool _whole = false;
 
+  /// No bayt names the word: the chapter's are shown only when asked for.
+  bool _chapter = false;
+
   @override
   Widget build(BuildContext context) {
     final v = widget.reading;
@@ -198,7 +207,11 @@ class _ReadingReferenceState extends State<_ReadingReference> {
     ];
     final preview = named.isEmpty ? r.verses.take(5).toList() : named;
     final canExpand = preview.length < r.verses.length;
-    final shown = _whole ? r.verses : preview;
+    final shown = named.isEmpty && !_chapter
+        ? const <Bayt>[]
+        : _whole
+        ? r.verses
+        : preview;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -241,7 +254,23 @@ class _ReadingReferenceState extends State<_ReadingReference> {
               'الدليل المقتبس في التسهيل لقراءات التنزيل',
               style: TextStyle(color: MushafColors.green, fontSize: 12),
             ),
-          if (named.isEmpty)
+          // No witness: told so, the chapter's first bayts behind a button.
+          if (named.isEmpty && !_chapter) ...[
+            Text(
+              'لم تذكر ${r.poem.nameAr} هذه الكلمة، فليس لها شاهد فيها.',
+              key: const ValueKey('reference-no-witness'),
+            ),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                key: const ValueKey('reference-show-chapter'),
+                onPressed: () => setState(() => _chapter = true),
+                icon: const Icon(Icons.unfold_more),
+                label: const Text('اعرض أول 5 أبيات من الباب'),
+              ),
+            ),
+          ],
+          if (named.isEmpty && _chapter)
             Text(
               _whole || !canExpand
                   ? 'أبيات الباب كاملة'
@@ -261,7 +290,7 @@ class _ReadingReferenceState extends State<_ReadingReference> {
               explanation: widget.manzumat.explanation(r.poem, b.n),
               bookExplanation: r.bookExplanation[b.n] ?? '',
             ),
-          if (canExpand)
+          if (canExpand && (named.isNotEmpty || _chapter))
             TextButton.icon(
               onPressed: () => setState(() => _whole = !_whole),
               icon: Icon(_whole ? Icons.unfold_less : Icons.unfold_more),

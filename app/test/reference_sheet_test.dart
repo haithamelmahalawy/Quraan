@@ -141,6 +141,16 @@ void main() {
         await show(tester, v, 'كلمةغيرموجودة');
         final expected = poems.referenceOf(v, 'كلمةغيرموجودة', 2, surahs);
         expect(expected.mention, isEmpty);
+        // No witness: told so, the chapter's bayts behind a button.
+        expect(find.byType(PoemVerse), findsNothing);
+        expect(
+          find.byKey(const ValueKey('reference-no-witness')),
+          findsOneWidget,
+        );
+        final open = find.byKey(const ValueKey('reference-show-chapter'));
+        await tester.ensureVisible(open);
+        await tester.tap(open);
+        await tester.pumpAndSettle();
         final preview = expected.verses.take(5).toList();
         expect(
           tester

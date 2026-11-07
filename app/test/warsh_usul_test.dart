@@ -985,7 +985,7 @@ void main() {
     expect(quran.pageOf(2, 187), 29);
     final naql = rule(2, 187, 23, 'naql');
     expect(naql.description, contains('نقل حركة الهمزة إلى اللام'));
-    expect(naql.text, 'فَالَٰنَ');
+    expect(naql.text, 'فَٱلَٰنَ');
     expect(naql.isUsul, isTrue);
     expect(rule(2, 187, 23, 'badal').isBadal, isTrue);
     expect(variants.at(['warsh'], 2, 187, 23).every((v) => v.isUsul), isTrue);

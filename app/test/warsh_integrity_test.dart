@@ -459,7 +459,7 @@ void main() {
     await showPage(t, 34);
     for (final w in [9, 16]) {
       final ink = t.widget<InkText>(find.byKey(ValueKey('word:2:216:$w')));
-      expect(ink.text, 'شَيۡـٔاٗ');
+      expect(ink.text, 'شَيۡـٔٗا');
       expect(
         ink.parts!.where((p) => p.$1.startsWith('ي')).single.$2,
         MushafColors.green,

@@ -143,6 +143,7 @@ class Manzumat {
             _kharraqu(reading) ||
             _hisad(reading) ||
             _aamantum(reading) ||
+            _abuJafarBiis(reading) ||
             _yaqubShatibiyya(reading) != null ||
             (_idghamDhal(reading, hafs) ||
                     reading.rule == 'hamza_zaida' ||
@@ -881,6 +882,14 @@ class Manzumat {
         'ibn_jammaz',
       }.contains(v.riwayaId);
 
+  /// Abu Ja'far's «بِيسٍ» (الأعراف ١٦٥), as Nafi''s: the Durrah tells it not;
+  /// «وَبِيسٍ بِيَاءٍ أَمَّ».
+  bool _abuJafarBiis(Variant v) =>
+      qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+      v.surah == 7 &&
+      v.ayah == 165 &&
+      v.word == 14;
+
   /// «وَخَرَّقُواْ» (الأنعام ١٠٠) of Nafi' and Abu Ja'far: «خَرَّقُوا ثِقْلُهُ انْجَلَا».
   bool _kharraqu(Variant v) =>
       v.surah == 6 &&
@@ -900,6 +909,16 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _istuhiqqa(v)) return {627};
     if (poem == Poem.shatibiyya && _kharraqu(v)) return {656};
     if (poem == Poem.shatibiyya && _aamantum(v)) return {189, 190, 191};
+    if (poem == Poem.shatibiyya && _abuJafarBiis(v)) return {704};
+    // «طَٰٓئِفٞ» (الأعراف ٢٠١): Ibn Kathir's «طَيۡفٞ», Qalun's as Hafs's:
+    // «وَقُلْ طَائِفٌ طَيْفٌ رِضًى حَقُّهُ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        v.surah == 7 &&
+        v.ayah == 201 &&
+        v.word == 5) {
+      return {712};
+    }
     // Ibn Kathir's «ٱلرِّيحَ» (الأعراف ٥٧، النمل ٦٣، فاطر ٩): the verse that
     // starts the word, «وَفِي الرِّيحِ تَوْحِيدٌ», with the one naming them,
     // as in الروم.
@@ -928,6 +947,62 @@ class Manzumat {
         v.ayah == 105 &&
         v.word == 1) {
       return {115, 116};
+    }
+    final at = '${v.surah}:${v.ayah}:${v.word}';
+    // Abu Ja'far's «يُقَتِّلُونَ» (الأعراف ١٤١) with the shadda, as Hafs:
+    // «أَلَا افْـتَحَنْ يَقْتُلُوا مَعْ يَتْبَعُ اشْدُدْ».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        at == '7:141:8') {
+      return {115};
+    }
+    // Abu Ja'far's «يَبۡطُشُونَ» (الأعراف ١٩٥، القصص ١٩، الدخان ١٦): «ضُمَّ طَا
+    // يَبْطِشُ اسْجِلَا».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        const {'7:195:7', '28:19:4', '44:16:1'}.contains(at)) {
+      return {117};
+    }
+    // Abu Ja'far's «يَتَّبِعُوكُمۡ» (الأعراف ١٩٣) doubled, as Hafs's: «مَعْ
+    // يَتْبَعُ اشْدُدْ»; his mim's silah keeps its own verse.
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        !v.isUsul &&
+        at == '7:193:5') {
+      return {115};
+    }
+    // Abu Ja'far's «أَنَا۠» before a broken hamza short, as Hafs's (الأعراف
+    // ١٨٨، الشعراء ١١٥، الأحقاف ٩): «وَقَصْرَ أَنَا مَعْ كَسْرٍ اعْلَمْ».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        const {'7:188:22', '26:115:1', '46:9:20'}.contains(at)) {
+      return {118};
+    }
+    // Abu Ja'far's «وَسۡـَٔلۡهُمۡ» (الأعراف ١٦٣) with its hamza: the naql is
+    // Khalaf's alone, «وَسَلْ مَعْ فَسَلْ فَشَا».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        at == '7:163:0') {
+      return {37};
+    }
+    // Abu Ja'far's «خَطِيٓـَٰٔتُكُمۡ» (الأعراف ١٦١): «تُغْفَرْ خَطِيْئَاتُ حُمِّلَا
+    // / كَوَرْشٍ».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        at == '7:161:17') {
+      return {116, 117};
+    }
+    // «وَٰعَدۡنَا» (البقرة ٥١، الأعراف ١٤٢، طه ٨٠): Abu Ja'far's without the
+    // alif, «وَعَدْنَا اتْلُ»; Qalun's and Ibn Kathir's with it, «وَعَدْنَا
+    // جَمِيعًا دُونَ مَا أَلِفٍ حَلَا».
+    if (const {'2:51:1', '7:142:0', '20:80:6'}.contains(at)) {
+      if (poem == Poem.durrah && qiraaOf(v.riwayaId).id == 'abu_jafar') {
+        return {66};
+      }
+      if (poem == Poem.shatibiyya &&
+          const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId)) {
+        return {453};
+      }
     }
     // Abu Ja'far's «بَصۡطَةٗ» (الأعراف ٦٩): «وَيَبْصُطْ بَصْطَةَ الْخَلْقِ يُعْتَلَا».
     if (poem == Poem.durrah &&
@@ -1033,7 +1108,6 @@ class Manzumat {
     }
     // «طَٰٓئِرَۢا»: «وَفِي طَائِرًا طَيْرًا بِهَا وَعُقُودِهَا خُصُوصًا»; and Abu
     // Ja'far's, with «ٱلطَّٰٓئِرِ»: «قُلِ الطَّائِرِ اتْلُ طَائِرًا حُزْ».
-    final at = '${v.surah}:${v.ayah}:${v.word}';
     if (poem == Poem.shatibiyya &&
         const {'qalun', 'warsh'}.contains(v.riwayaId) &&
         const {'3:49:20', '5:110:36'}.contains(at)) {

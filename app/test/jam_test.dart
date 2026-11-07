@@ -5,6 +5,7 @@ import 'package:qiraat_mushaf/data/jam.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/qiraat_catalog.dart';
+import 'package:qiraat_mushaf/services/ayah_player.dart';
 import 'package:qiraat_mushaf/ui/jam_screen.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
@@ -77,10 +78,17 @@ void main() {
         home: JamScreen(quran: quran, variants: variants, page: 1),
       ),
     );
-    await t.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 50)),
-    );
-    await t.pump();
+    // The riwayat, the poems and the book loaded.
+    for (
+      var i = 0;
+      i < 100 && find.byKey(const ValueKey('jam-lead')).evaluate().isEmpty;
+      i++
+    ) {
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await t.pump();
+    }
     expect(find.byKey(const ValueKey('jam-lead')), findsOneWidget);
     expect(find.text('قالون عن نافع'), findsOneWidget);
     expect(
@@ -89,13 +97,32 @@ void main() {
           .onPressed,
       isNull,
     );
+    bool ticked(String id) =>
+        t.widget<Checkbox>(find.byKey(ValueKey('jam-check-$id'))).value!;
+    // The arrows point out: the previous to the right, the next to the left.
+    expect(
+      (t.widget<IconButton>(find.byKey(const ValueKey('jam-previous'))).icon
+              as Icon)
+          .icon,
+      Icons.arrow_back_rounded,
+    );
+    // The first reading's riwayat ticked, the others not yet.
     final first = quran.page(1).first;
-    final count = jamReadings(first, variants).length;
-    for (var i = 1; i < count; i++) {
+    final readings = jamReadings(first, variants);
+    for (final id in readings.first.riwayat) {
+      expect(ticked(id), isTrue, reason: id);
+    }
+    expect(ticked(readings.last.riwayat.first), readings.length == 1);
+    for (var i = 1; i < readings.length; i++) {
       await t.tap(find.byKey(const ValueKey('jam-next')));
       await t.pump();
     }
-    // The last reading of the first ayah, then the second ayah from Qalun.
+    // All read: the twenty ticked.
+    for (final id in jamOrder) {
+      expect(ticked(id), isTrue, reason: id);
+    }
+    // The last reading of the first ayah, then the second ayah from Qalun,
+    // the board anew.
     await t.tap(find.byKey(const ValueKey('jam-next')));
     await t.pump();
     expect(find.text('قالون عن نافع'), findsOneWidget);
@@ -103,6 +130,30 @@ void main() {
       t.widget<ChoiceChip>(find.byKey(const ValueKey('jam-ayah-1'))).selected,
       isTrue,
     );
+    final second = jamReadings(quran.page(1)[1], variants);
+    if (second.length > 1) {
+      final other = second.last.riwayat.first;
+      expect(ticked(other), isFalse);
+      // A riwaya tapped on the board: its reading shown.
+      await t.tap(find.byKey(ValueKey('jam-board-$other')));
+      await t.pump();
+      expect(find.text(jamName(second.last.lead)), findsOneWidget);
+      expect(ticked(other), isTrue);
+    }
     await t.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the ayah alone is heard, not the ones after it', (t) async {
+    final player = AyahPlayer.instance;
+    final before = player.continuous;
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: JamScreen(quran: quran, variants: variants, page: 1),
+      ),
+    );
+    expect(player.continuous, isFalse);
+    await t.pumpWidget(const SizedBox());
+    expect(player.continuous, before);
   });
 }

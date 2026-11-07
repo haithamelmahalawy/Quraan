@@ -61,6 +61,13 @@ String madinahScript(String text, {String? followingWord}) {
       .replaceAllMapped(_waslSifrAlef, (m) => '${m[1]}ٱ')
       .replaceAllMapped(_naqlAlef, (m) => '${m[1]}ا')
       .replaceAllMapped(_waslAlef, (m) => '${m[1]}ٱ')
+      .replaceAllMapped(_prefixedArticle, (m) => '${m[1]}ٱ')
+      .replaceAllMapped(_prefixedWasl, (m) => '${m[1]}ٱ')
+      // The lam doubled, as Hafs writes it: «لِلَّهِ»، «ٱلَّذِي»، «ٱلَّتِي».
+      .replaceAllMapped(_nameLam, (m) => '${m[1]}لَّ')
+      .replaceAllMapped(_relativeLam, (m) => '${m[1]}ٱلَّ')
+      // The tanween before its alif, as Hafs's «نَارٗا».
+      .replaceAllMapped(_tanweenAfterAlif, (m) => '${m[1]}ا')
       .replaceAllMapped(_nunBeforeIdgham, (m) => 'ن${m[1]}');
   if (followingWord != null && _idghamStart.hasMatch(followingWord)) {
     shown = shown.replaceFirstMapped(_nunEnd, (m) => 'ن${m[1]}');
@@ -117,6 +124,26 @@ final _waslSifrAlef = RegExp(
 );
 // The dot above (after a fatha or damma) or below (after a kasra: اِ۪تَّخَذتُّمُ).
 final _waslAlef = RegExp(r'(^|\s)ا[َُِ]?[۪۬]');
+// The Name after the lam of jarr, its second lam bare in the Maghribi export
+// (لِلهِ، وَلِلهِ).
+final _nameLam = RegExp(r'((?:^|\s|[وفأ]َ)لِ)ل(?=هِ)');
+// «ٱلذِى، ٱلذِينَ، ٱلتِى» with a bare lam.
+final _relativeLam = RegExp(
+  r'((?:^|\s)(?:[وفبكل][َُِ]?)?)ٱل(?=(?:ذِ[ىي]|ذِينَ|تِ[ىي])[ۖ-ۭ]*(?:\s|$))',
+);
+// «نَاراٗ»: the tanween on the alif at the word's end.
+final _tanweenAfterAlif = RegExp(r'ا([ًٗ])(?=[ۖ-ۭ]*(?:\s|$))');
+// After a waw or fa, the article's alif of wasl (وَاَ۬للَّهُ), not an eased
+// hamza, which the export writes on its seat.
+final _prefixedArticle = RegExp(r'((?:^|\s)[وف]َ)ا[َُِ]?[۪۬](?=ل)');
+// And bare, after a waw, fa, ba or kaf: the article before a bare lam or a
+// doubled letter (وَالنَّبِيٓءِ، بِالذِى), the verb's before a doubled or
+// quiet letter (وَاتَّخَذُواْ). Never a long alif: it is followed by a vowel.
+final _prefixedWasl = RegExp(
+  // ... the article's lam with the vowel the naql gave it (وَالَارۡضِ), and a
+  // bare nun before its hiding (فَانفَجَرَتۡ).
+  r'((?:^|\s)[وفبك][َُِ])ا(?=ل[ء-ي]|[ء-ي][َُِ]?[ّْۡ]|ل[َُِ][اٰ]|ل۪|ن[ء-يۢ])',
+);
 
 /// The imala sign of the Madinah mushaf, a dot below the letter.
 const imalaSign = '۪';

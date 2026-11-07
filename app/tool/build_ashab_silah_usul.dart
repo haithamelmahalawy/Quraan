@@ -1782,7 +1782,9 @@ void main() {
     for (final v in (data['variants'] as List).cast<List>()) {
       v[4] = '${v[4]}'
           .replaceAllMapped(RegExp('ا([ًٗ])'), (m) => '${m[1]}ا')
-          .replaceAll(RegExp('(?<!ا)(?<!أُو)ْ'), 'ۡ');
+          .replaceAll(RegExp('(?<!ا)(?<!أُو)ْ'), 'ۡ')
+          // The iqlab's small mim under the kasra, as Hafs's (بِيسِۭ), not above it.
+          .replaceAll('ِۢ', 'ِۭ');
     }
     // The munfasil inside a word, after the ha of «هَٰٓؤُلَآءِ» and the ya of the
     // call («يَٰٓأَيُّهَا»): Abu Ja'far reads it short, as Qalun and Ibn Kathir,
@@ -1907,8 +1909,37 @@ void main() {
               '34:23:2',
             }.contains('${v[0]}:${v[1]}:${v[2]}'),
       );
+      // And rows of the rasm alone, no reading told: Warsh's, where Qalun reads
+      // as Hafs (سَيِّئَةِۭ، بِلِقَآيِٕ، لَّازِبِۭ، وَأَلَّوِ). «هَارٖ» stays, his only
+      // imala.
+      rows.removeWhere(
+        (v) => const {
+          '10:27:4',
+          '30:8:19',
+          '30:16:5',
+          '37:11:11',
+          '72:16:0',
+        }.contains('${v[0]}:${v[1]}:${v[2]}'),
+      );
       for (final v in rows) {
         final at = '${v[0]}:${v[1]}:${v[2]}';
+        // Qalun's reading, told with Warsh's wording: told as his own.
+        final how = const {
+          // «أَنۡ أَسۡرِ» (طه ٧٧، الشعراء ٥٢): the wasl, not a naql.
+          '20:77:4': 'بوصل الهمزة، ويلزم منه كسر النون وصلاً',
+          '26:52:3': 'بوصل الهمزة، ويلزم منه كسر النون وصلاً',
+          // «أَوَءَابَآؤُنَا» (الصافات ١٧، الواقعة ٤٨): his waw quiet.
+          '37:17:0': 'بإسكان الواو',
+          '56:48:0': 'بإسكان الواو',
+          // «مَنۡۜ رَاقٖ»، «بَلۡۜ رَانَ»: no sakt.
+          '75:27:1': 'بالإدغام دون سكت',
+          '83:14:1': 'بالإدغام دون سكت',
+          // Told as Abu Ja'far's, the one reading: «تُغۡفَرۡ» (الأعراف ١٦١)،
+          // «بِيسٍ» (الأعراف ١٦٥).
+          '7:161:15': 'بتاء مضمومة وفتح الفاء',
+          '7:165:14': 'بحذف الهمزة',
+        }[at];
+        if (how != null && v[5] != 'u') v[6] = how;
         // «مَالِيَ لَآ أَرَى» (النمل ٢٠): his ya of the idafa still.
         if (at == '27:20:3') {
           while (v.length < 8) {
@@ -1926,6 +1957,157 @@ void main() {
           v[5] = 'f';
           v[6] = 'بهمزة مكسورة دون ياء بعدها';
         }
+      }
+    }
+    // «أَوَءَابَآؤُنَا» (الصافات ١٧، الواقعة ٤٨): Abu Ja'far's waw quiet, as
+    // Qalun's.
+    if (_abuJafar(id)) {
+      final rows = (data['variants'] as List).cast<List>();
+      for (final (s, a) in [(37, 17), (56, 48)]) {
+        rows.removeWhere((v) => v[0] == s && v[1] == a && v[2] == 0);
+        rows.add([s, a, 0, 1, 'أَوۡ ءَابَآؤُنَا', 'f', 'بإسكان الواو', '']);
+      }
+    }
+    // Abu Ja'far's «وَسۡـَٔلۡهُمُۥ» (الأعراف ١٦٣): its hamza on the tooth, as
+    // Hafs's and Qalun's, not on an alif.
+    if (_abuJafar(id)) {
+      String? qalunText(int su, int a, int w) =>
+          (built['qalun']!.$2['variants'] as List)
+              .cast<List>()
+              .where(
+                (v) => v[0] == su && v[1] == a && v[2] == w && '${v[4]}' != '',
+              )
+              .map((v) => '${v[4]}')
+              .firstOrNull;
+      for (final v in (data['variants'] as List).cast<List>()) {
+        if (v[0] == 7 && v[1] == 163 && v[2] == 0 && '${v[4]}'.isNotEmpty) {
+          v[4] = qalunText(7, 163, 0) ?? v[4];
+        }
+        // «يُمِدُّونَهُمۡ» (الأعراف ٢٠٢): the dal doubled with its damma, as
+        // Qalun's.
+        if (v[0] == 7 && v[1] == 202 && v[2] == 1 && v[5] == 'f') {
+          v[4] = qalunText(7, 202, 1) ?? v[4];
+        }
+      }
+    }
+    // «يَلۡهَثۚ ذَّٰلِكَ» (الأعراف ١٧٦): Ashab al-Silah's with the izhar, the tha
+    // quiet and the dhal open; Qalun's with both faces. Told in the hamesh,
+    // though only the idgham's shadda and the sukun differ from Hafs's.
+    if (const {'qalun', 'bazzi', 'qunbul'}.contains(id) || _abuJafar(id)) {
+      final rows = (data['variants'] as List).cast<List>();
+      rows.removeWhere(
+        (v) => v[0] == 7 && v[1] == 176 && (v[2] == 19 || v[2] == 20),
+      );
+      const text =
+          '\u064A\u064E\u0644\u06E1\u0647\u064E\u062B\u06E1 '
+          '\u0630\u064E\u0670\u0644\u0650\u0643\u064E';
+      rows.add(
+        id == 'qalun'
+            ? [
+                7,
+                176,
+                19,
+                2,
+                text,
+                'f',
+                'بخلف: الإظهار والإدغام',
+                '',
+                {
+                  'ways': ['الإظهار', 'الإدغام'],
+                  'hamesh': true,
+                },
+              ]
+            : [
+                7,
+                176,
+                19,
+                2,
+                text,
+                'f',
+                'بالإظهار',
+                '',
+                {'hamesh': true},
+              ],
+      );
+    }
+    // «شُرَكَآءَ» (الأعراف ١٩٠): Qalun's and Abu Ja'far's «شِرۡكٗا», one text
+    // and one wording.
+    if (id == 'qalun' || _abuJafar(id)) {
+      final rows = (data['variants'] as List).cast<List>();
+      final qalun = (built['qalun']!.$2['variants'] as List)
+          .cast<List>()
+          .where((v) => v[0] == 7 && v[1] == 190 && v[2] == 5 && v[5] == 'f')
+          .map((v) => '${v[4]}')
+          .firstOrNull;
+      rows.removeWhere(
+        (v) => v[0] == 7 && v[1] == 190 && v[2] == 5 && v[5] == 'f',
+      );
+      rows.add([
+        7,
+        190,
+        5,
+        1,
+        qalun ?? 'شِرۡكٗا',
+        'f',
+        'بكسر الشين وتسكين الراء وتنوين الكاف بالفتح',
+        '',
+      ]);
+    }
+    // «يَبۡطِشُونَ» (الأعراف ١٩٥، القصص ١٩، الدخان ١٦): Abu Ja'far's ta with
+    // the damma, wherever it comes: «ضُمَّ طَا يَبْطِشُ اسْجِلَا».
+    if (_abuJafar(id)) {
+      final rows = (data['variants'] as List).cast<List>();
+      final hafs = {
+        for (final a in quran['ayahs'] as List)
+          '${a[0]}:${a[1]}': (a[4] as String).split(' '),
+      };
+      for (final (s, a, w) in [(7, 195, 7), (28, 19, 4), (44, 16, 1)]) {
+        rows.removeWhere(
+          (v) => v[0] == s && v[1] == a && v[2] == w && v[5] == 'f',
+        );
+        final word = hafs['$s:$a']![w].replaceFirst('طِ', 'طُ');
+        rows.add([s, a, w, 1, word, 'f', 'بضم الطاء', '']);
+      }
+    }
+    // «قُرِئَ» (الأعراف ٢٠٤، الانشقاق ٢١): Abu Ja'far's hamza a ya, opened,
+    // told in the ibdal of the hamza, not in the farsh.
+    if (_abuJafar(id)) {
+      final rows = (data['variants'] as List).cast<List>();
+      for (final (s, a) in [(7, 204), (84, 21)]) {
+        rows.removeWhere(
+          (v) =>
+              v[0] == s &&
+              v[1] == a &&
+              v[2] == 1 &&
+              (v[5] == 'h' || v[5] == 'f'),
+        );
+        rows.add([
+          s,
+          a,
+          1,
+          1,
+          'قُرِيَ',
+          'h',
+          'بإبدال الهمزة ياءً',
+          'ibdal_single',
+          {'source': 'ashab_silah_pdf'},
+        ]);
+      }
+    }
+    // «بِرِسَٰلَٰتِي» (الأعراف ١٤٤): Qalun's and Abu Ja'far's the singular, as
+    // Ibn Kathir's: its first alif the dagger one, the second gone.
+    if (id == 'qalun' || _abuJafar(id)) {
+      final rows = (data['variants'] as List).cast<List>();
+      final at = rows.where(
+        (v) => v[0] == 7 && v[1] == 144 && v[2] == 6 && v[5] == 'f',
+      );
+      if (at.isEmpty) {
+        rows.add([7, 144, 6, 1, '', 'f', '', '']);
+      }
+      for (final v in rows) {
+        if (v[0] != 7 || v[1] != 144 || v[2] != 6 || v[5] != 'f') continue;
+        v[4] = 'بِرِسَٰلَتِي';
+        v[6] = 'بحذف الألف';
       }
     }
     // «وَمَحۡيَايۡ» (الأنعام ١٦٢): Abu Ja'far's as Qalun's, one farsh and wording.

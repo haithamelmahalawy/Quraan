@@ -1164,9 +1164,7 @@ void main() {
       // A word of its own: «أعمى»، «العمى» are words.
       expect(
         all,
-        isNot(
-          matches(RegExp('(^|[^ء-ي])$wrong([^ء-ي]|\$)')),
-        ),
+        isNot(matches(RegExp('(^|[^ء-ي])$wrong([^ء-ي]|\$)'))),
         reason: wrong,
       );
     }
@@ -1175,6 +1173,73 @@ void main() {
       manzumat.explanation(Poem.shatibiyya, 1)!.source,
       contains('أبو شامة'),
     );
+  });
+
+  test('yuqattiluna and wa\'adna of الأعراف cite their verses', () {
+    Reference of(String id, int s, int a, int w, String text, String hafs) =>
+        manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: 1,
+            text: text,
+            kind: VariantKind.farsh,
+            rule: 'comparison',
+          ),
+          hafs,
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final k = of(id, 7, 161, 17, 'خَطِيٓـَٰٔتُكُمُۥ', 'خَطِيٓـَٰٔتِكُمۡۚ');
+      expect(k.poem, Poem.durrah);
+      expect(k.mention, {116, 117}, reason: id);
+      // «يَبۡطُشُونَ»: the ta with the damma, wherever it comes.
+      for (final (s, a, w) in [(7, 195, 7), (28, 19, 4), (44, 16, 1)]) {
+        final r = of(id, s, a, w, 'يَبۡطُشُونَ', 'يَبۡطِشُونَ');
+        expect(r.poem, Poem.durrah, reason: '$id $s:$a');
+        expect(r.mention, {117}, reason: '$id $s:$a');
+      }
+      // «لَا يَتَّبِعُوكُمۡ»: doubled, as Hafs's.
+      final y = of(id, 7, 193, 5, 'يَتَّبِعُوكُمُۥ', 'يَتَّبِعُوكُمۡۚ');
+      expect(y.poem, Poem.durrah);
+      expect(y.mention, {115}, reason: id);
+      // «أَنَا۠ إِلَّا»: short before the broken hamza.
+      for (final (s, a, w) in [(7, 188, 22), (26, 115, 1), (46, 9, 20)]) {
+        final r = of(id, s, a, w, 'أَنَا۠', 'أَنَا۠');
+        expect(r.poem, Poem.durrah, reason: '$id $s:$a');
+        expect(r.mention, {118}, reason: '$id $s:$a');
+      }
+      // «بِيسٍ» (الأعراف ١٦٥): the Durrah tells it not, he reads as Nafi'.
+      final b = of(id, 7, 165, 14, 'بِيسٍ', 'بَـِٔيسِۭ');
+      expect(b.poem, Poem.shatibiyya, reason: id);
+      expect(b.mention, {704}, reason: id);
+      final s = of(id, 7, 163, 0, 'وَسۡأَلۡهُمُۥ', 'وَسۡـَٔلۡهُمۡ');
+      expect(s.poem, Poem.durrah);
+      expect(s.mention, {37}, reason: id);
+      final q = of(id, 7, 141, 8, 'يُقَتِّلُونَ', 'يُقَتِّلُونَ');
+      expect(q.poem, Poem.durrah);
+      expect(q.mention, {115}, reason: id);
+      for (final (s, a, w) in [(2, 51, 1), (7, 142, 0), (20, 80, 6)]) {
+        final r = of(id, s, a, w, 'وَعَدۡنَا', 'وَٰعَدۡنَا');
+        expect(r.poem, Poem.durrah);
+        expect(r.mention, {66}, reason: '$id $s:$a');
+      }
+    }
+    for (final id in ['qalun', 'bazzi', 'qunbul']) {
+      // «طَٰٓئِفٞ»: «وَقُلْ طَائِفٌ طَيْفٌ رِضًى حَقُّهُ».
+      final t = of(id, 7, 201, 5, 'طَيۡفٞ', 'طَٰٓئِفٞ');
+      expect(t.poem, Poem.shatibiyya, reason: id);
+      expect(t.mention, {712}, reason: id);
+      for (final (s, a, w) in [(2, 51, 1), (7, 142, 0), (20, 80, 6)]) {
+        final r = of(id, s, a, w, 'وَٰعَدۡنَا', 'وَٰعَدۡنَا');
+        expect(r.poem, Poem.shatibiyya);
+        expect(r.mention, {453}, reason: '$id $s:$a');
+      }
+    }
   });
 
   test("Abu Ja'far's «يُنَجِّيكُم» cites «بِثَانٍ أَتَى»", () {

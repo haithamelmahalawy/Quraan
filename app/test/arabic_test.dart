@@ -36,7 +36,13 @@ void main() {
     () {
       for (final word in ['شَئْاٗ', 'شَئْاً', 'شَئْاٗۖ']) {
         final shown = madinahScript(word);
-        expect(shown, word.replaceAll('ئْ', 'يۡـٔ'));
+        expect(
+          shown,
+          word
+              .replaceAll('ئْ', 'يۡـٔ')
+              // The tanween before its alif, as Hafs's «شَيۡـٔٗا».
+              .replaceAllMapped(RegExp('ا([ًٗ])'), (m) => '${m[1]}ا'),
+        );
         expect(lettersOf(shown).map((l) => l[0]), ['ش', 'ي', 'ـ', 'ا']);
         expect(madinahScript(shown), shown);
       }
