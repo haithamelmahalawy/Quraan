@@ -11,6 +11,7 @@ import '../data/manzumat.dart';
 import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/recitations.dart';
+import '../data/usul_guide.dart';
 import '../data/variant_repository.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
@@ -20,6 +21,7 @@ import 'mushaf_page.dart';
 import 'quran_word_text.dart';
 import 'reading_colors.dart';
 import 'theme.dart';
+import 'usul_labels.dart';
 
 /// «الجمع للقراءات العشر»: each ayah of a page read by the twenty riwayat in
 /// their order, each reading once; the riwayat that read it alike are named
@@ -554,7 +556,6 @@ class _JamScreenState extends State<JamScreen> {
 
   /// Who read it alike, how its words differ from Hafs, and the witnesses.
   Widget _hamesh(JamReading r) {
-    final ayah = _ayahs[_ayah];
     final style = TextStyle(color: MushafColors.ink, fontSize: 14, height: 1.6);
     return Column(
       key: const ValueKey('jam-hamesh'),
@@ -580,38 +581,246 @@ class _JamScreenState extends State<JamScreen> {
         const SizedBox(height: 8),
         if (r.differences.isEmpty)
           Text('يقرأ الآية كحفص.', style: style)
-        else
-          for (final MapEntry(key: w, value: rows) in r.differences.entries)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text.rich(
-                TextSpan(
+        else ...[
+          ..._farshOf(r, style),
+          ..._usulOf(r, style),
+        ],
+        ..._witnesses(r),
+      ],
+    );
+  }
+
+  /// A word of the ayah and how [rows] read it: «(١) الكلمة: وصفها».
+  Widget _told(int w, List<Variant> rows, JamReading r, TextStyle style) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: _numbersOf([w], _citations(r).numbers),
+                style: TextStyle(
+                  color: MushafColors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextSpan(
+                text: _ayahs[_ayah].words[w],
+                style: const TextStyle(fontFamily: 'Hafs', fontSize: 18),
+              ),
+              const TextSpan(text: ': '),
+              TextSpan(
+                text: {
+                  for (final v in rows)
+                    if (v.shownDescription.isNotEmpty) v.shownDescription,
+                }.join('؛ '),
+              ),
+            ],
+          ),
+          style: style,
+        ),
+      );
+
+  /// A section's title in the hamesh: «الفرش»، «الأصول».
+  Widget _section(String title, Key key) => Padding(
+    key: key,
+    padding: const EdgeInsets.only(top: 6, bottom: 4),
+    child: Text(
+      title,
+      style: TextStyle(
+        color: MushafColors.green,
+        fontWeight: FontWeight.bold,
+        fontSize: 15,
+      ),
+    ),
+  );
+
+  /// A row told in the farsh, as the mushaf tells it beside the page.
+  static bool _isFarsh(Variant v) => v.inHamesh || !v.isUsul;
+
+  /// The reading's farsh, word by word.
+  List<Widget> _farshOf(JamReading r, TextStyle style) {
+    final farsh = {
+      for (final MapEntry(key: w, value: rows) in r.differences.entries)
+        if (rows.any(_isFarsh)) w: rows.where(_isFarsh).toList(),
+    };
+    if (farsh.isEmpty) return const [];
+    return [
+      _section('الفرش', const ValueKey('jam-farsh')),
+      for (final MapEntry(key: w, value: rows) in farsh.entries)
+        _told(w, rows, r, style),
+    ];
+  }
+
+  /// The chapters of the usul [v] is told under, as in the mushaf's key.
+  static List<(String, Color)> _chaptersOf(Variant v) => [
+    for (final (label, color) in usulKindsOf(v)) (usulGuideLabel(label), color),
+  ];
+
+  /// The reading's usul by their chapters, as in the mushaf; under each, shut
+  /// until opened, how every riwaya of the jam' reads that asl in this ayah.
+  List<Widget> _usulOf(JamReading r, TextStyle style) {
+    final chapters = <String, ({Color color, Map<int, List<Variant>> words})>{};
+    for (final MapEntry(key: w, value: rows) in r.differences.entries) {
+      for (final v in rows) {
+        if (_isFarsh(v)) continue;
+        for (final (chapter, color) in _chaptersOf(v)) {
+          final c = chapters[chapter] ??= (color: color, words: {});
+          (c.words[w] ??= []).add(v);
+        }
+      }
+    }
+    if (chapters.isEmpty) return const [];
+    return [
+      _section('الأصول', const ValueKey('jam-usul')),
+      for (final MapEntry(key: chapter, value: c) in chapters.entries)
+        Container(
+          key: ValueKey('jam-asl-$chapter'),
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
+          decoration: BoxDecoration(
+            color: MushafColors.page,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: c.color.withAlpha(140)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                chapter,
+                style: TextStyle(
+                  color: c.color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              for (final MapEntry(key: w, value: rows) in c.words.entries)
+                _told(w, rows, r, style),
+              _manhaj(chapter, c.words.keys.toList(), r),
+            ],
+          ),
+        ),
+    ];
+  }
+
+  /// How [id] reads [chapter] at [words] of the ayah shown: its faces, or
+  /// «كحفص» where it has none of that asl there.
+  String _faceOf(String id, String chapter, List<int> words) {
+    if (id == hafsId) return 'على الأصل';
+    final ayah = _ayahs[_ayah];
+    final told = <String>[];
+    for (final w in words) {
+      final faces = {
+        for (final v in widget.variants.at([id], ayah.surah, ayah.number, w))
+          if (v.word == w &&
+              !v.stopOnly &&
+              !_isFarsh(v) &&
+              _chaptersOf(v).any((k) => k.$1 == chapter))
+            v.shownDescription.isEmpty ? v.text : v.shownDescription,
+      };
+      if (faces.isEmpty) continue;
+      told.add(
+        words.length > 1
+            ? '${ayah.words[w]}: ${faces.join('؛ ')}'
+            : faces.join('؛ '),
+      );
+    }
+    return told.isEmpty ? 'كحفص' : told.join('\n');
+  }
+
+  /// «منهج الرواة في هذا الأصل»: shut, and opened a table of each riwaya of
+  /// the jam' and how it reads [chapter] at [words] of the ayah; the riwayat
+  /// of the reading shown marked.
+  Widget _manhaj(String chapter, List<int> words, JamReading r) {
+    const cell = EdgeInsets.symmetric(horizontal: 6, vertical: 4);
+    final head = TextStyle(
+      color: MushafColors.green,
+      fontWeight: FontWeight.bold,
+      fontSize: 13,
+    );
+    // Its own surface, for its touch to be seen over the asl's box.
+    return Material(
+      type: MaterialType.transparency,
+      child: Theme(
+        // No lines of the tile's own above and below it.
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: ValueKey('jam-manhaj-$_page-$_ayah-$chapter'),
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: 6),
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          title: Text(
+            'منهج الرواة في هذا الأصل',
+            style: TextStyle(color: MushafColors.frame, fontSize: 13),
+          ),
+          children: [
+            Table(
+              key: ValueKey('jam-manhaj-table-$chapter'),
+              border: TableBorder.all(
+                color: MushafColors.gold.withAlpha(200),
+                width: .8,
+              ),
+              columnWidths: const {
+                0: IntrinsicColumnWidth(),
+                1: FlexColumnWidth(),
+              },
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              children: [
+                TableRow(
+                  decoration: BoxDecoration(
+                    color: MushafColors.goldLight.withAlpha(60),
+                  ),
                   children: [
-                    TextSpan(
-                      text: _numbersOf([w], _citations(r).numbers),
-                      style: TextStyle(
-                        color: MushafColors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Padding(
+                      padding: cell,
+                      child: Text('الراوي', style: head),
                     ),
-                    TextSpan(
-                      text: ayah.words[w],
-                      style: const TextStyle(fontFamily: 'Hafs', fontSize: 18),
-                    ),
-                    const TextSpan(text: ': '),
-                    TextSpan(
-                      text: {
-                        for (final v in rows)
-                          if (v.shownDescription.isNotEmpty) v.shownDescription,
-                      }.join('؛ '),
+                    Padding(
+                      padding: cell,
+                      child: Text('منهجه', style: head),
                     ),
                   ],
                 ),
-                style: style,
-              ),
+                for (final id in _riwayat)
+                  TableRow(
+                    decoration: r.riwayat.contains(id)
+                        ? BoxDecoration(color: MushafColors.gold.withAlpha(45))
+                        : null,
+                    children: [
+                      Padding(
+                        padding: cell,
+                        child: Text(
+                          jamName(id),
+                          style: TextStyle(
+                            color: id == hafsId
+                                ? MushafColors.green
+                                : qiraaOf(id).color,
+                            fontWeight: r.riwayat.contains(id)
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: cell,
+                        child: Text(
+                          _faceOf(id, chapter, words),
+                          style: TextStyle(
+                            color: MushafColors.ink,
+                            fontSize: 12,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ),
-        ..._witnesses(r),
-      ],
+          ],
+        ),
+      ),
     );
   }
 

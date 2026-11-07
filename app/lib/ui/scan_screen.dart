@@ -244,111 +244,127 @@ class _ScanScreenState extends State<ScanScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       // The riwayat chosen as in the mushaf: «الرواة» at the top.
-      body: RiwayatPanel(
-        settings: widget.settings,
-        variants: widget.variants,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (camera != null && camera.value.isInitialized)
-              Center(
-                child: CameraPreview(
-                  camera,
-                  // Over the picture itself, where the frame is read.
-                  child: mode == ScanMode.page || !_ready
-                      ? null
-                      : _BoxGuide(mode: mode, sweep: _sweep),
-                ),
-              )
-            else
-              Center(
-                child: _error == null
-                    ? const CircularProgressIndicator()
-                    : Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          _error!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white),
+      // Below the phone's own bar: there, «الرواة» could not be touched.
+      body: SafeArea(
+        bottom: false,
+        child: RiwayatPanel(
+          settings: widget.settings,
+          variants: widget.variants,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (camera != null && camera.value.isInitialized)
+                Center(
+                  child: CameraPreview(
+                    camera,
+                    // Over the picture itself, where the frame is read.
+                    child: mode == ScanMode.page || !_ready
+                        ? null
+                        : _BoxGuide(mode: mode, sweep: _sweep),
+                  ),
+                )
+              else
+                Center(
+                  child: _error == null
+                      ? const CircularProgressIndicator()
+                      : Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white),
+                          ),
                         ),
-                      ),
-              ),
-            // Blurred until a riwaya is chosen.
-            if (!_ready)
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: ColoredBox(color: Colors.black.withAlpha(90)),
                 ),
-              ),
-            // The guide frame, with a sweeping line while reading.
-            if (mode == ScanMode.page)
-              IgnorePointer(
-                child: Center(
-                  child: FractionallySizedBox(
-                    widthFactor: 0.88,
-                    heightFactor: 0.66,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: MushafColors.gold,
-                          width: 2.5,
+              // Blurred until a riwaya is chosen.
+              if (!_ready)
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: ColoredBox(color: Colors.black.withAlpha(90)),
+                  ),
+                ),
+              // The guide frame, with a sweeping line while reading.
+              if (mode == ScanMode.page)
+                IgnorePointer(
+                  child: Center(
+                    child: FractionallySizedBox(
+                      widthFactor: 0.88,
+                      heightFactor: 0.66,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: MushafColors.gold,
+                            width: 2.5,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: _ready
-                          ? AnimatedBuilder(
-                              animation: _sweep,
-                              builder: (context, _) => Align(
-                                alignment: Alignment(0, _sweep.value * 2 - 1),
-                                child: Container(
-                                  height: 3,
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: MushafColors.gold,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: MushafColors.gold.withAlpha(160),
-                                        blurRadius: 12,
-                                      ),
-                                    ],
+                        child: _ready
+                            ? AnimatedBuilder(
+                                animation: _sweep,
+                                builder: (context, _) => Align(
+                                  alignment: Alignment(0, _sweep.value * 2 - 1),
+                                  child: Container(
+                                    height: 3,
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: MushafColors.gold,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: MushafColors.gold.withAlpha(
+                                            160,
+                                          ),
+                                          blurRadius: 12,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            )
-                          : null,
+                              )
+                            : null,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            SafeArea(
-              child: Column(
-                children: [
-                  _TopPanel(
-                    variants: widget.variants,
-                    settings: widget.settings,
-                  ),
-                  const Spacer(),
-                  if (found != null && _ready)
-                    _PageReadings(
-                      page: found,
-                      quran: widget.quran,
+              SafeArea(
+                child: Column(
+                  children: [
+                    _TopPanel(
                       variants: widget.variants,
-                      mutashabihat: widget.mutashabihat,
                       settings: widget.settings,
-                      onOpen: () => _open(found),
-                    )
-                  else
-                    _hint(),
-                ],
+                    ),
+                    const Spacer(),
+                    if (found != null && _ready)
+                      _PageReadings(
+                        page: found,
+                        quran: widget.quran,
+                        variants: widget.variants,
+                        mutashabihat: widget.mutashabihat,
+                        settings: widget.settings,
+                        onOpen: () => _open(found),
+                      )
+                    else
+                      _hint(),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  /// What the circle read last: the number, a «؟» for a digit not read.
+  String get _lastRead {
+    final n = _scanner.lastNumber;
+    if (n == null) return 'لم يظهر رقم في الدائرة بعد.';
+    final shown = n.runes
+        .map((c) => c == 0x3F ? '؟' : String.fromCharCode(c - 0x30 + 0x0660))
+        .join();
+    return 'قرأت: $shown';
   }
 
   Widget _hint() => Container(
@@ -371,7 +387,8 @@ class _ScanScreenState extends State<ScanScreen>
                 ? 'اختر رواية واحدة على الأقل من الأعلى لبدء التعرف على الصفحة.'
                 : switch (widget.settings.scanMode) {
                     ScanMode.number =>
-                      'ضع رقم الصفحة داخل الدائرة أسفل الشاشة، ولك أن تقرّبه.',
+                      'ضع رقم الصفحة داخل الدائرة أسفل الشاشة، ولك أن تقرّبه.'
+                          '${_attempts == 0 ? '' : '\n$_lastRead'}',
                     ScanMode.line => 'ضع سطرًا من منتصف الصفحة داخل المستطيل.',
                     ScanMode.page =>
                       _attempts == 0
@@ -547,7 +564,8 @@ class _TopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(10),
+      // Room above it for the arrow of «الرواة».
+      margin: const EdgeInsets.fromLTRB(10, 30, 10, 10),
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
       decoration: BoxDecoration(
         color: Colors.black.withAlpha(150),

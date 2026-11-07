@@ -77,6 +77,10 @@ class PageScanner {
   String? _path;
   Completer<void>? _busy;
 
+  /// The page number last read, «?» for a digit not read; null when none
+  /// was seen: shown, so that what is read can be seen.
+  String? lastNumber;
+
   Future<void> get idle => _busy?.future ?? Future<void>.value();
 
   /// Start loading Arabic while the camera opens, rather than on its first frame.
@@ -122,7 +126,10 @@ class PageScanner {
       all: read ?? (i) => _recognize(i, digits: true),
       one: read ?? (i) => _recognize(i, digits: true, single: true),
     );
-    final page = number == null ? null : matcher.pageNumber(number);
+    lastNumber = number;
+    final page = number == null || number.contains('?')
+        ? null
+        : matcher.pageNumber(number);
     return page == null ? null : (page: page, score: 0.0);
   }
 

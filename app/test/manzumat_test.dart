@@ -1089,6 +1089,84 @@ void main() {
     }
   });
 
+  test("«لَسِحۡرٞ» (يونس ٢), Abu Ja'far's as Qalun's: «سَاحِرٌ ظُبَى»", () {
+    for (final id in ['qalun', 'warsh', 'ibn_wardan', 'ibn_jammaz']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 10,
+        ayah: 2,
+        word: 24,
+        count: 1,
+        text: 'لَسِحۡرٞ',
+        kind: VariantKind.farsh,
+        description: 'بكسر السين وحذف الألف وإسكان الحاء',
+      );
+      final r = manzumat.referenceOf(
+        v,
+        'لَسَٰحِرٞ',
+        10,
+        surahs,
+        entries: book.at(10, 2, 24),
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, {742}, reason: id);
+    }
+  });
+
+  test(
+    "«تَذَّكَّرُونَ» cites «وَتَذَّكَّرُونَ الْكُلُّ خَفَّ عَلَى شَذَا», Abu "
+    "Ja'far's too; Qunbul's «ضِئَآءٗ» «وَحَيْثُ ضِيَاءً»",
+    () {
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final v = Variant(
+          riwayaId: id,
+          surah: 10,
+          ayah: 3,
+          word: 28,
+          count: 1,
+          text: 'تَذَّكَّرُونَ',
+          kind: VariantKind.farsh,
+          description: 'بتشديد الذال',
+        );
+        final r = manzumat.referenceOf(
+          v,
+          'تَذَكَّرُونَ',
+          10,
+          surahs,
+          entries: book.at(10, 3, 28),
+        );
+        expect(r.poem, Poem.shatibiyya, reason: id);
+        expect(r.mention, {677}, reason: id);
+      }
+      for (final (s, a, w) in [(10, 5, 4), (21, 48, 5), (28, 71, 16)]) {
+        final v = Variant(
+          riwayaId: 'qunbul',
+          surah: s,
+          ayah: a,
+          word: w,
+          count: 1,
+          text: 'ضِئَآءٗ',
+          kind: VariantKind.farsh,
+          description: 'بإبدال الياء همزة مفتوحة',
+        );
+        final r = manzumat.referenceOf(
+          v,
+          'ضِيَآءٗ',
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.mention, {742}, reason: '$s:$a');
+      }
+    },
+  );
+
   test("Ibn Kathir's «فَمُسۡتَقِرّٞ» cites «وَاكْسِرْ بِمُسْتَقَرْ»", () {
     for (final id in ['bazzi', 'qunbul']) {
       final v = Variant(

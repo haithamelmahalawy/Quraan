@@ -94,14 +94,14 @@ void main() {
         ),
         '206',
       );
-      // A digit unread: no number, rather than a wrong one.
+      // A digit unread: a «?» in its place, no page rather than a wrong one.
       expect(
         await readPageNumber(
           image,
           all: (_) async => '٢',
           one: (_) async => '',
         ),
-        isNull,
+        '?0?',
       );
     });
   });

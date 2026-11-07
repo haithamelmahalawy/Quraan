@@ -184,6 +184,8 @@ class Manzumat {
     final poem =
         _istuhiqqa(reading) ||
             _kharraqu(reading) ||
+            _sihr(reading) ||
+            _tadhakkarun(reading) ||
             _hisad(reading) ||
             _aamantum(reading) ||
             _abuJafarBiis(reading) ||
@@ -940,6 +942,27 @@ class Manzumat {
       v.ayah == 165 &&
       v.word == 14;
 
+  /// «لَسِحۡرٞ» (يونس ٢) of Nafi' and Abu Ja'far, Abu Ja'far with Nafi', the
+  /// Durrah silent: «نُفَصِّلُ يَا حَقٍّ عُلاً سَاحِرٌ ظُبَى».
+  bool _sihr(Variant v) =>
+      v.surah == 10 &&
+      v.ayah == 2 &&
+      v.word == 24 &&
+      const {'qalun', 'warsh', 'ibn_wardan', 'ibn_jammaz'}.contains(v.riwayaId);
+
+  /// «تَذَّكَّرُونَ» with the dhal doubled, wherever it comes: «وَتَذَّكَّرُونَ
+  /// الْكُلُّ خَفَّ عَلَى شَذَا»; Abu Ja'far with Nafi', the Durrah silent. Not
+  /// where a bayt of its own tells it (الأعراف ٣، النمل ٦٢، الحاقة ٤٢).
+  static bool _tadhakkarun(Variant v) =>
+      v.description == 'بتشديد الذال' &&
+      _letters(v.text).contains('تذكرون') &&
+      !const {'7:3', '27:62', '69:42'}.contains('${v.surah}:${v.ayah}');
+
+  /// Qunbul's «ضِئَآءٗ» wherever it comes (يونس ٥، الأنبياء ٤٨، القصص ٧١):
+  /// «وَحَيْثُ ضِيَاءً وَافَقَ الْهَمْزُ قُنْبُلَا».
+  static bool _diya(Variant v) =>
+      v.riwayaId == 'qunbul' && _letters(v.text).contains('ضئا');
+
   /// «وَخَرَّقُواْ» (الأنعام ١٠٠) of Nafi' and Abu Ja'far: «خَرَّقُوا ثِقْلُهُ انْجَلَا».
   bool _kharraqu(Variant v) =>
       v.surah == 6 &&
@@ -958,6 +981,9 @@ class Manzumat {
   Set<int> _reviewedVerses(Poem poem, Variant v, String hafs) {
     if (poem == Poem.shatibiyya && _istuhiqqa(v)) return {627};
     if (poem == Poem.shatibiyya && _kharraqu(v)) return {656};
+    if (poem == Poem.shatibiyya && _sihr(v)) return {742};
+    if (poem == Poem.shatibiyya && _diya(v)) return {742};
+    if (poem == Poem.shatibiyya && _tadhakkarun(v)) return {677};
     if (poem == Poem.shatibiyya && _aamantum(v)) return {189, 190, 191};
     if (poem == Poem.shatibiyya && _abuJafarBiis(v)) return {704};
     // «طَٰٓئِفٞ» (الأعراف ٢٠١): Ibn Kathir's «طَيۡفٞ», Qalun's as Hafs's:

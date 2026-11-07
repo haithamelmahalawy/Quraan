@@ -22,6 +22,8 @@ void main() {
   ) async {
     t.view.physicalSize = const Size(430, 900);
     t.view.devicePixelRatio = 1;
+    // A phone's own bar at the top, over which nothing can be touched.
+    t.view.padding = const FakeViewPadding(top: 40);
     addTearDown(t.view.reset);
     final settings = ReaderSettings.memory(selected: {'qalun'});
     await t.pumpWidget(
@@ -49,6 +51,14 @@ void main() {
       find.text('ضع رقم الصفحة داخل الدائرة أسفل الشاشة، ولك أن تقرّبه.'),
       findsOneWidget,
     );
+    // «الرواة» below that bar, and opened by a touch.
+    final arrow = find.byKey(const ValueKey('riwayat-panel-toggle'));
+    expect(t.getRect(arrow).top, greaterThanOrEqualTo(40));
+    await t.tap(arrow);
+    await t.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const ValueKey('riwayat-panel')), findsOneWidget);
+    await t.tap(arrow);
+    await t.pump(const Duration(milliseconds: 400));
     await t.tap(find.text(ScanMode.line.labelAr));
     await t.pump();
     expect(settings.scanMode, ScanMode.line);

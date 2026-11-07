@@ -135,6 +135,9 @@ List<Blob?>? numberPieces(ScanImage image) {
   ];
 }
 
+/// How tall the digits are given to the reader.
+const digitHeight = 64;
+
 /// [glyphs] alone, black on white, cropped to them with a margin: nothing
 /// else of [image] for the reader to see.
 @visibleForTesting
@@ -145,15 +148,27 @@ ScanImage glyphsAlone(ScanImage image, List<Blob> glyphs) {
   final bottom = glyphs.map((b) => b.bottom).reduce(math.max);
   final pad = ((bottom - top + 1) * .3).ceil();
   final w = right - left + 1 + 2 * pad, h = bottom - top + 1 + 2 * pad;
-  final pixels = Uint8List(w * h)..fillRange(0, w * h, 255);
+  final ink = Uint8List(w * h)..fillRange(0, w * h, 255);
   for (final b in glyphs) {
     for (final p in b.pixels) {
       final x = p % image.width - left + pad;
       final y = p ~/ image.width - top + pad;
-      pixels[y * w + x] = 0;
+      ink[y * w + x] = 0;
     }
   }
-  return (width: w, height: h, pixels: pixels);
+  // As tall as the reader reads digits best, whatever the zoom: the digits
+  // [digitHeight] pixels high.
+  final scale = digitHeight / (bottom - top + 1);
+  final sw = math.max(1, (w * scale).round());
+  final sh = math.max(1, (h * scale).round());
+  final pixels = Uint8List(sw * sh);
+  for (var y = 0; y < sh; y++) {
+    final from = math.min(h - 1, (y / scale).floor()) * w;
+    for (var x = 0; x < sw; x++) {
+      pixels[y * sw + x] = ink[from + math.min(w - 1, (x / scale).floor())];
+    }
+  }
+  return (width: sw, height: sh, pixels: pixels);
 }
 
 /// The digits 1 to 9 of [text], Arabic-Indic or Western, as Western ones.
@@ -167,7 +182,7 @@ String nonZeroDigits(String text) => [
 
 /// The page number in [image] (black and white), its digits read by [all]
 /// together, or one by one by [one] where some were lost; its zeros told by
-/// their shape. Null when it cannot be read whole.
+/// their shape. A digit not read is a «?»; null when no number is seen.
 Future<String?> readPageNumber(
   ScanImage image, {
   required Future<String> Function(ScanImage) all,
@@ -182,8 +197,7 @@ Future<String?> readPageNumber(
     digits = '';
     for (final g in glyphs) {
       final d = nonZeroDigits(await one(glyphsAlone(image, [g])));
-      if (d.length != 1) return null;
-      digits += d;
+      digits += d.length == 1 ? d : '?';
     }
   }
   var i = 0;

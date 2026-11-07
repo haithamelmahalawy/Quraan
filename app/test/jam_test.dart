@@ -148,6 +148,74 @@ void main() {
     await t.pumpWidget(const SizedBox());
   });
 
+  testWidgets('the hamesh in usul and farsh; under an asl, the riwayat\'s '
+      'manhaj, shut until opened', (t) async {
+    t.view.physicalSize = const Size(430, 1400);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: JamScreen(quran: quran, variants: variants, page: 1),
+      ),
+    );
+    for (
+      var i = 0;
+      i < 100 && find.byKey(const ValueKey('jam-lead')).evaluate().isEmpty;
+      i++
+    ) {
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await t.pump();
+    }
+    // صراط الذين أنعمت عليهم: Qalun's silah of the mim, an asl.
+    await t.scrollUntilVisible(
+      find.byKey(const ValueKey('jam-ayah-6')),
+      100,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('jam-strip-1')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    t
+        .widget<ChoiceChip>(find.byKey(const ValueKey('jam-ayah-6')))
+        .onSelected!(true);
+    await t.pump();
+    expect(find.text('قالون عن نافع'), findsOneWidget);
+    expect(find.byKey(const ValueKey('jam-usul')), findsOneWidget);
+    final asl = find.byKey(const ValueKey('jam-asl-صلة ميم الجمع'));
+    expect(asl, findsOneWidget);
+    final table = find.byKey(const ValueKey('jam-manhaj-table-صلة ميم الجمع'));
+    expect(table, findsNothing);
+    final open = find.text('منهج الرواة في هذا الأصل');
+    await t.ensureVisible(open.first);
+    await t.tap(open.first);
+    await t.pumpAndSettle();
+    expect(table, findsOneWidget);
+    // Every riwaya of the jam' in it: Hafs as the asl, those without the
+    // silah as Hafs, Ibn Kathir's with it.
+    for (final id in jamOrder) {
+      expect(
+        find.descendant(of: table, matching: find.text(jamName(id))),
+        findsOneWidget,
+        reason: id,
+      );
+    }
+    expect(
+      find.descendant(of: table, matching: find.text('على الأصل')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: table, matching: find.text('كحفص')),
+      findsWidgets,
+    );
+    await t.tap(open.first);
+    await t.pumpAndSettle();
+    expect(table, findsNothing);
+    await t.pumpWidget(const SizedBox());
+  });
+
   testWidgets('at the end of the page, on to the next from its first ayah', (
     t,
   ) async {
