@@ -80,7 +80,42 @@ class PageMatcher {
   ({int page, double score})? match(String text, {int lines = 2}) =>
       _match(text, lines);
 
-  ({int page, double score})? _match(String text, int onLines) {
+  /// The pages whose number has [digits] in it, in their order, though not
+  /// side by side: what a number read with some of its digits lost may be
+  /// (٢ of ٢٠٦: 2, 12, 20…29, 102, 200…299…).
+  Set<int> pagesWithDigits(String digits) {
+    final read = [
+      for (final c in digits.runes)
+        if (c >= 0x30 && c <= 0x39)
+          c - 0x30
+        else if (c >= 0x0660 && c <= 0x0669)
+          c - 0x0660,
+    ];
+    if (read.isEmpty) return {};
+    bool within(int page) {
+      var i = 0;
+      for (final c in '$page'.codeUnits) {
+        if (i < read.length && c - 0x30 == read[i]) i++;
+      }
+      return i == read.length;
+    }
+
+    return {
+      for (var p = _first; p <= _last; p++)
+        if (within(p)) p,
+    };
+  }
+
+  /// The page among [pages] that [text] shows, or null: one line of it is
+  /// enough, the number read having already narrowed them down.
+  ({int page, double score})? matchAmong(String text, Set<int> pages) =>
+      pages.isEmpty ? null : _match(text, 1, among: pages);
+
+  ({int page, double score})? _match(
+    String text,
+    int onLines, {
+    Set<int>? among,
+  }) {
     final raw = text.split('\n');
     final lines = [
       for (final line in raw)
@@ -154,6 +189,7 @@ class PageMatcher {
         scores[n] = scores[n]! + 6;
       }
     }
+    if (among != null) scores.removeWhere((p, _) => !among.contains(p));
     if (scores.isEmpty) return null;
     final ranked = scores.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -162,7 +198,8 @@ class PageMatcher {
     // Enough evidence (photographed pages read as noise score up to ~20),
     // runs of the page's text on at least two lines (a phrase quoted in
     // other text has one), and clearly ahead of the next page.
-    if (best.value < 22 || (runLines[best.key]?.length ?? 0) < onLines) {
+    if (best.value < (among == null ? 22 : 10) ||
+        (runLines[best.key]?.length ?? 0) < onLines) {
       return null;
     }
     if (best.value < second * (onLines < 2 ? 1.6 : 1.3)) return null;

@@ -21,7 +21,11 @@ typedef PageMatch = ({int page, double score});
 typedef ScanBox = ({double x, double y, double width, double aspect});
 
 /// Where the page number is aimed: a small circle near the bottom.
-const ScanBox numberBox = (x: .5, y: .84, width: .22, aspect: 1);
+const ScanBox numberBox = (x: .5, y: .84, width: .28, aspect: 1);
+
+/// The lines above the page number, read to tell which of the pages its
+/// digits may be is the one shown.
+const ScanBox aboveNumberBox = (x: .5, y: .6, width: .92, aspect: .22);
 
 /// Where a line is aimed: a strip across the middle.
 const ScanBox lineBox = (x: .5, y: .5, width: .92, aspect: .12);
@@ -92,12 +96,7 @@ class PageScanner {
     if (_busy != null) return null;
     final busy = _busy = Completer<void>();
     try {
-      if (mode == ScanMode.number) {
-        final image = await compute(_prepareBox, (frame, numberBox, 200));
-        final text = await (read ?? _digits)(image);
-        final page = matcher.pageNumber(text);
-        return page == null ? null : (page: page, score: 0.0);
-      }
+      if (mode == ScanMode.number) return await _byNumber(frame);
       if (mode == ScanMode.line) {
         final image = await compute(_prepareBox, (frame, lineBox, 1100));
         return matcher.match(await (read ?? _recognize)(image), lines: 1);
@@ -113,6 +112,34 @@ class PageScanner {
       _busy = null;
       busy.complete();
     }
+  }
+
+  /// The page by its number: the digits read, then the lines above them
+  /// tell which of the pages with those digits it is, for a digit may be
+  /// lost (the ٠ is a dot): ٢ of ٢٠٦ is no page 2. A whole number of three
+  /// digits the text does not tell is taken when read so twice (score 0).
+  Future<PageMatch?> _byNumber(Frame frame) async {
+    final image = await compute(_prepareBox, (frame, numberBox, 320));
+    final read = await (this.read ?? _digits)(image);
+    final digits = RegExp(r'[0-9٠-٩]+')
+        .allMatches(read)
+        .map((m) => m[0]!)
+        .fold('', (a, b) => b.length > a.length ? b : a);
+    final pages = matcher.pagesWithDigits(digits);
+    if (pages.isEmpty) return null;
+    final lines = await compute(_prepareBox, (frame, aboveNumberBox, 1100));
+    final found = matcher.matchAmong(
+      await (this.read ?? _recognize)(lines),
+      pages,
+    );
+    // The digits and the text agree: taken at once.
+    if (found != null) {
+      return (page: found.page, score: math.max(found.score, 34.0));
+    }
+    final whole = matcher.pageNumber(digits);
+    return digits.length == 3 && whole != null
+        ? (page: whole, score: 0.0)
+        : null;
   }
 
   /// The digits of a page number: one line of Arabic-Indic or Western

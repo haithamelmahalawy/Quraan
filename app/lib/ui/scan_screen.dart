@@ -371,7 +371,7 @@ class _ScanScreenState extends State<ScanScreen>
                 ? 'اختر رواية واحدة على الأقل من الأعلى لبدء التعرف على الصفحة.'
                 : switch (widget.settings.scanMode) {
                     ScanMode.number =>
-                      'ضع رقم الصفحة في الدائرة الصغيرة أسفل الشاشة.',
+                      'ضع رقم الصفحة في الدائرة أسفل الشاشة والصفحة فوقها.',
                     ScanMode.line => 'ضع سطرًا من منتصف الصفحة داخل المستطيل.',
                     ScanMode.page =>
                       _attempts == 0

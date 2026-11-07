@@ -46,7 +46,7 @@ void main() {
     // Read by the page number unless told otherwise.
     expect(settings.scanMode, ScanMode.number);
     expect(
-      find.text('ضع رقم الصفحة في الدائرة الصغيرة أسفل الشاشة.'),
+      find.text('ضع رقم الصفحة في الدائرة أسفل الشاشة والصفحة فوقها.'),
       findsOneWidget,
     );
     await t.tap(find.text(ScanMode.line.labelAr));

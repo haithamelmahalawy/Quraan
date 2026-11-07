@@ -63,16 +63,47 @@ void main() {
       expect(found?.page, 188);
       // Read once more before it is taken: the score says so.
       expect(found?.score, 0);
-      expect(reads, hasLength(1));
-      expect(reads.single.width, 200);
-      expect(reads.single.height, 200);
+      // The digits, then the lines above them.
+      expect(reads, hasLength(2));
+      expect(reads.first.width, 320);
+      expect(reads.first.height, 320);
       final page = prepareFrame(frame).pixels.length;
-      expect(reads.single.pixels.length, lessThan(page));
+      expect(reads.first.pixels.length, lessThan(page));
       // No number, or one outside the mushaf: nothing.
       final none = PageScanner(matcher, read: (_) async => '٩٩٩');
       expect(await none.scan(frame, mode: ScanMode.number), isNull);
     },
   );
+
+  test('a digit lost from the number: the lines above tell the page', () async {
+    final quran = QuranRepository.parse(
+      File('assets/data/quran.json').readAsStringSync(),
+    );
+    String lineOf(int page) {
+      final words = quran.page(page).expand((a) => a.words).toList();
+      final start = (words.length - 9) ~/ 2;
+      return words.sublist(start, start + 9).join(' ');
+    }
+
+    // ٢٠٦ read ٢, ٢٠٥ read ٥: not pages 2 and 5.
+    for (final (digits, page) in [('٢', 206), ('٥', 205), ('٢٦', 206)]) {
+      var n = 0;
+      final scanner = PageScanner(
+        matcher,
+        read: (_) async => n++ == 0 ? digits : lineOf(page),
+      );
+      final found = await scanner.scan(frame, mode: ScanMode.number);
+      expect(found?.page, page, reason: digits);
+      expect(found!.score, greaterThanOrEqualTo(34), reason: digits);
+    }
+    // A digit and no text to tell: nothing, not page 2.
+    var n = 0;
+    final unsure = PageScanner(
+      matcher,
+      read: (_) async => n++ == 0 ? '٢' : 'نص غير واضح',
+    );
+    expect(await unsure.scan(frame, mode: ScanMode.number), isNull);
+  });
 
   test('a line: one strip across the middle, read once', () async {
     final reads = <ScanImage>[];

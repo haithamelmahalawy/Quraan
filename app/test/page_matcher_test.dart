@@ -159,6 +159,38 @@ void main() {
     expect(noisy, greaterThanOrEqualTo(520));
   });
 
+  test('a number with a digit lost, and a line above it: never wrong', () {
+    final quran = QuranRepository.parse(
+      File('assets/data/quran.json').readAsStringSync(),
+    );
+    final matcher = PageMatcher(quran);
+    final rnd = Random(5);
+    var right = 0, wrong = 0;
+    for (var page = 1; page <= quran.pageCount; page++) {
+      final digits = '$page';
+      // One digit lost, where it has more than one.
+      final i = rnd.nextInt(digits.length);
+      final read = digits.length < 2
+          ? digits
+          : digits.replaceRange(i, i + 1, '');
+      final words = quran.page(page).expand((a) => a.words).toList();
+      final start = max(0, (words.length - 9) * 2 ~/ 3);
+      final line = [
+        for (final w in words.sublist(start, min(start + 9, words.length)))
+          String.fromCharCodes(
+            w.runes.where((c) => c >= 0x0621 && c <= 0x064A),
+          ),
+      ].join(' ');
+      final m = matcher.matchAmong(line, matcher.pagesWithDigits(read));
+      if (m == null) continue;
+      m.page == page ? right++ : wrong++;
+    }
+    // ignore: avoid_print
+    print('a digit lost: right $right, wrong $wrong of 604');
+    expect(wrong, 0);
+    expect(right, greaterThanOrEqualTo(580));
+  });
+
   test('the page number read alone', () {
     final quran = QuranRepository.parse(
       File('assets/data/quran.json').readAsStringSync(),
