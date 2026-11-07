@@ -274,13 +274,18 @@ class Manzumat {
             for (final v in inChapter)
               if (names(v)) v.n,
           };
+    // The Durrah's «وَالاذْنُ وَسُحْقًا الاُكْلُ ...» (75) names the words that
+    // the bayt before it rules «أُثْقِلَا»: cited with it.
+    final cited = poem == Poem.durrah && selected.contains(75)
+        ? {...selected, 74}
+        : selected;
     return (
       poem: poem,
       chapter: chapter,
       verses: inChapter,
       mention: {
         for (final b in inChapter)
-          if (selected.contains(b.n)) b.n,
+          if (cited.contains(b.n)) b.n,
       },
       fromBook: quoted.isNotEmpty,
       bookExplanation: bookExplanation,
@@ -1000,6 +1005,13 @@ class Manzumat {
         qiraaOf(v.riwayaId).id == 'khalaf' &&
         at == '8:59:1') {
       return {119};
+    }
+    // Abu Ja'far's «ٱثۡنَآ عۡشَرَ» (التوبة ٣٦): «وَعَيْنَ عَشَرْ أَلَا» at the end
+    // of the one, «فَسَكِّنْ جَمِيْعًا وَامْدُدْ اثْنَا» at the start of the next.
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        at == '9:36:5') {
+      return {122, 123};
     }
     // Abu Ja'far's «يُقَتِّلُونَ» (الأعراف ١٤١) with the shadda, as Hafs:
     // «أَلَا افْـتَحَنْ يَقْتُلُوا مَعْ يَتْبَعُ اشْدُدْ».

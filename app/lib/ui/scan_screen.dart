@@ -10,12 +10,12 @@ import '../data/mutashabihat_repository.dart';
 import '../data/page_matcher.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
-import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import '../services/page_scanner.dart';
 import '../services/qcf_fonts.dart';
 import '../state/reader_settings.dart';
 import 'mushaf_page.dart';
+import 'riwayat_panel.dart';
 import 'theme.dart';
 import 'ayah_sheet.dart';
 import 'variant_sheet.dart';
@@ -198,7 +198,10 @@ class _ScanScreenState extends State<ScanScreen>
         final want = _wantFrame = Completer<Frame?>();
         final frame = await want.future.timeout(const Duration(seconds: 3));
         if (frame == null || !mounted || !identical(_camera, camera)) return;
-        final found = await _scanner.scan(frame);
+        final found = await _scanner.scan(
+          frame,
+          mode: widget.settings.scanMode,
+        );
         if (!mounted || !identical(_camera, camera)) return;
         _attempts++;
         // Confident at once (photographed pages read as noise score up to
@@ -237,90 +240,113 @@ class _ScanScreenState extends State<ScanScreen>
   Widget build(BuildContext context) {
     final camera = _camera;
     final found = _found;
+    final mode = widget.settings.scanMode;
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (camera != null && camera.value.isInitialized)
-            Center(child: CameraPreview(camera))
-          else
-            Center(
-              child: _error == null
-                  ? const CircularProgressIndicator()
-                  : Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        _error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white),
+      // The riwayat chosen as in the mushaf: «الرواة» at the top.
+      body: RiwayatPanel(
+        settings: widget.settings,
+        variants: widget.variants,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (camera != null && camera.value.isInitialized)
+              Center(
+                child: CameraPreview(
+                  camera,
+                  // Over the picture itself, where the frame is read.
+                  child: mode == ScanMode.page || !_ready
+                      ? null
+                      : _BoxGuide(mode: mode, sweep: _sweep),
+                ),
+              )
+            else
+              Center(
+                child: _error == null
+                    ? const CircularProgressIndicator()
+                    : Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          _error!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ),
-                    ),
-            ),
-          // Blurred until a riwaya is chosen.
-          if (!_ready)
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: ColoredBox(color: Colors.black.withAlpha(90)),
               ),
-            ),
-          // The guide frame, with a sweeping line while reading.
-          IgnorePointer(
-            child: Center(
-              child: FractionallySizedBox(
-                widthFactor: 0.88,
-                heightFactor: 0.66,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: MushafColors.gold, width: 2.5),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: _ready
-                      ? AnimatedBuilder(
-                          animation: _sweep,
-                          builder: (context, _) => Align(
-                            alignment: Alignment(0, _sweep.value * 2 - 1),
-                            child: Container(
-                              height: 3,
-                              margin: const EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: MushafColors.gold,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: MushafColors.gold.withAlpha(160),
-                                    blurRadius: 12,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        )
-                      : null,
+            // Blurred until a riwaya is chosen.
+            if (!_ready)
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: ColoredBox(color: Colors.black.withAlpha(90)),
                 ),
               ),
-            ),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                _TopPanel(variants: widget.variants, settings: widget.settings),
-                const Spacer(),
-                if (found != null && _ready)
-                  _PageReadings(
-                    page: found,
-                    quran: widget.quran,
+            // The guide frame, with a sweeping line while reading.
+            if (mode == ScanMode.page)
+              IgnorePointer(
+                child: Center(
+                  child: FractionallySizedBox(
+                    widthFactor: 0.88,
+                    heightFactor: 0.66,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: MushafColors.gold,
+                          width: 2.5,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: _ready
+                          ? AnimatedBuilder(
+                              animation: _sweep,
+                              builder: (context, _) => Align(
+                                alignment: Alignment(0, _sweep.value * 2 - 1),
+                                child: Container(
+                                  height: 3,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: MushafColors.gold,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: MushafColors.gold.withAlpha(160),
+                                        blurRadius: 12,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+            SafeArea(
+              child: Column(
+                children: [
+                  _TopPanel(
                     variants: widget.variants,
-                    mutashabihat: widget.mutashabihat,
                     settings: widget.settings,
-                    onOpen: () => _open(found),
-                  )
-                else
-                  _hint(),
-              ],
+                  ),
+                  const Spacer(),
+                  if (found != null && _ready)
+                    _PageReadings(
+                      page: found,
+                      quran: widget.quran,
+                      variants: widget.variants,
+                      mutashabihat: widget.mutashabihat,
+                      settings: widget.settings,
+                      onOpen: () => _open(found),
+                    )
+                  else
+                    _hint(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -343,9 +369,15 @@ class _ScanScreenState extends State<ScanScreen>
           child: Text(
             !_ready
                 ? 'اختر رواية واحدة على الأقل من الأعلى لبدء التعرف على الصفحة.'
-                : _attempts == 0
-                ? 'وجّه الكاميرا للصفحة داخل الإطار وثبّتها لحظة.'
-                : 'جارٍ التعرف… اجعل سطور منتصف الصفحة واضحة (محاولة $_attempts).',
+                : switch (widget.settings.scanMode) {
+                    ScanMode.number =>
+                      'ضع رقم الصفحة في الدائرة الصغيرة أسفل الشاشة.',
+                    ScanMode.line => 'ضع سطرًا من منتصف الصفحة داخل المستطيل.',
+                    ScanMode.page =>
+                      _attempts == 0
+                          ? 'وجّه الكاميرا للصفحة داخل الإطار وثبّتها لحظة.'
+                          : 'جارٍ التعرف… اجعل سطور منتصف الصفحة واضحة (محاولة $_attempts).',
+                  },
             style: const TextStyle(color: Colors.white),
           ),
         ),
@@ -543,40 +575,86 @@ class _TopPanel extends StatelessWidget {
               ),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(8, 0, 8, 6),
-            child: Text(
-              'الروايات التي تظهر على الصفحة:',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
-            ),
-          ),
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final q in qiraat)
-                  for (final r in q.riwayat)
-                    if (r.id != hafsId && variants.isAvailable(r.id))
-                      Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 6),
-                        child: FilterChip(
-                          label: Text(r.nameAr),
-                          selected: settings.selected.contains(r.id),
-                          selectedColor: q.color.withAlpha(120),
-                          avatar: CircleAvatar(backgroundColor: q.color),
-                          showCheckmark: false,
-                          onSelected: (on) {
-                            final next = {...settings.selected};
-                            on ? next.add(r.id) : next.remove(r.id);
-                            settings.setSelected(next);
-                          },
-                        ),
-                      ),
+          // What is read of the page: its number is the quickest.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 2, 8, 0),
+            child: SegmentedButton<ScanMode>(
+              key: const ValueKey('scan-mode'),
+              showSelectedIcon: false,
+              style: SegmentedButton.styleFrom(
+                foregroundColor: Colors.white,
+                selectedForegroundColor: Colors.black,
+                selectedBackgroundColor: MushafColors.gold,
+                side: BorderSide(color: MushafColors.gold),
+              ),
+              segments: [
+                for (final m in ScanMode.values)
+                  ButtonSegment(
+                    value: m,
+                    label: Text(m.labelAr),
+                    icon: Icon(switch (m) {
+                      ScanMode.number => Icons.tag,
+                      ScanMode.line => Icons.short_text,
+                      ScanMode.page => Icons.document_scanner,
+                    }),
+                  ),
               ],
+              selected: {settings.scanMode},
+              onSelectionChanged: (m) => settings.scanMode = m.single,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Where [mode] reads the frame, drawn over the camera's picture at the
+/// same place: a small circle for the page number, a strip for a line.
+class _BoxGuide extends StatelessWidget {
+  const _BoxGuide({required this.mode, required this.sweep});
+
+  final ScanMode mode;
+  final Animation<double> sweep;
+
+  @override
+  Widget build(BuildContext context) {
+    final box = mode == ScanMode.number ? numberBox : lineBox;
+    final round = mode == ScanMode.number;
+    return IgnorePointer(
+      child: LayoutBuilder(
+        builder: (context, size) {
+          final w = size.maxWidth * box.width, h = w * box.aspect;
+          return Stack(
+            children: [
+              Positioned(
+                key: ValueKey('scan-box-${mode.name}'),
+                left: size.maxWidth * box.x - w / 2,
+                top: size.maxHeight * box.y - h / 2,
+                width: w,
+                height: h,
+                child: AnimatedBuilder(
+                  animation: sweep,
+                  builder: (context, _) => DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: round ? BoxShape.circle : BoxShape.rectangle,
+                      borderRadius: round ? null : BorderRadius.circular(8),
+                      border: Border.all(color: MushafColors.gold, width: 2.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: MushafColors.gold.withAlpha(
+                            (60 + 120 * sweep.value).round(),
+                          ),
+                          blurRadius: 14,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

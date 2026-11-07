@@ -119,6 +119,52 @@ void main() {
     }
   });
 
+  test("Abu Ja'far's «ٱثۡنَآ عۡشَرَ» cites the two bayts it spans", () {
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 9,
+        ayah: 36,
+        word: 5,
+        count: 2,
+        text: 'ٱثۡنَآ عۡشَرَ',
+        kind: VariantKind.farsh,
+        description: 'بإسكان العين ومد الألف مدًّا لازمًا',
+      );
+      final r = manzumat.referenceOf(v, 'ٱثۡنَا عَشَرَ', 9, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {122, 123}, reason: id);
+    }
+  });
+
+  test(
+    "Abu Ja'far's «أُذُنٞ» cites «وَالاذْنُ» with the bayt that rules it",
+    () {
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final v = Variant(
+          riwayaId: id,
+          surah: 9,
+          ayah: 61,
+          word: 6,
+          count: 1,
+          text: 'أُذُنٞۚ',
+          kind: VariantKind.farsh,
+          description: 'بضم الذال',
+          rule: 'comparison',
+        );
+        final r = manzumat.referenceOf(
+          v,
+          'أُذُنٞۚ',
+          9,
+          surahs,
+          entries: book.at(9, 61, 6),
+        );
+        expect(r.poem, Poem.durrah, reason: id);
+        expect(r.mention, {74, 75}, reason: id);
+      }
+    },
+  );
+
   test("Abu Ja'far's «يَضُرُّكُمۡ» cites its farsh, not its silah", () {
     for (final id in ['ibn_wardan', 'ibn_jammaz']) {
       final v = Variant(

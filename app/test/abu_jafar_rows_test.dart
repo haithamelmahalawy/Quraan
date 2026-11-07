@@ -73,6 +73,9 @@ void main() {
           // reading leaves it single (يَلۡهَثۡ ذَٰلِكَ for يَلۡهَثۚ ذَّٰلِكَ).
           bool doubledFirst(String w) => RegExp(r'^[ء-ي][ً-ِ]*ّ').hasMatch(w);
           if (doubledFirst(last) && !doubledFirst(own.last)) continue;
+          // Its madd drawn where Hafs has none, made lazim by the reading's
+          // sukun after it (ٱثۡنَآ عۡشَرَ for ٱثۡنَا عَشَرَ).
+          if (own.first.contains('ٓ') && !first.contains('ٓ')) continue;
           if (sameAsHafs(own.first, first) || sameAsHafs(own.last, last)) {
             wrong.add('${v[0]}:${v[1]}:${v[2]}+$count ${v[4]}');
           }

@@ -11,9 +11,20 @@ import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
 import '../data/page_matcher.dart';
+import '../state/reader_settings.dart' show ScanMode;
 
 typedef ScanImage = ({int width, int height, Uint8List pixels});
 typedef PageMatch = ({int page, double score});
+
+/// A part of the upright frame read alone: its centre and width as
+/// fractions of the frame's, and its height in proportion to its width.
+typedef ScanBox = ({double x, double y, double width, double aspect});
+
+/// Where the page number is aimed: a small circle near the bottom.
+const ScanBox numberBox = (x: .5, y: .84, width: .22, aspect: 1);
+
+/// Where a line is aimed: a strip across the middle.
+const ScanBox lineBox = (x: .5, y: .5, width: .92, aspect: .12);
 
 /// CameraX delivers sensor-oriented YUV even when the phone is turned.
 int scanFrameRotation(int sensor, DeviceOrientation orientation) {
@@ -74,11 +85,23 @@ class PageScanner {
     }
   }
 
-  Future<PageMatch?> scan(Frame frame) async {
+  /// The page [frame] shows, read as [mode] says: the page number alone
+  /// (score 0: to be read the same twice), one line, or the page.
+  Future<PageMatch?> scan(Frame frame, {ScanMode mode = ScanMode.page}) async {
     // Never queue stale frames when a camera session is reopened during a read.
     if (_busy != null) return null;
     final busy = _busy = Completer<void>();
     try {
+      if (mode == ScanMode.number) {
+        final image = await compute(_prepareBox, (frame, numberBox, 200));
+        final text = await (read ?? _digits)(image);
+        final page = matcher.pageNumber(text);
+        return page == null ? null : (page: page, score: 0.0);
+      }
+      if (mode == ScanMode.line) {
+        final image = await compute(_prepareBox, (frame, lineBox, 1100));
+        return matcher.match(await (read ?? _recognize)(image), lines: 1);
+      }
       for (final quick in [true, false]) {
         final image = await compute(_prepare, (frame, quick));
         final text = await (read ?? _recognize)(image);
@@ -92,11 +115,18 @@ class PageScanner {
     }
   }
 
-  Future<String> _recognize(ScanImage image) async {
-    const args = {
-      'psm': '6',
+  /// The digits of a page number: one line of Arabic-Indic or Western
+  /// digits, nothing else looked for, so read in a moment.
+  Future<String> _digits(ScanImage image) => _recognize(image, digits: true);
+
+  Future<String> _recognize(ScanImage image, {bool digits = false}) async {
+    // The engine keeps what it is told between reads: the list of letters
+    // is given every time, empty (all) for text.
+    final args = {
+      'psm': digits ? '7' : '6',
       'preserve_interword_spaces': '1',
       'tessedit_do_invert': '0',
+      'tessedit_char_whitelist': digits ? '٠١٢٣٤٥٦٧٨٩0123456789' : '',
     };
     if (Platform.isAndroid) {
       return FlutterTesseractOcr.extractPixels(
@@ -114,6 +144,13 @@ class PageScanner {
     await File(_path!).writeAsBytes(png);
     return FlutterTesseractOcr.extractText(_path!, language: 'ara', args: args);
   }
+}
+
+ScanImage _prepareBox((Frame, ScanBox, int) input) {
+  final (frame, box, width) = input;
+  final image = prepareBox(frame, box, width);
+  binarize(image.pixels, image.width, image.height, r: width < 400 ? 12 : 20);
+  return image;
 }
 
 ScanImage _prepare((Frame, bool) input) {
@@ -141,11 +178,38 @@ Uint8List _toPng(ScanImage image) {
 /// wide, in one pass: each pixel is sampled from the camera's bytes.
 @visibleForTesting
 ScanImage prepareFrame(Frame f, {bool quick = false}) {
-  final turned = f.rotation == 90 || f.rotation == 270;
-  final rw = turned ? f.height : f.width, rh = turned ? f.width : f.height;
+  final (rw, rh) = _upright(f);
   final cw = rw * 0.9, ch = rh * (quick ? 0.28 : 0.72);
-  final cx = (rw - cw) / 2, cy = (rh - ch) / 2;
-  const width = 1100;
+  return _sample(f, (rw - cw) / 2, (rh - ch) / 2, cw, ch, 1100);
+}
+
+/// The part [box] of the upright frame, [width] pixels wide.
+@visibleForTesting
+ScanImage prepareBox(Frame f, ScanBox box, int width) {
+  final (rw, rh) = _upright(f);
+  final cw = rw * box.width;
+  final ch = math.min(cw * box.aspect, rh.toDouble());
+  final cx = (rw * box.x - cw / 2).clamp(0.0, rw - cw);
+  final cy = (rh * box.y - ch / 2).clamp(0.0, rh - ch);
+  return _sample(f, cx, cy, cw, ch, width);
+}
+
+(int, int) _upright(Frame f) {
+  final turned = f.rotation == 90 || f.rotation == 270;
+  return turned ? (f.height, f.width) : (f.width, f.height);
+}
+
+/// The upright frame's rectangle from ([cx], [cy]), [cw] × [ch], scaled to
+/// [width] pixels wide.
+ScanImage _sample(
+  Frame f,
+  double cx,
+  double cy,
+  double cw,
+  double ch,
+  int width,
+) {
+  final turned = f.rotation == 90 || f.rotation == 270;
   final scale = cw / width;
   final height = (ch / scale).round();
 

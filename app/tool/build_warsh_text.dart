@@ -174,14 +174,15 @@ List<String> _clusters(String s) {
 
 /// The ya or waw a nun or tanween merges into (مَن يَّقُولُ، مِن وَّلِيّٖ): the
 /// source doubles it, Hafs's rasm does not (مَن يَقُولُ), the same reading.
+/// So too where Hafs reads another word there (إِن يُّعْفَ for Hafs's
+/// إِن نَّعۡفُ): written as Ibn Kathir's, without the shadda.
 String withoutIdghamShadda(String warsh, String hafs) {
   final w = _clusters(warsh), h = _clusters(hafs);
   if (w.isEmpty ||
       h.isEmpty ||
       !RegExp('^[\u064a\u0648]').hasMatch(w.first) ||
-      w.first[0] != h.first[0] ||
       !w.first.contains('\u0651') ||
-      h.first.contains('\u0651')) {
+      w.first[0] == h.first[0] && h.first.contains('ّ')) {
     return warsh;
   }
   w[0] = w.first.replaceAll('\u0651', '');

@@ -903,7 +903,9 @@ Map<String, int> buildAshabSilahUsul(
     // الإخفاء: the nun sakina and tanween before kha and ghayn.
     for (var n = 0; n + 1 < words.length; n++) {
       final a = words[n], b = words[n + 1];
-      if (a.s != b.s || a.a != b.a) continue;
+      // In the ayah, or at its end before the first word of the next one
+      // (رَّحِيمٌ خُذۡ), read joined; never across two surahs.
+      if (a.s != b.s) continue;
       if (!const {'خ', 'غ'}.contains(b.t[0])) continue;
       final plain = a.t.replaceAll(_pauseSigns, '');
       if (!RegExp('(نۡ|[ًٌٍٖٗٞ]ا?)\$').hasMatch(plain)) continue;

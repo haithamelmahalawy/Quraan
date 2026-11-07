@@ -136,6 +136,12 @@ class ReaderSettings extends ChangeNotifier {
       DiffAlert.values.asNameMap()[_get('diffAlert') as String? ?? ''];
   set diffAlert(DiffAlert? style) => _set('diffAlert', style?.name ?? '');
 
+  /// What the camera reads of a printed page: its number (the fastest), a
+  /// line in its middle, or the middle of the whole page.
+  ScanMode get scanMode =>
+      ScanMode.values.asNameMap()[_get('scanMode')] ?? ScanMode.number;
+  set scanMode(ScanMode mode) => _set('scanMode', mode.name);
+
   /// The usul (by their label in the guide: «صلة ميم الجمع»...) whose words
   /// the lamp leaves unlit; none at first, every asl glowing.
   Set<String> get unlitUsul => {
@@ -328,6 +334,21 @@ class ReaderSettings extends ChangeNotifier {
 
 /// What the ayah sheet shows beside the ayah.
 enum BesideAyah { tafsir, e3rab, tawjih, waqf }
+
+/// What the camera reads of a printed page to know it.
+enum ScanMode {
+  /// The page number, in a small circle at the bottom: digits alone.
+  number('رقم الصفحة'),
+
+  /// One line, in a strip across the middle.
+  line('سطر'),
+
+  /// The middle of the page, then the whole of it.
+  page('الصفحة');
+
+  const ScanMode(this.labelAr);
+  final String labelAr;
+}
 
 /// «تنبيه الاختلافات»: the words that differ from Hafs glow, still.
 enum DiffAlert {

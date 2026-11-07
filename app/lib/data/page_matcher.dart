@@ -57,8 +57,30 @@ class PageMatcher {
 
   double _weight(int pages) => math.log((_last - _first + 1) / pages);
 
+  /// The page whose printed number [text] reads (Arabic-Indic or Western
+  /// digits), or null: one number, within the mushaf's pages.
+  int? pageNumber(String text) {
+    final numbers = {
+      for (final m in RegExp(r'[0-9٠-٩]{1,3}').allMatches(text)) _number(m[0]!),
+    }.where((n) => n >= _first && n <= _last);
+    return numbers.length == 1 ? numbers.single : null;
+  }
+
+  static int _number(String digits) => int.parse(
+    digits.runes
+        .map((c) => c >= 0x0660 && c <= 0x0669 ? c - 0x0660 + 0x30 : c)
+        .map(String.fromCharCode)
+        .join(),
+  );
+
   /// The best page for [text], or null when no page clearly stands out.
-  ({int page, double score})? match(String text) {
+  /// The runs of its text must be on [lines] lines at least: two for a band
+  /// of the page; one for a single line, which must then stand further
+  /// ahead of the next page.
+  ({int page, double score})? match(String text, {int lines = 2}) =>
+      _match(text, lines);
+
+  ({int page, double score})? _match(String text, int onLines) {
     final raw = text.split('\n');
     final lines = [
       for (final line in raw)
@@ -125,13 +147,7 @@ class PageMatcher {
     // The printed page number (Arabic-Indic or Western digits), counted once
     // however often OCR noise repeats it.
     final numbers = {
-      for (final m in RegExp(r'[0-9٠-٩]{1,3}').allMatches(text))
-        int.parse(
-          m[0]!.runes
-              .map((c) => c >= 0x0660 && c <= 0x0669 ? c - 0x0660 + 0x30 : c)
-              .map(String.fromCharCode)
-              .join(),
-        ),
+      for (final m in RegExp(r'[0-9٠-٩]{1,3}').allMatches(text)) _number(m[0]!),
     };
     for (final n in numbers) {
       if (n >= _first && n <= _last && scores.containsKey(n)) {
@@ -146,8 +162,10 @@ class PageMatcher {
     // Enough evidence (photographed pages read as noise score up to ~20),
     // runs of the page's text on at least two lines (a phrase quoted in
     // other text has one), and clearly ahead of the next page.
-    if (best.value < 22 || (runLines[best.key]?.length ?? 0) < 2) return null;
-    if (best.value < second * 1.3) return null;
+    if (best.value < 22 || (runLines[best.key]?.length ?? 0) < onLines) {
+      return null;
+    }
+    if (best.value < second * (onLines < 2 ? 1.6 : 1.3)) return null;
     return (page: best.key, score: best.value);
   }
 }

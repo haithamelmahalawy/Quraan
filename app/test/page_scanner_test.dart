@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/page_matcher.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/services/page_scanner.dart';
+import 'package:qiraat_mushaf/state/reader_settings.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +45,86 @@ void main() {
       expect(reads, hasLength(1));
       expect(reads.single.height, prepareFrame(frame, quick: true).height);
       expect(reads.single.pixels.every((v) => v == 255), isTrue);
+    },
+  );
+
+  test(
+    'the page number: a small patch near the bottom, digits alone',
+    () async {
+      final reads = <ScanImage>[];
+      final scanner = PageScanner(
+        matcher,
+        read: (image) async {
+          reads.add(image);
+          return '١٨٨\n';
+        },
+      );
+      final found = await scanner.scan(frame, mode: ScanMode.number);
+      expect(found?.page, 188);
+      // Read once more before it is taken: the score says so.
+      expect(found?.score, 0);
+      expect(reads, hasLength(1));
+      expect(reads.single.width, 200);
+      expect(reads.single.height, 200);
+      final page = prepareFrame(frame).pixels.length;
+      expect(reads.single.pixels.length, lessThan(page));
+      // No number, or one outside the mushaf: nothing.
+      final none = PageScanner(matcher, read: (_) async => '٩٩٩');
+      expect(await none.scan(frame, mode: ScanMode.number), isNull);
+    },
+  );
+
+  test('a line: one strip across the middle, read once', () async {
+    final reads = <ScanImage>[];
+    final line = pageText.split('\n').first;
+    final scanner = PageScanner(
+      matcher,
+      read: (image) async {
+        reads.add(image);
+        return line;
+      },
+    );
+    expect((await scanner.scan(frame, mode: ScanMode.line))?.page, 175);
+    expect(reads, hasLength(1));
+    expect(reads.single.width, 1100);
+    expect(reads.single.height, (1100 * lineBox.aspect).round());
+  });
+
+  test(
+    'the boxes lie where the screen draws them, upright whatever the turn',
+    () {
+      final turned = Frame.raw(
+        width: 180,
+        height: 120,
+        bytesPerRow: 180,
+        rotation: 90,
+        bgra: false,
+        bytes: Uint8List(180 * 120),
+      );
+      final box = prepareBox(turned, numberBox, 50);
+      expect(box.width, 50);
+      expect(box.height, 50);
+      // A dark mark where the circle is drawn, at the middle of its patch.
+      final bytes = Uint8List(120 * 180)..fillRange(0, 120 * 180, 240);
+      for (var y = 146; y < 157; y++) {
+        for (var x = 55; x < 66; x++) {
+          bytes[y * 120 + x] = 10;
+        }
+      }
+      final marked = prepareBox(
+        Frame.raw(
+          width: 120,
+          height: 180,
+          bytesPerRow: 120,
+          rotation: 0,
+          bgra: false,
+          bytes: bytes,
+        ),
+        numberBox,
+        50,
+      );
+      expect(marked.pixels[25 * 50 + 25], lessThan(60));
+      expect(marked.pixels[2 * 50 + 2], greaterThan(200));
     },
   );
 

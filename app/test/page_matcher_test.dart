@@ -116,6 +116,62 @@ void main() {
     },
   );
 
+  test('one line in the middle of the page is enough, and never wrong', () {
+    final quran = QuranRepository.parse(
+      File('assets/data/quran.json').readAsStringSync(),
+    );
+    final matcher = PageMatcher(quran);
+    final rnd = Random(11);
+    const letters = 'بتثجحخدذرزسشصضطظعغفقكلمنهوي';
+    var clean = 0, noisy = 0, wrong = 0;
+    for (var page = 1; page <= quran.pageCount; page++) {
+      final words = quran.page(page).expand((a) => a.words).toList();
+      final start = max(0, (words.length - 9) ~/ 2);
+      final line = words.sublist(start, min(start + 9, words.length));
+      final exact = matcher.match(line.join(' '), lines: 1);
+      if (exact != null) {
+        exact.page == page ? clean++ : wrong++;
+      }
+      // Read without vowels, a word in five with a wrong letter.
+      final read = [
+        for (final w in line)
+          if (String.fromCharCodes(
+                w.runes.where((c) => c >= 0x0621 && c <= 0x064A),
+              )
+              case final plain when plain.isNotEmpty)
+            rnd.nextDouble() < 0.2
+                ? plain.replaceRange(
+                    plain.length - 1,
+                    plain.length,
+                    letters[rnd.nextInt(letters.length)],
+                  )
+                : plain,
+      ].join(' ');
+      final m = matcher.match(read, lines: 1);
+      if (m != null) {
+        m.page == page ? noisy++ : wrong++;
+      }
+    }
+    // ignore: avoid_print
+    print('one line: clean $clean, noisy $noisy, wrong $wrong of 604');
+    expect(wrong, 0);
+    expect(clean, greaterThanOrEqualTo(555));
+    expect(noisy, greaterThanOrEqualTo(520));
+  });
+
+  test('the page number read alone', () {
+    final quran = QuranRepository.parse(
+      File('assets/data/quran.json').readAsStringSync(),
+    );
+    final matcher = PageMatcher(quran);
+    expect(matcher.pageNumber('١٨٨'), 188);
+    expect(matcher.pageNumber(' 23\n'), 23);
+    expect(matcher.pageNumber('٦٠٤'), 604);
+    expect(matcher.pageNumber('٧٠٠'), isNull);
+    expect(matcher.pageNumber('١٢ ٣٤'), isNull);
+    expect(matcher.pageNumber(''), isNull);
+  });
+
   test('Tesseract output of a photographed page', () {
     final quran = QuranRepository.parse(
       File('assets/data/quran.json').readAsStringSync(),
