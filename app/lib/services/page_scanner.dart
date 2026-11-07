@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../data/page_matcher.dart';
 import '../state/reader_settings.dart' show ScanMode;
+import 'number_reader.dart';
 
 typedef ScanImage = ({int width, int height, Uint8List pixels});
 typedef PageMatch = ({int page, double score});
@@ -22,10 +23,6 @@ typedef ScanBox = ({double x, double y, double width, double aspect});
 
 /// Where the page number is aimed: a small circle near the bottom.
 const ScanBox numberBox = (x: .5, y: .84, width: .28, aspect: 1);
-
-/// The lines above the page number, read to tell which of the pages its
-/// digits may be is the one shown.
-const ScanBox aboveNumberBox = (x: .5, y: .6, width: .92, aspect: .22);
 
 /// Where a line is aimed: a strip across the middle.
 const ScanBox lineBox = (x: .5, y: .5, width: .92, aspect: .12);
@@ -114,46 +111,34 @@ class PageScanner {
     }
   }
 
-  /// The page by its number: the digits read, then the lines above them
-  /// tell which of the pages with those digits it is, for a digit may be
-  /// lost (the ٠ is a dot): ٢ of ٢٠٦ is no page 2. A whole number of three
-  /// digits the text does not tell is taken when read so twice (score 0).
+  /// The page by its number alone, read piece by piece: the ornament around
+  /// it left out, each zero (a dot, which the reader loses) told by its
+  /// shape, the other digits read without it. Taken when read the same
+  /// twice in a row (score 0).
   Future<PageMatch?> _byNumber(Frame frame) async {
-    final image = await compute(_prepareBox, (frame, numberBox, 320));
-    final read = await (this.read ?? _digits)(image);
-    final digits = RegExp(r'[0-9٠-٩]+')
-        .allMatches(read)
-        .map((m) => m[0]!)
-        .fold('', (a, b) => b.length > a.length ? b : a);
-    final pages = matcher.pagesWithDigits(digits);
-    if (pages.isEmpty) return null;
-    final lines = await compute(_prepareBox, (frame, aboveNumberBox, 1100));
-    final found = matcher.matchAmong(
-      await (this.read ?? _recognize)(lines),
-      pages,
+    final image = await compute(_prepareNumber, frame);
+    final number = await readPageNumber(
+      image,
+      all: read ?? (i) => _recognize(i, digits: true),
+      one: read ?? (i) => _recognize(i, digits: true, single: true),
     );
-    // The digits and the text agree: taken at once.
-    if (found != null) {
-      return (page: found.page, score: math.max(found.score, 34.0));
-    }
-    final whole = matcher.pageNumber(digits);
-    return digits.length == 3 && whole != null
-        ? (page: whole, score: 0.0)
-        : null;
+    final page = number == null ? null : matcher.pageNumber(number);
+    return page == null ? null : (page: page, score: 0.0);
   }
 
-  /// The digits of a page number: one line of Arabic-Indic or Western
-  /// digits, nothing else looked for, so read in a moment.
-  Future<String> _digits(ScanImage image) => _recognize(image, digits: true);
-
-  Future<String> _recognize(ScanImage image, {bool digits = false}) async {
+  Future<String> _recognize(
+    ScanImage image, {
+    bool digits = false,
+    bool single = false,
+  }) async {
     // The engine keeps what it is told between reads: the list of letters
-    // is given every time, empty (all) for text.
+    // is given every time, empty (all) for text. The digits without zero:
+    // the zeros are told apart before.
     final args = {
-      'psm': digits ? '7' : '6',
+      'psm': single ? '10' : (digits ? '7' : '6'),
       'preserve_interword_spaces': '1',
       'tessedit_do_invert': '0',
-      'tessedit_char_whitelist': digits ? '٠١٢٣٤٥٦٧٨٩0123456789' : '',
+      'tessedit_char_whitelist': digits ? '١٢٣٤٥٦٧٨٩123456789' : '',
     };
     if (Platform.isAndroid) {
       return FlutterTesseractOcr.extractPixels(
@@ -352,4 +337,13 @@ void binarize(Uint8List pixels, int w, int h, {int r = 20, int c = 10}) {
       pixels[i] = (pixels[i] + c) * (x1 - x0) * (y1 - y0) < sum ? 0 : 255;
     }
   }
+}
+
+/// The circle of the page number, 320 pixels square, in black and white:
+/// the threshold's window wide, so that a digit drawn large (zoomed in)
+/// stays filled, and its zero a dot, not a ring.
+ScanImage _prepareNumber(Frame frame) {
+  final image = prepareBox(frame, numberBox, 320);
+  binarize(image.pixels, image.width, image.height, r: 40, c: 14);
+  return image;
 }

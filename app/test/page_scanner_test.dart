@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/page_matcher.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
+import 'package:qiraat_mushaf/services/number_reader.dart';
 import 'package:qiraat_mushaf/services/page_scanner.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
 
@@ -48,63 +50,103 @@ void main() {
     },
   );
 
-  test(
-    'the page number: a small patch near the bottom, digits alone',
-    () async {
-      final reads = <ScanImage>[];
-      final scanner = PageScanner(
-        matcher,
-        read: (image) async {
-          reads.add(image);
-          return '١٨٨\n';
-        },
-      );
-      final found = await scanner.scan(frame, mode: ScanMode.number);
-      expect(found?.page, 188);
-      // Read once more before it is taken: the score says so.
-      expect(found?.score, 0);
-      // The digits, then the lines above them.
-      expect(reads, hasLength(2));
-      expect(reads.first.width, 320);
-      expect(reads.first.height, 320);
-      final page = prepareFrame(frame).pixels.length;
-      expect(reads.first.pixels.length, lessThan(page));
-      // No number, or one outside the mushaf: nothing.
-      final none = PageScanner(matcher, read: (_) async => '٩٩٩');
-      expect(await none.scan(frame, mode: ScanMode.number), isNull);
-    },
-  );
-
-  test('a digit lost from the number: the lines above tell the page', () async {
-    final quran = QuranRepository.parse(
-      File('assets/data/quran.json').readAsStringSync(),
-    );
-    String lineOf(int page) {
-      final words = quran.page(page).expand((a) => a.words).toList();
-      final start = (words.length - 9) ~/ 2;
-      return words.sublist(start, start + 9).join(' ');
+  /// A page number drawn as the camera sees it, in the circle: its digits
+  /// (bars [digits] wide) and zeros (dots) from left to right, inside the
+  /// ring of its ornament, dark on a light page.
+  Frame numbered(List<int?> digits) {
+    const w = 400, h = 600;
+    final bytes = Uint8List(w * h)..fillRange(0, w * h, 230);
+    void ink(int x0, int y0, int x1, int y1) {
+      for (var y = y0; y < y1; y++) {
+        for (var x = x0; x < x1; x++) {
+          bytes[y * w + x] = 30;
+        }
+      }
     }
 
-    // ٢٠٦ read ٢, ٢٠٥ read ٥: not pages 2 and 5.
-    for (final (digits, page) in [('٢', 206), ('٥', 205), ('٢٦', 206)]) {
-      var n = 0;
-      final scanner = PageScanner(
-        matcher,
-        read: (_) async => n++ == 0 ? digits : lineOf(page),
-      );
-      final found = await scanner.scan(frame, mode: ScanMode.number);
-      expect(found?.page, page, reason: digits);
-      expect(found!.score, greaterThanOrEqualTo(34), reason: digits);
+    // The circle's middle: (200, 504); the ring around the number.
+    for (var a = 0.0; a < 2 * pi; a += .01) {
+      final x = (200 + 46 * cos(a)).round(), y = (504 + 46 * sin(a)).round();
+      ink(x - 1, y - 1, x + 2, y + 2);
     }
-    // A digit and no text to tell: nothing, not page 2.
-    var n = 0;
-    final unsure = PageScanner(
-      matcher,
-      read: (_) async => n++ == 0 ? '٢' : 'نص غير واضح',
+    var x = 200 - 12 * digits.length;
+    for (final d in digits) {
+      if (d == null) {
+        ink(x + 4, 500, x + 12, 508); // ٠
+      } else {
+        ink(x + 2, 488, x + 2 + d, 520);
+      }
+      x += 24;
+    }
+    return Frame.raw(
+      width: w,
+      height: h,
+      bytesPerRow: w,
+      rotation: 0,
+      bgra: false,
+      bytes: bytes,
     );
-    expect(await unsure.scan(frame, mode: ScanMode.number), isNull);
+  }
+
+  test('the number in its ornament: its digits apart, its zero a dot', () {
+    final image = prepareBox(numbered([6, null, 10]), numberBox, 320);
+    binarize(image.pixels, image.width, image.height, r: 40, c: 14);
+    final pieces = numberPieces(image)!;
+    expect(pieces, hasLength(3));
+    expect(pieces[0], isNotNull);
+    expect(pieces[1], isNull);
+    expect(pieces[2], isNotNull);
+    // The digits alone for the reader: no ring, no zero.
+    final alone = glyphsAlone(image, [pieces[0]!, pieces[2]!]);
+    expect(blobsOf(alone), hasLength(2));
   });
 
+  test('٢٠٦ is page 206, not 2: the zero told by its shape', () async {
+    final reads = <ScanImage>[];
+    final scanner = PageScanner(
+      matcher,
+      read: (image) async {
+        reads.add(image);
+        return '٢٦';
+      },
+    );
+    final found = await scanner.scan(
+      numbered([6, null, 10]),
+      mode: ScanMode.number,
+    );
+    expect(found?.page, 206);
+    // Read once more before it is taken: the score says so.
+    expect(found?.score, 0);
+    // One read, of the two digits alone.
+    expect(reads, hasLength(1));
+    expect(blobsOf(reads.single), hasLength(2));
+  });
+
+  test('a digit lost when read together: read one by one', () async {
+    final answers = ['٥', '٢', '٥'];
+    final scanner = PageScanner(
+      matcher,
+      read: (_) async => answers.removeAt(0),
+    );
+    final found = await scanner.scan(
+      numbered([6, null, 10]),
+      mode: ScanMode.number,
+    );
+    expect(found?.page, 205);
+    expect(answers, isEmpty);
+  });
+
+  test('no number, or none of the mushaf: nothing', () async {
+    final scanner = PageScanner(matcher, read: (_) async => '٩٩٩');
+    expect(await scanner.scan(frame, mode: ScanMode.number), isNull);
+    expect(
+      await scanner.scan(numbered([6, 6, 6]), mode: ScanMode.number),
+      isNull,
+    );
+    // Page 2: the digit alone.
+    final two = PageScanner(matcher, read: (_) async => '٢');
+    expect((await two.scan(numbered([8]), mode: ScanMode.number))?.page, 2);
+  });
   test('a line: one strip across the middle, read once', () async {
     final reads = <ScanImage>[];
     final line = pageText.split('\n').first;
