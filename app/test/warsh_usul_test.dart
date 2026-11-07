@@ -2797,7 +2797,10 @@ void main() {
     final sheet = find.byType(VariantSheet);
     Finder tile(String name) => find
         .ancestor(
-          of: find.descendant(of: sheet, matching: find.textContaining(name)),
+          of: find.descendant(
+            of: sheet,
+            matching: find.textContaining('- $name'),
+          ),
           matching: find.byWidgetPredicate(
             (x) => x.runtimeType.toString() == '_ReadingTile',
           ),
@@ -2810,14 +2813,16 @@ void main() {
       ),
     );
     await t.scrollUntilVisible(
-      find.descendant(of: sheet, matching: find.textContaining('رواية البزي')),
+      find.descendant(
+        of: sheet,
+        matching: find.textContaining('- رواية البزي'),
+      ),
       150,
       scrollable: find
           .descendant(of: sheet, matching: find.byType(Scrollable))
           .first,
     );
     await t.pumpAndSettle();
-    expect(same('رواية ورش'), findsOneWidget);
     expect(same('رواية البزي'), findsNothing);
     expect(
       find.descendant(
@@ -2826,6 +2831,16 @@ void main() {
       ),
       findsOneWidget,
     );
+    // Further down, among the riwayat not chosen.
+    await t.scrollUntilVisible(
+      find.descendant(of: sheet, matching: find.textContaining('- رواية ورش')),
+      150,
+      scrollable: find
+          .descendant(of: sheet, matching: find.byType(Scrollable))
+          .first,
+    );
+    await t.pumpAndSettle();
+    expect(same('رواية ورش'), findsOneWidget);
     // Hafs too.
     expect(
       displayedRulesNotReadBy(

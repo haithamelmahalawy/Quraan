@@ -283,7 +283,10 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
       // Read as Hafs reads it (إِنِّيٓ sakin, وَجۡهِيَ open), the ya is no
       // difference from him; it still is from those who read it otherwise.
       // Two faces differ from one of them, though written alike (فَنِعۡمَّا).
-      if (v.description.startsWith('بوجهين'))
+      // So a madd dropped though its alif is written (وَلَاْ أَدۡرَىٰكُمُۥ).
+      if (v.description.startsWith('بوجهين') ||
+          v.description.startsWith('بخلف') ||
+          v.description.contains('بحذف المد'))
         '${v.word - from}:faces:${_descriptionKey(v.description)}',
       if (_yaIdafa(v) case final ya? when ya != _hafsYa(ayah, v.word))
         '${v.word - from}:ya:$ya',
@@ -469,9 +472,31 @@ List<Variant> wordEvidence({
     ...selected.where((id) => id == 'hafs' || repository.isLoaded(id)),
     ...compared,
   };
+  // A rule that changes the word's body (وَيَسۡتَنۢبُونَكَ without its hamza)
+  // is cited as a farsh is: every reader with his own reading, as the hamesh
+  // writes the others' word beside it.
+  bool changesBody(String id) => otherBodyNotes(
+    repository,
+    ayah,
+    word,
+    id,
+    ids.where((other) => other != id),
+    const [],
+  ).isNotEmpty;
   final lexical = {
     for (final id in ids)
-      id: _rows(repository, id, ayah, word, word + 1).where(_lexical).toList(),
+      id: [
+        for (final v in _rows(repository, id, ayah, word, word + 1))
+          if (_lexical(v) ||
+              v.word == word &&
+                  v.isUsul &&
+                  v.text.isNotEmpty &&
+                  !v.isMarginNote &&
+                  !v.readsAsHafs &&
+                  !v.stopOnly &&
+                  changesBody(id))
+            v,
+      ],
   };
   if (lexical.values.every((rows) => rows.isEmpty)) return out;
   bool has(String id) => out.any(

@@ -178,9 +178,9 @@ void main() {
         matching: find.byType(Scrollable),
       ),
     );
-    t
-        .widget<ChoiceChip>(find.byKey(const ValueKey('jam-ayah-6')))
-        .onSelected!(true);
+    t.widget<ChoiceChip>(find.byKey(const ValueKey('jam-ayah-6'))).onSelected!(
+      true,
+    );
     await t.pump();
     expect(find.text('قالون عن نافع'), findsOneWidget);
     expect(find.byKey(const ValueKey('jam-usul')), findsOneWidget);

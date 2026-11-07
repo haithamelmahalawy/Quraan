@@ -185,6 +185,7 @@ class Manzumat {
         _istuhiqqa(reading) ||
             _kharraqu(reading) ||
             _sihr(reading) ||
+            _nunajji(reading) ||
             _tadhakkarun(reading) ||
             _hisad(reading) ||
             _aamantum(reading) ||
@@ -958,6 +959,16 @@ class Manzumat {
       _letters(v.text).contains('تذكرون') &&
       !const {'7:3', '27:62', '69:42'}.contains('${v.surah}:${v.ayah}');
 
+  /// The second «نُنَجِّ» (يونس ١٠٣) doubled, Abu Ja'far with Nafi', the Durrah
+  /// silent: «وَنَجْعَلُ صِفْوَ الْخِفُّ نُنْجِ رِضىً عَلَا» and «وَذَاكَ هُوَ
+  /// الثَّانِي».
+  static bool _nunajji(Variant v) =>
+      v.surah == 10 &&
+      v.ayah == 103 &&
+      v.word == 8 &&
+      v.description == 'بفتح النون وتشديد الجيم' &&
+      !const {'ruways', 'rawh', 'ishaq', 'idris'}.contains(v.riwayaId);
+
   /// Qunbul's «ضِئَآءٗ» wherever it comes (يونس ٥، الأنبياء ٤٨، القصص ٧١):
   /// «وَحَيْثُ ضِيَاءً وَافَقَ الْهَمْزُ قُنْبُلَا».
   static bool _diya(Variant v) =>
@@ -983,6 +994,7 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _kharraqu(v)) return {656};
     if (poem == Poem.shatibiyya && _sihr(v)) return {742};
     if (poem == Poem.shatibiyya && _diya(v)) return {742};
+    if (poem == Poem.shatibiyya && _nunajji(v)) return {753, 754};
     if (poem == Poem.shatibiyya && _tadhakkarun(v)) return {677};
     if (poem == Poem.shatibiyya && _aamantum(v)) return {189, 190, 191};
     if (poem == Poem.shatibiyya && _abuJafarBiis(v)) return {704};
@@ -1025,6 +1037,41 @@ class Manzumat {
       return {115, 116};
     }
     final at = '${v.surah}:${v.ayah}:${v.word}';
+    // Ibn Kathir's «وَلَا۟ أَدۡرَىٰكُم» (يونس ١٦), al-Bazzi's by khulf: «وَقَصْرُ
+    // وَلاَ هَادٍ بِخُلْفٍ زَكَا».
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        at == '10:16:7') {
+      return {744};
+    }
+    // Abu Ja'far's «يَنشُرُكُمُۥ» (يونس ٢٢): «وَيَنْشُرُكُمْ أُدْ»; the others of
+    // Ashab al-Silah's «يُسَيِّرُكُمْ» in the Shatibiyya's «يُسَيِّرُكُمْ قُلْ فِيهِ
+    // يَنْشُرُكُمْ كَفَى».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        at == '10:22:2') {
+      return {128};
+    }
+    // Abu Ja'far's «تَجۡمَعُونَ» (يونس ٥٨): «يَجْمَعُوا طَلَى» at the end of the
+    // one, «إِذًا» at the start of the next.
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        at == '10:58:9') {
+      return {129, 130};
+    }
+    // Abu Ja'far's «ءَآلسِّحۡرُ» (يونس ٨١): «اسْئَلَا» at the end of the one,
+    // «ءَأَلسِّحْرُ أَمْ أَخْبِرْ حُلىً» at the start of the next.
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        at == '10:81:7') {
+      return {130, 131};
+    }
+    // Khalaf's «وَسَلۡ، فَسَلِ، وَسَلُواْ» wherever they come: «وَسَلْ مَعْ فَسَلْ فَشَا».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'khalaf' &&
+        v.description == 'بفتح السين وحذف الهمزة') {
+      return {37};
+    }
     // Khalaf's «تَحۡسِبَنَّ» (الأنفال ٥٩) with the ta, Abu Ja'far's with the ya
     // as Hafs's: «وَيَحْسَبْ أُدْ وَخَاطَبَ فَاعْتَلَا».
     if (poem == Poem.durrah &&

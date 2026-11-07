@@ -1167,6 +1167,165 @@ void main() {
     },
   );
 
+  test(
+    "Ibn Kathir's «وَلَا۟ أَدۡرَىٰكُمُۥ» cites «وَقَصْرُ وَلاَ هَادٍ بِخُلْفٍ "
+    "زَكَا»",
+    () {
+      for (final id in ['bazzi', 'qunbul']) {
+        final v = Variant(
+          riwayaId: id,
+          surah: 10,
+          ayah: 16,
+          word: 7,
+          count: 2,
+          text: 'وَلَا۟ أَدۡرَىٰكُمُۥ',
+          kind: VariantKind.farsh,
+          description: 'بقصر اللام أي بحذف المد بعدها',
+        );
+        final r = manzumat.referenceOf(
+          v,
+          'وَلَآ',
+          10,
+          surahs,
+          entries: book.at(10, 16, 7),
+        );
+        expect(r.poem, Poem.shatibiyya, reason: id);
+        expect(r.mention, {744}, reason: id);
+      }
+    },
+  );
+
+  test("Abu Ja'far's «تَجۡمَعُونَ» cites «يَجْمَعُوا طَلَى» and «إِذًا»", () {
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 10,
+        ayah: 58,
+        word: 9,
+        count: 1,
+        text: 'تَجۡمَعُونَ',
+        kind: VariantKind.farsh,
+        description: 'بالتاء',
+      );
+      final r = manzumat.referenceOf(
+        v,
+        'يَجۡمَعُونَ',
+        10,
+        surahs,
+        entries: book.at(10, 58, 9),
+      );
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {129, 130}, reason: id);
+    }
+  });
+
+  test("Abu Ja'far's «ءَآلسِّحۡرُ» cites «اسْئَلَا» and «ءَأَلسِّحْرُ أَمْ أَخْبِرْ»; "
+      "Khalaf's «فَسَلِ» «وَسَلْ مَعْ فَسَلْ فَشَا»", () {
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 10,
+        ayah: 81,
+        word: 7,
+        count: 1,
+        text: 'ءَآلسِّحۡرُ',
+        kind: VariantKind.hamza,
+        rule: 'hamza_wasl',
+        description: 'بوجهين',
+      );
+      final r = manzumat.referenceOf(
+        v,
+        'ٱلسِّحۡرُۖ',
+        10,
+        surahs,
+        entries: book.at(10, 81, 7),
+      );
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {130, 131}, reason: id);
+    }
+    for (final id in ['ishaq', 'idris']) {
+      for (final (s, a, w) in [(10, 94, 7), (4, 32, 17), (43, 45, 0)]) {
+        final v = Variant(
+          riwayaId: id,
+          surah: s,
+          ayah: a,
+          word: w,
+          count: 1,
+          text: 'فَسَلِ',
+          kind: VariantKind.farsh,
+          description: 'بفتح السين وحذف الهمزة',
+        );
+        final r = manzumat.referenceOf(
+          v,
+          'فَسۡـَٔلِ',
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.poem, Poem.durrah, reason: '$id $s:$a');
+        expect(r.mention, {37}, reason: '$id $s:$a');
+      }
+    }
+  });
+
+  test(
+    "the second «نُنَجِّ» (يونس ١٠٣) cites «الْخِفُّ نُنْجِ رِضىً عَلَا» and "
+    "«وَذَاكَ هُوَ الثَّانِي», Abu Ja'far's too",
+    () {
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final v = Variant(
+          riwayaId: id,
+          surah: 10,
+          ayah: 103,
+          word: 8,
+          count: 1,
+          text: 'نُنَجِّ',
+          kind: VariantKind.farsh,
+          description: 'بفتح النون وتشديد الجيم',
+        );
+        final r = manzumat.referenceOf(
+          v,
+          'نُنجِ',
+          10,
+          surahs,
+          entries: book.at(10, 103, 8),
+        );
+        expect(r.poem, Poem.shatibiyya, reason: id);
+        expect(r.mention, {753, 754}, reason: id);
+      }
+    },
+  );
+
+  test("Abu Ja'far's «يَنشُرُكُمُۥ» cites «وَيَنْشُرُكُمْ أُدْ»", () {
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final v = Variant(
+        riwayaId: id,
+        surah: 10,
+        ayah: 22,
+        word: 2,
+        count: 1,
+        text: 'يَنشُرُكُمُۥ',
+        kind: VariantKind.farsh,
+        description: 'بفتح الياء وبعدها نون ساكنة ثم شين مضمومة',
+      );
+      final r = manzumat.referenceOf(
+        v,
+        'يُسَيِّرُكُمۡ',
+        10,
+        surahs,
+        entries: book.at(10, 22, 2),
+      );
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {128}, reason: id);
+    }
+  });
+
   test("Ibn Kathir's «فَمُسۡتَقِرّٞ» cites «وَاكْسِرْ بِمُسْتَقَرْ»", () {
     for (final id in ['bazzi', 'qunbul']) {
       final v = Variant(
