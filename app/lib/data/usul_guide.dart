@@ -48,6 +48,36 @@ bool _isAmantum(Variant v) =>
     v.surah == 20 && v.ayah == 71 ||
     v.surah == 26 && v.ayah == 49;
 
+/// «الاستفهام المكرر»: the two questions of one sentence (أَءِذَا ... أَءِنَّا),
+/// told together under their kind, each reader's way at each.
+const repeatedIstifham = {
+  '13:5:4',
+  '13:5:7',
+  '17:49:1',
+  '17:49:5',
+  '17:98:6',
+  '17:98:10',
+  '23:82:1',
+  '23:82:6',
+  '27:67:3',
+  '27:67:7',
+  '29:28:4',
+  '29:29:0',
+  '32:10:1',
+  '32:10:5',
+  '37:16:0',
+  '37:16:5',
+  '37:53:0',
+  '37:53:5',
+  '56:47:2',
+  '56:47:7',
+  '79:10:1',
+  '79:11:0',
+};
+
+bool isRepeatedIstifham(Variant v) =>
+    repeatedIstifham.contains('${v.surah}:${v.ayah}:${v.word}');
+
 const _dammaSecond = {'3:15:1', '38:8:0', '54:25:0'};
 const _openSecond = {
   '2:6:5',
@@ -78,6 +108,7 @@ const _openSecond = {
 /// the vowel of the second hamza, in Hafs's word or the riwaya's own.
 String twoHamzasKind(Variant v) {
   if (isMaddFarq(v)) return 'مد الفرق';
+  if (isRepeatedIstifham(v)) return 'الاستفهام المكرر';
   if (v.description.contains('للساكنين')) return 'أرأيت';
   // أَشَهِدُواْ: Hafs's word has no second hamza; the riwaya's is with a damma.
   if (v.surah == 43 && v.ayah == 19) return 'المفتوحة والمضمومة';
@@ -146,6 +177,7 @@ const _twoHamzasOrder = [
   'المفتوحة والمكسورة',
   'المفتوحة والمضمومة',
   'أرأيت',
+  'الاستفهام المكرر',
   'مد الفرق',
 ];
 
@@ -523,6 +555,9 @@ String _singleHamzaKind(Variant v, String hafs) {
   // «وَٱلصَّٰبِـِٔينَ» without it, for Nafi' and Abu Ja'far.
   if (v.rule == 'hamza_hadhf') return 'حذف الهمزة';
   final how = v.description;
+  if (v.riwayaId != 'warsh' && how.startsWith('بتخفيف الهمزة - ')) {
+    return 'تخفيف الهمزة';
+  }
   if (v.riwayaId != 'warsh' && !how.contains('إبدال')) {
     if (RegExp('زيادة الهمزة|^بالهمز').hasMatch(how)) return 'زيادة الهمزة';
     if (how.contains('تشديد')) return 'إدغام الهمزة';

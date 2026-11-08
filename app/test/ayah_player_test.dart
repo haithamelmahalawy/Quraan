@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:just_audio/just_audio.dart';
 
 import 'helpers/test_audio.dart';
 
@@ -36,6 +37,34 @@ void main() {
     expect(player.clipVerses, [5]);
     await player.play(2, 5, hafs);
     expect(audio.urls.last, endsWith('/002005.mp3'));
+  });
+
+  test('a file running on past its ayah is heard up to its end only', () async {
+    const ibnDhakwan = Reciter(
+      274,
+      'ibn_dhakwan',
+      'https://dhakwan/',
+      numbering: 'dimashqi',
+      ends: {'2:5': 14000},
+    );
+    // «إِنَّ ٱلَّذِينَ كَفَرُواْ»: the fifth as Damascus counts, «الٓمٓ» not one.
+    await player.play(2, 6, ibnDhakwan);
+    final clip = audio.sources.single as ClippingAudioSource;
+    expect(clip.end, const Duration(seconds: 14));
+    expect(audio.urls.single, endsWith('/002005.mp3'));
+    // Its other files whole.
+    await player.play(2, 8, ibnDhakwan);
+    expect(audio.sources, hasLength(1));
+    expect(audio.urls.last, endsWith('/002007.mp3'));
+  });
+
+  test('the recitations read where their files end', () async {
+    final recitations = await Recitations.load();
+    final sultani = recitations
+        .of('ibn_dhakwan')
+        .firstWhere((r) => r.id == 274);
+    expect(sultani.endOf(2, 5), const Duration(milliseconds: 14000));
+    expect(sultani.endOf(2, 6), isNull);
   });
 
   test('merged clips are not repeated during continuous playback', () async {

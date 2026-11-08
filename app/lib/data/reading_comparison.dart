@@ -418,7 +418,9 @@ List<Variant> otherBodyNotes(
       _bodyKey(v.text) != _bodyKey(other) ||
       v.rule == 'hamza_zaida' && hamzas(v.text) > hamzas(other) ||
       v.rule.startsWith('idgham') &&
-          shaddas(v.text.substring(1)) != shaddas(other.substring(1));
+          shaddas(v.text.substring(1)) != shaddas(other.substring(1)) ||
+      // «أَنَا» read with its alif joined, where the other drops it (أَنَا۠).
+      _anaMaddDropped(v, other);
 
   return [
     for (final id in ids)
@@ -440,9 +442,17 @@ List<Variant> otherBodyNotes(
             text: other,
             kind: VariantKind.farsh,
             rule: 'comparison',
+            description: rules.any((v) => _anaMaddDropped(v, other))
+                ? 'بحذف الألف وصلاً'
+                : '',
           ),
   ];
 }
+
+/// The displayed reader's «أَنَا» read with its alif joined (مد أنا), the
+/// other's written as Hafs's, its alif not read joined (أَنَا۠).
+bool _anaMaddDropped(Variant v, String other) =>
+    v.rule == 'ana_madd' && other.contains('۠') && !v.text.contains('۠');
 
 /// Everything to cite for the word tapped on the page: the displayed reader's
 /// rows, what the others differ in, and, where the word is read otherwise by

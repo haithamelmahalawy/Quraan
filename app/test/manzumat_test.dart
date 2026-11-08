@@ -1115,7 +1115,7 @@ void main() {
 
   test(
     "«تَذَّكَّرُونَ» cites «وَتَذَّكَّرُونَ الْكُلُّ خَفَّ عَلَى شَذَا», Abu "
-    "Ja'far's too; Qunbul's «ضِئَآءٗ» «وَحَيْثُ ضِيَاءً»",
+    "Ja'far's with the Durrah's asl; Qunbul's «ضِئَآءٗ» «وَحَيْثُ ضِيَاءً»",
     () {
       for (final id in [
         'qalun',
@@ -1141,8 +1141,15 @@ void main() {
           surahs,
           entries: book.at(10, 3, 28),
         );
+        // Abu Ja'far's from the Durrah alone: as Nafi', it silent.
+        // Abu Ja'far's: the Durrah silent, its asl's two bayts before it.
         expect(r.poem, Poem.shatibiyya, reason: id);
         expect(r.mention, {677}, reason: id);
+        expect(
+          [for (final b in r.asl) b.n],
+          id.startsWith('ibn_') ? [7, 8] : isEmpty,
+          reason: id,
+        );
       }
       for (final (s, a, w) in [(10, 5, 4), (21, 48, 5), (28, 71, 16)]) {
         final v = Variant(
@@ -1267,6 +1274,352 @@ void main() {
       }
     }
   });
+
+  test(
+    "Hud: Abu Ja'far's «يُضَعَّفُ» and «أَنِّي لَكُمۡ» from the Durrah; "
+    "«مُجۡرَىٰهَا» «يَٰبُنَيِّ» and «ٱرۡكَب مَّعَنَا» from the Shatibiyya",
+    () {
+      Reference ref(
+        String id,
+        int a,
+        int w,
+        String text,
+        String hafs, {
+        String description = '',
+        String rule = '',
+        bool usul = false,
+      }) {
+        final v = Variant(
+          riwayaId: id,
+          surah: 11,
+          ayah: a,
+          word: w,
+          count: 1,
+          text: text,
+          kind: usul ? VariantKind.usul : VariantKind.farsh,
+          description: description,
+          rule: rule,
+        );
+        return manzumat.referenceOf(
+          v,
+          hafs,
+          11,
+          surahs,
+          entries: book.at(11, a, w),
+        );
+      }
+
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final da = ref(
+          id,
+          20,
+          14,
+          'يُضَعَّفُ',
+          'يُضَٰعَفُ',
+          description: 'بحذف الألف وتشديد العين',
+        );
+        expect(da.poem, Poem.durrah, reason: id);
+        expect(da.mention, {81}, reason: id);
+        final anni = ref(
+          id,
+          25,
+          5,
+          'أَنِّي',
+          'إِنِّي',
+          description: 'بفتح الهمزة',
+        );
+        expect(anni.poem, Poem.durrah, reason: id);
+        expect(anni.mention, {131}, reason: id);
+        final irkab = ref(
+          id,
+          42,
+          13,
+          'ٱرۡكَبۡ مَعَنَا',
+          'ٱرۡكَب',
+          description: 'بالإظهار',
+        );
+        expect(irkab.poem, Poem.durrah, reason: id);
+        expect(irkab.mention, {41}, reason: id);
+      }
+      for (final id in ['qalun', 'bazzi', 'qunbul']) {
+        final majraha = ref(
+          id,
+          41,
+          5,
+          'مُجۡرَىٰهَا',
+          'مَجۡر۪ىٰهَا',
+          description: 'بضم الميم وفتح الراء وعدم إمالتها',
+        );
+        expect(majraha.poem, Poem.shatibiyya, reason: id);
+        expect(majraha.mention, {757}, reason: id);
+        final bunayya = ref(
+          id,
+          42,
+          12,
+          'يَٰبُنَيِّ',
+          'يَٰبُنَيَّ',
+          description: 'بكسر الياء',
+        );
+        expect(bunayya.poem, Poem.shatibiyya, reason: id);
+        expect(bunayya.mention, {757}, reason: id);
+        final irkab = ref(
+          id,
+          42,
+          13,
+          'ٱرۡكَب مَّعَنَا',
+          'ٱرۡكَب',
+          description: 'بإدغام الباء في الميم',
+          rule: 'idgham_saghir',
+          usul: true,
+        );
+        expect(irkab.poem, Poem.shatibiyya, reason: id);
+        expect(irkab.mention, {284}, reason: id);
+        final salat = ref(
+          id,
+          87,
+          2,
+          'أَصَلَوَٰتُكَ',
+          'أَصَلَوٰتُكَ',
+          description: 'بالجمع',
+        );
+        expect(salat.poem, Poem.shatibiyya, reason: id);
+        expect(salat.mention, {733, 734}, reason: id);
+        if (id != 'qalun') {
+          final nasha = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: 12,
+              ayah: 56,
+              word: 8,
+              count: 1,
+              text: 'نَشَآءُۚ',
+              kind: VariantKind.farsh,
+              description: 'بالنون',
+            ),
+            'يَشَآءُۚ',
+            12,
+            surahs,
+            entries: book.at(12, 56, 8),
+          );
+          expect(nasha.poem, Poem.shatibiyya, reason: id);
+          expect(nasha.mention, {780}, reason: id);
+          final kaain = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: 12,
+              ayah: 105,
+              word: 0,
+              count: 1,
+              // As the riwaya's file writes it: the alif, then its madd.
+              // As the riwaya's file writes it: the alif, then its madd.
+              text: 'وَكَآئِن',
+              kind: VariantKind.farsh,
+              description: 'بإثبات الألف وكسر الهمزة وحذف الياء والمد',
+            ),
+            'وَكَأَيِّن',
+            12,
+            surahs,
+            entries: book.at(12, 105, 0),
+          );
+          expect(kaain.poem, Poem.shatibiyya, reason: id);
+          expect(kaain.mention, {570}, reason: id);
+          if (id == 'bazzi') {
+            for (final (s, a, w) in [(12, 80, 1), (12, 87, 7), (13, 31, 19)]) {
+              final yas = manzumat.referenceOf(
+                Variant(
+                  riwayaId: id,
+                  surah: s,
+                  ayah: a,
+                  word: w,
+                  count: 1,
+                  text: 'ٱسۡتَٰيَسُواْ',
+                  kind: VariantKind.hamza,
+                  rule: 'hamza_hadhf',
+                  description: 'بخلف',
+                ),
+                'ٱسۡتَيۡـَٔسُواْ',
+                s,
+                surahs,
+                entries: book.at(s, a, w),
+              );
+              expect(yas.poem, Poem.shatibiyya, reason: '$s:$a');
+              expect(yas.mention, {782}, reason: '$s:$a');
+            }
+          }
+          for (final (s, a, w, hafs) in [
+            (12, 82, 0, 'وَسۡـَٔلِ'),
+            (4, 32, 17, 'وَسۡـَٔلُواْ'),
+          ]) {
+            final sal = manzumat.referenceOf(
+              Variant(
+                riwayaId: id,
+                surah: s,
+                ayah: a,
+                word: w,
+                count: 1,
+                text: 'وَسَلِ',
+                kind: VariantKind.hamza,
+                description: 'بنقل حركة الهمزة إلى السين وحذف الهمزة',
+              ),
+              hafs,
+              s,
+              surahs,
+              entries: book.at(s, a, w),
+            );
+            expect(sal.poem, Poem.shatibiyya, reason: '$id $s:$a');
+            expect(sal.mention, {598}, reason: '$id $s:$a');
+          }
+        }
+      }
+      // Abu Ja'far's «سَعِدُواْ» (هود ١٠٨), the Durrah silent: its asl's two,
+      // then Nafi''s bayt, «وَفِي سَعِدُوا فَاضْمُمْ صِحَابًا».
+      for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+        final sa = ref(
+          id,
+          108,
+          2,
+          'سَعِدُواْ',
+          'سُعِدُواْ',
+          description: 'بفتح السين',
+        );
+        expect(sa.poem, Poem.shatibiyya, reason: id);
+        expect(sa.mention, {766}, reason: id);
+        expect([for (final b in sa.asl) b.n], [7, 8], reason: id);
+        final inna = ref(
+          id,
+          111,
+          0,
+          'وَإِنَّ',
+          'وَإِنَّ',
+          description: 'بتشديد النون',
+        );
+        expect(inna.poem, Poem.durrah, reason: id);
+        expect(inna.mention, {133}, reason: id);
+        final zulaf = ref(
+          id,
+          114,
+          4,
+          'وَزُلُفٗا',
+          'وَزُلَفٗا',
+          description: 'بضم اللام',
+        );
+        expect(zulaf.poem, Poem.durrah, reason: id);
+        expect(zulaf.mention, {134}, reason: id);
+        final innaka = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 12,
+            ayah: 90,
+            word: 1,
+            count: 1,
+            text: 'إِنَّكَ',
+            kind: VariantKind.hamza,
+            description: 'بكسر الهمزة وحذف الهمزة',
+          ),
+          'أَءِنَّكَ',
+          12,
+          surahs,
+          entries: book.at(12, 90, 1),
+        );
+        expect(innaka.poem, Poem.durrah, reason: id);
+        expect(innaka.mention, {24}, reason: id);
+        final nunji = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 12,
+            ayah: 110,
+            word: 10,
+            count: 1,
+            text: 'فَنُـۨجِي',
+            kind: VariantKind.farsh,
+            description: 'بزيادة النون وتخفيف الجيم وإسكان الياء',
+          ),
+          'فَنُجِّيَ',
+          12,
+          surahs,
+          entries: book.at(12, 110, 10),
+        );
+        // The Durrah's «نُجِّيَ حَامِدٌ» is Ya'qub's: its asl's two, then Nafi''s.
+        expect(nunji.poem, Poem.shatibiyya, reason: id);
+        expect(nunji.mention, isNotEmpty, reason: id);
+        expect([for (final b in nunji.asl) b.n], [7, 8], reason: id);
+        final ukul = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 13,
+            ayah: 4,
+            word: 20,
+            count: 1,
+            text: 'ٱلۡأُكُلِۚ',
+            kind: VariantKind.farsh,
+            description: 'بضم الكاف',
+          ),
+          'ٱلۡأُكُلِۚ',
+          13,
+          surahs,
+          entries: book.at(13, 4, 20),
+        );
+        expect(ukul.poem, Poem.durrah, reason: id);
+        expect(ukul.mention, {74, 75}, reason: id);
+        final yarji = ref(
+          id,
+          123,
+          5,
+          'يَرۡجِعُ',
+          'يُرۡجَعُ',
+          description: 'بفتح الياء وكسر الجيم',
+        );
+        expect(yarji.poem, Poem.durrah, reason: id);
+        expect(yarji.mention, {63, 64}, reason: id);
+        final ashar = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 12,
+            ayah: 4,
+            word: 8,
+            count: 1,
+            text: 'عۡشَرَ',
+            kind: VariantKind.farsh,
+            description: 'بإسكان العين',
+          ),
+          'عَشَرَ',
+          12,
+          surahs,
+          entries: book.at(12, 4, 8),
+        );
+        expect(ashar.poem, Poem.durrah, reason: id);
+        expect(ashar.mention, {122, 123}, reason: id);
+        final abata = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 12,
+            ayah: 4,
+            word: 4,
+            count: 1,
+            text: 'يَٰأَبَتَ',
+            kind: VariantKind.farsh,
+            description: 'فتح التاء',
+          ),
+          'يَٰٓأَبَتِ',
+          12,
+          surahs,
+          entries: book.at(12, 4, 4),
+        );
+        expect(abata.poem, Poem.durrah, reason: id);
+        expect(abata.mention, {136}, reason: id);
+      }
+      for (final id in ['qalun', 'bazzi', 'qunbul']) {
+        for (final (w, text, how) in [
+          (0, 'وَإِن', 'بإسكان النون مخففة'),
+          (2, 'لَّمَا', 'بتخفيف الميم'),
+        ]) {
+          final r = ref(id, 111, w, text, '', description: how);
+          expect(r.poem, Poem.shatibiyya, reason: '$id $w');
+          expect(r.mention, {766, 767}, reason: '$id $w');
+        }
+      }
+    },
+  );
 
   test(
     "the second «نُنَجِّ» (يونس ١٠٣) cites «الْخِفُّ نُنْجِ رِضىً عَلَا» and "

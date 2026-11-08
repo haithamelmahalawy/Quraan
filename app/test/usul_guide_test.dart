@@ -270,7 +270,8 @@ void main() {
     int count(String prefix) => lin['الهمزتان من كلمة']!
         .where((v) => twoHamzasKind(v) == prefix)
         .length;
-    expect(count('المفتوحة والمكسورة'), 32);
+    expect(count('المفتوحة والمكسورة'), 21);
+    expect(count('الاستفهام المكرر'), 11);
     expect(count('المفتوحة والمضمومة'), 4);
     expect(count('المفتوحتان'), 21);
     expect(count('أرأيت'), 34);
@@ -319,7 +320,8 @@ void main() {
       'الهمزتان من كلمتين',
     );
     expect(usulKindRank('الهمزتان من كلمة', 'المفتوحتان'), 0);
-    expect(usulKindRank('الهمزتان من كلمة', 'مد الفرق'), 4);
+    expect(usulKindRank('الهمزتان من كلمة', 'الاستفهام المكرر'), 4);
+    expect(usulKindRank('الهمزتان من كلمة', 'مد الفرق'), 5);
     expect(
       usulKindReason(
         'الهمز المفرد',
@@ -436,7 +438,8 @@ void main() {
     for (final id in ['bazzi', 'qunbul']) {
       final ha = rowOf(id, 13, 7, 14, 'rasm_stop')!;
       expect(ha.stopOnly, isTrue, reason: id);
-      expect(ha.stopText, endsWith('ي'), reason: id);
+      // The ya stopped on, the small one beside the word (هَادِۦ).
+      expect(ha.stopText, endsWith('ِۦ'), reason: id);
       expect(rowOf(id, 3, 35, 2, 'rasm_stop')!.stopOnly, isTrue, reason: id);
     }
     expect(usulOfRiwaya(variants, quran, 'qalun')['مد أنا'], hasLength(15));

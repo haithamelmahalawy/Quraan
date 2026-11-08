@@ -1085,6 +1085,14 @@ class _JamScreenState extends State<JamScreen> {
             names,
             entries: book.at(ayah.surah, ayah.number, w),
           );
+          // The Durrah's asl first, where it is silent on Abu Ja'far.
+          for (final b in ref.asl) {
+            (bayts['${Poem.durrah.name}:${b.n}'] ??= (
+              poem: Poem.durrah,
+              bayt: b,
+              words: <int>{},
+            )).words.add(w);
+          }
           for (final b in ref.verses) {
             if (!ref.mention.contains(b.n)) continue;
             (bayts['${ref.poem.name}:${b.n}'] ??= (

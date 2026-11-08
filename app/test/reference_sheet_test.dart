@@ -130,7 +130,7 @@ void main() {
     (tester) async {
       for (final (riwaya, poem) in [
         ('warsh', Poem.shatibiyya),
-        ('ibn_wardan', Poem.durrah),
+        ('ishaq', Poem.durrah),
       ]) {
         final v = reading(
           ayah: 1,
@@ -188,6 +188,17 @@ void main() {
           expect(find.textContaining('إظهار المزيد ('), findsNothing);
         }
       }
+      // Abu Ja'far's, found in neither: the Durrah's asl, «لِثَانٍ أَبُو عَمْرٍو
+      // وَالاَوَّلِ نَافِعٌ» and «فَإِنْ خَالَفُوا أَذْكُرْ وَإِلاَّ فَأُهْمِلَا».
+      final abuJafar = reading(
+        ayah: 1,
+        word: 0,
+        text: 'كلمةغيرموجودة',
+        riwaya: 'ibn_wardan',
+      );
+      final asl = poems.referenceOf(abuJafar, 'كلمةغيرموجودة', 2, surahs);
+      expect(asl.poem, Poem.durrah);
+      expect(asl.mention, {7, 8});
       expect(tester.takeException(), isNull);
     },
   );

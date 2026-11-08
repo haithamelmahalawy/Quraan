@@ -36,6 +36,11 @@ typedef Reference = ({
   Set<int> mention,
   bool fromBook,
   Map<int, String> bookExplanation,
+
+  /// Abu Ja'far where the Durrah is silent, his reading his asl's, Nafi''s:
+  /// the Durrah's «لِثَانٍ أَبُو عَمْرٍو وَالاَوَّلِ نَافِعٌ» and «فَإِنْ خَالَفُوا
+  /// أَذْكُرْ وَإِلاَّ فَأُهْمِلَا» (7، 8), told before the Shatibiyya's bayt.
+  List<Bayt> asl,
 });
 
 class BaytExplanation {
@@ -282,18 +287,99 @@ class Manzumat {
     final cited = poem == Poem.durrah && selected.contains(75)
         ? {...selected, 74}
         : selected;
+    final mention = {
+      for (final b in inChapter)
+        if (cited.contains(b.n)) b.n,
+    };
+    final abuJafar = qiraaOf(reading.riwayaId).id == 'abu_jafar';
+    final asl = abuJafar ? durrahAsl : const <Bayt>[];
+    // Abu Ja'far's, the Durrah silent: Nafi''s bayt in the Shatibiyya, as
+    // Qalun's reading of it, after the Durrah's two.
+    final silent =
+        mention.isEmpty ||
+        _durrahSilentOnAbuJafar.contains(
+          '${reading.surah}:${reading.ayah}:${reading.word}',
+        );
+    if (abuJafar && poem == Poem.durrah && silent && asl.isNotEmpty) {
+      final nafi = _referenceOf(
+        _asQalun(reading),
+        hafs,
+        surah,
+        surahNames,
+        entries: entries,
+      );
+      if (nafi.poem == Poem.shatibiyya && nafi.mention.isNotEmpty) {
+        return (
+          poem: nafi.poem,
+          chapter: nafi.chapter,
+          verses: nafi.verses,
+          mention: nafi.mention,
+          fromBook: nafi.fromBook,
+          bookExplanation: nafi.bookExplanation,
+          asl: asl,
+        );
+      }
+    }
+    // Abu Ja'far's, no bayt of the Durrah nor of the Shatibiyya found for it:
+    // the Durrah's two alone.
+    if (abuJafar && mention.isEmpty && asl.isNotEmpty) {
+      return (
+        poem: Poem.durrah,
+        chapter: asl.first.chapter,
+        verses: asl,
+        mention: {for (final b in asl) b.n},
+        fromBook: false,
+        bookExplanation: const {},
+        asl: const [],
+      );
+    }
     return (
       poem: poem,
       chapter: chapter,
       verses: inChapter,
-      mention: {
-        for (final b in inChapter)
-          if (cited.contains(b.n)) b.n,
-      },
+      mention: mention,
       fromBook: quoted.isNotEmpty,
       bookExplanation: bookExplanation,
+      asl: poem == Poem.shatibiyya ? asl : const [],
     );
   }
+
+  /// Words a bayt of the Durrah names for another of its three, Abu Ja'far
+  /// left to his asl: «فَنُـۨجِي» (يوسف ١١٠), «نُجِّيَ حَامِدٌ» Ya'qub's.
+  static const _durrahSilentOnAbuJafar = {'12:110:10'};
+
+  /// [v] as Qalun's: Abu Ja'far's reading where the Durrah leaves him to Nafi'.
+  static Variant _asQalun(Variant v) => Variant(
+    riwayaId: 'qalun',
+    surah: v.surah,
+    ayah: v.ayah,
+    word: v.word,
+    count: v.count,
+    text: v.text,
+    kind: v.kind,
+    description: v.description,
+    rule: v.rule,
+    certified: v.certified,
+    bookHow: v.bookHow,
+    bookFarsh: v.bookFarsh,
+    bookWujuh: v.bookWujuh,
+    stopOnly: v.stopOnly,
+    stopText: v.stopText,
+    marginText: v.marginText,
+    ownWays: v.ownWays,
+    omission: v.omission,
+    usulText: v.usulText,
+    usulWays: v.usulWays,
+    hamesh: v.hamesh,
+  );
+
+  /// The Durrah's «لِثَانٍ أَبُو عَمْرٍو وَالاَوَّلِ نَافِعٌ ...» and «وَرَمْزُهُمُ ثُمَّ
+  /// الرُّوَاةُ كَأَصْلِهِمْ ...» (7، 8): each of the three reads as his asl
+  /// where it tells him not.
+  late final List<Bayt> durrahAsl = [
+    for (final b in verses(Poem.durrah))
+      if (b.n == 7 || b.n == 8) b,
+  ];
 
   bool _citationFits(Poem poem, Variant v, int n, [String hafs = '']) {
     // The verses reviewed for the word, before what the book quotes with it.
@@ -1066,6 +1152,104 @@ class Manzumat {
         at == '10:81:7') {
       return {130, 131};
     }
+    // Abu Ja'far's «يُضَعَّفُ» (هود ٢٠): «يُضَاعِفُهُ انْصِبْ حُزْ وَشَدِّدْهُ كَيْفَ
+    // جَا».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        at == '11:20:14') {
+      return {81};
+    }
+    // Abu Ja'far's «أَنِّي لَكُمۡ» (هود ٢٥): «وَافْتِحِ اتْلُ فَا / قَ إِنِّي لَكُمْ».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        at == '11:25:5') {
+      return {131};
+    }
+    // «مُجۡرَىٰهَا» and «يَٰبُنَيِّ» (هود ٤١، ٤٢) of Qalun and Ibn Kathir: «وَفِي
+    // ضَمِّ مَجْرَاهَا سِوَاهُمْ وَفَتْحُ يَا / بُنَيِّ هُنَا نَصٌّ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        const {'11:41:5', '11:42:12'}.contains(at)) {
+      return {757};
+    }
+    // «أَصَلَوَٰتُكَ» (هود ٨٧) of Qalun and Ibn Kathir, the plural: «صَلاَتَكَ
+    // وَحِّدْ ... شَذًّا عَلَا» and «وَوَحِّدْ لَهُمْ في هُودَ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        at == '11:87:2') {
+      return {733, 734};
+    }
+    // Ibn Kathir's «حَيۡثُ نَشَآءُ» (يوسف ٥٦): «وَحَيْثُ يَشَاءُ نُو / نُ دَارٍ».
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        at == '12:56:8') {
+      return {780};
+    }
+    // Ibn Kathir's «وَسَلۡ، فَسَلِ، فَسَلۡهُۥ، وَسَلُواْ» wherever they come: «وَسَلْ /
+    // فَسَلْ حَرَّكُوا بِالنَّقْلِ رَاشِدُهُ دَلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        RegExp('^ب(نقل حركة الهمزة إلى|فتح) السين').hasMatch(v.description)) {
+      return {598};
+    }
+    // Al-Bazzi's «ٱسۡتَٰيَسُواْ» and its kin by khulf (يوسف ٨٠، ٨٧، ١١٠، الرعد
+    // ٣١): «وَيَيْأَسْ مَعًا وَاسْتَيْأَسَ اسْتَيْأَسُوا وَتَيْـ / ـأَسُوا اقْلِبْ عَنِ
+    // الْبَزِّيْ بِخُلْفٍ وَأَبْدِلَا».
+    if (poem == Poem.shatibiyya &&
+        v.riwayaId == 'bazzi' &&
+        const {
+          '12:80:1',
+          '12:87:7',
+          '12:87:13',
+          '12:110:2',
+          '13:31:19',
+        }.contains(at)) {
+      return {782};
+    }
+    // Ibn Kathir's «وَكَآئِن» wherever it comes: «وَمَعْ مَدِّ كَائِنْ كَسْرُ هَمْزَتِهِ
+    // دَلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        // Its madd written either way: آ, or the alif and its sign.
+        RegExp('كَ(آ|آ)ئ').hasMatch(v.text)) {
+      return {570};
+    }
+    // «ٱرۡكَب مَّعَنَا» (هود ٤٢): al-Bazzi and Qalun by khulf, Qunbul not named,
+    // reading it merged: «وَفِي ارْكَبْ هُدَى بَرٍّ قَرِيبٍ بِخُلْفِهِمْ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        at == '11:42:13') {
+      return {284};
+    }
+    // Abu Ja'far's, shown: «يَلْهَثَ اَظْهِرْ أُدْ وَفِي ارْكَبْ فَشَا أَلَا».
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        at == '11:42:13') {
+      return {41};
+    }
+    // «وَإِن كُلّٗا لَّمَا» (هود ١١١) of Qalun and Ibn Kathir: «وَخِفُّ وَإِنْ
+    // كُلاًّ إِلَى صَفْوِهِ دَلَا» and «وَفِيها ... يُشَدِّدُ لَمَّا».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        const {'11:111:0', '11:111:2'}.contains(at)) {
+      return {766, 767};
+    }
+    // Abu Ja'far's «وَإِنَّ» doubled: «إِنْ كُلاًّ اتْلُ مُثَقِّلَا»; his «وَزُلُفٗا»:
+    // «وَخِفُّ الْكُلِّ فُقْ زُلَفَا أَلَا».
+    if (poem == Poem.durrah && qiraaOf(v.riwayaId).id == 'abu_jafar') {
+      if (at == '11:111:0') return {133};
+      if (at == '11:114:4') return {134};
+      // «إِنَّكَ لَأَنتَ يُوسُفُ» (يوسف ٩٠) on the khabar: «وَإِنَّكْ لأَنْتَ أُدْ».
+      if (at == '12:90:1') return {24};
+      // «ٱلۡأُكُلِ» (الرعد ٤) with its kaf's damma: «أُثْقِلَا / وَالاذْنُ وَسُحْقًا
+      // الاُكْلُ إِذْ».
+      if (at == '13:4:20') return {74, 75};
+      // «يَرۡجِعُ ٱلۡأَمۡرُ» (هود ١٢٣): «وَيُرْجَعُ كَيْفَ جَا / إِذَا كَانَ لِلأُخْرَى
+      // فَسَمِّ» and «وَالامْرُ اتْلُ».
+      if (at == '11:123:5') return {63, 64};
+      // «يَٰٓأَبَتَ» with its ta open, wherever it comes: «وَيَا أَبَتِ افْتَحْ أُدْ».
+      if (!v.isUsul && v.text.contains('أَبَتَ')) return {136};
+    }
     // Khalaf's «وَسَلۡ، فَسَلِ، وَسَلُواْ» wherever they come: «وَسَلْ مَعْ فَسَلْ فَشَا».
     if (poem == Poem.durrah &&
         qiraaOf(v.riwayaId).id == 'khalaf' &&
@@ -1079,11 +1263,12 @@ class Manzumat {
         at == '8:59:1') {
       return {119};
     }
-    // Abu Ja'far's «ٱثۡنَآ عۡشَرَ» (التوبة ٣٦): «وَعَيْنَ عَشَرْ أَلَا» at the end
+    // Abu Ja'far's «ٱثۡنَآ عۡشَرَ» (التوبة ٣٦)، «أَحَدَ عۡشَرَ» (يوسف ٤)، «تِسۡعَةَ عۡشَرَ»
+    // (المدثر ٣٠): «وَعَيْنَ عَشَرْ أَلَا» at the end
     // of the one, «فَسَكِّنْ جَمِيْعًا وَامْدُدْ اثْنَا» at the start of the next.
     if (poem == Poem.durrah &&
         qiraaOf(v.riwayaId).id == 'abu_jafar' &&
-        at == '9:36:5') {
+        const {'9:36:5', '12:4:8', '74:30:2'}.contains(at)) {
       return {122, 123};
     }
     // Abu Ja'far's «يُقَتِّلُونَ» (الأعراف ١٤١) with the shadda, as Hafs:

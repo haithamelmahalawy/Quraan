@@ -126,6 +126,27 @@ void main() {
         ], const []);
         expect(notes, isEmpty);
       });
+
+      test(
+        '«أَنَا أَخُوكَ»: those who drop the alif joined, beside «مد أنا»',
+        () {
+          for (final shown in ['qalun', 'ibn_wardan']) {
+            final notes = otherBodyNotes(
+              variants,
+              quran.ayah(12, 69),
+              9,
+              shown,
+              const ['bazzi', 'hafs', 'qalun', 'ibn_wardan'],
+              const [],
+            );
+            expect({for (final v in notes) v.riwayaId}, {'bazzi', 'hafs'});
+            expect(
+              {for (final v in notes) v.description},
+              {'بحذف الألف وصلاً'},
+            );
+          }
+        },
+      );
     },
   );
 }

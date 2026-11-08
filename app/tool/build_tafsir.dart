@@ -97,6 +97,7 @@ void main(List<String> args) {
       'name': _reciterName(r['name'] as String),
       'server': server,
       if (r['id'] == 268) 'numbering': 'makki-6220',
+      'ends': ?clipEnds[r['id']],
     });
   }
   File('assets/data/reciters.json').writeAsStringSync(
@@ -115,3 +116,14 @@ String _reciterName(String name) => name
     .replaceFirst(RegExp(r'^مصحف\s+'), '')
     .replaceFirst(RegExp(r'\s+برواية.*$'), '')
     .trim();
+
+/// Files of a recitation that run on past their ayah into the ayat after it,
+/// and where the ayah ends in them (ms): found by the pauses of the file and
+/// the voice of the next file heard in it.
+const clipEnds = <int, Map<String, int>>{
+  // مفتاح السلطاني: ابن ذكوان، هشام، ابن وردان، ابن جماز.
+  274: {'2:5': 14000, '6:10': 13680, '20:40': 17320},
+  273: {'6:10': 13680},
+  282: {'11:9': 14140, '12:71': 6480},
+  283: {'11:9': 14140, '12:71': 6480},
+};

@@ -2017,8 +2017,14 @@ class _MushafPageState extends State<MushafPage>
   List<(String, Color?)>? _waslDamm(Ayah ayah, int w, String text) {
     final letters = lettersOf(text);
     final own = _waslDammColor(ayah, w);
-    final into = w > 0 && RegExp('^[ٱا]').hasMatch(text)
-        ? _waslDammColor(ayah, w - 1)
+    // The word before in the ayah before, too (مُّبِينٍ ۝ ٱقۡتُلُواْ).
+    final before = w > 0
+        ? ayah
+        : ayah.number > 1
+        ? widget.quran.ayah(ayah.surah, ayah.number - 1)
+        : null;
+    final into = before != null && RegExp('^[ٱا]').hasMatch(text)
+        ? _waslDammColor(before, w > 0 ? w - 1 : before.words.length - 1)
         : null;
     if (own == null && into == null) return null;
     return [
@@ -2035,8 +2041,13 @@ class _MushafPageState extends State<MushafPage>
   }
 
   Color? _waslDammColor(Ayah ayah, int w) {
-    if (w + 1 >= ayah.words.length ||
-        !ayah.words[w + 1].startsWith('ٱ') ||
+    // The word after, the next ayah's first at the ayah's end.
+    final next = w + 1 < ayah.words.length
+        ? ayah.words[w + 1]
+        : ayah.number < widget.quran.surah(ayah.surah).ayahCount
+        ? widget.quran.ayah(ayah.surah, ayah.number + 1).words.first
+        : '';
+    if (!next.startsWith('ٱ') ||
         !RegExp(r'[ٍِ][ۖ-ۭ]*$').hasMatch(ayah.words[w])) {
       return null;
     }

@@ -154,7 +154,16 @@ class AyahPlayer extends ChangeNotifier {
     notifyListeners();
     if (request != _request) return;
     try {
-      await _player.setUrl(clipUri(c.reciter, c.surah, native).toString());
+      final uri = clipUri(c.reciter, c.surah, native);
+      // A file running on into the ayat after it: up to the ayah's end only.
+      final end = c.reciter.endOf(c.surah, native);
+      if (end == null) {
+        await _player.setUrl(uri.toString());
+      } else {
+        await _player.setAudioSource(
+          ClippingAudioSource(child: AudioSource.uri(uri), end: end),
+        );
+      }
       if (request != _request) return;
       _preparing = false;
       _armed = true;

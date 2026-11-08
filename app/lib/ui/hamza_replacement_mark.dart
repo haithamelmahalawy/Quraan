@@ -139,8 +139,25 @@ class _ReplacementPainter extends CustomPainter {
       textDirection: TextDirection.rtl,
       textScaler: textScaler,
     )..layout(maxWidth: size.width);
+    // A word set narrower than its own width (وَرَآءِ۬ in its line) wraps its
+    // hidden hamza onto a second line, under the first letter: placed on one
+    // line instead, within the word's width.
+    var squeeze = 1.0;
+    if (painter.computeLineMetrics().length > 1 && size.width > 0) {
+      painter.layout();
+      squeeze = size.width / painter.width;
+    }
+    _paintMark(canvas, painter, shown, squeeze);
+    painter.dispose();
+  }
+
+  void _paintMark(
+    Canvas canvas,
+    TextPainter painter,
+    String shown,
+    double squeeze,
+  ) {
     if (offset < 0 || offset >= text.length) {
-      painter.dispose();
       return;
     }
     var end = offset + 1;
@@ -156,7 +173,6 @@ class _ReplacementPainter extends CustomPainter {
       TextSelection(baseOffset: offset, extentOffset: shownEnd),
     );
     if (boxes.isEmpty) {
-      painter.dispose();
       return;
     }
     final box = boxes.first;
@@ -177,9 +193,10 @@ class _ReplacementPainter extends CustomPainter {
         text.startsWith('ا', offset) &&
         RegExp('ل[ً-ْ]*\$').hasMatch(text.substring(0, offset));
     final center = Offset(
-      HamzaReplacementMark.beforeAlif(letter, hamza, text, offset)
-          ? box.right + diameter * .55
-          : (box.left + box.right) / 2 - (inLigature ? fontSize * .30 : 0),
+      squeeze *
+          (HamzaReplacementMark.beforeAlif(letter, hamza, text, offset)
+              ? box.right + diameter * .55
+              : (box.left + box.right) / 2 - (inLigature ? fontSize * .30 : 0)),
       line.baseline +
           fontSize *
               (hamza.startsWith('ء')
@@ -267,7 +284,6 @@ class _ReplacementPainter extends CustomPainter {
       );
       mark.dispose();
     }
-    painter.dispose();
   }
 
   @override

@@ -241,6 +241,31 @@ class _ReadingReferenceState extends State<_ReadingReference> {
               style: TextStyle(color: MushafColors.frame),
             ),
           const Divider(height: 18),
+          // The Durrah silent: Abu Ja'far as his asl, Nafi', then the
+          // Shatibiyya's bayt of Nafi''s reading.
+          if (r.asl.isNotEmpty) ...[
+            Text(
+              '${Poem.durrah.nameAr} • ${r.asl.first.chapter}',
+              style: TextStyle(
+                color: MushafColors.green,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              'سكتت الدرة عن الكلمة، فيقرأ ${q.shortAr} كأصله نافع:',
+              key: const ValueKey('reference-asl'),
+              style: TextStyle(color: MushafColors.frame, fontSize: 12),
+            ),
+            for (final b in r.asl)
+              PoemVerse(
+                key: ValueKey('asl-${b.n}'),
+                bayt: b,
+                named: true,
+                explanation: widget.manzumat.explanation(Poem.durrah, b.n),
+                bookExplanation: '',
+              ),
+            const SizedBox(height: 10),
+          ],
           Text(
             '${r.poem.nameAr} • ${r.chapter}',
             style: TextStyle(

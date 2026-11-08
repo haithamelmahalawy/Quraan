@@ -118,8 +118,15 @@ List<String> usulOf(Variant v) {
   }
   // What the sources of Qalun, Ibn Kathir and Abu Ja'far tell without a rule.
   if (unified && v.riwayaId != 'warsh' && v.rule.isEmpty) {
-    if (d.startsWith('بفتح الراء وحذف الهمزة') || d == 'بالسين') {
+    if (d.startsWith('بفتح الراء وحذف الهمزة') ||
+        d == 'بالسين' ||
+        // «وَسَلِ»، «فَسَلُواْ»: Ibn Kathir's naql of the hamza to the sin.
+        d.startsWith('بنقل حركة الهمزة')) {
       return ['النقل'];
+    }
+    // «فَٱسۡرِ»: its hamza eased, told as its qat' made a wasl.
+    if (d.startsWith('بتخفيف الهمزة - ')) {
+      return ['الهمز المفرد (تخفيف الهمزة)'];
     }
     if (!d.contains('إبدال')) {
       if (RegExp('زيادة الهمزة|^بالهمز').hasMatch(d)) {

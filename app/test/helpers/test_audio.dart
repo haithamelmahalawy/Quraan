@@ -55,6 +55,25 @@ class TestAudio extends Fake implements AudioPlayer {
     return const Duration(seconds: 10);
   }
 
+  /// The sources set whole, a file clipped to its ayah's end among them.
+  final sources = <AudioSource>[];
+
+  @override
+  Future<Duration?> setAudioSource(
+    AudioSource audioSource, {
+    bool preload = true,
+    int? initialIndex,
+    Duration? initialPosition,
+  }) {
+    sources.add(audioSource);
+    final uri = switch (audioSource) {
+      ClippingAudioSource(:final child) => child.uri,
+      UriAudioSource(:final uri) => uri,
+      _ => throw UnsupportedError('$audioSource'),
+    };
+    return setUrl(uri.toString());
+  }
+
   @override
   Future<void> play() async {
     plays++;
