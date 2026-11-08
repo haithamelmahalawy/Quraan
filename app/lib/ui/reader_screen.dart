@@ -409,6 +409,11 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   void _goToPage(int page) => _pager.currentState?.jumpTo(_indexOf(page));
 
+  /// «الانتقال إلى المصحف» in the jam': the mushaf at the page read there.
+  void _backFromJam(int? page) {
+    if (mounted && page != null && page != _page) _goToPage(page);
+  }
+
   /// «تنبيه الاختلافات»: the lamp lights the words that differ from Hafs,
   /// or puts them out.
   void _toggleGlow() => widget.settings.diffAlert =
@@ -490,28 +495,32 @@ class _ReaderScreenState extends State<ReaderScreen>
       variants: widget.variants,
       arrowAt: two ? null : _headerMiddle,
       // «الجمع للقراءات العشر»: a screen of its own, at the page read.
-      onJam: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => JamScreen(
-            quran: _quran,
-            variants: widget.variants,
-            page: _page,
-            settings: widget.settings,
-          ),
-        ),
-      ),
+      onJam: () => Navigator.of(context)
+          .push(
+            MaterialPageRoute<int>(
+              builder: (_) => JamScreen(
+                quran: _quran,
+                variants: widget.variants,
+                page: _page,
+                settings: widget.settings,
+              ),
+            ),
+          )
+          .then(_backFromJam),
       // «جمع الروايات المختارة»: the same, the riwayat chosen alone.
-      onJamSelected: (chosen) => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => JamScreen(
-            quran: _quran,
-            variants: widget.variants,
-            page: _page,
-            settings: widget.settings,
-            riwayat: chosen,
-          ),
-        ),
-      ),
+      onJamSelected: (chosen) => Navigator.of(context)
+          .push(
+            MaterialPageRoute<int>(
+              builder: (_) => JamScreen(
+                quran: _quran,
+                variants: widget.variants,
+                page: _page,
+                settings: widget.settings,
+                riwayat: chosen,
+              ),
+            ),
+          )
+          .then(_backFromJam),
       child: _withHint(book),
     );
 

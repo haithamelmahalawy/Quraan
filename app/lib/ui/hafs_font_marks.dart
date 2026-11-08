@@ -692,7 +692,7 @@ class _QuranMarkPainter extends CustomPainter {
                     // on the others (يَٰٓأَيُّهَا، هَٰٓؤُلَآءِ).
                     : source.substring(at, end).contains('ٰ')
                     ? (lamDagger
-                          ? .02
+                          ? -.10
                           : raDagger
                           ? -.10
                           // Over a dagger alif on a full alif (آٰللَّهُ), which

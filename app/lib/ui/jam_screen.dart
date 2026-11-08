@@ -452,47 +452,61 @@ class _JamScreenState extends State<JamScreen> {
     final riwaya = r.riwayat.contains(hafsId) ? null : r.lead;
     final settings = _shownAs[r.lead] ??= ReaderSettings.showing(riwaya);
     final shown = {for (final (i, a) in _ayahs.indexed) (a.surah, a.number): i};
-    return Container(
-      key: const ValueKey('jam-page'),
-      decoration: BoxDecoration(
-        color: MushafColors.page,
-        border: Border.all(color: MushafColors.gold.withAlpha(150)),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: FittedBox(
-        alignment: Alignment.topCenter,
-        child: SizedBox.fromSize(
-          size: _pageSize,
-          child: MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(size: _pageSize, textScaler: TextScaler.noScaling),
-            // An ayah touched: the jam' from it.
-            child: MushafPage(
-              key: ValueKey('jam-page-$_page-${r.lead}'),
-              page: _page,
-              quran: widget.quran,
-              variants: widget.variants,
-              mutashabihat: MutashabihatRepository.empty,
-              settings: settings,
-              onWordTap: (a, _) {
-                final i = shown[(a.surah, a.number)];
-                if (i != null) _manual(() => _show(i, 0));
-              },
-              showHamesh: false,
-              ayahShade: (a) => switch (shown[(a.surah, a.number)]) {
-                final i? when i == _ayah => MushafColors.gold.withAlpha(110),
-                final i? when _done.contains(i) => MushafColors.green.withAlpha(
-                  40,
-                ),
-                _ => null,
-              },
+    // Swiped across, as the mushaf turns: to the right the next page, to the
+    // left the one before, each from its first ayah.
+    return GestureDetector(
+      key: const ValueKey('jam-page-swipe'),
+      onHorizontalDragEnd: (d) {
+        final v = d.primaryVelocity ?? 0;
+        if (v.abs() < _swipeSpeed) return;
+        final page = v > 0 ? _page + 1 : _page - 1;
+        if (page < 1 || page > widget.quran.pageCount) return;
+        _manual(() => _turnTo(page));
+      },
+      child: Container(
+        key: const ValueKey('jam-page'),
+        decoration: BoxDecoration(
+          color: MushafColors.page,
+          border: Border.all(color: MushafColors.gold.withAlpha(150)),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: FittedBox(
+          alignment: Alignment.topCenter,
+          child: SizedBox.fromSize(
+            size: _pageSize,
+            child: MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(size: _pageSize, textScaler: TextScaler.noScaling),
+              // An ayah touched: the jam' from it.
+              child: MushafPage(
+                key: ValueKey('jam-page-$_page-${r.lead}'),
+                page: _page,
+                quran: widget.quran,
+                variants: widget.variants,
+                mutashabihat: MutashabihatRepository.empty,
+                settings: settings,
+                onWordTap: (a, _) {
+                  final i = shown[(a.surah, a.number)];
+                  if (i != null) _manual(() => _show(i, 0));
+                },
+                showHamesh: false,
+                ayahShade: (a) => switch (shown[(a.surah, a.number)]) {
+                  final i? when i == _ayah => MushafColors.gold.withAlpha(110),
+                  final i? when _done.contains(i) =>
+                    MushafColors.green.withAlpha(40),
+                  _ => null,
+                },
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
+  /// How fast a swipe across the small page must go to turn it.
+  static const _swipeSpeed = 200.0;
 
   /// [ayah]'s number as the riwaya read counts it (يونس: الشامي، المدني...):
   /// the number of the verse its first word is in.
@@ -1231,6 +1245,13 @@ class _JamScreenState extends State<JamScreen> {
             onPressed: _atEnd ? null : () => _manual(_stepForward),
             icon: const Icon(Icons.arrow_forward_rounded),
           ),
+          // Back to the mushaf, at the page read here.
+          IconButton(
+            key: const ValueKey('jam-to-mushaf'),
+            tooltip: 'الانتقال إلى المصحف',
+            onPressed: () => Navigator.of(context).pop(_page),
+            icon: const Icon(Icons.menu_book_rounded),
+          ),
         ],
       ),
     ),
@@ -1251,8 +1272,9 @@ class _QurraBoard extends StatefulWidget {
     required this.onTap,
   });
 
-  /// How tall the board stands: a qari's name over two riwayat.
-  static const height = 112.0;
+  /// How tall the board stands: two rows of five, each a qari's name over
+  /// his two riwayat.
+  static const height = 176.0;
 
   /// The riwayat of the jam': the others are left off the board.
   final Set<String> shown;
@@ -1265,34 +1287,16 @@ class _QurraBoard extends StatefulWidget {
 }
 
 class _QurraBoardState extends State<_QurraBoard> {
-  /// Each qari's card, to bring the one read into sight.
-  final _cards = <String, GlobalKey>{};
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _bringCurrent());
-  }
-
-  @override
-  void didUpdateWidget(_QurraBoard old) {
-    super.didUpdateWidget(old);
-    if (old.current.join() != widget.current.join()) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _bringCurrent());
-    }
-  }
-
-  /// The card of the first riwaya read, scrolled into the board's middle.
-  void _bringCurrent() {
-    if (!mounted || widget.current.isEmpty) return;
-    final card = _cards[qiraaOf(widget.current.first).id]?.currentContext;
-    if (card == null) return;
-    Scrollable.ensureVisible(
-      card,
-      alignment: .5,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
+  /// The qurra of the jam', in their order: five to a row.
+  List<List<Qiraa>> get _rows {
+    final shown = [
+      for (final q in qiraat)
+        if (q.riwayat.any((r) => widget.shown.contains(r.id))) q,
+    ];
+    return [
+      for (var i = 0; i < shown.length; i += 5)
+        shown.sublist(i, math.min(i + 5, shown.length)),
+    ];
   }
 
   @override
@@ -1322,19 +1326,28 @@ class _QurraBoardState extends State<_QurraBoard> {
           ),
         ],
       ),
-      // The ten in one row, drawn across by the finger.
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      // All in sight, across the whole width: five and five.
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Column(
           children: [
-            for (final q in qiraat)
-              if (q.riwayat.any((r) => widget.shown.contains(r.id)))
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: _qari(q),
+            for (final row in _rows)
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < 5; i++)
+                      Expanded(
+                        child: i < row.length
+                            ? Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: _qari(row[i]),
+                              )
+                            : const SizedBox(),
+                      ),
+                  ],
                 ),
+              ),
           ],
         ),
       ),
@@ -1342,9 +1355,8 @@ class _QurraBoardState extends State<_QurraBoard> {
   );
 
   Widget _qari(Qiraa q) => Container(
-    key: _cards.putIfAbsent(q.id, GlobalKey.new),
-    width: 132,
-    padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+    key: ValueKey('jam-qari-${q.id}'),
+    padding: const EdgeInsets.fromLTRB(3, 2, 3, 2),
     decoration: BoxDecoration(
       color: MushafColors.page,
       borderRadius: BorderRadius.circular(10),
@@ -1365,14 +1377,17 @@ class _QurraBoardState extends State<_QurraBoard> {
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          q.shortAr,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: q.color,
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
+        // Made smaller, never cut, where the card is narrow.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            q.shortAr,
+            maxLines: 1,
+            style: TextStyle(
+              color: q.color,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
           ),
         ),
         for (final r in q.riwayat)
@@ -1396,7 +1411,7 @@ class _QurraBoardState extends State<_QurraBoard> {
         child: Row(
           children: [
             SizedBox.square(
-              dimension: 26,
+              dimension: 20,
               child: Checkbox(
                 key: ValueKey('jam-check-$id'),
                 value: widget.read.contains(id),
@@ -1406,16 +1421,19 @@ class _QurraBoardState extends State<_QurraBoard> {
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
-            const SizedBox(width: 2),
+            const SizedBox(width: 1),
             Expanded(
-              child: Text(
-                riwayaById(id).nameAr,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: now ? FontWeight.bold : FontWeight.normal,
-                  color: MushafColors.ink,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  riwayaById(id).nameAr,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: now ? FontWeight.bold : FontWeight.normal,
+                    color: MushafColors.ink,
+                  ),
                 ),
               ),
             ),

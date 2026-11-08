@@ -118,6 +118,10 @@ String daggerAlif(String text, List<String> hafs) {
       .join(' ');
 }
 
+/// Words whose alif the reviewer would have in the word's body: Abu Ja'far's
+/// «وَنَآءَ» (الإسراء ٨٣، فصلت ٥١), its alif with the madd before the hamza.
+const keptAlif = {'وَنَآءَ'};
+
 /// Applies it to the rows of a riwaya with a written text.
 int applyDaggerAlif(Map quran, List rows) {
   final words = <String, String>{
@@ -129,7 +133,7 @@ int applyDaggerAlif(Map quran, List rows) {
   for (final v in rows.cast<List>()) {
     final text = '${v[4]}';
     // Or the alif with the madd alone (تُمَآسُّوهُنَّ).
-    if (!RegExp('[اآ]').hasMatch(text)) continue;
+    if (!RegExp('[اآ]').hasMatch(text) || keptAlif.contains(text)) continue;
     final hafs = [
       for (var d = 0; d < (v[3] as num).toInt(); d++)
         words['${v[0]}:${v[1]}:${(v[2] as int) + d}'] ?? '',

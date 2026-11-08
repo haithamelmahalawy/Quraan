@@ -195,6 +195,8 @@ class Manzumat {
             _hisad(reading) ||
             _aamantum(reading) ||
             _abuJafarBiis(reading) ||
+            _durrahBesideShatibiyya.containsKey(_at(reading)) &&
+                qiraaOf(reading.riwayaId).id == 'abu_jafar' ||
             _yaqubShatibiyya(reading) != null ||
             (_idghamDhal(reading, hafs) ||
                     reading.rule == 'hamza_zaida' ||
@@ -292,7 +294,15 @@ class Manzumat {
         if (cited.contains(b.n)) b.n,
     };
     final abuJafar = qiraaOf(reading.riwayaId).id == 'abu_jafar';
-    final asl = abuJafar ? durrahAsl : const <Bayt>[];
+    final beside = _durrahBesideShatibiyya[_at(reading)];
+    final asl = !abuJafar
+        ? const <Bayt>[]
+        : beside != null
+        ? [
+            for (final b in verses(Poem.durrah))
+              if (beside.contains(b.n)) b,
+          ]
+        : durrahAsl;
     // Abu Ja'far's, the Durrah silent: Nafi''s bayt in the Shatibiyya, as
     // Qalun's reading of it, after the Durrah's two.
     final silent =
@@ -347,6 +357,16 @@ class Manzumat {
   /// Words a bayt of the Durrah names for another of its three, Abu Ja'far
   /// left to his asl: «فَنُـۨجِي» (يوسف ١١٠), «نُجِّيَ حَامِدٌ» Ya'qub's.
   static const _durrahSilentOnAbuJafar = {'12:110:10'};
+
+  /// Abu Ja'far's words cited in both: the Shatibiyya's bayt of the word,
+  /// the Durrah's of Abu Ja'far over it. «وَنَآءَ» (الإسراء ٨٣، فصلت ٥١):
+  /// «نَآى أَخِّرْ مَعاً هَمْزَهُ مَلَا» and «نَاءَ أُدْ مَعًا».
+  static const _durrahBesideShatibiyya = {
+    '17:83:5': {147},
+    '41:51:5': {147},
+  };
+
+  static String _at(Variant v) => '${v.surah}:${v.ayah}:${v.word}';
 
   /// [v] as Qalun's: Abu Ja'far's reading where the Durrah leaves him to Nafi'.
   static Variant _asQalun(Variant v) => Variant(
@@ -1214,6 +1234,23 @@ class Manzumat {
         RegExp('كَ(آ|آ)ئ').hasMatch(v.text)) {
       return {570};
     }
+    // Qalun's «ٱللَّهُ ٱلَّذِي» (إبراهيم ٢): «وَفِي الْخَفْضِ فِي اللهِ الَّذِي الرَّفْعُ
+    // عَمَّ».
+    if (poem == Poem.shatibiyya && v.riwayaId == 'qalun' && at == '14:2:0') {
+      return {797};
+    }
+    // Ibn Kathir's «رُّبَّمَا» (الحجر ٢) doubled, not named with those who
+    // lighten it: «وَرُبَّ خَفِيفٌ إِذْ نَمَا».
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        at == '15:2:0') {
+      return {802};
+    }
+    if (poem == Poem.shatibiyya &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        const {'17:83:5', '41:51:5'}.contains(at)) {
+      return {826};
+    }
     // «ٱرۡكَب مَّعَنَا» (هود ٤٢): al-Bazzi and Qalun by khulf, Qunbul not named,
     // reading it merged: «وَفِي ارْكَبْ هُدَى بَرٍّ قَرِيبٍ بِخُلْفِهِمْ».
     if (poem == Poem.shatibiyya &&
@@ -1241,6 +1278,15 @@ class Manzumat {
       if (at == '11:114:4') return {134};
       // «إِنَّكَ لَأَنتَ يُوسُفُ» (يوسف ٩٠) on the khabar: «وَإِنَّكْ لأَنْتَ أُدْ».
       if (at == '12:90:1') return {24};
+      // «وَلَنَجۡزِيَنَّ» (النحل ٩٦) with the nun: «لِيَجْزِيَ نُونٌ اِذْ».
+      if (at == '16:96:7') return {143};
+      // «وَيُخۡرَجُ» (الإسراء ١٣): «نخْرِجُ انْجَلَا» at the end of the one,
+      // «حَوَى الْيَا وَضُمَّ افْتَحْ أَلاَ» at the start of the next.
+      if (at == '17:13:6') return {143, 144};
+      // «خَطَـًٔا» (الإسراء ٣١): «وَقُلْ خَطَأً أَتَى».
+      if (at == '17:31:11') return {145};
+      // «ٱللَّهُ ٱلَّذِي» (إبراهيم ٢) in the raf': «وَطِبْ رَفْعَ أَللهِ ابْتِدَاءً».
+      if (at == '14:2:0') return {138};
       // «ٱلۡأُكُلِ» (الرعد ٤) with its kaf's damma: «أُثْقِلَا / وَالاذْنُ وَسُحْقًا
       // الاُكْلُ إِذْ».
       if (at == '13:4:20') return {74, 75};

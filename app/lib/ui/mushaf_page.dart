@@ -1436,19 +1436,6 @@ class _MushafPageState extends State<MushafPage>
           : marked ?? source;
       return (text: written, font: 'Hafs');
     }
-    // Ibn Kathir's «هَادٍ، وَاقٍ، وَالٍ، بَاقٍ», stopped on with the ya: drawn as
-    // stopped on, the small ya beside the word (هَادِۦ), the dal's kasra alone.
-    final stopYa = base
-        .where(
-          (v) =>
-              v.word == w &&
-              v.riwayaId == s.displayed &&
-              v.rule == 'rasm_stop' &&
-              v.description == 'بالوقف بالياء' &&
-              v.stopText.endsWith('ۦ'),
-        )
-        .firstOrNull;
-    if (stopYa != null) return (text: stopYa.stopText, font: 'Hafs');
     // The riwaya shown in place of Hafs: its reading takes the place of the
     // Hafs word(s).
     final v =
@@ -2082,10 +2069,15 @@ class _MushafPageState extends State<MushafPage>
     ].where((v) => v.word == w && v.rule == 'first_sakin').firstOrNull;
     if (usul != null) return ReadingColors.of(usul);
     final shown = all.where((v) => !v.isUsul);
-    final damm = [
-      ..._baseAt(widget.variants, s, ayah, w),
-      ...shown,
-    ].any((v) => v.word == w && !v.isUsul && v.description.contains('ضم'));
+    final damm = [..._baseAt(widget.variants, s, ayah, w), ...shown].any(
+      (v) =>
+          v.word == w &&
+          !v.isUsul &&
+          v.description.contains('ضم') &&
+          // The damma on the word's last letter, against the sakin after it
+          // (قُلُ ٱدۡعُواْ), not one inside it (بِٱلۡقُسۡطَاسِ ٱلۡمُسۡتَقِيمِ).
+          RegExp(r'[ٌُ][ۖ-ۭ]*$').hasMatch(v.text),
+    );
     if (!damm) return null;
     return ReadingColors.ofReadings(
       shown.where((v) => v.riwayaId != s.displayed).toList(),

@@ -80,15 +80,14 @@ void main() {
         if (v.kind == VariantKind.farsh) v,
     ];
     final wardan = farsh('ibn_wardan').single;
+    // «بالتاء», and Ibn Wardan's second face with the ghain open and the ra
+    // doubled.
     expect(wardan.usulWays, [
-      'إسكان الغين وتخفيف الراء، وهو المقدّم',
-      'فتح الغين وتشديد الراء',
+      'بالتاء، وهو المقدم',
+      'بالتاء مع فتح الغين وتشديد الراء',
     ]);
-    expect(wardan.description, startsWith('بالتاء وبوجهين:'));
-    expect(
-      farsh('ibn_jammaz').single.description,
-      'بالتاء وإسكان الغين وتخفيف الراء',
-    );
+    expect(wardan.description, startsWith('بوجهين: بالتاء'));
+    expect(farsh('ibn_jammaz').single.description, 'بالتاء');
   });
 
   test('«سيئه» (الإسراء ٣٨) is worded alike by the verified readers', () {
@@ -431,7 +430,8 @@ void main() {
     }
     expect(
       usulOfRiwaya(variants, quran, 'bazzi')['تاءات البزي'],
-      hasLength(32),
+      // «مَآ تَّنَزَّلُ» (الحجر ٨) its madd before the ta.
+      hasLength(33),
     );
     expect(rowOf('bazzi', 92, 14, 2, 'bazzi_ta')!.text, startsWith('تّ'));
     // What «الجامع» told that the earlier sources missed.

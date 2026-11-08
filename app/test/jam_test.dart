@@ -314,6 +314,67 @@ void main() {
     await t.pumpWidget(const SizedBox());
   });
 
+  testWidgets('the small page turned by a swipe; back to the mushaf at the '
+      'page read', (t) async {
+    t.view.physicalSize = const Size(430, 900);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    int? back;
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => back = await Navigator.of(context).push<int>(
+              MaterialPageRoute(
+                builder: (_) =>
+                    JamScreen(quran: quran, variants: variants, page: 5),
+              ),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await t.tap(find.text('open'));
+    await t.pump(const Duration(milliseconds: 500));
+    for (
+      var i = 0;
+      i < 100 && find.byKey(const ValueKey('jam-lead')).evaluate().isEmpty;
+      i++
+    ) {
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await t.pump();
+    }
+    // To the right, as the mushaf turns: the next page.
+    await t.fling(
+      find.byKey(const ValueKey('jam-page-swipe')),
+      const Offset(250, 0),
+      1500,
+    );
+    await t.pump();
+    expect(find.textContaining('• ص 6'), findsOneWidget);
+    await t.fling(
+      find.byKey(const ValueKey('jam-page-swipe')),
+      const Offset(-250, 0),
+      1500,
+    );
+    await t.pump();
+    await t.fling(
+      find.byKey(const ValueKey('jam-page-swipe')),
+      const Offset(-250, 0),
+      1500,
+    );
+    await t.pump();
+    expect(find.textContaining('• ص 4'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('jam-to-mushaf')));
+    await t.pump(const Duration(milliseconds: 500));
+    expect(back, 4);
+    await t.pumpWidget(const SizedBox());
+  });
+
   testWidgets('on its side: the page large beside the reading', (t) async {
     t.view.physicalSize = const Size(900, 420);
     t.view.devicePixelRatio = 1;
