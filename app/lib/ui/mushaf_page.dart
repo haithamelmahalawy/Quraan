@@ -1436,6 +1436,19 @@ class _MushafPageState extends State<MushafPage>
           : marked ?? source;
       return (text: written, font: 'Hafs');
     }
+    // Ibn Kathir's «هَادٍ، وَاقٍ، وَالٍ، بَاقٍ», stopped on with the ya: drawn as
+    // stopped on, the small ya beside the word (هَادِۦ), the dal's kasra alone.
+    final stopYa = base
+        .where(
+          (v) =>
+              v.word == w &&
+              v.riwayaId == s.displayed &&
+              v.rule == 'rasm_stop' &&
+              v.description == 'بالوقف بالياء' &&
+              v.stopText.endsWith('ۦ'),
+        )
+        .firstOrNull;
+    if (stopYa != null) return (text: stopYa.stopText, font: 'Hafs');
     // The riwaya shown in place of Hafs: its reading takes the place of the
     // Hafs word(s).
     final v =
