@@ -2316,7 +2316,8 @@ void main() {
       expect((naql.word, naql.count), (w, 1));
       expect(
         naql.description,
-        s == 2 && a == 71 ? 'بحذف الواو وصلًا وبالنقل' : 'بالنقل',
+        // البقرة ٧١ told by its chapter alone: no waw in the word to drop.
+        s == 2 && a == 71 ? '' : 'بالنقل',
       );
       expect(naql.inHamesh, isFalse);
       // «وَلاَ نَقْلَ إِلاَّ الآنَ مَعْ يُوْنُسٍ بَدَا».

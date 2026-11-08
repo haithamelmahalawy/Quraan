@@ -3999,6 +3999,7 @@ class _UsulBox extends StatelessWidget {
           for (final v in i.readings)
             if (v.rule == 'naql' &&
                 _ashabSilah.contains(v.riwayaId) &&
+                v.description.isNotEmpty &&
                 v.description != 'بالنقل')
               v.description,
         })
