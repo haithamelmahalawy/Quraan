@@ -829,7 +829,6 @@ class _JamScreenState extends State<JamScreen> {
   /// How [id] reads [chapter] at [words] of the ayah shown: its faces, or
   /// Hafs's own way in that asl (التحقيق، الفتح...) where it reads as he does.
   String _faceOf(String id, String chapter, List<int> words) {
-    final ayah = _ayahs[_ayah];
     final hows = <int, String>{};
     for (final w in words) {
       final faces = id == hafsId
@@ -841,12 +840,18 @@ class _JamScreenState extends State<JamScreen> {
       final how = faces.isEmpty ? _hafsWayAt(chapter, w) : faces.join('؛ ');
       hows[w] = how;
     }
-    // One way at every word: told once, without the words.
-    if (hows.values.toSet().length == 1) return hows.values.first;
-    return {
-      for (final MapEntry(key: w, value: how) in hows.entries)
-        '${ayah.words[w]}: $how',
-    }.join('\n');
+    // Each way told once, without the words it is at: Warsh's silah before a
+    // hamza and his mim quiet elsewhere, not word by word.
+    return hows.values.toSet().join('\n');
+  }
+
+  /// The table's cell kept small where an asl comes at many words of the
+  /// ayah (صلة ميم الجمع): the first four, then «...».
+  static String _firstFour(Iterable<String> items, String separator) {
+    final all = items.toList();
+    return all.length <= 4
+        ? all.join(separator)
+        : '${all.take(4).join(separator)}$separator...';
   }
 
   /// Hafs's way in [chapter] at the word [w], by what the others read there.
@@ -862,7 +867,7 @@ class _JamScreenState extends State<JamScreen> {
   }
 
   /// [words] of the ayah shown as [id] writes them, each once.
-  String _wordsOf(String id, List<int> words) {
+  Set<String> _wordList(String id, List<int> words) {
     final ayah = _ayahs[_ayah];
     return {
       for (final w in words)
@@ -873,7 +878,7 @@ class _JamScreenState extends State<JamScreen> {
           w,
           w + 1,
         ).replaceAll(RegExp('[ۖ-ۜ]'), ''),
-    }.where((w) => w.isNotEmpty).join('، ');
+    }.where((w) => w.isNotEmpty).toSet();
   }
 
   /// The riwayat of the jam' by how they read [chapter] at [words] and write
@@ -890,7 +895,11 @@ class _JamScreenState extends State<JamScreen> {
     }
     return {
       for (final MapEntry(key: face, value: ids) in byFace.entries)
-        (face, {for (final id in ids) _wordsOf(id, words)}.join('\n')): ids,
+        // A word to a line, the first four, then «...».
+        (
+          face,
+          _firstFour({for (final id in ids) ..._wordList(id, words)}, '\n'),
+        ): ids,
     };
   }
 
@@ -1030,15 +1039,27 @@ class _JamScreenState extends State<JamScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             for (final line in word.split('\n'))
-                              QuranWordText(
-                                line,
-                                style: TextStyle(
-                                  fontFamily: 'Hafs',
-                                  color: MushafColors.ink,
-                                  fontSize: 17,
-                                  height: 1.7,
-                                ),
-                              ),
+                              // «...» after the first four: the Quran's font
+                              // has no dots, so in the page's own.
+                              line == '...'
+                                  ? Text(
+                                      '...',
+                                      key: const ValueKey('jam-manhaj-more'),
+                                      style: TextStyle(
+                                        color: MushafColors.ink,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : QuranWordText(
+                                      line,
+                                      style: TextStyle(
+                                        fontFamily: 'Hafs',
+                                        color: MushafColors.ink,
+                                        fontSize: 17,
+                                        height: 1.7,
+                                      ),
+                                    ),
                           ],
                         ),
                       ),

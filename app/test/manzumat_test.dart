@@ -1403,6 +1403,68 @@ void main() {
           );
           expect(nasha.poem, Poem.shatibiyya, reason: id);
           expect(nasha.mention, {780}, reason: id);
+          final ansani = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: 18,
+              ayah: 63,
+              word: 10,
+              count: 1,
+              text: 'أَنسَىٰنِيهِۦ',
+              kind: VariantKind.farsh,
+              description: 'بكسر الهاء',
+            ),
+            'أَنسَىٰنِيهُ',
+            18,
+            surahs,
+            entries: book.at(18, 63, 10),
+          );
+          expect(ansani.poem, Poem.shatibiyya, reason: id);
+          expect(ansani.mention, {844}, reason: id);
+          for (final (a, w, text, n) in [
+            (87, 12, 'نُّكۡرٗا', 618),
+            (93, 4, 'ٱلسَّدَّيۡنِ', 851),
+            (94, 18, 'سَدّٗا', 851),
+            (98, 10, 'دَكًّا', 697),
+          ]) {
+            final r = manzumat.referenceOf(
+              Variant(
+                riwayaId: id,
+                surah: 18,
+                ayah: a,
+                word: w,
+                count: 1,
+                text: text,
+                kind: VariantKind.farsh,
+              ),
+              text,
+              18,
+              surahs,
+              entries: book.at(18, a, w),
+            );
+            expect(r.mention, {n}, reason: '$id $a');
+          }
+          for (final (a, w, text, hafs, n) in [
+            (70, 4, 'تَسۡـَٔلۡنِي', 'تَسۡـَٔلۡنِي', 760),
+            (74, 15, 'نُّكۡرٗا', 'نُّكۡرٗا', 618),
+          ]) {
+            final r = manzumat.referenceOf(
+              Variant(
+                riwayaId: id,
+                surah: 18,
+                ayah: a,
+                word: w,
+                count: 1,
+                text: text,
+                kind: VariantKind.farsh,
+              ),
+              hafs,
+              18,
+              surahs,
+              entries: book.at(18, a, w),
+            );
+            expect(r.mention, {n}, reason: '$id $a');
+          }
           final rubama = manzumat.referenceOf(
             Variant(
               riwayaId: id,
@@ -1674,6 +1736,97 @@ void main() {
         );
         expect(ukul.poem, Poem.durrah, reason: id);
         expect(ukul.mention, {74, 75}, reason: id);
+        final ruub = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 18,
+            ayah: 18,
+            word: 21,
+            count: 1,
+            text: 'رُعُبٗا',
+            kind: VariantKind.farsh,
+            description: 'بضم العين',
+          ),
+          'رُعۡبٗا',
+          18,
+          surahs,
+          entries: book.at(18, 18, 21),
+        );
+        expect(ruub.poem, Poem.durrah, reason: id);
+        expect(ruub.mention, {74, 75}, reason: id);
+        final usr = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 18,
+            ayah: 73,
+            word: 9,
+            count: 1,
+            text: 'عُسُرٗا',
+            kind: VariantKind.farsh,
+            description: 'بضم السين',
+          ),
+          'عُسۡرٗا',
+          18,
+          surahs,
+          entries: book.at(18, 73, 9),
+        );
+        expect(usr.poem, Poem.durrah, reason: id);
+        expect(usr.mention, {74}, reason: id);
+        final yusr = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 18,
+            ayah: 88,
+            word: 12,
+            count: 1,
+            text: 'يُسُرٗا',
+            kind: VariantKind.farsh,
+            description: 'بضم السين',
+          ),
+          'يُسۡرٗا',
+          18,
+          surahs,
+          entries: book.at(18, 88, 12),
+        );
+        expect(yusr.mention, {74}, reason: id);
+        final ruhm = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 18,
+            ayah: 81,
+            word: 8,
+            count: 1,
+            text: 'رُحُمٗا',
+            kind: VariantKind.farsh,
+            description: 'بضم الحاء',
+          ),
+          'رُحۡمٗا',
+          18,
+          surahs,
+          entries: book.at(18, 81, 8),
+        );
+        expect(ruhm.poem, Poem.durrah, reason: id);
+        expect(ruhm.mention, {74, 75}, reason: id);
+        for (final (a, w) in [(34, 2), (42, 1)]) {
+          final thamar = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: 18,
+              ayah: a,
+              word: w,
+              count: 1,
+              text: 'بِثَمَرِهِۦ',
+              kind: VariantKind.farsh,
+              description: 'بفتح الثاء والميم',
+            ),
+            'بِثَمَرِهِۦ',
+            18,
+            surahs,
+            entries: book.at(18, a, w),
+          );
+          expect(thamar.poem, Poem.durrah, reason: '$id $a');
+          expect(thamar.mention, {148}, reason: '$id $a');
+        }
         final yarji = ref(
           id,
           123,

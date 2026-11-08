@@ -1251,6 +1251,35 @@ class Manzumat {
         const {'17:83:5', '41:51:5'}.contains(at)) {
       return {826};
     }
+    // «أَنسَىٰنِيهِ» (الكهف ٦٣) of Qalun and Ibn Kathir, the ha broken: «وَهَا
+    // كَسْرِ أَنْسَانِيهِ ضُمَّ لِحَفْصِهِمْ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        !v.isUsul &&
+        at == '18:63:10') {
+      return {844};
+    }
+    // Ibn Kathir's «تَسۡـَٔلۡنِي» (الكهف ٧٠) light, as Hafs: «وَتَسْئَلْنِ خِفُّ الْكَهْفِ
+    // ظِلٌّ»; his «نُّكۡرٗا» (الكهف ٧٤): «وَنُكْرًا شَرْعُ حَقٍ لَهُ عُلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId)) {
+      if (at == '18:70:4') return {760};
+      if (at == '18:74:15' || at == '18:87:12') return {618};
+    }
+    // «ٱلسَّدَّيۡنِ» and «سَدّٗا» (الكهف ٩٣، ٩٤): Qalun's damma, Ibn Kathir's
+    // fatha as Hafs's: «السُّدَّيْنِ سُدًّا صِحَابُ حَقْ / قٍ الضَّمُّ مَفْتُوحٌ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        const {'18:93:4', '18:94:18'}.contains(at)) {
+      return {851};
+    }
+    // «دَكًّا» (الكهف ٩٨) of Qalun and Ibn Kathir: «وَدَكَّاءَ لاَ تَنْوِينَ
+    // وَامْدُدْهُ هَامِزاً شَفَا وَعَنِ الْكُوفِيِّ فِي الْكَهْفِ وُصِّلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        at == '18:98:10') {
+      return {697};
+    }
     // «ٱرۡكَب مَّعَنَا» (هود ٤٢): al-Bazzi and Qalun by khulf, Qunbul not named,
     // reading it merged: «وَفِي ارْكَبْ هُدَى بَرٍّ قَرِيبٍ بِخُلْفِهِمْ».
     if (poem == Poem.shatibiyya &&
@@ -1287,9 +1316,18 @@ class Manzumat {
       if (at == '17:31:11') return {145};
       // «ٱللَّهُ ٱلَّذِي» (إبراهيم ٢) in the raf': «وَطِبْ رَفْعَ أَللهِ ابْتِدَاءً».
       if (at == '14:2:0') return {138};
-      // «ٱلۡأُكُلِ» (الرعد ٤) with its kaf's damma: «أُثْقِلَا / وَالاذْنُ وَسُحْقًا
+      // «ٱلۡأُكُلِ» (الرعد ٤) and «رُعُبٗا» (الكهف ١٨) with the damma: «أُثْقِلَا / وَالاذْنُ وَسُحْقًا
       // الاُكْلُ إِذْ».
-      if (at == '13:4:20') return {74, 75};
+      // «رُحُمٗا» (الكهف ٨١): «شُغْلِ رُحْمًا حَوَى الْعُلَا».
+      if (at == '13:4:20' || at == '18:18:21' || at == '18:81:8') {
+        return {74, 75};
+      }
+      // «عُسُرٗا» (الكهف ٧٣): «وَالْعُسْرُ وَالْيُسْرُ أُثْقِلَا».
+      // «يُسُرٗا» (الكهف ٨٨) too.
+      if (at == '18:73:9' || at == '18:88:12') return {74};
+      // «ثَمَرٞ» and «بِثَمَرِهِۦ» (الكهف ٣٤، ٤٢) open: «كَثُمْرِهِ بِضَمَّيْ طُوىً
+      // فَتْحَا اتْلُ».
+      if (at == '18:34:2' || at == '18:42:1') return {148};
       // «يَرۡجِعُ ٱلۡأَمۡرُ» (هود ١٢٣): «وَيُرْجَعُ كَيْفَ جَا / إِذَا كَانَ لِلأُخْرَى
       // فَسَمِّ» and «وَالامْرُ اتْلُ».
       if (at == '11:123:5') return {63, 64};

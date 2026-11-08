@@ -11,6 +11,7 @@ import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
 import '../data/usul_guide.dart';
 import '../data/usul_text.dart';
+import '../data/mim_silah.dart';
 import '../data/reading_comparison.dart';
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
@@ -1256,14 +1257,22 @@ class _MushafPageState extends State<MushafPage>
   ({String text, String font})? _display(Ayah ayah, int w) {
     final shown = _displayWord(ayah, w, qcf: _pageQcf);
     if (shown == null || shown.font.startsWith('QCF_')) return shown;
+    // The mim after a mim al-jam' joined with its waw: not merged into it.
+    final apart = withMimSilah(
+      widget.variants,
+      widget.settings.displayed,
+      ayah,
+      w,
+      shown.text,
+    );
     final text =
         const {
           null,
           'hisham',
           'ibn_dhakwan',
         }.contains(widget.settings.displayed)
-        ? spacedAwa(shown.text)
-        : shown.text;
+        ? spacedAwa(apart)
+        : apart;
     if (!(_letterReadings(ayah, w)?.any(_spacedImala) ?? false)) {
       return (text: text, font: shown.font);
     }
@@ -1834,7 +1843,17 @@ class _MushafPageState extends State<MushafPage>
         }
       }
       if (v.rule == 'ikhfa') {
-        mark(letters.length - 1, ReadingColors.of(v));
+        // The nun, or the tanween's letter and the alif it stands on
+        // (نُزُلًا).
+        final at = letters.lastIndexWhere(_tanweenMark.hasMatch);
+        final from = at < 0
+            ? letters.length - 1
+            : at > 0 && letters[at].startsWith('ا')
+            ? at - 1
+            : at;
+        for (var i = from; i < letters.length; i++) {
+          mark(i, ReadingColors.of(v));
+        }
       }
       // A hamza dropped or added has no letter of its own (مُسۡتَهۡزُونَ،
       // ٱلنَّبِيٓـِٕـۧنَ): the word in its colour, what else is coloured kept.
@@ -1970,17 +1989,25 @@ class _MushafPageState extends State<MushafPage>
   /// ضَّلُّواْ), or Abu Ja'far's nun hidden before (قَوۡلًا غَيۡرَ): its first
   /// letter in the rule's colour, the rest in ink.
   List<(String, Color?)>? _idghamInto(Ayah ayah, int w, String text) {
-    if (w == 0) return null;
     final s = widget.settings;
+    // The word before, the last of the ayah before at an ayah's head: the
+    // nun hidden across it (نُزُلًا ۝ خَٰلِدِينَ).
+    final prevAyah = w > 0
+        ? ayah
+        : ayah.number > 1
+        ? widget.quran.ayah(ayah.surah, ayah.number - 1)
+        : null;
+    if (prevAyah == null) return null;
+    final prev = w > 0 ? w - 1 : prevAyah.words.length - 1;
     final before = [
-      ..._baseAt(widget.variants, s, ayah, w - 1).where((v) => v.isUsul),
-      ..._readingsAt(widget.variants, s, ayah, w - 1).shown,
+      ..._baseAt(widget.variants, s, prevAyah, prev).where((v) => v.isUsul),
+      ..._readingsAt(widget.variants, s, prevAyah, prev).shown,
     ];
     final letters = lettersOf(text);
     final hidden = before
         .where(
           (v) =>
-              v.word == w - 1 &&
+              v.word == prev &&
               v.rule == 'ikhfa' &&
               s.kinds.contains(v.kind) &&
               RegExp('^[خغ]').hasMatch(letters.firstOrNull ?? ''),
@@ -1992,6 +2019,7 @@ class _MushafPageState extends State<MushafPage>
           (l, i == 0 ? ReadingColors.of(hidden) : null),
       ];
     }
+    if (w == 0) return null;
     final into = before
         .where(
           (v) =>
@@ -3748,7 +3776,10 @@ class _UsulBox extends StatelessWidget {
         final ordered = readers.toList()
           ..sort((a, b) => _riwayaRank(a).compareTo(_riwayaRank(b)));
         // Told by its faces, or else by the wording of its row.
-        final faces = g.ways.isNotEmpty
+        // Numbered where there are several; one told as it is.
+        final faces = g.ways.length == 1
+            ? g.ways.single
+            : g.ways.isNotEmpty
             ? g.ways
                   .toList()
                   .asMap()
@@ -3977,11 +4008,13 @@ class _UsulBox extends StatelessWidget {
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
         // Abu Ja'far's ya of the zawaid, in wasl alone (ٱلدَّاعِۦ، دَعَانِۦ).
+        // Not where its face is told already (يَهۡدِيَنِۦ: إثبات الياء وصلاً فقط).
         if (i.readings.any(
-          (v) =>
-              v.rule == 'ya_zaida' &&
-              const {'ibn_wardan', 'ibn_jammaz'}.contains(v.riwayaId),
-        ))
+              (v) =>
+                  v.rule == 'ya_zaida' &&
+                  const {'ibn_wardan', 'ibn_jammaz'}.contains(v.riwayaId),
+            ) &&
+            !i.readings.any((v) => v.usulWays.any((w) => w.contains('وصل'))))
           Text(
             ' (وصلًا فقط)',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
@@ -4329,7 +4362,9 @@ class _EntryView extends StatelessWidget {
                     children: [
                       for (var i = 0; i < g.names.length; i++)
                         TextSpan(
-                          text: i == 0 ? g.names[i].$1 : '، ${g.names[i].$1}',
+                          // A reader to a line: the column as wide as one
+                          // name, the word beside it whole (ٱلۡمَيۡتَةَ).
+                          text: i == 0 ? g.names[i].$1 : '\n${g.names[i].$1}',
                           style: label.copyWith(
                             color: g.names[i].$2,
                             fontWeight: FontWeight.w600,

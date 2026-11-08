@@ -1,6 +1,7 @@
 import '../models/quran.dart';
 import 'arabic.dart';
 import 'reading_normalization.dart';
+import 'mim_silah.dart';
 import 'variant_repository.dart';
 
 /// Pronounced letters and vowels, independent of font spelling and the
@@ -259,7 +260,13 @@ String readingText(
   if (source.every((s) => s != null)) {
     return source.whereType<String>().where((s) => s.isNotEmpty).join(' ');
   }
-  return _apply(ayah, _rows(repository, id, ayah, from, to), from, to);
+  return withMimSilah(
+    repository,
+    id,
+    ayah,
+    from,
+    _apply(ayah, _rows(repository, id, ayah, from, to), from, to),
+  );
 }
 
 /// How Hafs reads the last ya of the word [w]: 'fath' (وَجۡهِيَ) or 'sukun'
