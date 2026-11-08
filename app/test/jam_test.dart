@@ -9,6 +9,9 @@ import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/qiraat_catalog.dart';
 import 'package:qiraat_mushaf/services/ayah_player.dart';
 import 'package:qiraat_mushaf/ui/jam_screen.dart';
+import 'package:qiraat_mushaf/ui/mushaf_page.dart';
+import 'package:qiraat_mushaf/ui/page_slider.dart';
+import 'package:qiraat_mushaf/ui/quran_word_text.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
 void main() {
@@ -193,26 +196,156 @@ void main() {
     await t.tap(open.first);
     await t.pumpAndSettle();
     expect(table, findsOneWidget);
-    // Every riwaya of the jam' in it: Hafs as the asl, those without the
-    // silah as Hafs, Ibn Kathir's with it.
-    for (final id in jamOrder) {
-      expect(
-        find.descendant(of: table, matching: find.text(jamName(id))),
-        findsOneWidget,
-        reason: id,
-      );
-    }
-    expect(
-      find.descendant(of: table, matching: find.text('على الأصل')),
-      findsOneWidget,
+    // Every riwaya of the jam' in it once, those who read alike in one row,
+    // named together: Hafs with all who read without the silah.
+    const prefix = 'jam-manhaj-word-صلة ميم الجمع-';
+    final groups = [
+      for (final e
+          in find
+              .descendant(of: table, matching: find.byType(Column))
+              .evaluate())
+        if (e.widget.key case ValueKey<String>(value: final k)
+            when k.startsWith(prefix))
+          k.substring(prefix.length).split(','),
+    ];
+    expect([for (final g in groups) ...g]..sort(), [...jamOrder]..sort());
+    expect(groups.length, lessThan(jamOrder.length));
+    List<String> groupOf(String id) => groups.firstWhere((g) => g.contains(id));
+    expect(groupOf(hafsId), contains('warsh'));
+    expect(groupOf('qalun'), isNot(contains(hafsId)));
+    // Hafs and Shu'bah alike: named by their qari, عاصم.
+    expect(groupOf(hafsId), contains('shubah'));
+    final names = t.widget<Text>(
+      find.byKey(
+        ValueKey('jam-manhaj-names-صلة ميم الجمع-${groupOf(hafsId).join(',')}'),
+      ),
     );
+    final told = names.textSpan!.toPlainText();
+    expect(told, contains('عاصم'));
+    expect(told, isNot(contains('حفص عن')));
+    String word(String id) => [
+      for (final w in t.widgetList<QuranWordText>(
+        find.descendant(
+          of: find.byKey(ValueKey('$prefix${groupOf(id).join(',')}')),
+          matching: find.byType(QuranWordText),
+        ),
+      ))
+        w.text,
+    ].join(' ');
+    String face(String id) => t
+        .widget<Text>(
+          find.byKey(
+            ValueKey('jam-manhaj-face-صلة ميم الجمع-${groupOf(id).join(',')}'),
+          ),
+        )
+        .data!;
+    expect(word('qalun'), contains('مُۥ'));
+    expect(word(hafsId), isNot(contains('مُۥ')));
+    // Hafs's own way named, not «كحفص».
+    expect(face(hafsId), 'بإسكان ميم الجمع دون صلة');
     expect(
       find.descendant(of: table, matching: find.text('كحفص')),
-      findsWidgets,
+      findsNothing,
     );
     await t.tap(open.first);
     await t.pumpAndSettle();
     expect(table, findsNothing);
+    await t.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the small page: an ayah touched read from, any page gone to, '
+      'the ayahs numbered as the riwaya read counts them', (t) async {
+    t.view.physicalSize = const Size(430, 900);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: JamScreen(quran: quran, variants: variants, page: 1),
+      ),
+    );
+    for (
+      var i = 0;
+      i < 100 && find.byKey(const ValueKey('jam-lead')).evaluate().isEmpty;
+      i++
+    ) {
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await t.pump();
+    }
+    bool chosen(int i) =>
+        t.widget<ChoiceChip>(find.byKey(ValueKey('jam-ayah-$i'))).selected;
+    // Qalun first: al-Fatiha counted as the Madinans count it, the basmala
+    // not an ayah, «ٱلۡحَمۡدُ» the first.
+    expect(find.text('قالون عن نافع'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('jam-ayah-1')),
+        matching: find.text('${quran.surah(1).nameAr} 1'),
+      ),
+      findsOneWidget,
+    );
+    // An ayah touched on the small page: the jam' from it.
+    final page = t.widget<MushafPage>(
+      find.descendant(
+        of: find.byKey(const ValueKey('jam-page')),
+        matching: find.byType(MushafPage),
+      ),
+    );
+    page.onWordTap(quran.page(1)[3], 0);
+    await t.pump();
+    final fourth = quran.page(1)[3];
+    expect(
+      find.byKey(ValueKey('ayah-shade:${fourth.surah}:${fourth.number}:0')),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'القراءة 1 من ${jamReadings(quran.page(1)[3], variants).length}',
+      ),
+      findsOneWidget,
+    );
+    // The slider below: another page, from its first ayah.
+    t.widget<PageSlider>(find.byKey(const ValueKey('jam-page-slider'))).onGo(5);
+    await t.pump();
+    expect(find.textContaining('• ص 5'), findsOneWidget);
+    expect(chosen(0), isTrue);
+    await t.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('on its side: the page large beside the reading', (t) async {
+    t.view.physicalSize = const Size(900, 420);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: JamScreen(quran: quran, variants: variants, page: 3),
+      ),
+    );
+    for (
+      var i = 0;
+      i < 100 && find.byKey(const ValueKey('jam-lead')).evaluate().isEmpty;
+      i++
+    ) {
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await t.pump();
+    }
+    expect(find.byKey(const ValueKey('jam-landscape-page')), findsOneWidget);
+    // As wide as two fifths of the screen, not a thumbnail.
+    expect(
+      t.getSize(find.byKey(const ValueKey('jam-page'))).width,
+      greaterThan(300),
+    );
+    // Beside it, not below it.
+    expect(
+      t.getRect(find.byKey(const ValueKey('jam-page'))).top,
+      lessThan(t.getRect(find.byKey(const ValueKey('jam-lead'))).top),
+    );
+    expect(t.takeException(), isNull);
     await t.pumpWidget(const SizedBox());
   });
 
@@ -245,7 +378,7 @@ void main() {
       await t.tap(find.byKey(const ValueKey('jam-next')));
       await t.pump();
     }
-    expect(find.textContaining('ص 2'), findsOneWidget);
+    expect(find.textContaining('• ص 2'), findsOneWidget);
     expect(
       t.widget<ChoiceChip>(find.byKey(const ValueKey('jam-ayah-0'))).selected,
       isTrue,
@@ -254,7 +387,7 @@ void main() {
     // And back: the last reading of the page before.
     await t.tap(find.byKey(const ValueKey('jam-previous')));
     await t.pump();
-    expect(find.textContaining('ص 1'), findsOneWidget);
+    expect(find.textContaining('• ص 1'), findsOneWidget);
     final n = jamReadings(quran.page(1).last, variants).length;
     expect(find.text('القراءة $n من $n'), findsOneWidget);
     await t.pumpWidget(const SizedBox());
@@ -291,6 +424,11 @@ void main() {
     );
     expect(find.byKey(const ValueKey('jam-number-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('jam-number-2')), findsOneWidget);
+    // In brackets over the word.
+    expect(
+      t.widget<Text>(find.byKey(const ValueKey('jam-number-1'))).data,
+      '(١)',
+    );
     expect(
       find.textContaining('(١، ٢) الشاطبية', findRichText: true),
       findsWidgets,

@@ -11,7 +11,15 @@ class MushafZoom extends StatefulWidget {
     required this.controller,
     required this.child,
     required this.onPinchChanged,
+    this.onEdgeTurn,
   });
+
+  /// Zoomed in, a drag carried on past the page's side: the page turned
+  /// (1 the next, dragged to the right as the mushaf turns; -1 back).
+  final ValueChanged<int>? onEdgeTurn;
+
+  /// How far past the side a drag must go to turn the page.
+  static const edgeTurn = 56.0;
 
   final TransformationController controller;
   final Widget child;
@@ -28,6 +36,9 @@ class _MushafZoomState extends State<MushafZoom> {
   Size _size = Size.zero;
   double _startSpan = 1, _startScale = 1;
   Offset _anchor = Offset.zero;
+
+  /// How far the drag went on past the page's side, across.
+  double _overflow = 0;
 
   double get _scale => widget.controller.value.getMaxScaleOnAxis();
   Offset get _translation {
@@ -162,8 +173,24 @@ class _MushafZoomState extends State<MushafZoom> {
                           ..gestureSettings = const DeviceGestureSettings(
                             touchSlop: 6,
                           )
-                          ..onUpdate = (d) =>
-                              _setTransform(_scale, _translation + d.delta),
+                          ..onStart = (_) {
+                            _overflow = 0;
+                          }
+                          ..onUpdate = (d) {
+                            final wanted = _translation.dx + d.delta.dx;
+                            _setTransform(_scale, _translation + d.delta);
+                            // What the side held back, the drag across only.
+                            if (d.delta.dx.abs() >= d.delta.dy.abs()) {
+                              _overflow += wanted - _translation.dx;
+                            }
+                          }
+                          ..onEnd = (_) {
+                            final over = _overflow;
+                            _overflow = 0;
+                            if (over.abs() >= MushafZoom.edgeTurn) {
+                              widget.onEdgeTurn?.call(over > 0 ? 1 : -1);
+                            }
+                          },
                       ),
               },
               child: Transform(

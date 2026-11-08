@@ -434,6 +434,8 @@ class _ReaderScreenState extends State<ReaderScreen>
       onAyahWordTap: (ayah, word) => _openAyah(ayah, word: word),
       showHamesh: hamesh,
       onZoomChanged: (z) => setState(() => _zoomed = z),
+      // Zoomed in on a word, the page still turns from its side.
+      onEdgeTurn: (direction) => _pager.currentState?.turn(direction),
       onPageNumberTap: _pickPage,
       // The arrow of the riwayat over the middle of the header in sight.
       onHeaderMiddle: number == _page ? (x) => _headerMiddle.value = x : null,

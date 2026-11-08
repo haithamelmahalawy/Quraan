@@ -117,6 +117,7 @@ class MushafPage extends StatefulWidget {
     required this.onWordTap,
     this.showHamesh = true,
     this.onZoomChanged,
+    this.onEdgeTurn,
     this.onPageNumberTap,
     this.qcf = false,
     this.onAyahTap,
@@ -149,6 +150,9 @@ class MushafPage extends StatefulWidget {
 
   /// Told when the page is zoomed in (so turning pages pauses) or back.
   final ValueChanged<bool>? onZoomChanged;
+
+  /// Zoomed in, dragged on past the page's side: turn the page that way.
+  final ValueChanged<int>? onEdgeTurn;
 
   /// Tapping the page number (opens the page picker).
   final VoidCallback? onPageNumberTap;
@@ -281,6 +285,7 @@ class _MushafPageState extends State<MushafPage>
           children: [
             MushafZoom(
               controller: _zoom,
+              onEdgeTurn: widget.onEdgeTurn,
               onPinchChanged: (active) {
                 _pinching = active;
                 _syncZoom();

@@ -6,11 +6,13 @@ void main() {
   late TransformationController controller;
   late List<bool> pinches;
   var taps = 0;
+  late List<int> turns;
 
   setUp(() {
     controller = TransformationController();
     pinches = [];
     taps = 0;
+    turns = [];
   });
   tearDown(() => controller.dispose());
 
@@ -23,6 +25,7 @@ void main() {
           child: MushafZoom(
             controller: controller,
             onPinchChanged: pinches.add,
+            onEdgeTurn: turns.add,
             child: GestureDetector(
               onTap: () => taps++,
               child: const ColoredBox(color: Colors.white),
@@ -75,6 +78,36 @@ void main() {
       reason: 'A pinch must not open the word below either finger.',
     );
     expect(t.takeException(), isNull);
+  });
+
+  testWidgets('zoomed in, a drag on past the side turns the page', (t) async {
+    await show(t);
+    // Zoomed in at the middle: the page can still be moved both ways.
+    controller.value = Matrix4.identity()
+      ..setEntry(0, 0, 2)
+      ..setEntry(1, 1, 2)
+      ..setEntry(0, 3, -200)
+      ..setEntry(1, 3, -250);
+    await t.pump();
+    final center = t.getCenter(find.byType(MushafZoom));
+    // Within the page: it only moves.
+    await t.dragFrom(center, const Offset(120, 0));
+    await t.pumpAndSettle();
+    expect(turns, isEmpty);
+    expect(controller.value.getTranslation().x, inExclusiveRange(-200, 0));
+    // On to its left side and past it: the next page (dragged right).
+    await t.dragFrom(center, const Offset(260, 0));
+    await t.pumpAndSettle();
+    expect(turns, [1]);
+    expect(controller.value.getTranslation().x, 0);
+    // Across to its right side and past it: back.
+    await t.dragFrom(center, const Offset(-600, 0));
+    await t.pumpAndSettle();
+    expect(turns, [1, -1]);
+    // Down the page: no turn.
+    await t.dragFrom(center, const Offset(0, 300));
+    await t.pumpAndSettle();
+    expect(turns, [1, -1]);
   });
 
   testWidgets('zoom out is responsive and stays within the page bounds', (

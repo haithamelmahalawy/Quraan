@@ -10,6 +10,7 @@ import '../data/kharouf.dart';
 import '../data/manzumat.dart';
 import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
+import '../data/reading_comparison.dart';
 import '../data/recitations.dart';
 import '../data/usul_guide.dart';
 import '../data/variant_repository.dart';
@@ -18,6 +19,7 @@ import '../models/quran.dart';
 import '../services/ayah_player.dart';
 import '../state/reader_settings.dart';
 import 'mushaf_page.dart';
+import 'page_slider.dart';
 import 'quran_word_text.dart';
 import 'reading_colors.dart';
 import 'theme.dart';
@@ -260,6 +262,9 @@ class _JamScreenState extends State<JamScreen> {
           if (_read.isEmpty) _read.addAll(_current.riwayat);
           final readings = _readingsOf(_ayah);
           final r = _current;
+          // Turned on its side: the page beside the reading, not under it.
+          final size = MediaQuery.sizeOf(context);
+          if (size.width > size.height) return _landscape(r, readings);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -280,28 +285,7 @@ class _JamScreenState extends State<JamScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Small enough to leave the ayah in sight.
-                              ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxHeight: box.maxHeight * .2,
-                                ),
-                                child: FittedBox(
-                                  child: SizedBox(
-                                    width: box.maxWidth - 24,
-                                    child: _QurraBoard(
-                                      shown: _riwayat.toSet(),
-                                      read: _read,
-                                      current: r.riwayat.toSet(),
-                                      onTap: (id) => _manual(() {
-                                        final i = readings.indexWhere(
-                                          (x) => x.riwayat.contains(id),
-                                        );
-                                        if (i >= 0) _show(_ayah, i);
-                                      }),
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              _board(r, readings),
                               const SizedBox(height: 10),
                               _header(r, readings.length),
                               const SizedBox(height: 8),
@@ -355,11 +339,101 @@ class _JamScreenState extends State<JamScreen> {
                   ),
                 ),
               ),
+              // Any page of the mushaf, from its first ayah.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: PageSlider(
+                  key: const ValueKey('jam-page-slider'),
+                  quran: widget.quran,
+                  page: _page,
+                  onGo: (page) {
+                    if (page != _page) _manual(() => _turnTo(page));
+                  },
+                ),
+              ),
               _controls(),
             ],
           );
         },
       ),
+    ),
+  );
+
+  /// The riwayat on their board, in one row, its names read at their size,
+  /// drawn aside to the qari read.
+  Widget _board(JamReading r, List<JamReading> readings) => SizedBox(
+    height: _QurraBoard.height,
+    child: _QurraBoard(
+      shown: _riwayat.toSet(),
+      read: _read,
+      current: r.riwayat.toSet(),
+      onTap: (id) => _manual(() {
+        final i = readings.indexWhere((x) => x.riwayat.contains(id));
+        if (i >= 0) _show(_ayah, i);
+      }),
+    ),
+  );
+
+  /// The phone on its side: the reading (the board, the ayah, its hamesh)
+  /// scrolled on one side, the page large on the other, scrolled down its
+  /// length.
+  Widget _landscape(JamReading r, List<JamReading> readings) => LayoutBuilder(
+    builder: (context, box) => Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _ayahStrip(),
+              Expanded(
+                child: SingleChildScrollView(
+                  key: const ValueKey('jam-landscape-reading'),
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _board(r, readings),
+                      const SizedBox(height: 10),
+                      _header(r, readings.length),
+                      const SizedBox(height: 8),
+                      _ayahText(r),
+                      const SizedBox(height: 10),
+                      _hamesh(r),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: PageSlider(
+                  key: const ValueKey('jam-page-slider'),
+                  quran: widget.quran,
+                  page: _page,
+                  onGo: (page) {
+                    if (page != _page) _manual(() => _turnTo(page));
+                  },
+                ),
+              ),
+              _controls(),
+            ],
+          ),
+        ),
+        SizedBox(
+          width: box.maxWidth * .42,
+          child: SafeArea(
+            left: false,
+            child: SingleChildScrollView(
+              key: const ValueKey('jam-landscape-page'),
+              padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
+              child: AspectRatio(
+                aspectRatio: _pageSize.aspectRatio,
+                child: _smallPage(r),
+              ),
+            ),
+          ),
+        ),
+      ],
     ),
   );
 
@@ -393,28 +467,49 @@ class _JamScreenState extends State<JamScreen> {
           child: MediaQuery(
             data: MediaQuery.of(context)
                 .copyWith(size: _pageSize, textScaler: TextScaler.noScaling),
-            child: IgnorePointer(
-              child: MushafPage(
-                key: ValueKey('jam-page-$_page-${r.lead}'),
-                page: _page,
-                quran: widget.quran,
-                variants: widget.variants,
-                mutashabihat: MutashabihatRepository.empty,
-                settings: settings,
-                onWordTap: (_, _) {},
-                showHamesh: false,
-                ayahShade: (a) => switch (shown[(a.surah, a.number)]) {
-                  final i? when i == _ayah => MushafColors.gold.withAlpha(110),
-                  final i? when _done.contains(i) =>
-                    MushafColors.green.withAlpha(40),
-                  _ => null,
-                },
-              ),
+            // An ayah touched: the jam' from it.
+            child: MushafPage(
+              key: ValueKey('jam-page-$_page-${r.lead}'),
+              page: _page,
+              quran: widget.quran,
+              variants: widget.variants,
+              mutashabihat: MutashabihatRepository.empty,
+              settings: settings,
+              onWordTap: (a, _) {
+                final i = shown[(a.surah, a.number)];
+                if (i != null) _manual(() => _show(i, 0));
+              },
+              showHamesh: false,
+              ayahShade: (a) => switch (shown[(a.surah, a.number)]) {
+                final i? when i == _ayah => MushafColors.gold.withAlpha(110),
+                final i? when _done.contains(i) => MushafColors.green.withAlpha(
+                  40,
+                ),
+                _ => null,
+              },
             ),
           ),
         ),
       ),
     );
+  }
+
+  /// [ayah]'s number as the riwaya read counts it (يونس: الشامي، المدني...):
+  /// the number of the verse its first word is in.
+  int _numberOf(Ayah ayah) {
+    final system = AudioNumbering.displaySystemFor(_current.lead);
+    if (system == 'kufi') return ayah.number;
+    try {
+      return widget.quran.numbering?.verseAt(
+            system,
+            ayah.surah,
+            ayah.number,
+            0,
+          ) ??
+          ayah.number;
+    } on RangeError {
+      return ayah.number;
+    }
   }
 
   /// The ayahs of the page, the one read marked.
@@ -432,7 +527,7 @@ class _JamScreenState extends State<JamScreen> {
               key: ValueKey('jam-ayah-$i'),
               label: Text(
                 '${widget.quran.surah(_ayahs[i].surah).nameAr} '
-                '${_ayahs[i].number}',
+                '${_numberOf(_ayahs[i]) == 0 ? 'البسملة' : _numberOf(_ayahs[i])}',
               ),
               selected: i == _ayah,
               showCheckmark: false,
@@ -512,7 +607,7 @@ class _JamScreenState extends State<JamScreen> {
                 ),
               ),
           Text(
-            '﴿${_arabic(ayah.number)}﴾',
+            '﴿${_arabic(_numberOf(ayah))}﴾',
             style: TextStyle(
               fontFamily: 'Hafs',
               color: MushafColors.frame,
@@ -535,7 +630,7 @@ class _JamScreenState extends State<JamScreen> {
             Positioned(
               top: -2,
               child: Text(
-                _arabic(n),
+                '(${_arabic(n)})',
                 key: ValueKey('jam-number-$n'),
                 style: TextStyle(
                   color: MushafColors.green,
@@ -703,29 +798,109 @@ class _JamScreenState extends State<JamScreen> {
     ];
   }
 
-  /// How [id] reads [chapter] at [words] of the ayah shown: its faces, or
-  /// «كحفص» where it has none of that asl there.
-  String _faceOf(String id, String chapter, List<int> words) {
-    if (id == hafsId) return 'على الأصل';
+  /// The rows of [chapter] at the word [w] of the ayah shown, of [ids].
+  Iterable<Variant> _rowsOf(List<String> ids, String chapter, int w) {
     final ayah = _ayahs[_ayah];
-    final told = <String>[];
-    for (final w in words) {
-      final faces = {
-        for (final v in widget.variants.at([id], ayah.surah, ayah.number, w))
-          if (v.word == w &&
+    return widget.variants
+        .at(ids, ayah.surah, ayah.number, w)
+        .where(
+          (v) =>
+              v.word == w &&
               !v.stopOnly &&
               !_isFarsh(v) &&
-              _chaptersOf(v).any((k) => k.$1 == chapter))
-            v.shownDescription.isEmpty ? v.text : v.shownDescription,
-      };
-      if (faces.isEmpty) continue;
-      told.add(
-        words.length > 1
-            ? '${ayah.words[w]}: ${faces.join('؛ ')}'
-            : faces.join('؛ '),
-      );
+              _chaptersOf(v).any((k) => k.$1 == chapter),
+        );
+  }
+
+  /// How [id] reads [chapter] at [words] of the ayah shown: its faces, or
+  /// Hafs's own way in that asl (التحقيق، الفتح...) where it reads as he does.
+  String _faceOf(String id, String chapter, List<int> words) {
+    final ayah = _ayahs[_ayah];
+    final hows = <int, String>{};
+    for (final w in words) {
+      final faces = id == hafsId
+          ? const <String>{}
+          : {
+              for (final v in _rowsOf([id], chapter, w))
+                v.shownDescription.isEmpty ? v.text : v.shownDescription,
+            };
+      final how = faces.isEmpty ? _hafsWayAt(chapter, w) : faces.join('؛ ');
+      hows[w] = how;
     }
-    return told.isEmpty ? 'كحفص' : told.join('\n');
+    // One way at every word: told once, without the words.
+    if (hows.values.toSet().length == 1) return hows.values.first;
+    return {
+      for (final MapEntry(key: w, value: how) in hows.entries)
+        '${ayah.words[w]}: $how',
+    }.join('\n');
+  }
+
+  /// Hafs's way in [chapter] at the word [w], by what the others read there.
+  String _hafsWayAt(String chapter, int w) {
+    final v = _rowsOf(_riwayat, chapter, w).firstOrNull;
+    if (v == null) return 'على الأصل';
+    final label = [
+      for (final (l, _) in usulKindsOf(v))
+        if (usulGuideLabel(l) == chapter) l,
+    ].firstOrNull;
+    return hafsWayIn(chapter, label ?? chapter, v, _ayahs[_ayah].words[w]) ??
+        'على الأصل';
+  }
+
+  /// [words] of the ayah shown as [id] writes them, each once.
+  String _wordsOf(String id, List<int> words) {
+    final ayah = _ayahs[_ayah];
+    return {
+      for (final w in words)
+        readingText(
+          widget.variants,
+          id,
+          ayah,
+          w,
+          w + 1,
+        ).replaceAll(RegExp('[ۖ-ۜ]'), ''),
+    }.where((w) => w.isNotEmpty).join('، ');
+  }
+
+  /// The riwayat of the jam' by how they read [chapter] at [words] and write
+  /// them: those alike in one group, in the order of the first of each.
+  Map<(String, String), List<String>> _groupsOf(
+    String chapter,
+    List<int> words,
+  ) {
+    // By the way alone: a word written otherwise for another asl (عَلَيۡهُمۡ)
+    // is the same way in this one; its writings told side by side.
+    final byFace = <String, List<String>>{};
+    for (final id in _riwayat) {
+      (byFace[_faceOf(id, chapter, words)] ??= []).add(id);
+    }
+    return {
+      for (final MapEntry(key: face, value: ids) in byFace.entries)
+        (face, {for (final id in ids) _wordsOf(id, words)}.join('\n')): ids,
+    };
+  }
+
+  /// [ids] named as the hamesh names them: a qari whose riwayat of the jam'
+  /// are all among them by his name alone (عاصم for Hafs and Shu'bah), the
+  /// others by their riwaya; each with the riwayat it stands for.
+  List<(String, List<String>)> _namesOf(List<String> ids) {
+    final named = <(String, List<String>)>[];
+    final done = <String>{};
+    for (final id in ids) {
+      if (!done.add(id)) continue;
+      final q = qiraaOf(id);
+      final his = [
+        for (final r in q.riwayat)
+          if (_riwayat.contains(r.id)) r.id,
+      ];
+      if (his.length > 1 && his.every(ids.contains)) {
+        done.addAll(his);
+        named.add((q.shortAr, his));
+      } else {
+        named.add((jamName(id), [id]));
+      }
+    }
+    return named;
   }
 
   /// «منهج الرواة في هذا الأصل»: shut, and opened a table of each riwaya of
@@ -762,8 +937,10 @@ class _JamScreenState extends State<JamScreen> {
                 width: .8,
               ),
               columnWidths: const {
-                0: IntrinsicColumnWidth(),
-                1: FlexColumnWidth(),
+                // The names together wrap within their share.
+                0: FlexColumnWidth(7),
+                1: IntrinsicColumnWidth(),
+                2: FlexColumnWidth(6),
               },
               defaultVerticalAlignment: TableCellVerticalAlignment.middle,
               children: [
@@ -778,35 +955,86 @@ class _JamScreenState extends State<JamScreen> {
                     ),
                     Padding(
                       padding: cell,
+                      child: Text('الكلمة', style: head),
+                    ),
+                    Padding(
+                      padding: cell,
                       child: Text('منهجه', style: head),
                     ),
                   ],
                 ),
-                for (final id in _riwayat)
+                // Those who read it alike told together, the way once.
+                for (final MapEntry(key: (face, word), value: ids) in _groupsOf(
+                  chapter,
+                  words,
+                ).entries)
                   TableRow(
-                    decoration: r.riwayat.contains(id)
+                    decoration: ids.any(r.riwayat.contains)
                         ? BoxDecoration(color: MushafColors.gold.withAlpha(45))
                         : null,
                     children: [
                       Padding(
                         padding: cell,
-                        child: Text(
-                          jamName(id),
+                        child: Text.rich(
+                          key: ValueKey(
+                            'jam-manhaj-names-$chapter-${ids.join(',')}',
+                          ),
+                          TextSpan(
+                            children: [
+                              for (final (i, (name, of)) in _namesOf(
+                                ids,
+                              ).indexed) ...[
+                                if (i > 0) const TextSpan(text: ' و'),
+                                TextSpan(
+                                  text: name,
+                                  style: TextStyle(
+                                    color: of.length == 1 && of[0] == hafsId
+                                        ? MushafColors.green
+                                        : qiraaOf(of[0]).color,
+                                    fontWeight: of.any(r.riwayat.contains)
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                           style: TextStyle(
-                            color: id == hafsId
-                                ? MushafColors.green
-                                : qiraaOf(id).color,
-                            fontWeight: r.riwayat.contains(id)
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                            color: MushafColors.ink,
                             fontSize: 12,
+                            height: 1.5,
                           ),
                         ),
                       ),
                       Padding(
                         padding: cell,
+                        // Each writing on its line.
+                        child: Column(
+                          key: ValueKey(
+                            'jam-manhaj-word-$chapter-${ids.join(',')}',
+                          ),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (final line in word.split('\n'))
+                              QuranWordText(
+                                line,
+                                style: TextStyle(
+                                  fontFamily: 'Hafs',
+                                  color: MushafColors.ink,
+                                  fontSize: 17,
+                                  height: 1.7,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: cell,
                         child: Text(
-                          _faceOf(id, chapter, words),
+                          face,
+                          key: ValueKey(
+                            'jam-manhaj-face-$chapter-${ids.join(',')}',
+                          ),
                           style: TextStyle(
                             color: MushafColors.ink,
                             fontSize: 12,
@@ -1007,13 +1235,16 @@ class _JamScreenState extends State<JamScreen> {
 /// The twenty, by their qurra, on a board set in depth: each riwaya with its
 /// check box, ticked once its reading of the ayah is shown; the reading shown
 /// raised. Tapped, a riwaya shows its reading.
-class _QurraBoard extends StatelessWidget {
+class _QurraBoard extends StatefulWidget {
   const _QurraBoard({
     required this.shown,
     required this.read,
     required this.current,
     required this.onTap,
   });
+
+  /// How tall the board stands: a qari's name over two riwayat.
+  static const height = 112.0;
 
   /// The riwayat of the jam': the others are left off the board.
   final Set<String> shown;
@@ -1022,15 +1253,49 @@ class _QurraBoard extends StatelessWidget {
   final ValueChanged<String> onTap;
 
   @override
+  State<_QurraBoard> createState() => _QurraBoardState();
+}
+
+class _QurraBoardState extends State<_QurraBoard> {
+  /// Each qari's card, to bring the one read into sight.
+  final _cards = <String, GlobalKey>{};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bringCurrent());
+  }
+
+  @override
+  void didUpdateWidget(_QurraBoard old) {
+    super.didUpdateWidget(old);
+    if (old.current.join() != widget.current.join()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _bringCurrent());
+    }
+  }
+
+  /// The card of the first riwaya read, scrolled into the board's middle.
+  void _bringCurrent() {
+    if (!mounted || widget.current.isEmpty) return;
+    final card = _cards[qiraaOf(widget.current.first).id]?.currentContext;
+    if (card == null) return;
+    Scrollable.ensureVisible(
+      card,
+      alignment: .5,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) => Transform(
     key: const ValueKey('jam-board'),
     alignment: Alignment.bottomCenter,
     // Leaning back a little, as a board on a table.
     transform: Matrix4.identity()
       ..setEntry(3, 2, .0011)
-      ..rotateX(-.28),
+      ..rotateX(-.12),
     child: Container(
-      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -1044,30 +1309,43 @@ class _QurraBoard extends StatelessWidget {
         boxShadow: const [
           BoxShadow(
             color: Color(0x55000000),
-            blurRadius: 14,
-            offset: Offset(0, 8),
+            blurRadius: 10,
+            offset: Offset(0, 6),
           ),
         ],
       ),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 5,
-        runSpacing: 5,
-        children: [
-          for (final q in qiraat)
-            if (q.riwayat.any((r) => shown.contains(r.id))) _qari(q),
-        ],
+      // The ten in one row, drawn across by the finger.
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.all(6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final q in qiraat)
+              if (q.riwayat.any((r) => widget.shown.contains(r.id)))
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: _qari(q),
+                ),
+          ],
+        ),
       ),
     ),
   );
 
   Widget _qari(Qiraa q) => Container(
-    width: 104,
-    padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
+    key: _cards.putIfAbsent(q.id, GlobalKey.new),
+    width: 132,
+    padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
     decoration: BoxDecoration(
       color: MushafColors.page,
-      borderRadius: BorderRadius.circular(9),
-      border: Border.all(color: q.color.withAlpha(170)),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(
+        color: q.color.withAlpha(
+          q.riwayat.any((r) => widget.current.contains(r.id)) ? 255 : 170,
+        ),
+        width: q.riwayat.any((r) => widget.current.contains(r.id)) ? 2 : 1,
+      ),
       boxShadow: [
         BoxShadow(
           color: q.color.withAlpha(60),
@@ -1077,56 +1355,57 @@ class _QurraBoard extends StatelessWidget {
       ],
     ),
     child: Column(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           q.shortAr,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: q.color,
             fontWeight: FontWeight.bold,
-            fontSize: 11,
+            fontSize: 15,
           ),
         ),
         for (final r in q.riwayat)
-          if (shown.contains(r.id)) _riwaya(r.id, q.color),
+          if (widget.shown.contains(r.id)) _riwaya(r.id, q.color),
       ],
     ),
   );
 
   Widget _riwaya(String id, Color color) {
-    final now = current.contains(id);
+    final now = widget.current.contains(id);
     return InkWell(
       key: ValueKey('jam-board-$id'),
-      onTap: () => onTap(id),
+      onTap: () => widget.onTap(id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        transform: now
-            ? Matrix4.translationValues(0, -2, 0)
-            : Matrix4.identity(),
+        padding: const EdgeInsets.symmetric(vertical: 1),
         decoration: BoxDecoration(
           color: now ? color.withAlpha(40) : null,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox.square(
-              dimension: 22,
+              dimension: 26,
               child: Checkbox(
                 key: ValueKey('jam-check-$id'),
-                value: read.contains(id),
-                onChanged: (_) => onTap(id),
+                value: widget.read.contains(id),
+                onChanged: (_) => widget.onTap(id),
                 activeColor: color,
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
-            Flexible(
+            const SizedBox(width: 2),
+            Expanded(
               child: Text(
                 riwayaById(id).nameAr,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 14,
                   fontWeight: now ? FontWeight.bold : FontWeight.normal,
                   color: MushafColors.ink,
                 ),
