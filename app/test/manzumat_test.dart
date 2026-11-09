@@ -1421,6 +1421,43 @@ void main() {
           );
           expect(ansani.poem, Poem.shatibiyya, reason: id);
           expect(ansani.mention, {844}, reason: id);
+          final yudkhal = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: 19,
+              ayah: 60,
+              word: 7,
+              count: 1,
+              text: 'يُدۡخَلُونَ',
+              kind: VariantKind.farsh,
+              description: 'بضم الياء وفتح الخاء',
+            ),
+            'يَدۡخُلُونَ',
+            19,
+            surahs,
+            entries: book.at(19, 60, 7),
+          );
+          expect(yudkhal.mention, {606}, reason: id);
+          for (final (s, a, w) in [(19, 2, 4), (19, 7, 0), (3, 37, 9)]) {
+            final z = manzumat.referenceOf(
+              Variant(
+                riwayaId: id,
+                surah: s,
+                ayah: a,
+                word: w,
+                count: 1,
+                text: 'زَكَرِيَّآءَ',
+                kind: VariantKind.hamza,
+                description: 'بزيادة الهمزة',
+              ),
+              'زَكَرِيَّا',
+              s,
+              surahs,
+              entries: book.at(s, a, w),
+            );
+            expect(z.poem, Poem.shatibiyya, reason: '$id $s:$a');
+            expect(z.mention, {553}, reason: '$id $s:$a');
+          }
           for (final (a, w, text, n) in [
             (87, 12, 'نُّكۡرٗا', 618),
             (93, 4, 'ٱلسَّدَّيۡنِ', 851),
@@ -1603,6 +1640,61 @@ void main() {
         );
         expect(innaka.poem, Poem.durrah, reason: id);
         expect(innaka.mention, {24}, reason: id);
+        final ahab = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 19,
+            ayah: 19,
+            word: 5,
+            count: 1,
+            text: 'لِأَهَبَ',
+            kind: VariantKind.farsh,
+            description: 'بالهمزة',
+          ),
+          'لِأَهَبَ',
+          19,
+          surahs,
+          entries: book.at(19, 19, 5),
+        );
+        expect(ahab.poem, Poem.durrah, reason: id);
+        expect(ahab.mention, {153}, reason: id);
+        final riy = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 19,
+            ayah: 74,
+            word: 8,
+            count: 1,
+            text: 'وَرِيًّا',
+            kind: VariantKind.hamza,
+            description:
+                'بإبدال الهمزة ياءً ساكنة وإدغامها في الياء التي تليها',
+          ),
+          'وَرِءۡيٗا',
+          19,
+          surahs,
+          entries: book.at(19, 74, 8),
+        );
+        expect(riy.poem, Poem.durrah, reason: id);
+        expect(riy.mention, {28}, reason: id);
+        final yashat = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 20,
+            ayah: 61,
+            word: 9,
+            count: 1,
+            text: 'فَيَسۡحَتَكُمُۥ',
+            kind: VariantKind.farsh,
+            description: 'بفتح الياء والحاء',
+          ),
+          'فَيُسۡحِتَكُم',
+          20,
+          surahs,
+          entries: book.at(20, 61, 9),
+        );
+        expect(yashat.poem, Poem.durrah, reason: id);
+        expect(yashat.mention, {157}, reason: id);
         final najzi = manzumat.referenceOf(
           Variant(
             riwayaId: id,

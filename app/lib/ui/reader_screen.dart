@@ -96,7 +96,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   final _headerMiddle = ValueNotifier<double?>(null);
 
   /// Where the surah's name of the page read is, on the screen.
-  final _surahName = ValueNotifier<Rect?>(null);
+  final _juzName = ValueNotifier<Rect?>(null);
 
   /// While a page is zoomed in, drags pan it instead of turning pages.
   bool _zoomed = false;
@@ -441,10 +441,12 @@ class _ReaderScreenState extends State<ReaderScreen>
       onZoomChanged: (z) => setState(() => _zoomed = z),
       // Zoomed in on a word, the page still turns from its side.
       onEdgeTurn: (direction) => _pager.currentState?.turn(direction),
+      // The riwayat chosen, on the frame: gone between without their panel.
+      onShowRiwaya: (id) => widget.settings.displayed = id,
       onPageNumberTap: _pickPage,
       // The arrow of the riwayat over the middle of the header in sight.
       onHeaderMiddle: number == _page ? (x) => _headerMiddle.value = x : null,
-      onSurahName: number == _page ? (r) => _surahName.value = r : null,
+      onJuzName: number == _page ? (r) => _juzName.value = r : null,
       // The QCF page fonts draw the Madinah pages only.
       qcf:
           widget.settings.qcfFont &&
@@ -529,18 +531,29 @@ class _ReaderScreenState extends State<ReaderScreen>
         body: Stack(
           children: [
             Positioned.fill(child: SafeArea(child: pages)),
-            // Below the page, where it never covers the text.
+            // Below the frame, on the line of the page's number: it never
+            // covers the text nor the frame's band.
             PositionedDirectional(
-              bottom: MediaQuery.paddingOf(context).bottom + 16,
+              bottom: MediaQuery.paddingOf(context).bottom + 1,
               start: 16,
               child: Material(
-                color: MushafColors.green.withAlpha(150),
+                color: MushafColors.green.withAlpha(170),
                 shape: const CircleBorder(),
-                child: IconButton(
-                  tooltip: 'إنهاء ملء الشاشة',
-                  color: Colors.white,
-                  icon: const Icon(Icons.fullscreen_exit),
-                  onPressed: () => _setFullScreen(false),
+                clipBehavior: Clip.antiAlias,
+                child: Tooltip(
+                  message: 'إنهاء ملء الشاشة',
+                  child: InkWell(
+                    key: const ValueKey('exit-full-screen'),
+                    onTap: () => _setFullScreen(false),
+                    child: const SizedBox.square(
+                      dimension: 24,
+                      child: Icon(
+                        Icons.fullscreen_exit,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -796,7 +809,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       Positioned.fill(
         child: _GlowLamp(
           settings: widget.settings,
-          surahName: _surahName,
+          juzName: _juzName,
           onTap: _toggleGlow,
           onLongPress: () => GlowUsulScreen.open(
             context,
@@ -973,7 +986,7 @@ class _EyeIndicator extends StatelessWidget {
   }
 }
 
-/// Beside the surah's name: the lamp of «تنبيه الاختلافات» (a tap lights
+/// Beside the juz's name: the lamp of «تنبيه الاختلافات» (a tap lights
 /// the words that differ from Hafs, its rays flickering, or puts them out)
 /// and the button of the mutashabihat. Dragged, they stay where they are
 /// left; a long press on the mutashabihat's brings them back beside the name,
@@ -981,13 +994,13 @@ class _EyeIndicator extends StatelessWidget {
 class _GlowLamp extends StatefulWidget {
   const _GlowLamp({
     required this.settings,
-    required this.surahName,
+    required this.juzName,
     required this.onTap,
     required this.onLongPress,
   });
 
   final ReaderSettings settings;
-  final ValueListenable<Rect?> surahName;
+  final ValueListenable<Rect?> juzName;
   final VoidCallback onTap;
 
   /// Held: the usul of the hamesh, each lit or not.
@@ -1030,7 +1043,7 @@ class _GlowLampState extends State<_GlowLamp>
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([widget.settings, widget.surahName]),
+    listenable: Listenable.merge([widget.settings, widget.juzName]),
     builder: (context, _) => LayoutBuilder(
       builder: (context, box) {
         final room = Size(
@@ -1085,19 +1098,23 @@ class _GlowLampState extends State<_GlowLamp>
     ),
   );
 
-  /// Where it was left; else beside the surah's name, to its left.
+  /// Where it was left; else beside the juz's name, to its left, over the
+  /// hamesh's head; to its right when the page leaves no room there.
   Offset _place(BuildContext context, Size room) {
     final left = widget.settings.lampAt;
     if (left != null) {
       return Offset(left.dx * room.width, left.dy * room.height);
     }
-    final name = widget.surahName.value;
+    final name = widget.juzName.value;
     final box = context.findRenderObject();
     if (name == null || box is! RenderBox || !box.attached) {
       return Offset(room.width, 0);
     }
     final local = box.globalToLocal(name.centerLeft);
-    return Offset(local.dx - _gap - _width, local.dy - _size / 2);
+    final x = local.dx - _gap - _width;
+    if (x >= 0) return Offset(x, local.dy - _size / 2);
+    final right = box.globalToLocal(name.centerRight);
+    return Offset(right.dx + _gap, right.dy - _size / 2);
   }
 
   Widget _lamp(bool lit) => Tooltip(

@@ -1280,6 +1280,25 @@ class Manzumat {
         at == '18:98:10') {
       return {697};
     }
+    // «زَكَرِيَّآءَ» with its hamza, wherever it comes, for Qalun and Ibn Kathir
+    // (and Abu Ja'far as Nafi'): «وَقُلْ زَكَرِيَّا دُونَ هَمْزِ جَمِيعِهِ صِحَابٌ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        _letters(v.text).contains('زكرياء')) {
+      return {553};
+    }
+    // Qalun's «لِأَهَبَ» (مريم ١٩) by khulf: «وَهَمْزُ أَهَبْ بِالْيَا جَرَى حُلْوُ
+    // بَحْرِهِ بِخُلْفٍ».
+    if (poem == Poem.shatibiyya && v.riwayaId == 'qalun' && at == '19:19:5') {
+      return {862};
+    }
+    // Ibn Kathir's «يُدۡخَلُونَ» (النساء ١٢٤، مريم ٦٠، غافر ٤٠): the bayt of its
+    // ruling, «وَضَمُّ يَدْ / خُلُونَ وَفَتحُ الضَّمِّ حَقٌّ».
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        const {'4:124:11', '19:60:7', '40:40:17'}.contains(at)) {
+      return {606};
+    }
     // «ٱرۡكَب مَّعَنَا» (هود ٤٢): al-Bazzi and Qalun by khulf, Qunbul not named,
     // reading it merged: «وَفِي ارْكَبْ هُدَى بَرٍّ قَرِيبٍ بِخُلْفِهِمْ».
     if (poem == Poem.shatibiyya &&
@@ -1307,6 +1326,16 @@ class Manzumat {
       if (at == '11:114:4') return {134};
       // «إِنَّكَ لَأَنتَ يُوسُفُ» (يوسف ٩٠) on the khabar: «وَإِنَّكْ لأَنْتَ أُدْ».
       if (at == '12:90:1') return {24};
+      // «لِأَهَبَ» (مريم ١٩) with its hamza: «وَالْهَمْزُ فِي لأَهَبْ أَلاَ».
+      if (at == '19:19:5') return {153};
+      // «وَرِيًّا» (مريم ٧٤), its quiet hamza made a ya: «وَأَبْدِلَنْ إِذَنْ غَيْرَ
+      // أَنْبِئْهُمْ وَنَبِّئْهُمْ فَلَا».
+      if (at == '19:74:8') return {28};
+      // «فَيَسۡحَتَكُم» (طه ٦١), its ya and ha opened: «وَطُولًا فَيَسْحَتَ ضُمَّ
+      // اكْسِرْ».
+      if (at == '20:61:9') return {157};
+      // «مِن تَحۡتِهَآ» (مريم ٢٤): «وَمَنْ تَحْتَهَا اكْسِرِ اخْـ / ـفِضًا يَعْلُ».
+      if (at == '19:24:1' || at == '19:24:2') return {154};
       // «وَلَنَجۡزِيَنَّ» (النحل ٩٦) with the nun: «لِيَجْزِيَ نُونٌ اِذْ».
       if (at == '16:96:7') return {143};
       // «وَيُخۡرَجُ» (الإسراء ١٣): «نخْرِجُ انْجَلَا» at the end of the one,

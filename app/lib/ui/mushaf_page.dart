@@ -119,18 +119,19 @@ class MushafPage extends StatefulWidget {
     this.showHamesh = true,
     this.onZoomChanged,
     this.onEdgeTurn,
+    this.onShowRiwaya,
     this.onPageNumberTap,
     this.qcf = false,
     this.onAyahTap,
     this.onAyahWordTap,
     this.onHeaderMiddle,
-    this.onSurahName,
+    this.onJuzName,
     this.ayahShade,
   });
 
-  /// Where the surah's name in the header is, on the screen: the lamp of
-  /// «تنبيه الاختلافات» stands beside it.
-  final ValueChanged<Rect>? onSurahName;
+  /// Where the juz's name in the header is, on the screen: the lamp of
+  /// «تنبيه الاختلافات» stands beside it, clear of the frame's band.
+  final ValueChanged<Rect>? onJuzName;
 
   /// A shade behind an ayah's words (the Jam''s ayah read, and those done).
   final Color? Function(Ayah ayah)? ayahShade;
@@ -154,6 +155,10 @@ class MushafPage extends StatefulWidget {
 
   /// Zoomed in, dragged on past the page's side: turn the page that way.
   final ValueChanged<int>? onEdgeTurn;
+
+  /// A riwaya's square on the frame touched: the page shown in it (null:
+  /// Hafs). Without it, no squares.
+  final ValueChanged<String?>? onShowRiwaya;
 
   /// Tapping the page number (opens the page picker).
   final VoidCallback? onPageNumberTap;
@@ -450,7 +455,7 @@ class _MushafPageState extends State<MushafPage>
             SizedBox(
               height: 22,
               child: _PageHeader(
-                nameKey: _surahName,
+                juzKey: _juzName,
                 surah: widget.quran.surah(ayahs.first.surah).nameAr,
                 juz: ayahs.first.juz,
               ),
@@ -512,20 +517,94 @@ class _MushafPageState extends State<MushafPage>
   /// readings accessible without reducing the font or dropping notes.
   void _reportHeaderMiddle(double x) {
     final report = widget.onHeaderMiddle;
-    final name = widget.onSurahName;
+    final name = widget.onJuzName;
     if (report == null && name == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       report?.call(x);
-      final box = _surahName.currentContext?.findRenderObject();
+      final box = _juzName.currentContext?.findRenderObject();
       if (name != null && box is RenderBox && box.hasSize) {
         name(box.localToGlobal(Offset.zero) & box.size);
       }
     });
   }
 
-  /// The surah's name in the header shown.
-  final _surahName = GlobalKey();
+  /// The juz's name in the header shown.
+  final _juzName = GlobalKey();
+
+  /// On the frame's upper band, a small square for each riwaya chosen, in
+  /// the qari's colour and the order of the readers, Hafs first: one
+  /// touched shows the page in it, without opening the riwayat.
+  List<(Widget, double)> _riwayaStrip() {
+    final show = widget.onShowRiwaya;
+    final s = widget.settings;
+    if (show == null || s.selected.isEmpty) return const [];
+    final ids = [
+      null,
+      for (final q in qiraat)
+        for (final r in q.riwayat)
+          if (s.selected.contains(r.id)) r.id,
+    ];
+    const label = TextStyle(
+      fontSize: 9,
+      height: 1,
+      fontWeight: FontWeight.w600,
+    );
+    // Its width: the name, its padding and the gap beside it.
+    double widthOf(String name) {
+      final painter = TextPainter(
+        // In the font it is drawn with.
+        text: TextSpan(
+          text: name,
+          style: DefaultTextStyle.of(context).style.merge(label),
+        ),
+        textDirection: TextDirection.rtl,
+        textScaler: MediaQuery.textScalerOf(context),
+      )..layout();
+      final width = painter.width + 24 + 3 + 3;
+      painter.dispose();
+      return width;
+    }
+
+    Widget square(String? id) {
+      final now = s.displayed == id;
+      final color = id == null ? MushafColors.green : qiraaOf(id).color;
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 1.5),
+        child: Material(
+          color: now ? color : MushafColors.page,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(3),
+            side: BorderSide(color: color, width: 1.2),
+          ),
+          child: InkWell(
+            key: ValueKey('frame-riwaya-${id ?? 'hafs'}'),
+            onTap: now ? null : () => show(id),
+            // As tall as the frame's band, wide enough to read at a glance.
+            child: SizedBox(
+              height: OrnamentFrame.band,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                // As wide as its name, on a band or in the lower row.
+                child: Center(
+                  widthFactor: 1,
+                  child: Text(
+                    id == null ? 'حفص' : riwayaById(id).nameAr,
+                    style: label.copyWith(color: now ? Colors.white : color),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return [
+      for (final id in ids)
+        (square(id), widthOf(id == null ? 'حفص' : riwayaById(id).nameAr)),
+    ];
+  }
 
   Widget _landscapePage(List<Ayah> ayahs, List<MushafLine> lines, Size size) {
     final scroll = _landscapeScroll;
@@ -614,7 +693,7 @@ class _MushafPageState extends State<MushafPage>
             SizedBox(
               height: header,
               child: _PageHeader(
-                nameKey: _surahName,
+                juzKey: _juzName,
                 surah: widget.quran.surah(first.surah).nameAr,
                 juz: first.juz,
               ),
@@ -906,7 +985,7 @@ class _MushafPageState extends State<MushafPage>
           SizedBox(
             height: header,
             child: _PageHeader(
-              nameKey: _surahName,
+              juzKey: _juzName,
               surah: widget.quran.surah(first.surah).nameAr,
               juz: first.juz,
               // The usul are told below the page; the header points there.
@@ -915,6 +994,7 @@ class _MushafPageState extends State<MushafPage>
           ),
           Expanded(
             child: _PageFrame(
+              squares: _riwayaStrip(),
               page: widget.page,
               sides: sides,
               onNumberTap: widget.onPageNumberTap,
@@ -3088,12 +3168,18 @@ class _PageFrame extends StatelessWidget {
     required this.child,
     this.onNumberTap,
     this.sides = true,
+    this.squares = const [],
   });
 
   final int page;
   final bool sides;
   final Widget child;
   final VoidCallback? onNumberTap;
+
+  /// Set on the frame's bands, each with its width: the riwayat chosen, to
+  /// go between. On the upper band first; those it has no room for go on
+  /// to the lower one, from the right.
+  final List<(Widget, double)> squares;
 
   /// Space outside the border, including a visible gap above the number.
   static const numberHeight = 30.0;
@@ -3106,10 +3192,52 @@ class _PageFrame extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Flexible(
-          child: OrnamentFrame(
-            key: ValueKey('mushaf-ornament-$page'),
-            sides: sides,
-            child: child,
+          child: LayoutBuilder(
+            builder: (context, box) {
+              const inset = OrnamentFrame.band + 10;
+              // The whole upper band, from the right.
+              final room = box.maxWidth - 2 * inset;
+              final upper = <Widget>[], lower = <Widget>[];
+              var used = 0.0;
+              for (final (square, width) in squares) {
+                if (lower.isEmpty && used + width <= room) {
+                  upper.add(square);
+                  used += width;
+                } else {
+                  lower.add(square);
+                }
+              }
+              return Stack(
+                children: [
+                  OrnamentFrame(
+                    key: ValueKey('mushaf-ornament-$page'),
+                    sides: sides,
+                    child: child,
+                  ),
+                  if (upper.isNotEmpty)
+                    PositionedDirectional(
+                      top: 0,
+                      start: inset,
+                      child: Row(
+                        key: const ValueKey('frame-riwayat'),
+                        mainAxisSize: MainAxisSize.min,
+                        children: upper,
+                      ),
+                    ),
+                  if (lower.isNotEmpty)
+                    PositionedDirectional(
+                      bottom: 0,
+                      start: inset,
+                      end: inset,
+                      child: Wrap(
+                        key: const ValueKey('frame-riwayat-lower'),
+                        runSpacing: 2,
+                        children: lower,
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ),
         SizedBox(
@@ -3151,13 +3279,13 @@ class _PageHeader extends StatelessWidget {
     required this.surah,
     required this.juz,
     this.onUsul,
-    this.nameKey,
+    this.juzKey,
   });
 
   final String surah;
 
-  /// On the surah's name, to find where it stands.
-  final Key? nameKey;
+  /// On the juz's name, to find where it stands.
+  final Key? juzKey;
   final int juz;
 
   /// Shows the usul of the page, told below it; null when it has none.
@@ -3185,7 +3313,7 @@ class _PageHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(
         children: [
-          Text('سورة $surah', key: nameKey, style: style),
+          Text('سورة $surah', style: style),
           Expanded(
             child: onUsul == null
                 ? const SizedBox()
@@ -3205,7 +3333,7 @@ class _PageHeader extends StatelessWidget {
                     ),
                   ),
           ),
-          Text('الجزء ${_juzNames[juz - 1]}', style: style),
+          Text('الجزء ${_juzNames[juz - 1]}', key: juzKey, style: style),
         ],
       ),
     );

@@ -245,4 +245,40 @@ void main() {
       expect(t.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'the riwayat chosen on the frame: Hafs first, one touched shown',
+    (t) async {
+      await showReader(t, selected: const {'ibn_wardan', 'warsh'});
+      final strip = find.byKey(const ValueKey('frame-riwayat')).hitTestable();
+      expect(strip, findsOneWidget);
+      // Hafs, then in the order of the readers: Warsh before Ibn Wardan.
+      final keys = [
+        for (final e
+            in find
+                .descendant(of: strip, matching: find.byType(InkWell))
+                .evaluate())
+          (e.widget.key as ValueKey<String>).value,
+      ];
+      expect(keys, [
+        'frame-riwaya-hafs',
+        'frame-riwaya-warsh',
+        'frame-riwaya-ibn_wardan',
+      ]);
+      await t.tap(
+        find.byKey(const ValueKey('frame-riwaya-ibn_wardan')).hitTestable(),
+      );
+      await t.pumpAndSettle();
+      final settings = t
+          .widget<ReaderScreen>(find.byType(ReaderScreen))
+          .settings;
+      expect(settings.displayed, 'ibn_wardan');
+      await t.tap(
+        find.byKey(const ValueKey('frame-riwaya-hafs')).hitTestable(),
+      );
+      await t.pumpAndSettle();
+      expect(settings.displayed, isNull);
+      expect(t.takeException(), isNull);
+    },
+  );
 }

@@ -871,7 +871,15 @@ void main() {
         ).firstWhere((v) => '${v[4]}' != '');
         expect('${aaraf[4]}', startsWith('وَا۬ ٰ'));
         expect(aaraf[6], contains('واوًا وصلاً'));
-        expect('${where('qunbul', 20, 71, 1).single[4]}', isNot(contains('۬')));
+        // Taha's read with one hamza and a madd, as Hafs: told in «مد الفرق».
+        final taha = where(
+          'qunbul',
+          20,
+          71,
+          1,
+        ).singleWhere((v) => '${v[4]}' != '');
+        expect('${taha[4]}', isNot(contains('۬')));
+        expect(taha[6], 'بتحقيق الهمزة الأولى ثم مد');
       },
     );
 

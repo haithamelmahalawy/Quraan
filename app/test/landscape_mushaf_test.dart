@@ -101,22 +101,24 @@ void main() {
     final similar = find.byKey(const ValueKey('mutashabihat-toggle'));
     expect(lamp.hitTestable(), findsOneWidget);
     expect(similar.hitTestable(), findsOneWidget);
-    // Beside the surah's name, to its left, on its line.
+    // Beside the juz's name, on its line: to its left, or to its right
+    // when the page leaves no room there.
     final at = t.getRect(lamp);
+    final pair = at.expandToInclude(t.getRect(similar));
     final names = [
       for (final e
           in find
               .byWidgetPredicate(
-                (w) => w is Text && (w.data?.startsWith('سورة ') ?? false),
+                (w) => w is Text && (w.data?.startsWith('الجزء ') ?? false),
               )
               .evaluate())
         t.getRect(find.byWidget(e.widget)),
     ];
+    bool near(double gap) => gap >= 0 && gap < 12;
     expect(
       names.where(
         (n) =>
-            n.left - at.right >= 0 &&
-            n.left - at.right < 12 &&
+            (near(n.left - pair.right) || near(pair.left - n.right)) &&
             (at.center.dy - n.center.dy).abs() < 4,
       ),
       isNotEmpty,
@@ -141,9 +143,9 @@ void main() {
     await t.pump();
     expect(settings.showMutashabihat, isFalse);
     final before = t.getTopLeft(lamp);
-    await t.drag(lamp, const Offset(-150, 200));
+    await t.drag(lamp, const Offset(150, 200));
     await t.pump();
-    expect(t.getTopLeft(lamp).dx, lessThan(before.dx - 100));
+    expect(t.getTopLeft(lamp).dx, greaterThan(before.dx + 100));
     expect(t.getTopLeft(lamp).dy, greaterThan(before.dy + 150));
     expect(settings.lampAt, isNotNull);
     expect(settings.diffAlert, isNull);
