@@ -11,21 +11,28 @@ class OpenMushafView extends StatelessWidget {
     super.key,
     required this.right,
     required this.width,
+    this.height,
     this.current,
     this.facing,
   });
 
   final bool right;
   final double width;
+
+  /// As tall as this, however wide its pictures make it; [width] then
+  /// unused.
+  final double? height;
   final ui.Image? current;
   final ui.Image? facing;
 
   @override
   Widget build(BuildContext context) {
-    final pageWidth = (width - width * 0.03) / 2;
-    final pageHeight = current == null
-        ? pageWidth * 1.6
-        : pageWidth * current!.height / current!.width;
+    final ratio = current == null ? 1.6 : current!.height / current!.width;
+    final pageWidth = height != null
+        ? height! / ratio
+        : (this.width - this.width * 0.03) / 2;
+    final pageHeight = height ?? pageWidth * ratio;
+    final width = height != null ? pageWidth * 2 / 0.97 : this.width;
     final border = width < 80 ? 1.5 : 3.0;
 
     Widget sheet({required bool isCurrent}) {

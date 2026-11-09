@@ -50,10 +50,11 @@ String _textKey(String text, {String? baseline}) {
               // A bare nun or mim inside the word is sakin, hidden in the
               // letter after it (يَغُرَّنكَ): not Hafs's vowel (يَغُرَّنَّكَ).
               // A word written without vowels (ونقول) tells nothing by it.
+              // So too at its end where Hafs doubles it (أَن لَّعۡنَتُ for أَنَّ).
               final hidden =
                   (letter == 'ن' || letter == 'م') &&
                   i > 0 &&
-                  i + 1 < letters.length &&
+                  (i + 1 < letters.length || (h?.shadda ?? false)) &&
                   letters.any((l) => l.vocalized);
               final fill = !u.vocalized && !hidden && h?.letter == letter;
               return '$letter:${(fill ? h!.vowel : u.vowel) ?? ''}:'
@@ -360,17 +361,18 @@ List<Variant> displayedRulesNotReadBy({
   ];
 }
 
-/// What to cite for [readings]: a reader with a farsh in a word is cited for
-/// his farsh alone, not for the usul in the same word (يَضِرۡكُمُۥ: not its silah).
+/// What to cite for [readings]: a word with a farsh is cited for its farsh
+/// alone, every reader's, not for the usul in it (يَضِرۡكُمُۥ: not its silah;
+/// يُجۡبَىٰٓ: not Ibn Kathir's qasr).
 List<Variant> citedReadings(List<Variant> readings) {
   bool farsh(Variant v) => !v.isUsul && v.rule != 'comparison';
   final withFarsh = {
     for (final v in readings)
-      if (farsh(v)) '${v.riwayaId}:${v.word}',
+      if (farsh(v)) v.word,
   };
   return [
     for (final v in readings)
-      if (!v.isUsul || !withFarsh.contains('${v.riwayaId}:${v.word}')) v,
+      if (!v.isUsul || !withFarsh.contains(v.word)) v,
   ];
 }
 

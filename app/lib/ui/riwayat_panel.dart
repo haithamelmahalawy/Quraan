@@ -24,6 +24,8 @@ class RiwayatPanel extends StatefulWidget {
     required this.child,
     this.arrowAt,
     this.open,
+    this.tab = false,
+    this.beside,
     this.onJam,
     this.onJamSelected,
   });
@@ -42,6 +44,13 @@ class RiwayatPanel extends StatefulWidget {
   /// Opened and closed from outside (the reader's top bar), with no arrow of
   /// its own over the page; null: by its arrow.
   final ValueNotifier<bool>? open;
+
+  /// Opened from outside, its arrow over the page all the same: the bar it
+  /// is opened from folded away, or in full screen.
+  final bool tab;
+
+  /// Beside the arrow, over the page's header.
+  final Widget? beside;
 
   final ReaderSettings settings;
   final VariantRepository variants;
@@ -648,7 +657,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
         Expanded(
           child: LayoutBuilder(
             builder: (context, box) {
-              if (widget.open != null) return widget.child;
+              if (widget.open != null && !widget.tab) return widget.child;
               Widget placed(double? at) => Stack(
                 children: [
                   Positioned.fill(child: widget.child),
@@ -659,7 +668,20 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                     top: 0,
                     child: FractionalTranslation(
                       translation: const Offset(-.5, 0),
-                      child: _arrow(),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _arrow(),
+                          if (widget.beside case final beside?) ...[
+                            const SizedBox(width: 4),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 1),
+                              child: beside,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ],

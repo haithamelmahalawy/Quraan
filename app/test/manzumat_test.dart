@@ -1524,6 +1524,157 @@ void main() {
             entries: book.at(22, 39, 2),
           );
           expect(yuqatilun.mention, {899}, reason: id);
+          for (final (s, a, w) in [(23, 55, 0), (2, 273, 11), (104, 3, 0)]) {
+            final r = manzumat.referenceOf(
+              Variant(
+                riwayaId: id,
+                surah: s,
+                ayah: a,
+                word: w,
+                count: 1,
+                text: 'يَحۡسِبُ',
+                kind: VariantKind.farsh,
+                description: 'بكسر السين',
+              ),
+              'يَحۡسَبُ',
+              s,
+              surahs,
+              entries: book.at(s, a, w),
+            );
+            expect(r.mention, {538}, reason: '$id $s:$a');
+          }
+          for (final (s, a, w, own) in [
+            (3, 178, 1, {579}),
+            (3, 188, 13, {583, 584}),
+            (8, 59, 1, {720}),
+          ]) {
+            final r = manzumat.referenceOf(
+              Variant(
+                riwayaId: id,
+                surah: s,
+                ayah: a,
+                word: w,
+                count: 1,
+                text: 'يَحۡسِبَنَّ',
+                kind: VariantKind.farsh,
+                description: 'بكسر السين',
+              ),
+              'يَحۡسَبَنَّ',
+              s,
+              surahs,
+              entries: book.at(s, a, w),
+            );
+            expect(r.mention, {538, ...own}, reason: '$id $s:$a');
+          }
+          for (final (s, a) in [(7, 111), (26, 36)]) {
+            final r = manzumat.referenceOf(
+              Variant(
+                riwayaId: id,
+                surah: s,
+                ayah: a,
+                word: 1,
+                count: 1,
+                text: 'أَرۡجِـٔۡهُۥ',
+                kind: VariantKind.farsh,
+                description: 'الهمز',
+              ),
+              'أَرۡجِهۡ',
+              s,
+              surahs,
+              entries: book.at(s, a, 1),
+            );
+            expect(r.mention, {166, 167}, reason: '$id $s:$a');
+          }
+          final rih = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: 25,
+              ayah: 48,
+              word: 3,
+              count: 1,
+              text: 'ٱلرِّيحَ',
+              kind: VariantKind.farsh,
+              description: 'بإسكان الياء وحذف الألف',
+            ),
+            'ٱلرِّيَٰحَ',
+            25,
+            surahs,
+            entries: book.at(25, 48, 3),
+          );
+          expect(rih.mention, {490, 491, 492}, reason: id);
+          final juyub = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: 24,
+              ayah: 31,
+              word: 17,
+              count: 1,
+              text: 'جِيُوبِهِنَّۖ',
+              kind: VariantKind.farsh,
+              description: 'بكسر الجيم',
+            ),
+            'جُيُوبِهِنَّۖ',
+            24,
+            surahs,
+            entries: book.at(24, 31, 17),
+          );
+          expect(juyub.mention, {628, 629}, reason: id);
+          for (final (s, a, w) in [(2, 189, 12), (24, 27, 5), (24, 29, 5)]) {
+            final r = manzumat.referenceOf(
+              Variant(
+                riwayaId: id,
+                surah: s,
+                ayah: a,
+                word: w,
+                count: 1,
+                text: 'بِيُوتَ',
+                kind: VariantKind.farsh,
+                description: 'بكسر الباء',
+              ),
+              'بُيُوتَ',
+              s,
+              surahs,
+              entries: book.at(s, a, w),
+            );
+            expect(r.mention, {503}, reason: '$id $s:$a');
+          }
+          final qulKam = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: 23,
+              ayah: 112,
+              word: 0,
+              count: 1,
+              text: 'قُلۡ',
+              kind: VariantKind.farsh,
+              description: 'بضم القاف وحذف الألف وإسكان اللام',
+            ),
+            'قَٰلَ',
+            23,
+            surahs,
+            entries: book.at(23, 112, 0),
+          );
+          expect(qulKam.mention, {911}, reason: id);
+          if (id == 'bazzi') {
+            final hayhat = manzumat.referenceOf(
+              Variant(
+                riwayaId: id,
+                surah: 23,
+                ayah: 36,
+                word: 0,
+                count: 1,
+                text: '',
+                kind: VariantKind.usul,
+                description: 'بالوقف بالهاء',
+                rule: 'rasm_stop',
+              ),
+              'هَيۡهَاتَ',
+              23,
+              surahs,
+              entries: book.at(23, 36, 0),
+            );
+            expect(hayhat.mention, {379});
+          }
           for (final (s, a, w) in [(17, 23, 18), (21, 67, 0), (46, 17, 3)]) {
             final uff = manzumat.referenceOf(
               Variant(
@@ -1819,6 +1970,111 @@ void main() {
         );
         expect(tuhsin.poem, Poem.durrah, reason: id);
         expect(tuhsin.mention, {162}, reason: id);
+        for (final (s, a) in [(7, 111), (26, 36)]) {
+          final r = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: s,
+              ayah: a,
+              word: 1,
+              count: 1,
+              text: 'أَرۡجِهِ',
+              kind: VariantKind.farsh,
+              description: 'بكسر الهاء دون صلة',
+            ),
+            'أَرۡجِهۡ',
+            s,
+            surahs,
+            entries: book.at(s, a, 1),
+          );
+          expect(r.poem, Poem.durrah, reason: '$id $s:$a');
+          expect(r.mention, {20}, reason: '$id $s:$a');
+        }
+        for (final (s, a, w) in [(25, 69, 0), (2, 245, 7), (57, 18, 7)]) {
+          final r = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: s,
+              ayah: a,
+              word: w,
+              count: 1,
+              text: 'يُضَعَّفۡ',
+              kind: VariantKind.farsh,
+              description: 'بحذف الألف وتشديد العين',
+            ),
+            'يُضَٰعَفۡ',
+            s,
+            surahs,
+            entries: book.at(s, a, w),
+          );
+          expect(r.poem, Poem.durrah, reason: '$id $s:$a');
+          expect(r.mention, {81}, reason: '$id $s:$a');
+        }
+        for (final (s, a, w) in [(23, 55, 0), (18, 104, 7), (104, 3, 0)]) {
+          final r = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: s,
+              ayah: a,
+              word: w,
+              count: 1,
+              text: 'يَحۡسَبُ',
+              kind: VariantKind.farsh,
+              description: 'بفتح السين',
+            ),
+            'يَحۡسَبُ',
+            s,
+            surahs,
+            entries: book.at(s, a, w),
+          );
+          expect(r.poem, Poem.durrah, reason: '$id $s:$a');
+          expect(r.mention, {83}, reason: '$id $s:$a');
+        }
+        for (final (s, a, w) in [(2, 189, 12), (24, 27, 5), (24, 29, 5)]) {
+          final r = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: s,
+              ayah: a,
+              word: w,
+              count: 1,
+              text: 'بُيُوتَ',
+              kind: VariantKind.farsh,
+              description: 'بضم الباء',
+            ),
+            'بُيُوتَ',
+            s,
+            surahs,
+            entries: book.at(s, a, w),
+          );
+          expect(r.poem, Poem.durrah, reason: '$id $s:$a');
+          expect(r.mention, {77}, reason: '$id $s:$a');
+        }
+        for (final (s, a, w, own) in [
+          (3, 178, 1, <int>{}),
+          (3, 188, 1, {90}),
+          (8, 59, 1, {119}),
+          (24, 57, 1, {171}),
+        ]) {
+          final r = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: s,
+              ayah: a,
+              word: w,
+              count: 1,
+              text: 'يَحۡسَبَنَّ',
+              kind: VariantKind.farsh,
+              description: 'بفتح السين',
+            ),
+            'يَحۡسَبَنَّ',
+            s,
+            surahs,
+            entries: book.at(s, a, w),
+          );
+          expect(r.poem, Poem.durrah, reason: '$id $s:$a');
+          expect(r.mention, {83, ...own}, reason: '$id $s:$a');
+        }
         for (final (s, a, w, text, hafs) in [
           (21, 112, 1, 'رَبُّ', 'رَبِّ'),
           (22, 5, 63, 'وَرَبَـَٔتۡ', 'وَرَبَتۡ'),
@@ -4153,6 +4409,489 @@ void main() {
         manzumat.explanation(Poem.durrah, 183)?.source,
         isNot(contains('أبو شامة')),
       );
+    },
+  );
+  test('«فاسر» and «أن اسر» cite «وَفَاسْرِ أَنِ اسْرِ الْوَصْلُ» (765)', () {
+    for (final (s, a, w, hafs) in [
+      (11, 81, 8, 'فَأَسۡرِ'),
+      (15, 65, 0, 'فَأَسۡرِ'),
+      (44, 23, 0, 'فَأَسۡرِ'),
+      (20, 77, 4, 'أَنۡ أَسۡرِ'),
+      (26, 52, 3, 'أَنۡ أَسۡرِ'),
+    ]) {
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final pair = w != 0 && w != 8;
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: pair ? 2 : 1,
+            text: pair ? 'أَنِ ٱسۡرِ' : 'فَٱسۡرِ',
+            kind: VariantKind.values.last,
+            description: pair
+                ? 'بكسر النون وإبدال همزة القطع بهمزة وصل'
+                : 'بتخفيف الهمزة - إبدال همزة القطع بهمزة وصل',
+            rule: pair ? 'ibdal_single' : '',
+          ),
+          hafs,
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
+        expect(r.mention, {765}, reason: '$id $s:$a');
+        expect(
+          r.asl.map((b) => b.n),
+          id.startsWith('ibn_') ? [7, 8] : isEmpty,
+          reason: '$id $s:$a',
+        );
+      }
+    }
+  });
+  test('«فَرِهِينَ» cites «فَارِهِيْـ / ـنَ ذَاعَ» (927)', () {
+    for (final id in ['qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz']) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 26,
+          ayah: 149,
+          word: 4,
+          count: 1,
+          text: 'فَرِهِينَ',
+          kind: VariantKind.farsh,
+          description: 'بحذف الألف',
+        ),
+        'فَٰرِهِينَ',
+        26,
+        surahs,
+        entries: book.at(26, 149, 4),
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, {927}, reason: id);
+      expect(
+        r.asl.map((b) => b.n),
+        id.startsWith('ibn_') ? [7, 8] : isEmpty,
+        reason: id,
+      );
+    }
+  });
+  test('«يتبعهم» cites the Shatibiyya 711, the Durrah 115', () {
+    for (final (a, w, hafs, light) in [
+      (193, 5, 'يَتَّبِعُوكُمۡۚ', 'يَتۡبَعُوكُمُۥ'),
+      (224, 1, 'يَتَّبِعُهُمُ', 'يَتۡبَعُهُمُ'),
+    ]) {
+      final s = a == 193 ? 7 : 26;
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: 1,
+            text: id == 'qalun' ? light : hafs,
+            kind: VariantKind.farsh,
+            description: id == 'qalun' ? 'بإسكان التاء مخففة وفتح الباء' : '',
+            rule: id == 'qalun' ? '' : 'comparison',
+          ),
+          hafs,
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        final aj = id.startsWith('ibn_');
+        expect(r.poem, aj ? Poem.durrah : Poem.shatibiyya, reason: '$id $s');
+        expect(r.mention, aj ? {115} : {711}, reason: '$id $s');
+      }
+    }
+  });
+  test('«بشهاب» and «سبأ» cite the Shatibiyya 932 and 933, the Durrah 174', () {
+    for (final (s, a, w, hafs, text, bayt) in [
+      (27, 7, 12, 'بِشِهَابٖ', 'بِشِهَابِ', 932),
+      (27, 22, 11, 'سَبَإِۭ', 'سَبَأۡ', 933),
+      (34, 15, 2, 'لِسَبَإٖ', 'لِسَبَأۡ', 933),
+    ]) {
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: 1,
+            text: text,
+            kind: VariantKind.farsh,
+            description: 'بإسكان الهمزة',
+          ),
+          hafs,
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        final aj = id.startsWith('ibn_');
+        expect(r.poem, aj ? Poem.durrah : Poem.shatibiyya, reason: '$id $s:$a');
+        expect(r.mention, aj ? {174} : {bayt}, reason: '$id $s:$a');
+      }
+    }
+  });
+  test('«ألا يا اسجدوا» cites the Shatibiyya 934 and 935, the Durrah 174', () {
+    for (final id in [
+      'duri_kisai',
+      'abul_harith',
+      'ibn_wardan',
+      'ibn_jammaz',
+      'ruways',
+    ]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 27,
+          ayah: 25,
+          word: 0,
+          count: 2,
+          text: 'أَلَا يَٰٱسۡجُدُواْ',
+          kind: VariantKind.farsh,
+          description: 'بتخفيف اللام ثم ياء نداء ثم فعل أمر',
+        ),
+        'أَلَّاۤ',
+        27,
+        surahs,
+        entries: book.at(27, 25, 0),
+      );
+      final kisai = id.endsWith('kisai') || id == 'abul_harith';
+      expect(r.poem, kisai ? Poem.shatibiyya : Poem.durrah, reason: id);
+      expect(r.mention, kisai ? {934, 935} : {174}, reason: id);
+    }
+  });
+  test('«سأقيها» and «سؤقه» cite «مَعَ السُّوقِ سَاقَيهاَ» (938)', () {
+    for (final (s, a, w, hafs, text) in [
+      (27, 44, 10, 'سَاقَيۡهَاۚ', 'سَأۡقَيۡهَاۚ'),
+      (48, 29, 38, 'سُوقِهِۦ', 'سُؤۡقِهِۦ'),
+    ]) {
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final qunbul = id == 'qunbul';
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: 1,
+            text: qunbul ? text : hafs,
+            kind: qunbul ? VariantKind.values.last : VariantKind.farsh,
+            description: qunbul ? 'بالهمز' : '',
+            rule: qunbul ? '' : 'comparison',
+          ),
+          hafs,
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
+        expect(r.mention, {938}, reason: '$id $s:$a');
+      }
+    }
+  });
+  test('«إنا دمرناهم» of Abu Ja\x27far cites Nafi\x27s 940, after the Durrah\x27s two', () {
+    for (final id in ['qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz']) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 27,
+          ayah: 51,
+          word: 5,
+          count: 1,
+          text: 'إِنَّا',
+          kind: VariantKind.farsh,
+          description: 'بكسر الهمزة',
+        ),
+        'أَنَّا',
+        27,
+        surahs,
+        entries: book.at(27, 51, 5),
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, {940}, reason: id);
+      expect(
+        r.asl.map((b) => b.n),
+        id.startsWith('ibn_') ? [7, 8] : isEmpty,
+        reason: id,
+      );
+    }
+  });
+  test(
+    '«تذكرون» of النمل cites the Shatibiyya 941 and 677, the Durrah 175',
+    () {
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 27,
+            ayah: 62,
+            word: 15,
+            count: 1,
+            text: 'تَذَّكَّرُونَ',
+            kind: VariantKind.farsh,
+            description: 'بتشديد الذال',
+          ),
+          'تَذَكَّرُونَ',
+          27,
+          surahs,
+          entries: book.at(27, 62, 15),
+        );
+        final aj = id.startsWith('ibn_');
+        expect(r.poem, aj ? Poem.durrah : Poem.shatibiyya, reason: id);
+        expect(r.mention, aj ? {175} : {941, 677}, reason: id);
+      }
+    },
+  );
+  test('the nun of «هاتين، فذانك» and their like cites 593', () {
+    for (final (s, a, w, hafs, text) in [
+      (28, 27, 7, 'هَٰتَيۡنِ', 'هَٰتَيۡٓنِّ'),
+      (28, 32, 14, 'فَذَٰنِكَ', 'فَذَٰٓنِّكَ'),
+      (41, 29, 5, 'ٱلَّذَيۡنِ', 'ٱلَّذَيۡٓنِّ'),
+      (4, 16, 0, 'وَٱلَّذَانِ', 'وَٱلَّذَآنِّ'),
+    ]) {
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final ik = id == 'bazzi' || id == 'qunbul';
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: 1,
+            text: ik ? text : hafs,
+            kind: VariantKind.farsh,
+            description: ik ? 'بتشديد النون' : '',
+            rule: ik ? '' : 'comparison',
+          ),
+          hafs,
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
+        expect(r.mention, {593}, reason: '$id $s:$a');
+        expect(
+          r.asl.map((b) => b.n),
+          id.startsWith('ibn_') ? [7, 8] : isEmpty,
+          reason: '$id $s:$a',
+        );
+      }
+    }
+  });
+  test('«لأهله امكثوا» cites the Shatibiyya 871, the Durrah 21', () {
+    for (final (s, a, w) in [(20, 10, 4), (28, 29, 12)]) {
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: 1,
+            text: 'لِأَهۡلِهِ',
+            kind: VariantKind.farsh,
+            rule: 'comparison',
+          ),
+          'لِأَهۡلِهِ',
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        final aj = id.startsWith('ibn_');
+        expect(r.poem, aj ? Poem.durrah : Poem.shatibiyya, reason: '$id $s');
+        expect(r.mention, aj ? {21} : {871}, reason: '$id $s');
+      }
+    }
+  });
+  test('«يرجعون» of القصص cites the Shatibiyya 949, the Durrah 63 and 64', () {
+    for (final id in ['qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz']) {
+      final qalun = id == 'qalun';
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 28,
+          ayah: 39,
+          word: 11,
+          count: 1,
+          text: qalun ? 'يَرۡجِعُونَ' : 'يُرۡجَعُونَ',
+          kind: VariantKind.farsh,
+          description: qalun ? 'بفتح الياء وكسر الجيم' : '',
+          rule: qalun ? '' : 'comparison',
+        ),
+        'يُرۡجَعُونَ',
+        28,
+        surahs,
+        entries: book.at(28, 39, 11),
+      );
+      final aj = id.startsWith('ibn_');
+      expect(r.poem, aj ? Poem.durrah : Poem.shatibiyya, reason: id);
+      expect(r.mention, aj ? {63, 64} : {949}, reason: id);
+    }
+  });
+  test('«لخسف» cites the Shatibiyya 950, the Durrah 177', () {
+    for (final id in ['qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz']) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 28,
+          ayah: 82,
+          word: 20,
+          count: 1,
+          text: 'لَخُسِفَ',
+          kind: VariantKind.farsh,
+          description: 'بضم الخاء وكسر السين',
+        ),
+        'لَخَسَفَ',
+        28,
+        surahs,
+        entries: book.at(28, 82, 20),
+      );
+      final aj = id.startsWith('ibn_');
+      expect(r.poem, aj ? Poem.durrah : Poem.shatibiyya, reason: id);
+      expect(r.mention, aj ? {177} : {950}, reason: id);
+    }
+  });
+  test(
+    '«سيء، سيئت» cite «وَسِيءَ وَسِيئَتْ كَانَ رَاوِيهِ أَنْبَلَا» (448)',
+    () {
+      for (final (s, a, w) in [(11, 77, 4), (29, 33, 5), (67, 27, 3)]) {
+        for (final id in [
+          'qalun',
+          'bazzi',
+          'qunbul',
+          'ibn_wardan',
+          'ibn_jammaz',
+        ]) {
+          final r = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: s,
+              ayah: a,
+              word: w,
+              count: 1,
+              text: 'س۬يٓءَ',
+              kind: VariantKind.farsh,
+              description: 'بإشمام كسرة السين ضمًّا',
+            ),
+            'سِيٓءَ',
+            s,
+            surahs,
+            entries: book.at(s, a, w),
+          );
+          expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
+          expect(r.mention, {448}, reason: '$id $s:$a');
+          expect(
+            r.asl.map((b) => b.n),
+            id.startsWith('ibn_') ? [7, 8] : isEmpty,
+            reason: '$id $s:$a',
+          );
+        }
+      }
+    },
+  );
+  test('«منجوك» cites the Shatibiyya 806, the Durrah 106 and 107', () {
+    for (final id in ['qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz']) {
+      final ik = id == 'bazzi' || id == 'qunbul';
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 29,
+          ayah: 33,
+          word: 16,
+          count: 1,
+          text: ik ? 'مُنجُوكَ' : 'مُنَجُّوكَ',
+          kind: VariantKind.farsh,
+          description: ik ? 'بإسكان النون وتخفيف الجيم' : '',
+          rule: ik ? '' : 'comparison',
+        ),
+        'مُنَجُّوكَ',
+        29,
+        surahs,
+        entries: book.at(29, 33, 16),
+      );
+      final aj = id.startsWith('ibn_');
+      expect(r.poem, aj ? Poem.durrah : Poem.shatibiyya, reason: id);
+      expect(r.mention, aj ? {106, 107} : {806}, reason: id);
+    }
+  });
+  test(
+    '«ءايت» of العنكبوت cites «آيَةٌ مِنْ رَبِّهِ صُحْبَةٌ دَلَا» (954)',
+    () {
+      for (final id in [
+        'qalun',
+        'bazzi',
+        'qunbul',
+        'ibn_wardan',
+        'ibn_jammaz',
+      ]) {
+        final ik = id == 'bazzi' || id == 'qunbul';
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 29,
+            ayah: 50,
+            word: 4,
+            count: 1,
+            text: ik ? 'ءَايَتٞ' : 'ءَايَٰتٞ',
+            kind: VariantKind.farsh,
+            description: ik ? 'بحذف الألف' : '',
+            rule: ik ? '' : 'comparison',
+          ),
+          'ءَايَٰتٞ',
+          29,
+          surahs,
+          entries: book.at(29, 50, 4),
+        );
+        expect(r.poem, Poem.shatibiyya, reason: id);
+        expect(r.mention, {954}, reason: id);
+      }
     },
   );
 }

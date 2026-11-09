@@ -36,9 +36,12 @@ import 'variant_sheet.dart';
 /// «الرواة» in the top bar: lets the riwayat's panel down beneath it, or
 /// sends it back up.
 class _RiwayatButton extends StatelessWidget {
-  const _RiwayatButton({required this.open});
+  const _RiwayatButton({required this.open, this.small = false});
 
   final ValueNotifier<bool> open;
+
+  /// Beside the handle of the top bar folded away.
+  final bool small;
 
   @override
   Widget build(BuildContext context) => ValueListenableBuilder(
@@ -50,12 +53,14 @@ class _RiwayatButton extends StatelessWidget {
         expanded: on,
         child: Raised(
           key: const ValueKey('riwayat-panel-toggle'),
-          radius: 19,
-          depth: 0.6,
+          radius: small ? 11 : 19,
+          depth: small ? 0.3 : 0.6,
           color: on ? MushafColors.goldLight : null,
           tooltip: on ? 'إخفاء الرواة' : 'إظهار الرواة',
           onTap: () => open.value = !on,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: small
+              ? const EdgeInsets.symmetric(horizontal: 7, vertical: 2)
+              : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -64,11 +69,12 @@ class _RiwayatButton extends StatelessWidget {
                 style: TextStyle(
                   color: MushafColors.green,
                   fontWeight: FontWeight.bold,
+                  fontSize: small ? 11 : null,
                 ),
               ),
               Icon(
                 on ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                size: 20,
+                size: small ? 15 : 20,
                 color: MushafColors.green,
               ),
             ],
@@ -144,8 +150,12 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// The riwayat's panel, opened from the top bar.
   final _riwayatOpen = ValueNotifier<bool>(false);
 
-  /// The lamp's place in the bottom bar, beside the surah's name.
-  final _lampSlot = GlobalKey();
+  /// The small icon of the side the page lies on, beside the lamp: where the
+  /// hint of the open mushaf flies to.
+  final _sideIcon = GlobalKey();
+
+  /// The page area the hint flies over.
+  final _hintArea = GlobalKey();
 
   /// While a page is zoomed in, drags pan it instead of turning pages.
   bool _zoomed = false;
@@ -545,8 +555,11 @@ class _ReaderScreenState extends State<ReaderScreen>
       settings: widget.settings,
       variants: widget.variants,
       arrowAt: two ? null : _headerMiddle,
-      // Its button in the top bar; over the page in full screen, without it.
-      open: _fullScreen ? null : _riwayatOpen,
+      // Its button in the top bar; with the bar folded away, and in full
+      // screen, over the page's header, the lamp and the rest beside it.
+      open: _riwayatOpen,
+      tab: _fullScreen,
+      beside: _tools(small: true),
       // «الجمع للقراءات العشر»: a screen of its own, at the page read.
       onJam: () => Navigator.of(context)
           .push(
@@ -582,11 +595,6 @@ class _ReaderScreenState extends State<ReaderScreen>
         body: Stack(
           children: [
             Positioned.fill(child: SafeArea(child: pages)),
-            // Small, below the frame at its left, across from the button
-            // that ends the full screen.
-            Positioned.fill(
-              child: SafeArea(child: _lamp(slot: false, small: true)),
-            ),
             // Below the frame, on the line of the page's number: it never
             // covers the text nor the frame's band.
             PositionedDirectional(
@@ -668,6 +676,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                         ),
                       ),
                       _RiwayatButton(open: _riwayatOpen),
+                      _tools(small: false),
                       PopupMenuButton<MarginLayout>(
                         tooltip: 'طريقة العرض',
                         initialValue: widget.settings.marginLayout,
@@ -755,21 +764,6 @@ class _ReaderScreenState extends State<ReaderScreen>
               ),
               if (widget.settings.blinkToOpen && _blink.isRunning)
                 _EyeIndicator(blink: _blink, flash: _blinkFlash),
-              if (!two && !_turning)
-                Tooltip(
-                  message: _quran.isRightPage(_page)
-                      ? 'الصفحة في يمين المصحف'
-                      : 'الصفحة في يسار المصحف',
-                  child: GestureDetector(
-                    onTap: () => _showSide(fly: true),
-                    child: OpenMushafView(
-                      right: _quran.isRightPage(_page),
-                      width: 44,
-                      current: _currentPicture,
-                      facing: _facingPicture,
-                    ),
-                  ),
-                ),
               const SizedBox(width: 4),
               Raised(
                 color: MushafColors.green,
@@ -794,20 +788,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         ),
       ),
     );
-    final bottomBar = PageSlider(
-      quran: _quran,
-      page: _page,
-      onGo: _goToPage,
-      // Upright, the lamp beside the surah's name; in landscape at the top
-      // left of the screen.
-      beside: _landscape
-          ? null
-          : SizedBox(
-              key: _lampSlot,
-              width: _GlowLampState.width + 8,
-              height: 36,
-            ),
-    );
+    final bottomBar = PageSlider(quran: _quran, page: _page, onGo: _goToPage);
     return Scaffold(
       body: SafeArea(
         child: Stack(
@@ -816,7 +797,10 @@ class _ReaderScreenState extends State<ReaderScreen>
               child: Column(
                 children: [
                   _CollapsibleReaderBar(open: _topBarOpen, child: topBar),
-                  _barHandle(top: true),
+                  if (_topBarOpen)
+                    _barHandle(top: true)
+                  else
+                    const SizedBox(height: _handleHeight),
                   Expanded(child: pages),
                   if (_landscape) ...[
                     _barHandle(top: false),
@@ -829,73 +813,154 @@ class _ReaderScreenState extends State<ReaderScreen>
                 ],
               ),
             ),
-            Positioned.fill(child: _lamp(slot: !_landscape)),
+            // Over the page: its side of the mushaf reaching down to the frame.
+            if (!_topBarOpen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _barHandle(top: true),
+              ),
           ],
         ),
       ),
     );
   }
 
-  /// The lamp and the mutashabihat's button: in the bottom bar's [slot], or
-  /// at the top left of the screen.
-  Widget _lamp({required bool slot, bool small = false}) => _GlowLamp(
-    settings: widget.settings,
-    slot: slot ? _lampSlot : null,
-    small: small,
-    onTap: _toggleGlow,
-    onLongPress: () => GlowUsulScreen.open(
-      context,
-      settings: widget.settings,
-      variants: widget.variants,
-      quran: _quran,
-    ),
+  /// Beside «الرواة»: the lamp, the mutashabihat's button and the small icon
+  /// of the side of the mushaf the page lies on; [small] on the page's
+  /// header, clear of the frame.
+  Widget _tools({required bool small, bool side = true}) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Padding(
+        padding: EdgeInsets.symmetric(horizontal: small ? 3 : 2),
+        child: _GlowLamp(
+          settings: widget.settings,
+          small: small,
+          onTap: _toggleGlow,
+          onLongPress: () => GlowUsulScreen.open(
+            context,
+            settings: widget.settings,
+            variants: widget.variants,
+            quran: _quran,
+          ),
+        ),
+      ),
+      if (side)
+        _side(
+          width: small ? 24 : 32,
+          // One icon flown to: the one in sight.
+          keyed: small ? _fullScreen : _topBarOpen,
+        ),
+    ],
   );
+
+  /// The small icon of the side of the mushaf the page lies on.
+  Widget _side({required double width, required bool keyed, double? height}) =>
+      _twoPages || _turning
+      ? const SizedBox()
+      : Tooltip(
+          message: _quran.isRightPage(_page)
+              ? 'الصفحة في يمين المصحف'
+              : 'الصفحة في يسار المصحف',
+          child: GestureDetector(
+            onTap: () => _showSide(fly: true),
+            child: OpenMushafView(
+              key: keyed ? _sideIcon : null,
+              right: _quran.isRightPage(_page),
+              width: width,
+              height: height,
+              current: _currentPicture,
+              facing: _facingPicture,
+            ),
+          ),
+        );
+
+  /// The top bar folded away: «الرواة», the lamp and the rest beside its
+  /// handle, over the top of the page; the side of the mushaf as tall as the
+  /// room down to the frame, small again while the riwayat are let down.
+  Widget _foldedBar(Widget handle) => ValueListenableBuilder(
+    valueListenable: _riwayatOpen,
+    builder: (context, open, _) {
+      Widget band(Widget child) => SizedBox(
+        height: _handleHeight,
+        child: Center(child: child),
+      );
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          band(_RiwayatButton(open: _riwayatOpen, small: true)),
+          band(_tools(small: true, side: false)),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: _side(
+              width: 24,
+              // Down to the frame: the handle's row and the page's header.
+              // In landscape, where the header leaves it room.
+              height: open || !_landscape ? null : _handleHeight + 22,
+              keyed: true,
+            ),
+          ),
+          const SizedBox(width: 10),
+          band(handle),
+        ],
+      );
+    },
+  );
+
+  static const _handleHeight = 24.0;
 
   Widget _barHandle({required bool top}) {
     final open = top ? _topBarOpen : _bottomBarOpen;
     final label = top ? 'الشريط العلوي' : 'شريط التنقل السفلي';
-    return SizedBox(
-      height: 24,
-      child: Center(
-        child: Semantics(
-          button: true,
-          expanded: open,
-          child: Material(
-            color: MushafColors.green.withAlpha(24),
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              key: ValueKey(top ? 'top-bar-toggle' : 'bottom-bar-toggle'),
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => setState(() {
-                if (top) {
-                  _topBarOpen = !open;
-                } else {
-                  _bottomBarOpen = !open;
-                }
-              }),
-              child: Tooltip(
-                message: '${open ? 'إخفاء' : 'إظهار'} $label',
-                child: SizedBox(
-                  width: 48,
-                  height: 24,
-                  child: Icon(
-                    top == open
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    size: 22,
-                    color: MushafColors.green,
-                  ),
-                ),
+    final handle = Semantics(
+      button: true,
+      expanded: open,
+      child: Material(
+        color: MushafColors.green.withAlpha(24),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          key: ValueKey(top ? 'top-bar-toggle' : 'bottom-bar-toggle'),
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => setState(() {
+            if (top) {
+              _topBarOpen = !open;
+              // The riwayat folded away with the bar they open from.
+              if (open) _riwayatOpen.value = false;
+            } else {
+              _bottomBarOpen = !open;
+            }
+          }),
+          child: Tooltip(
+            message: '${open ? 'إخفاء' : 'إظهار'} $label',
+            child: SizedBox(
+              width: 48,
+              height: 24,
+              child: Icon(
+                top == open
+                    ? Icons.keyboard_arrow_up
+                    : Icons.keyboard_arrow_down,
+                size: 22,
+                color: MushafColors.green,
               ),
             ),
           ),
         ),
       ),
     );
+    // The top bar folded away: its room kept, the row over the page.
+    if (top && !open) return _foldedBar(handle);
+    return SizedBox(
+      height: _handleHeight,
+      child: Center(child: handle),
+    );
   }
 
   /// The page area with the right / left hint flying to the top bar.
   Widget _withHint(Widget pages) => Stack(
+    key: _hintArea,
     children: [
       Positioned.fill(child: pages),
       // What the last eye gesture did.
@@ -944,12 +1009,34 @@ class _ReaderScreenState extends State<ReaderScreen>
             progress: _hint.value,
             current: _currentPicture,
             facing: _facingPicture,
-            // Just under the small icon by the page number.
-            target: const Alignment(-0.78, -1.04),
+            // Just under the small icon beside the lamp.
+            target: _hintTarget(),
           ),
         ),
     ],
   );
+
+  /// Where the small icon of the page's side is, over the page area, as
+  /// laid out last.
+  Alignment _hintTarget() {
+    final icon = _sideIcon.currentContext?.findRenderObject();
+    final area = _hintArea.currentContext?.findRenderObject();
+    if (icon is! RenderBox ||
+        area is! RenderBox ||
+        !icon.hasSize ||
+        !area.hasSize ||
+        !icon.attached ||
+        !area.attached) {
+      return const Alignment(0, -1.04);
+    }
+    final at = area.globalToLocal(
+      icon.localToGlobal(icon.size.bottomCenter(Offset.zero)),
+    );
+    return Alignment(
+      at.dx / area.size.width * 2 - 1,
+      at.dy / area.size.height * 2 - 1,
+    );
+  }
 
   /// Small dialog to go to any page.
   Future<void> _pickPage() async {
@@ -1065,28 +1152,21 @@ class _EyeIndicator extends StatelessWidget {
   }
 }
 
-/// Beside the surah's name in the bottom bar (in landscape, at the top left
-/// of the screen): the lamp of «تنبيه الاختلافات» (a tap lights
-/// the words that differ from Hafs, its rays flickering, or puts them out)
-/// and the button of the mutashabihat. Dragged, they stay where they are
-/// left; a long press on the mutashabihat's brings them back beside the name,
-/// on the lamp opens the usul it lights.
+/// Beside «الرواة»: the lamp of «تنبيه الاختلافات» (a tap lights the words
+/// that differ from Hafs, its rays flickering, or puts them out; held, it
+/// opens the usul it lights) and the button of the mutashabihat.
 class _GlowLamp extends StatefulWidget {
   const _GlowLamp({
     required this.settings,
-    this.slot,
     this.small = false,
     required this.onTap,
     required this.onLongPress,
   });
 
-  /// Full screen: smaller, below the frame at the left.
+  /// On the page's header: smaller, clear of the frame.
   final bool small;
 
   final ReaderSettings settings;
-
-  /// Its place, in the bottom bar; null: the top left of the screen.
-  final GlobalKey? slot;
   final VoidCallback onTap;
 
   /// Held: the usul of the hamesh, each lit or not.
@@ -1098,14 +1178,9 @@ class _GlowLamp extends StatefulWidget {
 
 class _GlowLampState extends State<_GlowLamp>
     with SingleTickerProviderStateMixin {
-  static const _full = 34.0;
   static const _gap = 4.0;
 
-  /// The two buttons side by side, at their full size.
-  static const width = 2 * _full + _gap;
-
-  double get _size => widget.small ? 24 : _full;
-  double get _width => 2 * _size + _gap;
+  double get _size => widget.small ? 18 : 30;
 
   /// The rays: flickering only while the lamp is lit, so nothing moves
   /// (nor is drawn again) when it is out.
@@ -1113,9 +1188,6 @@ class _GlowLampState extends State<_GlowLamp>
     vsync: this,
     duration: const Duration(milliseconds: 900),
   );
-
-  /// Where the lamp is while dragged, in pixels.
-  Offset? _dragged;
 
   @override
   void dispose() {
@@ -1135,91 +1207,19 @@ class _GlowLampState extends State<_GlowLamp>
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.settings,
-    builder: (context, _) => LayoutBuilder(
-      builder: (context, box) {
-        final room = Size(
-          math.max(box.maxWidth - _width, 1),
-          math.max(box.maxHeight - _size, 1),
-        );
-        final lit = widget.settings.diffAlert != null;
-        _syncRays(lit);
-        final at = _dragged ?? _place(context, room);
-        return Stack(
-          children: [
-            Positioned(
-              left: at.dx.clamp(0.0, room.width),
-              top: at.dy.clamp(0.0, room.height),
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onPanStart: (_) => _dragged = at,
-                onPanUpdate: (d) => setState(() {
-                  final p = (_dragged ?? at) + d.delta;
-                  _dragged = Offset(
-                    p.dx.clamp(0.0, room.width),
-                    p.dy.clamp(0.0, room.height),
-                  );
-                }),
-                onPanEnd: (_) {
-                  final p = _dragged;
-                  _dragged = null;
-                  if (p != null) {
-                    widget.settings.lampAt = Offset(
-                      p.dx / room.width,
-                      p.dy / room.height,
-                    );
-                  }
-                },
-                onLongPress: () => widget.settings.lampAt = null,
-                child: Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _lamp(lit),
-                      const SizedBox(width: _gap),
-                      _mutashabihat(),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    ),
+    builder: (context, _) {
+      final lit = widget.settings.diffAlert != null;
+      _syncRays(lit);
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _lamp(lit),
+          const SizedBox(width: _gap),
+          _mutashabihat(),
+        ],
+      );
+    },
   );
-
-  /// Where it was left; else in its place in the bottom bar, or at the top
-  /// left of the screen.
-  Offset _place(BuildContext context, Size room) {
-    final left = widget.settings.lampAt;
-    if (left != null) {
-      return Offset(left.dx * room.width, left.dy * room.height);
-    }
-    if (widget.small) return Offset(16, room.height);
-    if (widget.slot == null) return const Offset(6, 0);
-    // Measured once the frame is laid out; out of sight until then.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureSlot());
-    final at = _slotAt;
-    if (at == null) return Offset(room.width, room.height);
-    return Offset(at.dx - _width / 2, at.dy - _size / 2);
-  }
-
-  /// The middle of its place in the bottom bar, here.
-  Offset? _slotAt;
-
-  void _measureSlot() {
-    if (!mounted) return;
-    final at = widget.slot?.currentContext?.findRenderObject();
-    final box = context.findRenderObject();
-    if (at is! RenderBox || !at.hasSize || box is! RenderBox || !box.hasSize) {
-      return;
-    }
-    final middle = box.globalToLocal(
-      at.localToGlobal(at.size.center(Offset.zero)),
-    );
-    if (middle != _slotAt) setState(() => _slotAt = middle);
-  }
 
   Widget _lamp(bool lit) => Tooltip(
     // Held, it opens the usul it lights.
@@ -1250,7 +1250,7 @@ class _GlowLampState extends State<_GlowLamp>
               ),
               child: Icon(
                 lit ? Icons.lightbulb : Icons.lightbulb_outline,
-                size: widget.small ? 15 : 20,
+                size: widget.small ? 12 : 18,
                 color: lit ? MushafColors.gold : MushafColors.green,
               ),
             ),
@@ -1282,7 +1282,7 @@ class _GlowLampState extends State<_GlowLamp>
             // Two pages alike, one over the other.
             child: Icon(
               on ? Icons.difference_rounded : Icons.difference_outlined,
-              size: widget.small ? 14 : 19,
+              size: widget.small ? 11 : 17,
               color: colour,
             ),
           ),

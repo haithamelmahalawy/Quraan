@@ -274,6 +274,23 @@ class Manzumat {
     final ruleVerses = _ruleVerses(poem, reading, hafs);
     // The verses reviewed for the word stand whole, though the book quotes one.
     final reviewed = _reviewedVerses(poem, reading, hafs);
+    // A reviewed bayt in another chapter than the book's quote (the sin of
+    // «يَحۡسَبَنَّ» in al-Baqara beside its ya in Al 'Imran): its chapter too.
+    final told = {for (final b in inChapter) b.chapter};
+    final more = {
+      for (final b in verses(poem))
+        if (reviewed.contains(b.n) && !told.contains(b.chapter)) b.chapter,
+    };
+    if (more.isNotEmpty) {
+      inChapter = [
+        for (final b in verses(poem))
+          if (told.contains(b.chapter) || more.contains(b.chapter)) b,
+      ];
+      chapter = [
+        for (final c in chapters(poem))
+          if (told.contains(c) || more.contains(c)) c,
+      ].join(' • ');
+    }
     final selected = reviewed.isNotEmpty
         ? reviewed
         : quoted.isNotEmpty
@@ -355,8 +372,10 @@ class Manzumat {
   }
 
   /// Words a bayt of the Durrah names for another of its three, Abu Ja'far
-  /// left to his asl: «فَنُـۨجِي» (يوسف ١١٠), «نُجِّيَ حَامِدٌ» Ya'qub's.
-  static const _durrahSilentOnAbuJafar = {'12:110:10'};
+  /// left to his asl: «فَنُـۨجِي» (يوسف ١١٠), «نُجِّيَ حَامِدٌ» Ya'qub's;
+  /// «إِنَّا دَمَّرۡنَٰهُمۡ» (النمل ٥١), «وَإِنَّا وَإِنَّ افْتَحْ حَلاَ»; «فَذَٰنِكَ»
+  /// (القصص ٣٢), «فَذَانِكَ يُعْتَلَا».
+  static const _durrahSilentOnAbuJafar = {'12:110:10', '27:51:5', '28:32:14'};
 
   /// Abu Ja'far's words cited in both: the Shatibiyya's bayt of the word,
   /// the Durrah's of Abu Ja'far over it. «وَنَآءَ» (الإسراء ٨٣، فصلت ٥١):
@@ -1096,6 +1115,22 @@ class Manzumat {
   /// The verses reviewed word by word, each as the reviewer named it: they
   /// stand before a chapter's rule and before what the book quotes.
   Set<int> _reviewedVerses(Poem poem, Variant v, String hafs) {
+    // «تَحۡسَبَنَّ، يَحۡسَبَنَّ» told by a bayt of their own (the ya or the ta):
+    // the bayt of the sin with it, Qalun and Ibn Kathir's kasra «وَيَحْسَبُ
+    // كَسْرُ السِّينِ مُسْتَقبِلاً سَمَا», Abu Ja'far's fatha «كَيَحْسَبُ أُدْ».
+    final yahsibanna = '${v.surah}:${v.ayah}:${v.word}';
+    if (!v.isUsul &&
+        poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId)) {
+      final own = _yahsibannaShatibiyya[yahsibanna];
+      if (own != null) return {538, ...own};
+    }
+    if (!v.isUsul &&
+        poem == Poem.durrah &&
+        const {'ibn_wardan', 'ibn_jammaz'}.contains(v.riwayaId)) {
+      final own = _yahsibannaDurrah[yahsibanna];
+      if (own != null) return {83, ...own};
+    }
     if (poem == Poem.shatibiyya && _istuhiqqa(v)) return {627};
     if (poem == Poem.shatibiyya && _kharraqu(v)) return {656};
     if (poem == Poem.shatibiyya && _sihr(v)) return {742};
@@ -1124,6 +1159,28 @@ class Manzumat {
           '35:9:3',
         }.contains('${v.surah}:${v.ayah}:${v.word}')) {
       return {490, 491};
+    }
+    // «أَرۡجِهۡ» (الأعراف ١١١، الشعراء ٣٦): Ibn Kathir's hamza, his damma and
+    // its silah, Qalun's kasra without it: «وَعى نَفَرٌ أَرْجِئْهُ بِالْهَمْزِ
+    // سَاكِنا / وَفي الْهَاءِ ضَمٌّ لَفَّ دَعْوَاهُ حَرْمَلَا / وَأَسْكِنْ نَصِيراً
+    // فَازَ وَاكْسِرْ لِغَيْرِهِمْ / وَصِلْهَا جوَاداً دُونَ رَيْبٍ لِتُوصَلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        !v.isUsul &&
+        const {
+          '7:111:1',
+          '26:36:1',
+        }.contains('${v.surah}:${v.ayah}:${v.word}')) {
+      return {166, 167};
+    }
+    // «ٱلرِّيَٰحَ» (الفرقان ٤٨), Ibn Kathir's one, Qalun's many as Hafs: from the
+    // bayt that starts the word to the one naming it, «وَفي الْفُرْقَانِ زَاكِيهِ
+    // هَلَّلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        !v.isUsul &&
+        '${v.surah}:${v.ayah}:${v.word}' == '25:48:3') {
+      return {490, 491, 492};
     }
     // Qalun's «وَمَحْيَآيْ» (الأنعام ١٦٢): «وَمَحْيَايَ وَالإِسْكَانُ صَحَّ تَحَمُّلَا».
     if (poem == Poem.shatibiyya &&
@@ -1172,11 +1229,22 @@ class Manzumat {
         at == '10:81:7') {
       return {130, 131};
     }
-    // Abu Ja'far's «يُضَعَّفُ» (هود ٢٠): «يُضَاعِفُهُ انْصِبْ حُزْ وَشَدِّدْهُ كَيْفَ
-    // جَا».
+    // Abu Ja'far's «يُضَعَّفُ» and its like, every place: «يُضَاعِفُهُ انْصِبْ حُزْ
+    // وَشَدِّدْهُ كَيْفَ جَا».
     if (poem == Poem.durrah &&
         qiraaOf(v.riwayaId).id == 'abu_jafar' &&
-        at == '11:20:14') {
+        const {
+          '2:245:7',
+          '2:261:18',
+          '4:40:8',
+          '4:40:9',
+          '11:20:14',
+          '25:69:0',
+          '33:30:7',
+          '57:11:7',
+          '57:18:7',
+          '64:17:5',
+        }.contains(at)) {
       return {81};
     }
     // Abu Ja'far's «أَنِّي لَكُمۡ» (هود ٢٥): «وَافْتِحِ اتْلُ فَا / قَ إِنِّي لَكُمْ».
@@ -1319,12 +1387,211 @@ class Manzumat {
                 const {'bazzi', 'qunbul'}.contains(v.riwayaId))) {
       return {899};
     }
+    // Ibn Kathir's «قُل كَم» (المؤمنون ١١٢): «وَفي قَالَ كَمْ قُلْ دُونَ شَكٍّ».
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        at == '23:112:0') {
+      return {911};
+    }
+    // Al-Bazzi stops on «هَيۡهَاتَ» (المؤمنون ٣٦) with the ha: «وَلاَتَ رِضًى
+    // هَيْهَاتَ هَادِيِه رُفِّلَا».
+    if (poem == Poem.shatibiyya &&
+        v.riwayaId == 'bazzi' &&
+        (at == '23:36:0' || at == '23:36:1')) {
+      return {379};
+    }
+    // Ibn Kathir's kasra of «عِيُون، شِيُوخ، جِيُوب» (دَانَهُ), and Qalun's damma
+    // as Hafs's: «وَضَمَّ الْغُيُوبِ يَكْسِرَانِ عُيُوناً الْـ / ـعُيُونِ شُيُوخاً
+    // دَانَهُ صُحْبَهٌ مِلَا / جُيُوبِ مُنِيرٌ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        !v.isUsul) {
+      final bare = v.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '');
+      if (bare.contains('جيوب')) return {628, 629};
+      if (RegExp('عيون|شيوخ').hasMatch(bare)) return {628};
+    }
+    // «بُيُوت» in every place, its ba broken by Qalun and Ibn Kathir: «وَكَسْرُ
+    // بُيُوتٍ وَالْبُيُوتَ يُضَمُّ عَنْ / حِمَى جِلَّةٍ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        _buyut.contains(at)) {
+      return {503};
+    }
+    // «يَحۡسِبُ» and its like, the future, its sin broken by Qalun and Ibn
+    // Kathir: «وَيَحْسَبُ كَسْرُ السِّينِ مُسْتَقبِلاً سَمَا / رِضَاهُ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        _yahsibu.contains(at)) {
+      return {538};
+    }
     // Ibn Kathir's «أُفَّ» (الإسراء ٢٣، الأنبياء ٦٧، الأحقاف ١٧), its fa opened:
     // «وَفَا أُفِّ كُلِّهاَ / بِفَتْحٍ دَناَ كُفْؤًا وَنَوِّنْ عَلَى اعْتِلَا».
     if (poem == Poem.shatibiyya &&
         const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
         const {'17:23:18', '21:67:0', '46:17:3'}.contains(at)) {
       return {818};
+    }
+    // «فَٱسۡرِ» (هود ٨١، الحجر ٦٥، الدخان ٢٣) and «أَنِ ٱسۡرِ» (طه ٧٧، الشعراء
+    // ٥٢), the hamza of wasl for Nafi' and Ibn Kathir: «وَفَاسْرِ أَنِ اسْرِ
+    // الْوَصْلُ أَصْلٌ دَناَ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        const {
+          '11:81:8',
+          '15:65:0',
+          '44:23:0',
+          '20:77:4',
+          '26:52:3',
+        }.contains(at)) {
+      return {765};
+    }
+    // «يَتۡبَعُوكُمۡ» (الأعراف ١٩٣) and «يَتۡبَعُهُمُ» (الشعراء ٢٢٤) light for
+    // Nafi', Ibn Kathir as Hafs: «وَلاَ يَتْبَعُوكُمْ خَفَّ مَعْ فَتْحِ بَائِهِ
+    // / وَيَتْبَعُهُمْ فِي الظُّلَّةِ احْتَلَّ وَاعْتَلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        !v.isUsul &&
+        (at == '7:193:5' || at == '26:224:1')) {
+      return {711};
+    }
+    // «أَلَا يَا ٱسۡجُدُواْ» (النمل ٢٥): al-Kisa'i's, «أَلاَ يَسْجُدُوا رَاوٍ
+    // وَقِفْ مُبْتَلىً أَلاَ / وَياَ وَاسْجُدُوا ... أَرَادَ أَلاَ يَا هؤُلاَءِ
+    // اسْجُدُوا»; Abu Ja'far's and Ruways's, «وَإِذْ طَابَ قُلْ أَلَا».
+    // «سَأۡقَيۡهَا» (النمل ٤٤), «بِٱلسُّوقِ» (ص ٣٣), «سُؤۡقِهِۦ» (الفتح ٢٩):
+    // Qunbul's hamza, Qalun and al-Bazzi as Hafs: «مَعَ السُّوقِ سَاقَيهاَ
+    // وَسُوقِ اهْمِزُوا زَكَا».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        const {'27:44:10', '38:33:4', '48:29:38'}.contains(at)) {
+      return {938};
+    }
+    // «تَذَّكَّرُونَ» (النمل ٦٢): the ta, «يَذَّكَّرُونَ لَهُ حُلَا», its dhal
+    // shaddaed, «وَتَذَّكَّرُونَ الْكُلُّ خَفَّ عَلَى شَذَا»; Abu Ja'far's,
+    // «وَطَرَى خِطَا / بُ يَذَّكَّرُوا».
+    if (at == '27:62:15' && !v.isUsul) {
+      if (poem == Poem.shatibiyya &&
+          const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId)) {
+        return {941, 677};
+      }
+      if (poem == Poem.durrah &&
+          const {'ibn_wardan', 'ibn_jammaz'}.contains(v.riwayaId)) {
+        return {175};
+      }
+    }
+    // The nun shaddaed by Ibn Kathir (النساء ١٦، طه ٦٣، الحج ١٩، القصص ٢٧ و٣٢،
+    // فصلت ٢٩): «وَهذَانِ هاتَيْنِ الَّلذَانِ الَّلذَيْنِ قُلْ / يُشَدَّدُ لِلْمَكِّيْ
+    // فَذَانِكَ دُمْ حَلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        !v.isUsul &&
+        const {
+          '4:16:0',
+          '20:63:2',
+          '22:19:0',
+          '28:27:7',
+          '28:32:14',
+          '41:29:5',
+        }.contains(at)) {
+      return {593};
+    }
+    // «لِأَهۡلِهِ ٱمۡكُثُوٓاْ» (طه ١٠، القصص ٢٩), its ha broken as Hafs's, Hamza's
+    // put: «لِحَمْزَةَ فَاضْمُمْ كَسْرَهاَ أَهْلِهِ امْكُثُوا / مَعاً»; Abu Ja'far's,
+    // «وَهَا أَهْلِهِ قَبْلَ امْكُثُوا الْكَسْرُ فُصِّلَا».
+    if (at == '20:10:4' || at == '28:29:12') {
+      if (poem == Poem.shatibiyya &&
+          const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId)) {
+        return {871};
+      }
+      if (poem == Poem.durrah &&
+          const {'ibn_wardan', 'ibn_jammaz'}.contains(v.riwayaId)) {
+        return {21};
+      }
+    }
+    // «لَا يُرۡجَعُونَ» (القصص ٣٩): Qalun's named, Ibn Kathir's with Hafs,
+    // «نَمَا نَفَرٌ بِالضَّمِّ وَالْفَتْحِ يَرْجِعُو / نَ»; Abu Ja'far's as Hafs's,
+    // «وَيُرْجَعُ كَيْفَ جَا / إِذَا كَانَ لِلأُخْرَى فَسَمِّ حُلًى حَلَا / وَالامْرُ
+    // اتْلُ وَاعْكِسْ أَوَّلَ الْقَصِّ».
+    if (at == '28:39:11' && !v.isUsul) {
+      if (poem == Poem.shatibiyya &&
+          const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId)) {
+        return {949};
+      }
+      if (poem == Poem.durrah &&
+          const {'ibn_wardan', 'ibn_jammaz'}.contains(v.riwayaId)) {
+        return {63, 64};
+      }
+    }
+    // «لَخُسِفَ» (القصص ٨٢): «وَفِي خُسِفَ الْفَتْحَتَيْنِ حَفْصٌ تَنَخَّلَا»; Abu
+    // Ja'far's, «وَسَمِّ خُسِفْ وَنَشْـ / أَةً حَافِظٌ».
+    if (at == '28:82:20' && !v.isUsul) {
+      if (poem == Poem.shatibiyya &&
+          const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId)) {
+        return {950};
+      }
+      if (poem == Poem.durrah &&
+          const {'ibn_wardan', 'ibn_jammaz'}.contains(v.riwayaId)) {
+        return {177};
+      }
+    }
+    // «سِيٓءَ، سِيٓـَٔتۡ» (هود ٧٧، العنكبوت ٣٣، الملك ٢٧), the ishmam Qalun's:
+    // «وَحِيلَ بِإِشْمَامٍ وَسِيقَ كَمَا رَسَا / وَسِيءَ وَسِيئَتْ كَانَ رَاوِيهِ
+    // أَنْبَلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        const {'11:77:4', '29:33:5', '67:27:3'}.contains(at)) {
+      return {448};
+    }
+    // «لَنُنَجِّيَنَّهُۥ، مُنَجُّوكَ» (العنكبوت ٣٢، ٣٣): «وَفِي الْعَنْكَبُوتِ نُنْـ /
+    // ـجِيَنَّ شَفَا مُنْجُوكَ صُحْبَتُهُ دَلَا»; Abu Ja'far's shaddaed, «يُنْجِي
+    // فَثَقِّلَا / بِثَانٍ أَتَى وَالْخِفَّ فِي الْكُلِّ حُزْ».
+    if ((at == '29:32:9' || at == '29:33:16') && !v.isUsul) {
+      if (poem == Poem.shatibiyya &&
+          const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId)) {
+        return {806};
+      }
+      if (poem == Poem.durrah &&
+          const {'ibn_wardan', 'ibn_jammaz'}.contains(v.riwayaId)) {
+        return {106, 107};
+      }
+    }
+    // «ءَايَٰتٞ مِّن رَّبِّهِۦ» (العنكبوت ٥٠), one for Ibn Kathir: «وَمُوَحِّدٌ / هُنَا
+    // آيَةٌ مِنْ رَبِّهِ صُحْبَةٌ دَلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        at == '29:50:4' &&
+        !v.isUsul) {
+      return {954};
+    }
+    if (at == '27:25:0') {
+      if (poem == Poem.shatibiyya &&
+          const {'duri_kisai', 'abul_harith'}.contains(v.riwayaId)) {
+        return {934, 935};
+      }
+      if (poem == Poem.durrah &&
+          const {'ibn_wardan', 'ibn_jammaz', 'ruways'}.contains(v.riwayaId)) {
+        return {174};
+      }
+    }
+    // «بِشِهَابِ» (النمل ٧) without the tanween: «شِهَابٍ بِنُونٍ ثِقْ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        at == '27:7:12') {
+      return {932};
+    }
+    // «سَبَإٖ» (النمل ٢٢، سبأ ١٥): Qalun's as Hafs's, al-Bazzi's open without
+    // the tanween, Qunbul's quiet: «مَعاً سَبَأَ افْتَحْ دُونَ نُونٍ حِمًى هُدًى
+    // / وَسَكِّنْهُ وَانْوِ الْوَقْفَ زُهْراً وَمَنْدَلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        (at == '27:22:11' || at == '34:15:2')) {
+      return {933};
+    }
+    // «فَرِهِينَ» (الشعراء ١٤٩) without the alif, the madd «ذَاعَ» others':
+    // «وَفِي حَاذِرُونَ الْمدُّ مَا ثُلَّ فَارِهِيْـ / ـنَ ذَاعَ».
+    if (poem == Poem.shatibiyya &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        at == '26:149:4') {
+      return {927};
     }
     // «ٱرۡكَب مَّعَنَا» (هود ٤٢): al-Bazzi and Qalun by khulf, Qunbul not named,
     // reading it merged: «وَفِي ارْكَبْ هُدَى بَرٍّ قَرِيبٍ بِخُلْفِهِمْ».
@@ -1351,6 +1618,14 @@ class Manzumat {
     if (poem == Poem.durrah && qiraaOf(v.riwayaId).id == 'abu_jafar') {
       if (at == '11:111:0') return {133};
       if (at == '11:114:4') return {134};
+      // «يَتَّبِعُوكُمۡ، يَتَّبِعُهُمُ» shaddaed, as Hafs: «نَكِدًا أَلاَ افْـ /
+      // تَحَنْ يَقْتُلُوا مَعْ يَتْبَعُ اشْدُدْ».
+      if ((at == '7:193:5' || at == '26:224:1') && !v.isUsul) return {115};
+      // «بِشِهَابِ» and «سَبَإٖ», the tanween Ya'qub's: «وَنَوِّنْ سَبَأْ شِهَا /
+      // بِ حُزْ».
+      if (const {'27:7:12', '27:22:11', '34:15:2'}.contains(at) && !v.isUsul) {
+        return {174};
+      }
       // «إِنَّكَ لَأَنتَ يُوسُفُ» (يوسف ٩٠) on the khabar: «وَإِنَّكْ لأَنْتَ أُدْ».
       if (at == '12:90:1') return {24};
       // «لِأَهَبَ» (مريم ١٩) with its hamza: «وَالْهَمْزُ فِي لأَهَبْ أَلاَ».
@@ -1364,6 +1639,19 @@ class Manzumat {
       // «لِتُحۡصِنَكُم» (الأنبياء ٨٠) with the ta, as Hafs: «وَطِبْ نُوْنَ يُحْصِنْ
       // أَنِّثاً أُدْ».
       if (at == '21:80:4' && !v.isUsul) return {162};
+      // «يَتَأَلَّ» (النور ٢٢) for «يَأۡتَلِ»: «وَلاَ يَتَأَلَّ اعْلَمْ».
+      if (at == '24:22:1') return {170};
+      // «أَرۡجِهِ» (الأعراف ١١١، الشعراء ٣٦): Ibn Wardan's kasra short, Ibn
+      // Jammaz's with its silah: «وَبِالْقَصْرِ طُفْ وَأَرْ / جِهِ بِنْ وَأَشْبِعْ جُدْ».
+      if ((at == '7:111:1' || at == '26:36:1') && !v.isUsul) return {20};
+      // «وَيَتَّقِهِ» (النور ٥٢): Ibn Jammaz's silah, Ibn Wardan's sukun:
+      // «كَيَتَّقْهِ وَامْدُدْ جُدْ وَسَكِّنْ بِهِ».
+      if (at == '24:52:6') return {19};
+      // «يَحۡسَبُ» and its like opened, as Hafs: «وَمَيْسَرَةِ افْتَحَاً / كَيَحْسَبُ
+      // أُدْ».
+      if (_yahsibu.contains(at) && !v.isUsul) return {83};
+      // «بُيُوت» with the ba joined, as Hafs: «بُيُوتَ اضْمُمًا».
+      if (_buyut.contains(at) && !v.isUsul) return {77};
       // «رَبُّ» (الأنبياء ١١٢) and «وَرَبَـَٔتۡ» (الحج ٥، فصلت ٣٩): «وَبَا رَبِّ
       // ضُمَّ اهْمِزْ مَعًا رَبَأَتْ أَتَى».
       if (const {'21:112:1', '22:5:63', '41:39:11'}.contains(at)) return {164};
@@ -2072,3 +2360,98 @@ class Manzumat {
     return null;
   }
 }
+
+/// «يَحۡسِبُ» and its like, the future (أَيَحۡسِبُونَ، تَحۡسِبُهُمۡ): Qalun and Ibn
+/// Kathir break its sin, Abu Ja'far opens it. Not those told by a bayt of
+/// their own (وَلَا يَحۡسَبَنَّ in آل عمران، الأنفال ٥٩، النور ٥٧).
+const _yahsibu = {
+  '2:273:11',
+  '3:78:6',
+  '7:30:13',
+  '14:42:1',
+  '14:47:1',
+  '18:18:0',
+  '18:104:7',
+  '23:55:0',
+  '24:11:7',
+  '24:15:10',
+  '24:39:5',
+  '25:44:1',
+  '27:88:2',
+  '33:20:0',
+  '43:37:4',
+  '43:80:1',
+  '58:18:9',
+  '59:14:14',
+  '63:4:11',
+  '75:3:0',
+  '75:36:0',
+  '90:5:0',
+  '90:7:0',
+  '104:3:0',
+};
+
+/// «بُيُوت» and its like (ٱلۡبُيُوتَ، بُيُوتِكُمۡ، بُيُوتِهِنَّ), every place: Qalun
+/// and Ibn Kathir break its ba, Abu Ja'far joins it.
+const _buyut = {
+  '2:189:12',
+  '2:189:20',
+  '3:49:36',
+  '3:154:54',
+  '4:15:13',
+  '7:74:16',
+  '10:87:8',
+  '10:87:10',
+  '15:82:4',
+  '16:68:8',
+  '16:80:4',
+  '16:80:11',
+  '24:27:5',
+  '24:27:7',
+  '24:29:5',
+  '24:36:1',
+  '24:61:18',
+  '24:61:20',
+  '24:61:23',
+  '24:61:26',
+  '24:61:29',
+  '24:61:32',
+  '24:61:35',
+  '24:61:38',
+  '24:61:41',
+  '24:61:59',
+  '26:149:3',
+  '27:52:1',
+  '29:41:13',
+  '33:13:16',
+  '33:33:2',
+  '33:34:4',
+  '33:53:5',
+  '43:33:10',
+  '43:34:0',
+  '59:2:33',
+  '65:1:15',
+};
+
+/// «تَحۡسَبَنَّ، يَحۡسَبَنَّ» with a bayt of their own for Qalun and Ibn Kathir
+/// (ghayb or khitab, the ba of يَحۡسَبُنَّهُمۡ), told beside the sin's.
+const _yahsibannaShatibiyya = <String, Set<int>>{
+  '3:169:1': {577},
+  '3:178:1': {579},
+  '3:180:1': {579},
+  '3:188:1': {583, 584},
+  '3:188:13': {583, 584},
+  '8:59:1': {720},
+  '24:57:1': {720},
+};
+
+/// The same for Abu Ja'far, in the Durrah.
+const _yahsibannaDurrah = <String, Set<int>>{
+  '3:169:1': {},
+  '3:178:1': {},
+  '3:180:1': {},
+  '3:188:1': {90},
+  '3:188:13': {90},
+  '8:59:1': {119},
+  '24:57:1': {171},
+};

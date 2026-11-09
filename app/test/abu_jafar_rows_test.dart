@@ -79,6 +79,11 @@ void main() {
           // Its madd drawn where Hafs has none, made lazim by the reading's
           // sukun after it (ٱثۡنَآ عۡشَرَ for ٱثۡنَا عَشَرَ).
           if (own.first.contains('ٓ') && !first.contains('ٓ')) continue;
+          // Written as Hafs's on the page, told apart in the hamesh
+          // (أَلَا يَا ٱسۡجُدُواْ).
+          if (v.length > 8 && (v[8] as Map).containsKey('marginText')) {
+            continue;
+          }
           if (sameAsHafs(own.first, first) || sameAsHafs(own.last, last)) {
             wrong.add('${v[0]}:${v[1]}:${v[2]}+$count ${v[4]}');
           }
@@ -927,7 +932,7 @@ void main() {
       }
       for (final (s, a, w, how) in [
         (20, 77, 4, 'بكسر النون وإبدال همزة القطع بهمزة وصل'),
-        (26, 52, 3, 'بوصل الهمزة، ويلزم منه كسر النون وصلاً'),
+        (26, 52, 3, 'بكسر النون وإبدال همزة القطع بهمزة وصل'),
         (37, 17, 0, 'بإسكان الواو'),
         (56, 48, 0, 'بإسكان الواو'),
         (75, 27, 1, 'بالإدغام دون سكت'),

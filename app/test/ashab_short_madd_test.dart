@@ -83,7 +83,7 @@ void main() {
     expect(firstSakinNote('بضم النون لالتقاء الساكنين'), 'بضم النون وصلًا');
   });
 
-  test('a reader with a farsh in the word is cited for it alone', () {
+  test('a word with a farsh is cited for its farsh alone', () {
     Variant row(String id, VariantKind kind, String d, {String rule = ''}) =>
         Variant(
           riwayaId: id,
@@ -103,9 +103,7 @@ void main() {
     final silahOfCompared = row('bazzi', VariantKind.usul, 'بصلة ميم الجمع');
     expect(citedReadings([silah, farsh, usulOnly, compared, silahOfCompared]), [
       farsh,
-      usulOnly,
       compared,
-      silahOfCompared,
     ]);
   });
 

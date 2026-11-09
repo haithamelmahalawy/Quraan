@@ -262,7 +262,7 @@ void main() {
       final keys = [
         for (final e
             in find
-                .descendant(of: strip, matching: find.byType(InkWell))
+                .descendant(of: strip, matching: find.byType(GestureDetector))
                 .evaluate())
           (e.widget.key as ValueKey<String>).value,
       ];
@@ -279,6 +279,10 @@ void main() {
           .widget<ReaderScreen>(find.byType(ReaderScreen))
           .settings;
       expect(settings.displayed, 'ibn_wardan');
+      // Pressed back into the band, the others raised out of it.
+      Size face(String id) =>
+          t.getSize(find.byKey(ValueKey('frame-riwaya-$id')).hitTestable());
+      expect(face('ibn_wardan').height, lessThan(face('warsh').height));
       await t.tap(
         find.byKey(const ValueKey('frame-riwaya-hafs')).hitTestable(),
       );
@@ -294,7 +298,7 @@ void main() {
     final keys = [
       for (final e
           in find
-              .descendant(of: strip, matching: find.byType(InkWell))
+              .descendant(of: strip, matching: find.byType(GestureDetector))
               .evaluate())
         (e.widget.key as ValueKey<String>).value,
     ];

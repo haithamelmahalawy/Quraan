@@ -84,7 +84,7 @@ void main() {
   ScrollController controller(WidgetTester t) =>
       t.widget<SingleChildScrollView>(central()).controller!;
 
-  testWidgets('the lamp lights the differences or puts them out, and moves', (
+  testWidgets('the lamp lights the differences or puts them out, beside «الرواة»', (
     t,
   ) async {
     final settings = ReaderSettings.memory(selected: {'warsh'})
@@ -101,24 +101,15 @@ void main() {
     final similar = find.byKey(const ValueKey('mutashabihat-toggle'));
     expect(lamp.hitTestable(), findsOneWidget);
     expect(similar.hitTestable(), findsOneWidget);
-    // In the bottom bar, beside the surah's name, on its line.
-    final at = t.getRect(lamp);
-    final pair = at.expandToInclude(t.getRect(similar));
-    final name = t.getRect(
-      find.descendant(
-        of: find.byType(PageSlider),
-        matching: find.byWidgetPredicate(
-          (w) => w is Text && (w.data?.startsWith('سورة ') ?? false),
-        ),
-      ),
+    // In the top bar, beside «الرواة», at its left.
+    final at = t.getRect(lamp.hitTestable());
+    final riwayat = t.getRect(
+      find.byKey(const ValueKey('riwayat-panel-toggle')).hitTestable(),
     );
-    final bar = t.getRect(find.byType(PageSlider));
-    // Its column of the surah and the page, 104 wide, at the right.
-    expect(name.right, lessThanOrEqualTo(bar.right));
-    expect(bar.right - 104 - pair.right, inInclusiveRange(0, 12));
-    expect(pair.top, greaterThanOrEqualTo(bar.top - 1));
-    expect(pair.bottom, lessThanOrEqualTo(bar.bottom + 1));
-    expect(t.getRect(similar).right, lessThan(at.left));
+    expect(at.right, lessThan(riwayat.left));
+    expect(riwayat.left - at.right, lessThan(12));
+    expect((at.center.dy - riwayat.center.dy).abs(), lessThan(2));
+    expect(t.getRect(similar.hitTestable()).right, lessThan(at.left));
     expect(glowing, findsNothing);
     expect(rays, findsNothing);
     // Out: nothing moves, so nothing is drawn again and again.
@@ -137,17 +128,6 @@ void main() {
     await t.tap(similar);
     await t.pump();
     expect(settings.showMutashabihat, isFalse);
-    final before = t.getTopLeft(lamp);
-    await t.drag(lamp, const Offset(150, -200));
-    await t.pump();
-    expect(t.getTopLeft(lamp).dx, greaterThan(before.dx + 100));
-    expect(t.getTopLeft(lamp).dy, lessThan(before.dy - 150));
-    expect(settings.lampAt, isNotNull);
-    expect(settings.diffAlert, isNull);
-    await t.longPress(similar);
-    await t.pump();
-    expect(settings.lampAt, isNull);
-    expect(t.getTopLeft(lamp), before);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();
   });
@@ -173,6 +153,24 @@ void main() {
     await t.tap(button);
     await t.pumpAndSettle();
     expect(panel, findsNothing);
+    // Folding the bar away folds the riwayat with it; their tab is then over
+    // the page's header, the lamp beside it.
+    await t.tap(button);
+    await t.pumpAndSettle();
+    expect(panel, findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('top-bar-toggle')));
+    await t.pumpAndSettle();
+    expect(panel, findsNothing);
+    final tab = button.hitTestable();
+    expect(tab, findsOneWidget);
+    final lamp = t.getRect(
+      find.byKey(const ValueKey('glow-lamp')).hitTestable(),
+    );
+    expect(lamp.right, lessThan(t.getRect(tab).left + 1));
+    expect(lamp.height, lessThan(24));
+    await t.tap(tab);
+    await t.pumpAndSettle();
+    expect(panel, findsOneWidget);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();
   });

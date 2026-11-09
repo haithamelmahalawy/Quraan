@@ -281,6 +281,7 @@ class _MushafPageState extends State<MushafPage>
                 physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
                 padding: const EdgeInsets.fromLTRB(8, 4, 8, 24),
                 child: _PageFrame(
+                  squares: _riwayaStrip(),
                   page: widget.page,
                   onNumberTap: widget.onPageNumberTap,
                   child: _flowingText(ayahs, narrow),
@@ -462,6 +463,7 @@ class _MushafPageState extends State<MushafPage>
             ),
             Expanded(
               child: _PageFrame(
+                squares: _riwayaStrip(),
                 page: widget.page,
                 sides: true,
                 onNumberTap: widget.onPageNumberTap,
@@ -549,7 +551,7 @@ class _MushafPageState extends State<MushafPage>
             r.id == hafsId ? null : r.id,
     ];
     const label = TextStyle(
-      fontSize: 9,
+      fontSize: 11,
       height: 1,
       fontWeight: FontWeight.w600,
     );
@@ -569,9 +571,20 @@ class _MushafPageState extends State<MushafPage>
       return width;
     }
 
-    _FrameSquare square(String? id) => (axis, depth) {
+    _FrameSquare square(String? id) => (axis, depth, grow) {
       final now = s.displayed == id;
       final color = id == null ? MushafColors.green : qiraaOf(id).color;
+      final across = axis == Axis.horizontal;
+      // Raised out of the frame towards [grow], the riwaya shown pressed
+      // back into it, as a button pushed in.
+      final lift = now ? 0.0 : _PageFrame.squareLift;
+      final anchor = switch (grow) {
+        AxisDirection.down => Alignment.topCenter,
+        AxisDirection.up => Alignment.bottomCenter,
+        AxisDirection.left => Alignment.centerRight,
+        AxisDirection.right => Alignment.centerLeft,
+      };
+      final away = Alignment(-anchor.x, -anchor.y);
       final name = Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         // As long as its name, whichever band it is on.
@@ -583,28 +596,72 @@ class _MushafPageState extends State<MushafPage>
           ),
         ),
       );
-      final across = axis == Axis.horizontal;
+      final radius = BorderRadius.circular(4);
+      // Its face, on the band; on a side band its name read downwards.
+      final face = Container(
+        width: across ? null : depth,
+        height: across ? depth : null,
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          border: Border.all(color: color, width: 1.2),
+          gradient: LinearGradient(
+            begin: anchor,
+            end: away,
+            colors: now
+                // Pushed in: the light at its far side.
+                ? [Color.lerp(color, Colors.black, 0.3)!, color]
+                : [
+                    Color.lerp(MushafColors.page, Colors.white, 0.7)!,
+                    MushafColors.page,
+                    Color.lerp(MushafColors.page, color, 0.22)!,
+                  ],
+          ),
+        ),
+        child: across ? name : RotatedBox(quarterTurns: 3, child: name),
+      );
+      // Its side, beyond the face, darker, with the shadow it casts.
+      final button = AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        width: across ? null : depth + lift,
+        height: across ? depth + lift : null,
+        alignment: anchor,
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          color: Color.lerp(color, Colors.black, 0.25),
+          boxShadow: [
+            if (!now)
+              BoxShadow(
+                color: Colors.black.withAlpha(70),
+                offset: Offset(away.x * -1.5, away.y * -1.5),
+                blurRadius: 2.5,
+              ),
+          ],
+        ),
+        child: face,
+      );
       return Padding(
         padding: across
             ? const EdgeInsets.symmetric(horizontal: 1.5)
             : const EdgeInsets.symmetric(vertical: 1.5),
-        child: Material(
-          color: now ? color : MushafColors.page,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(3),
-            side: BorderSide(color: color, width: 1.2),
-          ),
-          child: InkWell(
-            key: ValueKey('frame-riwaya-${id ?? 'hafs'}'),
-            onTap: now ? null : () => show(id),
-            // Across the band, to the line inside it; on a side band its
-            // name read downwards.
-            child: across
-                ? SizedBox(height: depth, child: name)
-                : SizedBox(
-                    width: depth,
-                    child: RotatedBox(quarterTurns: 3, child: name),
-                  ),
+        // Each in a slot as deep as a raised one, set against the band.
+        child: SizedBox(
+          width: across ? null : depth + _PageFrame.squareLift,
+          height: across ? depth + _PageFrame.squareLift : null,
+          child: Align(
+            alignment: anchor,
+            widthFactor: across ? 1 : null,
+            heightFactor: across ? null : 1,
+            child: Semantics(
+              button: true,
+              selected: now,
+              child: GestureDetector(
+                key: ValueKey('frame-riwaya-${id ?? 'hafs'}'),
+                behavior: HitTestBehavior.opaque,
+                onTap: now ? null : () => show(id),
+                child: button,
+              ),
+            ),
           ),
         ),
       );
@@ -710,6 +767,7 @@ class _MushafPageState extends State<MushafPage>
             ),
             Expanded(
               child: _PageFrame(
+                squares: _riwayaStrip(),
                 page: widget.page,
                 sides: sides,
                 onNumberTap: widget.onPageNumberTap,
@@ -2196,7 +2254,11 @@ class _MushafPageState extends State<MushafPage>
           v.description.contains('ضم') &&
           // The damma on the word's last letter, against the sakin after it
           // (قُلُ ٱدۡعُواْ), not one inside it (بِٱلۡقُسۡطَاسِ ٱلۡمُسۡتَقِيمِ).
-          RegExp(r'[ٌُ][ۖ-ۭ]*$').hasMatch(v.text),
+          RegExp(r'[ٌُ][ۖ-ۭ]*$').hasMatch(v.text) &&
+          // On a letter sakin but for the meeting (قُلِ، أَوِ، فَمَنِ، وَلَقَدِ،
+          // وَقَالَتِ), not a case ending read otherwise (عَٰلِمُ ٱلۡغَيۡبِ).
+          (v.description.contains('التقاء') ||
+              RegExp(r'[نودلت][ً-ٰۖ-ۭ]*$').hasMatch(ayah.words[w])),
     );
     if (!damm) return null;
     return ReadingColors.ofReadings(
@@ -2261,11 +2323,20 @@ class _MushafPageState extends State<MushafPage>
     final shown = _display(ayah, w)!;
     // Not the page glyphs of the Madinah print: letters to colour and draw out.
     final hafsFont = !shown.font.startsWith('QCF_');
-    final coloured = hafsFont
-        ? _waslDamm(ayah, w, shown.text) ??
-              _letterParts(ayah, w, shown.text) ??
-              _idghamInto(ayah, w, shown.text)
+    final own = hafsFont
+        ? _waslDamm(ayah, w, shown.text) ?? _letterParts(ayah, w, shown.text)
         : null;
+    // Coloured for a rule of its own and hidden into as well (مِنۡ
+    // خَطَٰيَٰهُمُۥ: its silah, and the kha Abu Ja'far's nun is hidden before).
+    final into =
+        hafsFont && (own == null || (own.isNotEmpty && own.first.$2 == null))
+        ? _idghamInto(ayah, w, shown.text)
+        : null;
+    final coloured = own == null
+        ? into
+        : into == null || into.isEmpty
+        ? own
+        : [(own.first.$1, into.first.$2), ...own.skip(1)];
     final parts = hafsFont ? _stretched(shown.text, coloured, kashida) : null;
     // Kashida groups may contain several base characters. Repainting a
     // stripped hamza seat must preserve their expanded colour alignment.
@@ -3197,6 +3268,10 @@ class _PageFrame extends StatelessWidget {
   /// A square across a band reaches the line inside it.
   static const squareDepth = OrnamentFrame.band + 3;
 
+  /// How far a raised square stands out of its band: down from the upper
+  /// and lower bands, out from the side ones, towards the margin.
+  static const squareLift = 7.0;
+
   /// Below the frame, clear of the button that ends the full screen.
   static const belowStart = 44.0;
 
@@ -3246,17 +3321,25 @@ class _PageFrame extends StatelessWidget {
                 across,
                 if (sides) ...[down, down],
               ]);
+              final rtl = Directionality.of(context) == TextDirection.rtl;
               Widget line(String key, int band, Axis axis) => Flex(
                 key: ValueKey(key),
                 direction: axis,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (final square in bands[band]) square(axis, squareDepth),
+                  for (final square in bands[band])
+                    square(axis, squareDepth, switch (band) {
+                      // The side bands' outwards, towards the margin.
+                      2 => rtl ? AxisDirection.right : AxisDirection.left,
+                      3 => rtl ? AxisDirection.left : AxisDirection.right,
+                      _ => AxisDirection.down,
+                    }),
                 ],
               );
               bool has(int band) =>
                   band < bands.length && bands[band].isNotEmpty;
               return Stack(
+                clipBehavior: Clip.none,
                 children: [
                   OrnamentFrame(
                     key: ValueKey('mushaf-ornament-$page'),
@@ -3271,20 +3354,20 @@ class _PageFrame extends StatelessWidget {
                     ),
                   if (has(1))
                     PositionedDirectional(
-                      bottom: 0,
+                      bottom: -squareLift,
                       start: corner,
                       child: line('frame-riwayat-lower', 1, Axis.horizontal),
                     ),
                   if (has(2))
                     PositionedDirectional(
                       top: corner,
-                      start: 0,
+                      start: -squareLift,
                       child: line('frame-riwayat-right', 2, Axis.vertical),
                     ),
                   if (has(3))
                     PositionedDirectional(
                       top: corner,
-                      end: 0,
+                      end: -squareLift,
                       child: line('frame-riwayat-left', 3, Axis.vertical),
                     ),
                 ],
@@ -3327,7 +3410,11 @@ class _PageFrame extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     for (final square in bands[i])
-                      square(Axis.horizontal, OrnamentFrame.band),
+                      square(
+                        Axis.horizontal,
+                        OrnamentFrame.band,
+                        AxisDirection.down,
+                      ),
                   ],
                 ),
               ),
@@ -3363,8 +3450,13 @@ class _PageFrame extends StatelessWidget {
 }
 
 /// A riwaya's square on the frame, built along the band it is set on
-/// ([Axis.vertical] on a side band) and [depth] across it.
-typedef _FrameSquare = Widget Function(Axis axis, double depth);
+/// ([Axis.vertical] on a side band) and [depth] across it, raised towards
+/// [grow].
+typedef _FrameSquare = Widget Function(
+  Axis axis,
+  double depth,
+  AxisDirection grow,
+);
 
 /// The line above the frame, as printed: surah name on the right, juz on
 /// the left.
@@ -4021,9 +4113,19 @@ class _UsulBox extends StatelessWidget {
         rows.add((g, items, readers, faces));
       }
     }
-    rows.sort(
-      (a, b) => _riwayaRank(a.$3.first).compareTo(_riwayaRank(b.$3.first)),
-    );
+    // In the order of the page, a word's rows together (أَتُمِدُّونَنِ of each
+    // reader, then ءَاتَىٰنِ); each word's in the order of the readers.
+    int at((_UsulGroup, List<_UsulItem>, List<String>, String) r) {
+      final i = r.$2.first;
+      return (i.ayah.surah * 1000 + i.ayah.number) * 1000 + i.word;
+    }
+
+    rows.sort((a, b) {
+      final place = at(a).compareTo(at(b));
+      return place != 0
+          ? place
+          : _riwayaRank(a.$3.first).compareTo(_riwayaRank(b.$3.first));
+    });
     Widget cell(Widget child) => Padding(padding: _cellPadding, child: child);
     Widget wordsOf(_UsulGroup g, List<_UsulItem> items) => Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
