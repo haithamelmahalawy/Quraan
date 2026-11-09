@@ -73,6 +73,9 @@ void main() {
           // reading leaves it single (يَلۡهَثۡ ذَٰلِكَ for يَلۡهَثۚ ذَّٰلِكَ).
           bool doubledFirst(String w) => RegExp(r'^[ء-ي][ً-ِ]*ّ').hasMatch(w);
           if (doubledFirst(last) && !doubledFirst(own.last)) continue;
+          // The idgham: the reading doubles the next word's first letter, Hafs
+          // leaves it single (قُل رَّبِّي for قَٰلَ رَبِّي).
+          if (doubledFirst(own.last) && !doubledFirst(last)) continue;
           // Its madd drawn where Hafs has none, made lazim by the reading's
           // sukun after it (ٱثۡنَآ عۡشَرَ for ٱثۡنَا عَشَرَ).
           if (own.first.contains('ٓ') && !first.contains('ٓ')) continue;
@@ -90,7 +93,9 @@ void main() {
       });
 
       test('no letter carries two vowels', () {
-        final letter = RegExp('[^ً-ٟۖ-ۭ]([ً-ٟۖ-ۭ]*)');
+        // The small ya of the zawaid a letter of its own, opened on its own
+        // (تَتَّبِعَنِۦَ).
+        final letter = RegExp('[^ً-ٟۖ-ۥۧ-ۭ]([ً-ٟۖ-ۥۧ-ۭ]*)');
         final vowel = RegExp('[ً-ِٖٗٞ]');
         final wrong = [
           for (final v in rows)
@@ -921,7 +926,7 @@ void main() {
         expect(where('qalun', s, a, w), isEmpty, reason: '$s:$a:$w');
       }
       for (final (s, a, w, how) in [
-        (20, 77, 4, 'بوصل الهمزة، ويلزم منه كسر النون وصلاً'),
+        (20, 77, 4, 'بكسر النون وإبدال همزة القطع بهمزة وصل'),
         (26, 52, 3, 'بوصل الهمزة، ويلزم منه كسر النون وصلاً'),
         (37, 17, 0, 'بإسكان الواو'),
         (56, 48, 0, 'بإسكان الواو'),

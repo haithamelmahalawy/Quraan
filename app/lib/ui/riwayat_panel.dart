@@ -23,6 +23,7 @@ class RiwayatPanel extends StatefulWidget {
     required this.variants,
     required this.child,
     this.arrowAt,
+    this.open,
     this.onJam,
     this.onJamSelected,
   });
@@ -37,6 +38,10 @@ class RiwayatPanel extends StatefulWidget {
   /// Where the middle of the page's header is, for the arrow; the middle of the
   /// screen without it.
   final ValueListenable<double?>? arrowAt;
+
+  /// Opened and closed from outside (the reader's top bar), with no arrow of
+  /// its own over the page; null: by its arrow.
+  final ValueNotifier<bool>? open;
 
   final ReaderSettings settings;
   final VariantRepository variants;
@@ -76,7 +81,29 @@ class _RiwayatPanelState extends State<RiwayatPanel>
   bool _open = false;
 
   @override
+  void initState() {
+    super.initState();
+    widget.open?.addListener(_followOpen);
+    _open = widget.open?.value ?? false;
+  }
+
+  @override
+  void didUpdateWidget(RiwayatPanel old) {
+    super.didUpdateWidget(old);
+    if (old.open == widget.open) return;
+    old.open?.removeListener(_followOpen);
+    widget.open?.addListener(_followOpen);
+    _open = widget.open?.value ?? _open;
+  }
+
+  /// Opened or closed from outside, as by its arrow.
+  void _followOpen() {
+    if (widget.open!.value != _open) _toggle();
+  }
+
+  @override
   void dispose() {
+    widget.open?.removeListener(_followOpen);
     _turn.dispose();
     super.dispose();
   }
@@ -161,6 +188,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
       _turn.value = (math.max(at, 0) - (_row - 1) ~/ 2).toDouble();
     }
     setState(() => _open = !_open);
+    widget.open?.value = _open;
   }
 
   void _settle(double target) => _turn.animateTo(
@@ -620,6 +648,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
         Expanded(
           child: LayoutBuilder(
             builder: (context, box) {
+              if (widget.open != null) return widget.child;
               Widget placed(double? at) => Stack(
                 children: [
                   Positioned.fill(child: widget.child),

@@ -37,6 +37,7 @@ void main() {
     int page = 3,
     Set<String> selected = const {'warsh'},
     String? displayed,
+    bool compareHafs = false,
   }) async {
     t.view.physicalSize = const Size(430, 860);
     t.view.devicePixelRatio = 1;
@@ -44,6 +45,7 @@ void main() {
     final settings = ReaderSettings.memory(selected: selected)
       ..page = page
       ..displayed = displayed
+      ..compareHafs = compareHafs
       ..qcfFont = false;
     await t.pumpWidget(
       MaterialApp(
@@ -247,12 +249,16 @@ void main() {
   );
 
   testWidgets(
-    'the riwayat chosen on the frame: Hafs first, one touched shown',
+    'the riwayat chosen on the frame, Hafs among them, one touched shown',
     (t) async {
-      await showReader(t, selected: const {'ibn_wardan', 'warsh'});
+      await showReader(
+        t,
+        selected: const {'ibn_wardan', 'warsh'},
+        compareHafs: true,
+      );
       final strip = find.byKey(const ValueKey('frame-riwayat')).hitTestable();
       expect(strip, findsOneWidget);
-      // Hafs, then in the order of the readers: Warsh before Ibn Wardan.
+      // In the order of the Shatibiyya: Warsh, Hafs, then Ibn Wardan.
       final keys = [
         for (final e
             in find
@@ -261,8 +267,8 @@ void main() {
           (e.widget.key as ValueKey<String>).value,
       ];
       expect(keys, [
-        'frame-riwaya-hafs',
         'frame-riwaya-warsh',
+        'frame-riwaya-hafs',
         'frame-riwaya-ibn_wardan',
       ]);
       await t.tap(
@@ -281,4 +287,18 @@ void main() {
       expect(t.takeException(), isNull);
     },
   );
+
+  testWidgets('Hafs not chosen above: not on the frame', (t) async {
+    await showReader(t, selected: const {'ibn_wardan', 'warsh'});
+    final strip = find.byKey(const ValueKey('frame-riwayat')).hitTestable();
+    final keys = [
+      for (final e
+          in find
+              .descendant(of: strip, matching: find.byType(InkWell))
+              .evaluate())
+        (e.widget.key as ValueKey<String>).value,
+    ];
+    expect(keys, ['frame-riwaya-warsh', 'frame-riwaya-ibn_wardan']);
+    expect(t.takeException(), isNull);
+  });
 }

@@ -11,7 +11,11 @@ class PageSlider extends StatefulWidget {
     required this.quran,
     required this.page,
     required this.onGo,
+    this.beside,
   });
+
+  /// Beside the surah's name and the page's number: the lamp's place.
+  final Widget? beside;
 
   final QuranRepository quran;
 
@@ -68,6 +72,7 @@ class _PageSliderState extends State<PageSlider> {
               ],
             ),
           ),
+          ?widget.beside,
           Expanded(
             child: SliderTheme(
               data: SliderTheme.of(context).copyWith(

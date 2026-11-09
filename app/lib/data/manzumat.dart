@@ -1261,6 +1261,15 @@ class Manzumat {
     }
     // Ibn Kathir's «تَسۡـَٔلۡنِي» (الكهف ٧٠) light, as Hafs: «وَتَسْئَلْنِ خِفُّ الْكَهْفِ
     // ظِلٌّ»; his «نُّكۡرٗا» (الكهف ٧٤): «وَنُكْرًا شَرْعُ حَقٍ لَهُ عُلَا».
+    // «وَوَٰعَدۡنَٰكُمۡ»، «أَنجَيۡنَٰكُم»، «رَزَقۡنَٰكُمۡ» (طه ٨٠، ٨١) of Qalun and
+    // Ibn Kathir, as Hafs: «وَأَنْجَيْتُكُمْ وَاعَدْتُكُمْ مَا رَزَقْتُكُمْ / شَفَا»,
+    // and the alif of «وَاعَدْنَا»: «وَعَدْنَا جَمِيعاً دُونَ مَا أَلِفَ حَلَا».
+    if (poem == Poem.shatibiyya &&
+        !v.isUsul &&
+        const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId)) {
+      if (at == '20:80:6') return {453, 879};
+      if (at == '20:80:3' || at == '20:81:4') return {879};
+    }
     if (poem == Poem.shatibiyya &&
         const {'bazzi', 'qunbul'}.contains(v.riwayaId)) {
       if (at == '18:70:4') return {760};
@@ -1292,12 +1301,30 @@ class Manzumat {
     if (poem == Poem.shatibiyya && v.riwayaId == 'qalun' && at == '19:19:5') {
       return {862};
     }
-    // Ibn Kathir's «يُدۡخَلُونَ» (النساء ١٢٤، مريم ٦٠، غافر ٤٠): the bayt of its
-    // ruling, «وَضَمُّ يَدْ / خُلُونَ وَفَتحُ الضَّمِّ حَقٌّ».
+    // Ibn Kathir's «يُدۡخَلُونَ» (النساء ١٢٤، مريم ٦٠، غافر ٤٠) and
+    // «سَيُدۡخَلُونَ» (غافر ٦٠): the bayt of its ruling, «وَضَمُّ يَدْ / خُلُونَ
+    // وَفَتحُ الضَّمِّ حَقٌّ».
     if (poem == Poem.shatibiyya &&
         const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
-        const {'4:124:11', '19:60:7', '40:40:17'}.contains(at)) {
+        const {'4:124:11', '19:60:7', '40:40:17', '40:60:10'}.contains(at)) {
       return {606};
+    }
+    // «يُقَٰتِلُونَ» (الحج ٣٩) of Ibn Kathir, its ta broken, and «لَّهُدِمَتۡ»
+    // (الحج ٤٠) light of Qalun and Ibn Kathir: «وَالْفَتْحُ فِي تَا يُقَاتِلُو / نَ
+    // عَمَّ عُلاَهُ هُدِّمَتْ خَفَّ إِذْ دُلَا».
+    if (poem == Poem.shatibiyya &&
+        (at == '22:40:17' &&
+                const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) ||
+            at == '22:39:2' &&
+                const {'bazzi', 'qunbul'}.contains(v.riwayaId))) {
+      return {899};
+    }
+    // Ibn Kathir's «أُفَّ» (الإسراء ٢٣، الأنبياء ٦٧، الأحقاف ١٧), its fa opened:
+    // «وَفَا أُفِّ كُلِّهاَ / بِفَتْحٍ دَناَ كُفْؤًا وَنَوِّنْ عَلَى اعْتِلَا».
+    if (poem == Poem.shatibiyya &&
+        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
+        const {'17:23:18', '21:67:0', '46:17:3'}.contains(at)) {
+      return {818};
     }
     // «ٱرۡكَب مَّعَنَا» (هود ٤٢): al-Bazzi and Qalun by khulf, Qunbul not named,
     // reading it merged: «وَفِي ارْكَبْ هُدَى بَرٍّ قَرِيبٍ بِخُلْفِهِمْ».
@@ -1333,7 +1360,13 @@ class Manzumat {
       if (at == '19:74:8') return {28};
       // «فَيَسۡحَتَكُم» (طه ٦١), its ya and ha opened: «وَطُولًا فَيَسْحَتَ ضُمَّ
       // اكْسِرْ».
-      if (at == '20:61:9') return {157};
+      if (at == '20:61:9') return {158};
+      // «لِتُحۡصِنَكُم» (الأنبياء ٨٠) with the ta, as Hafs: «وَطِبْ نُوْنَ يُحْصِنْ
+      // أَنِّثاً أُدْ».
+      if (at == '21:80:4' && !v.isUsul) return {162};
+      // «رَبُّ» (الأنبياء ١١٢) and «وَرَبَـَٔتۡ» (الحج ٥، فصلت ٣٩): «وَبَا رَبِّ
+      // ضُمَّ اهْمِزْ مَعًا رَبَأَتْ أَتَى».
+      if (const {'21:112:1', '22:5:63', '41:39:11'}.contains(at)) return {164};
       // «مِن تَحۡتِهَآ» (مريم ٢٤): «وَمَنْ تَحْتَهَا اكْسِرِ اخْـ / ـفِضًا يَعْلُ».
       if (at == '19:24:1' || at == '19:24:2') return {154};
       // «وَلَنَجۡزِيَنَّ» (النحل ٩٦) with the nun: «لِيَجْزِيَ نُونٌ اِذْ».

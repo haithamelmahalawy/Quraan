@@ -101,28 +101,23 @@ void main() {
     final similar = find.byKey(const ValueKey('mutashabihat-toggle'));
     expect(lamp.hitTestable(), findsOneWidget);
     expect(similar.hitTestable(), findsOneWidget);
-    // Beside the juz's name, on its line: to its left, or to its right
-    // when the page leaves no room there.
+    // In the bottom bar, beside the surah's name, on its line.
     final at = t.getRect(lamp);
     final pair = at.expandToInclude(t.getRect(similar));
-    final names = [
-      for (final e
-          in find
-              .byWidgetPredicate(
-                (w) => w is Text && (w.data?.startsWith('الجزء ') ?? false),
-              )
-              .evaluate())
-        t.getRect(find.byWidget(e.widget)),
-    ];
-    bool near(double gap) => gap >= 0 && gap < 12;
-    expect(
-      names.where(
-        (n) =>
-            (near(n.left - pair.right) || near(pair.left - n.right)) &&
-            (at.center.dy - n.center.dy).abs() < 4,
+    final name = t.getRect(
+      find.descendant(
+        of: find.byType(PageSlider),
+        matching: find.byWidgetPredicate(
+          (w) => w is Text && (w.data?.startsWith('سورة ') ?? false),
+        ),
       ),
-      isNotEmpty,
     );
+    final bar = t.getRect(find.byType(PageSlider));
+    // Its column of the surah and the page, 104 wide, at the right.
+    expect(name.right, lessThanOrEqualTo(bar.right));
+    expect(bar.right - 104 - pair.right, inInclusiveRange(0, 12));
+    expect(pair.top, greaterThanOrEqualTo(bar.top - 1));
+    expect(pair.bottom, lessThanOrEqualTo(bar.bottom + 1));
     expect(t.getRect(similar).right, lessThan(at.left));
     expect(glowing, findsNothing);
     expect(rays, findsNothing);
@@ -143,16 +138,41 @@ void main() {
     await t.pump();
     expect(settings.showMutashabihat, isFalse);
     final before = t.getTopLeft(lamp);
-    await t.drag(lamp, const Offset(150, 200));
+    await t.drag(lamp, const Offset(150, -200));
     await t.pump();
     expect(t.getTopLeft(lamp).dx, greaterThan(before.dx + 100));
-    expect(t.getTopLeft(lamp).dy, greaterThan(before.dy + 150));
+    expect(t.getTopLeft(lamp).dy, lessThan(before.dy - 150));
     expect(settings.lampAt, isNotNull);
     expect(settings.diffAlert, isNull);
     await t.longPress(similar);
     await t.pump();
     expect(settings.lampAt, isNull);
     expect(t.getTopLeft(lamp), before);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
+
+  testWidgets('«الرواة» in the top bar lets the panel down and up', (t) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..page = 3
+      ..qcfFont = false;
+    await show(t, const Size(432, 800), settings: settings, reader: true);
+    final button = find.byKey(const ValueKey('riwayat-panel-toggle'));
+    final panel = find.byKey(const ValueKey('riwayat-panel'));
+    expect(button, findsOneWidget);
+    expect(panel, findsNothing);
+    // After «المدينة».
+    expect(
+      t.getRect(button).right,
+      lessThan(t.getRect(find.text('المدينة')).left),
+    );
+    await t.tap(button);
+    await t.pumpAndSettle();
+    expect(panel, findsOneWidget);
+    expect(t.getRect(panel).top, greaterThan(t.getRect(button).bottom));
+    await t.tap(button);
+    await t.pumpAndSettle();
+    expect(panel, findsNothing);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();
   });
@@ -284,7 +304,9 @@ void main() {
 
       t.view.physicalSize = const Size(432, 800);
       await t.pumpAndSettle();
-      expect(top, findsNothing);
+      // Upright, the top bar folds away too, open at first; the bottom one
+      // stays.
+      expect(top, findsOneWidget);
       expect(bottom, findsNothing);
       expect(find.byType(Slider).hitTestable(), findsOneWidget);
       expect(t.takeException(), isNull);

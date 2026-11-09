@@ -1342,6 +1342,58 @@ void main() {
         expect(irkab.mention, {41}, reason: id);
       }
       for (final id in ['qalun', 'bazzi', 'qunbul']) {
+        // As Hafs in Taha: the bayt of those who read them otherwise.
+        final waadna = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 20,
+            ayah: 80,
+            word: 6,
+            count: 1,
+            text: 'وَوَٰعَدۡنَٰكُمۡ',
+            kind: VariantKind.farsh,
+            description: 'بالألف',
+          ),
+          'وَوَٰعَدۡنَٰكُمۡ',
+          20,
+          surahs,
+          entries: book.at(20, 80, 6),
+        );
+        expect(waadna.mention, {453, 879}, reason: id);
+        final anjayna = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 20,
+            ayah: 80,
+            word: 3,
+            count: 1,
+            text: 'أَنجَيۡنَٰكُم',
+            kind: VariantKind.farsh,
+            description: 'بالنون',
+          ),
+          'أَنجَيۡنَٰكُم',
+          20,
+          surahs,
+          entries: book.at(20, 80, 3),
+        );
+        expect(anjayna.mention, {879}, reason: id);
+        final razaqna = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 20,
+            ayah: 81,
+            word: 4,
+            count: 1,
+            text: 'رَزَقۡنَٰكُمۡ',
+            kind: VariantKind.farsh,
+            description: 'بالنون',
+          ),
+          'رَزَقۡنَٰكُمۡ',
+          20,
+          surahs,
+          entries: book.at(20, 81, 4),
+        );
+        expect(razaqna.mention, {879}, reason: id);
         final majraha = ref(
           id,
           41,
@@ -1438,6 +1490,60 @@ void main() {
             entries: book.at(19, 60, 7),
           );
           expect(yudkhal.mention, {606}, reason: id);
+          final sayudkhal = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: 40,
+              ayah: 60,
+              word: 10,
+              count: 1,
+              text: 'سَيُدۡخَلُونَ',
+              kind: VariantKind.farsh,
+              description: 'بضم الياء وفتح الخاء',
+            ),
+            'سَيَدۡخُلُونَ',
+            40,
+            surahs,
+            entries: book.at(40, 60, 10),
+          );
+          expect(sayudkhal.mention, {606}, reason: id);
+          final yuqatilun = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: 22,
+              ayah: 39,
+              word: 2,
+              count: 1,
+              text: 'يُقَٰتِلُونَ',
+              kind: VariantKind.farsh,
+              description: 'بكسر التاء',
+            ),
+            'يُقَٰتَلُونَ',
+            22,
+            surahs,
+            entries: book.at(22, 39, 2),
+          );
+          expect(yuqatilun.mention, {899}, reason: id);
+          for (final (s, a, w) in [(17, 23, 18), (21, 67, 0), (46, 17, 3)]) {
+            final uff = manzumat.referenceOf(
+              Variant(
+                riwayaId: id,
+                surah: s,
+                ayah: a,
+                word: w,
+                count: 1,
+                text: 'أُفَّ',
+                kind: VariantKind.farsh,
+                description: 'بفتح الفاء دون تنوين',
+              ),
+              'أُفّٖ',
+              s,
+              surahs,
+              entries: book.at(s, a, w),
+            );
+            expect(uff.poem, Poem.shatibiyya, reason: '$id $s:$a');
+            expect(uff.mention, {818}, reason: '$id $s:$a');
+          }
           for (final (s, a, w) in [(19, 2, 4), (19, 7, 0), (3, 37, 9)]) {
             final z = manzumat.referenceOf(
               Variant(
@@ -1694,7 +1800,66 @@ void main() {
           entries: book.at(20, 61, 9),
         );
         expect(yashat.poem, Poem.durrah, reason: id);
-        expect(yashat.mention, {157}, reason: id);
+        expect(yashat.mention, {158}, reason: id);
+        final tuhsin = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 21,
+            ayah: 80,
+            word: 4,
+            count: 1,
+            text: 'لِتُحۡصِنَكُم',
+            kind: VariantKind.farsh,
+            description: 'بالتاء',
+          ),
+          'لِتُحۡصِنَكُم',
+          21,
+          surahs,
+          entries: book.at(21, 80, 4),
+        );
+        expect(tuhsin.poem, Poem.durrah, reason: id);
+        expect(tuhsin.mention, {162}, reason: id);
+        for (final (s, a, w, text, hafs) in [
+          (21, 112, 1, 'رَبُّ', 'رَبِّ'),
+          (22, 5, 63, 'وَرَبَـَٔتۡ', 'وَرَبَتۡ'),
+          (41, 39, 11, 'وَرَبَـَٔتۡ', 'وَرَبَتۡ'),
+        ]) {
+          final r = manzumat.referenceOf(
+            Variant(
+              riwayaId: id,
+              surah: s,
+              ayah: a,
+              word: w,
+              count: 1,
+              text: text,
+              kind: VariantKind.farsh,
+              description: 'بضم الباء وصلاً',
+            ),
+            hafs,
+            s,
+            surahs,
+            entries: book.at(s, a, w),
+          );
+          expect(r.poem, Poem.durrah, reason: '$id $s:$a');
+          expect(r.mention, {164}, reason: '$id $s:$a');
+        }
+        final waadnaAj = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 20,
+            ayah: 80,
+            word: 6,
+            count: 1,
+            text: 'وَوَعَدۡنَٰكُمُۥ',
+            kind: VariantKind.farsh,
+            description: 'بحذف الألف',
+          ),
+          'وَوَٰعَدۡنَٰكُمۡ',
+          20,
+          surahs,
+          entries: book.at(20, 80, 6),
+        );
+        expect(waadnaAj.mention, {66}, reason: id);
         final najzi = manzumat.referenceOf(
           Variant(
             riwayaId: id,
@@ -2254,7 +2419,8 @@ void main() {
       for (final (s, a, w) in [(2, 51, 1), (7, 142, 0), (20, 80, 6)]) {
         final r = of(id, s, a, w, 'وَٰعَدۡنَا', 'وَٰعَدۡنَا');
         expect(r.poem, Poem.shatibiyya);
-        expect(r.mention, {453}, reason: '$id $s:$a');
+        // In Taha with the bayt of «وَاعَدْتُكُمْ» too.
+        expect(r.mention, s == 20 ? {453, 879} : {453}, reason: '$id $s:$a');
       }
     }
   });

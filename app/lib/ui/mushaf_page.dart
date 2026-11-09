@@ -532,18 +532,21 @@ class _MushafPageState extends State<MushafPage>
   /// The juz's name in the header shown.
   final _juzName = GlobalKey();
 
-  /// On the frame's upper band, a small square for each riwaya chosen, in
-  /// the qari's colour and the order of the readers, Hafs first: one
-  /// touched shows the page in it, without opening the riwayat.
-  List<(Widget, double)> _riwayaStrip() {
+  /// On the frame's bands, a small square for each riwaya chosen, in the
+  /// qari's colour and the order of the readers, Hafs among them when he is
+  /// chosen: one touched shows the page in it, without opening the riwayat.
+  /// Each is built along the band it is set on, with its length along it.
+  List<(_FrameSquare, double)> _riwayaStrip() {
     final show = widget.onShowRiwaya;
     final s = widget.settings;
     if (show == null || s.selected.isEmpty) return const [];
+    // In the order of the readers, Hafs among them (after Shu'bah) when he
+    // is chosen; not without it.
     final ids = [
-      null,
       for (final q in qiraat)
         for (final r in q.riwayat)
-          if (s.selected.contains(r.id)) r.id,
+          if (r.id == hafsId ? s.compareHafs : s.selected.contains(r.id))
+            r.id == hafsId ? null : r.id,
     ];
     const label = TextStyle(
       fontSize: 9,
@@ -566,11 +569,25 @@ class _MushafPageState extends State<MushafPage>
       return width;
     }
 
-    Widget square(String? id) {
+    _FrameSquare square(String? id) => (axis, depth) {
       final now = s.displayed == id;
       final color = id == null ? MushafColors.green : qiraaOf(id).color;
+      final name = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        // As long as its name, whichever band it is on.
+        child: Center(
+          widthFactor: 1,
+          child: Text(
+            id == null ? 'حفص' : riwayaById(id).nameAr,
+            style: label.copyWith(color: now ? Colors.white : color),
+          ),
+        ),
+      );
+      final across = axis == Axis.horizontal;
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 1.5),
+        padding: across
+            ? const EdgeInsets.symmetric(horizontal: 1.5)
+            : const EdgeInsets.symmetric(vertical: 1.5),
         child: Material(
           color: now ? color : MushafColors.page,
           shape: RoundedRectangleBorder(
@@ -580,25 +597,18 @@ class _MushafPageState extends State<MushafPage>
           child: InkWell(
             key: ValueKey('frame-riwaya-${id ?? 'hafs'}'),
             onTap: now ? null : () => show(id),
-            // As tall as the frame's band, wide enough to read at a glance.
-            child: SizedBox(
-              height: OrnamentFrame.band,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                // As wide as its name, on a band or in the lower row.
-                child: Center(
-                  widthFactor: 1,
-                  child: Text(
-                    id == null ? 'حفص' : riwayaById(id).nameAr,
-                    style: label.copyWith(color: now ? Colors.white : color),
+            // Across the band, to the line inside it; on a side band its
+            // name read downwards.
+            child: across
+                ? SizedBox(height: depth, child: name)
+                : SizedBox(
+                    width: depth,
+                    child: RotatedBox(quarterTurns: 3, child: name),
                   ),
-                ),
-              ),
-            ),
           ),
         ),
       );
-    }
+    };
 
     return [
       for (final id in ids)
@@ -941,7 +951,9 @@ class _MushafPageState extends State<MushafPage>
     // Less than two printed lines, without a second
     // height reduction when a margin overflows.
     final reserve = sides && (withHamesh || usul.isNotEmpty)
-        ? math.min(size.height * 0.095, math.max(0.0, normalLine * 1.6))
+        // Less than a printed line: the page the taller, its lines the further
+        // apart (يُرِدۡ over بَوَّأۡنَا), the usul still in sight below it.
+        ? math.min(size.height * 0.05, math.max(0.0, normalLine * 0.8))
         : 0.0;
     final pageHeight = size.height - reserve;
     // One outer margin, following the side of the printed page. The rest
@@ -3176,10 +3188,42 @@ class _PageFrame extends StatelessWidget {
   final Widget child;
   final VoidCallback? onNumberTap;
 
-  /// Set on the frame's bands, each with its width: the riwayat chosen, to
-  /// go between. On the upper band first; those it has no room for go on
-  /// to the lower one, from the right.
-  final List<(Widget, double)> squares;
+  /// Set on the frame's bands, each with its length: the riwayat chosen, to
+  /// go between. On the upper band first, from the right; those it has no
+  /// room for on the lower one, then down the right band and the left one.
+  /// Without the side bands (full screen), below the frame instead.
+  final List<(_FrameSquare, double)> squares;
+
+  /// A square across a band reaches the line inside it.
+  static const squareDepth = OrnamentFrame.band + 3;
+
+  /// Below the frame, clear of the button that ends the full screen.
+  static const belowStart = 44.0;
+
+  /// Below the frame, clear of the lamp at its left.
+  static const belowEnd = 72.0;
+
+  /// The page's number between the squares below the frame.
+  static const numberRoom = 48.0;
+
+  /// The bands' squares, in turn: the upper band, the lower, then the right
+  /// and the left ones (or, in full screen, below the frame: right of the
+  /// number, then left of it), each as long as [rooms] allow.
+  List<List<_FrameSquare>> _deal(List<double> rooms) {
+    final bands = [for (final _ in rooms) <_FrameSquare>[]];
+    var band = 0;
+    var used = 0.0;
+    for (final (square, length) in squares) {
+      while (band < rooms.length && used + length > rooms[band]) {
+        band++;
+        used = 0;
+      }
+      if (band == rooms.length) break;
+      used += length;
+      bands[band].add(square);
+    }
+    return bands;
+  }
 
   /// Space outside the border, including a visible gap above the number.
   static const numberHeight = 30.0;
@@ -3194,19 +3238,24 @@ class _PageFrame extends StatelessWidget {
         Flexible(
           child: LayoutBuilder(
             builder: (context, box) {
-              const inset = OrnamentFrame.band + 10;
-              // The whole upper band, from the right.
-              final room = box.maxWidth - 2 * inset;
-              final upper = <Widget>[], lower = <Widget>[];
-              var used = 0.0;
-              for (final (square, width) in squares) {
-                if (lower.isEmpty && used + width <= room) {
-                  upper.add(square);
-                  used += width;
-                } else {
-                  lower.add(square);
-                }
-              }
+              const corner = OrnamentFrame.band + 2;
+              final across = box.maxWidth - 2 * corner;
+              final down = box.maxHeight - 2 * corner;
+              final bands = _deal([
+                across,
+                across,
+                if (sides) ...[down, down],
+              ]);
+              Widget line(String key, int band, Axis axis) => Flex(
+                key: ValueKey(key),
+                direction: axis,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final square in bands[band]) square(axis, squareDepth),
+                ],
+              );
+              bool has(int band) =>
+                  band < bands.length && bands[band].isNotEmpty;
               return Stack(
                 children: [
                   OrnamentFrame(
@@ -3214,26 +3263,29 @@ class _PageFrame extends StatelessWidget {
                     sides: sides,
                     child: child,
                   ),
-                  if (upper.isNotEmpty)
+                  if (has(0))
                     PositionedDirectional(
                       top: 0,
-                      start: inset,
-                      child: Row(
-                        key: const ValueKey('frame-riwayat'),
-                        mainAxisSize: MainAxisSize.min,
-                        children: upper,
-                      ),
+                      start: corner,
+                      child: line('frame-riwayat', 0, Axis.horizontal),
                     ),
-                  if (lower.isNotEmpty)
+                  if (has(1))
                     PositionedDirectional(
                       bottom: 0,
-                      start: inset,
-                      end: inset,
-                      child: Wrap(
-                        key: const ValueKey('frame-riwayat-lower'),
-                        runSpacing: 2,
-                        children: lower,
-                      ),
+                      start: corner,
+                      child: line('frame-riwayat-lower', 1, Axis.horizontal),
+                    ),
+                  if (has(2))
+                    PositionedDirectional(
+                      top: corner,
+                      start: 0,
+                      child: line('frame-riwayat-right', 2, Axis.vertical),
+                    ),
+                  if (has(3))
+                    PositionedDirectional(
+                      top: corner,
+                      end: 0,
+                      child: line('frame-riwayat-left', 3, Axis.vertical),
                     ),
                 ],
               );
@@ -3242,35 +3294,77 @@ class _PageFrame extends StatelessWidget {
         ),
         SizedBox(
           height: numberHeight,
-          child: Padding(
-            padding: const EdgeInsets.only(top: numberGap),
-            child: Center(
-              child: GestureDetector(
-                onTap: onNumberTap,
-                child: Text(
-                  arabicDigits(page),
-                  key: ValueKey('page-number-$page'),
-                  style: TextStyle(
-                    fontFamily: 'Hafs',
-                    // Hafs otherwise combines digits into ayah ornaments.
-                    fontFeatures: const [
-                      FontFeature.disable('liga'),
-                      FontFeature.disable('rlig'),
-                      FontFeature.disable('calt'),
-                    ],
-                    fontSize: 18,
-                    height: 1.2,
-                    color: MushafColors.ink,
-                  ),
-                ),
-              ),
-            ),
+          child: Stack(
+            children: [
+              if (!sides && squares.isNotEmpty)
+                Positioned.fill(child: _squaresBelow()),
+              Positioned.fill(child: _number()),
+            ],
           ),
         ),
       ],
     );
   }
+
+  /// Full screen: the squares the bands above and below have no room for,
+  /// under the frame, touching it: from the right up to the page's number,
+  /// then on from its left.
+  Widget _squaresBelow() => LayoutBuilder(
+    builder: (context, box) {
+      const corner = OrnamentFrame.band + 2;
+      final across = box.maxWidth - 2 * corner;
+      final half = (box.maxWidth - numberRoom) / 2;
+      final bands = _deal([across, across, half - belowStart, half - belowEnd]);
+      return Stack(
+        key: const ValueKey('frame-riwayat-below'),
+        children: [
+          for (final (i, start) in [(2, belowStart), (3, half + numberRoom)])
+            if (bands[i].isNotEmpty)
+              PositionedDirectional(
+                top: 0,
+                start: start,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final square in bands[i])
+                      square(Axis.horizontal, OrnamentFrame.band),
+                  ],
+                ),
+              ),
+        ],
+      );
+    },
+  );
+
+  Widget _number() => Padding(
+    padding: const EdgeInsets.only(top: numberGap),
+    child: Center(
+      child: GestureDetector(
+        onTap: onNumberTap,
+        child: Text(
+          arabicDigits(page),
+          key: ValueKey('page-number-$page'),
+          style: TextStyle(
+            fontFamily: 'Hafs',
+            // Hafs otherwise combines digits into ayah ornaments.
+            fontFeatures: const [
+              FontFeature.disable('liga'),
+              FontFeature.disable('rlig'),
+              FontFeature.disable('calt'),
+            ],
+            fontSize: 18,
+            height: 1.2,
+            color: MushafColors.ink,
+          ),
+        ),
+      ),
+    ),
+  );
 }
+
+/// A riwaya's square on the frame, built along the band it is set on
+/// ([Axis.vertical] on a side band) and [depth] across it.
+typedef _FrameSquare = Widget Function(Axis axis, double depth);
 
 /// The line above the frame, as printed: surah name on the right, juz on
 /// the left.

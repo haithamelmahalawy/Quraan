@@ -1,6 +1,5 @@
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 
 import 'dart:async';
@@ -33,6 +32,52 @@ import 'surah_index.dart';
 import 'page_slider.dart';
 import 'theme.dart';
 import 'variant_sheet.dart';
+
+/// «الرواة» in the top bar: lets the riwayat's panel down beneath it, or
+/// sends it back up.
+class _RiwayatButton extends StatelessWidget {
+  const _RiwayatButton({required this.open});
+
+  final ValueNotifier<bool> open;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: open,
+    builder: (context, on, _) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: Semantics(
+        button: true,
+        expanded: on,
+        child: Raised(
+          key: const ValueKey('riwayat-panel-toggle'),
+          radius: 19,
+          depth: 0.6,
+          color: on ? MushafColors.goldLight : null,
+          tooltip: on ? 'إخفاء الرواة' : 'إظهار الرواة',
+          onTap: () => open.value = !on,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'الرواة',
+                style: TextStyle(
+                  color: MushafColors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Icon(
+                on ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                size: 20,
+                color: MushafColors.green,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
 /// Collapses in the layout, keeping the bars outside Quran lines and giving
 /// the landscape margin the same available height as the printed page.
@@ -96,7 +141,11 @@ class _ReaderScreenState extends State<ReaderScreen>
   final _headerMiddle = ValueNotifier<double?>(null);
 
   /// Where the surah's name of the page read is, on the screen.
-  final _juzName = ValueNotifier<Rect?>(null);
+  /// The riwayat's panel, opened from the top bar.
+  final _riwayatOpen = ValueNotifier<bool>(false);
+
+  /// The lamp's place in the bottom bar, beside the surah's name.
+  final _lampSlot = GlobalKey();
 
   /// While a page is zoomed in, drags pan it instead of turning pages.
   bool _zoomed = false;
@@ -127,7 +176,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   Timer? _settle;
 
   bool _landscape = false;
-  bool _topBarOpen = false;
+  bool _topBarOpen = true;
   bool _bottomBarOpen = false;
   bool get _twoPages => widget.settings.twoPages && !_landscape;
 
@@ -138,7 +187,8 @@ class _ReaderScreenState extends State<ReaderScreen>
         MediaQuery.orientationOf(context) == Orientation.landscape;
     if (landscape == _landscape) return;
     _landscape = landscape;
-    _topBarOpen = false;
+    // Folded away in landscape, to give the page its height.
+    _topBarOpen = !landscape;
     _bottomBarOpen = false;
     // Landscape reads a single enlarged page in sections. Keep the saved
     // spread preference for portrait and retain the current page number.
@@ -446,7 +496,6 @@ class _ReaderScreenState extends State<ReaderScreen>
       onPageNumberTap: _pickPage,
       // The arrow of the riwayat over the middle of the header in sight.
       onHeaderMiddle: number == _page ? (x) => _headerMiddle.value = x : null,
-      onJuzName: number == _page ? (r) => _juzName.value = r : null,
       // The QCF page fonts draw the Madinah pages only.
       qcf:
           widget.settings.qcfFont &&
@@ -496,6 +545,8 @@ class _ReaderScreenState extends State<ReaderScreen>
       settings: widget.settings,
       variants: widget.variants,
       arrowAt: two ? null : _headerMiddle,
+      // Its button in the top bar; over the page in full screen, without it.
+      open: _fullScreen ? null : _riwayatOpen,
       // «الجمع للقراءات العشر»: a screen of its own, at the page read.
       onJam: () => Navigator.of(context)
           .push(
@@ -531,6 +582,11 @@ class _ReaderScreenState extends State<ReaderScreen>
         body: Stack(
           children: [
             Positioned.fill(child: SafeArea(child: pages)),
+            // Small, below the frame at its left, across from the button
+            // that ends the full screen.
+            Positioned.fill(
+              child: SafeArea(child: _lamp(slot: false, small: true)),
+            ),
             // Below the frame, on the line of the page's number: it never
             // covers the text nor the frame's band.
             PositionedDirectional(
@@ -611,6 +667,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                           ),
                         ),
                       ),
+                      _RiwayatButton(open: _riwayatOpen),
                       PopupMenuButton<MarginLayout>(
                         tooltip: 'طريقة العرض',
                         initialValue: widget.settings.marginLayout,
@@ -737,27 +794,62 @@ class _ReaderScreenState extends State<ReaderScreen>
         ),
       ),
     );
-    final bottomBar = PageSlider(quran: _quran, page: _page, onGo: _goToPage);
+    final bottomBar = PageSlider(
+      quran: _quran,
+      page: _page,
+      onGo: _goToPage,
+      // Upright, the lamp beside the surah's name; in landscape at the top
+      // left of the screen.
+      beside: _landscape
+          ? null
+          : SizedBox(
+              key: _lampSlot,
+              width: _GlowLampState.width + 8,
+              height: 36,
+            ),
+    );
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            if (_landscape) ...[
-              _CollapsibleReaderBar(open: _topBarOpen, child: topBar),
-              _barHandle(top: true),
-            ] else
-              topBar,
-            Expanded(child: pages),
-            if (_landscape) ...[
-              _barHandle(top: false),
-              _CollapsibleReaderBar(open: _bottomBarOpen, child: bottomBar),
-            ] else
-              bottomBar,
+            Positioned.fill(
+              child: Column(
+                children: [
+                  _CollapsibleReaderBar(open: _topBarOpen, child: topBar),
+                  _barHandle(top: true),
+                  Expanded(child: pages),
+                  if (_landscape) ...[
+                    _barHandle(top: false),
+                    _CollapsibleReaderBar(
+                      open: _bottomBarOpen,
+                      child: bottomBar,
+                    ),
+                  ] else
+                    bottomBar,
+                ],
+              ),
+            ),
+            Positioned.fill(child: _lamp(slot: !_landscape)),
           ],
         ),
       ),
     );
   }
+
+  /// The lamp and the mutashabihat's button: in the bottom bar's [slot], or
+  /// at the top left of the screen.
+  Widget _lamp({required bool slot, bool small = false}) => _GlowLamp(
+    settings: widget.settings,
+    slot: slot ? _lampSlot : null,
+    small: small,
+    onTap: _toggleGlow,
+    onLongPress: () => GlowUsulScreen.open(
+      context,
+      settings: widget.settings,
+      variants: widget.variants,
+      quran: _quran,
+    ),
+  );
 
   Widget _barHandle({required bool top}) {
     final open = top ? _topBarOpen : _bottomBarOpen;
@@ -806,19 +898,6 @@ class _ReaderScreenState extends State<ReaderScreen>
   Widget _withHint(Widget pages) => Stack(
     children: [
       Positioned.fill(child: pages),
-      Positioned.fill(
-        child: _GlowLamp(
-          settings: widget.settings,
-          juzName: _juzName,
-          onTap: _toggleGlow,
-          onLongPress: () => GlowUsulScreen.open(
-            context,
-            settings: widget.settings,
-            variants: widget.variants,
-            quran: _quran,
-          ),
-        ),
-      ),
       // What the last eye gesture did.
       Positioned(
         left: 0,
@@ -986,7 +1065,8 @@ class _EyeIndicator extends StatelessWidget {
   }
 }
 
-/// Beside the juz's name: the lamp of «تنبيه الاختلافات» (a tap lights
+/// Beside the surah's name in the bottom bar (in landscape, at the top left
+/// of the screen): the lamp of «تنبيه الاختلافات» (a tap lights
 /// the words that differ from Hafs, its rays flickering, or puts them out)
 /// and the button of the mutashabihat. Dragged, they stay where they are
 /// left; a long press on the mutashabihat's brings them back beside the name,
@@ -994,13 +1074,19 @@ class _EyeIndicator extends StatelessWidget {
 class _GlowLamp extends StatefulWidget {
   const _GlowLamp({
     required this.settings,
-    required this.juzName,
+    this.slot,
+    this.small = false,
     required this.onTap,
     required this.onLongPress,
   });
 
+  /// Full screen: smaller, below the frame at the left.
+  final bool small;
+
   final ReaderSettings settings;
-  final ValueListenable<Rect?> juzName;
+
+  /// Its place, in the bottom bar; null: the top left of the screen.
+  final GlobalKey? slot;
   final VoidCallback onTap;
 
   /// Held: the usul of the hamesh, each lit or not.
@@ -1012,9 +1098,14 @@ class _GlowLamp extends StatefulWidget {
 
 class _GlowLampState extends State<_GlowLamp>
     with SingleTickerProviderStateMixin {
-  static const _size = 34.0;
+  static const _full = 34.0;
   static const _gap = 4.0;
-  static const _width = 2 * _size + _gap;
+
+  /// The two buttons side by side, at their full size.
+  static const width = 2 * _full + _gap;
+
+  double get _size => widget.small ? 24 : _full;
+  double get _width => 2 * _size + _gap;
 
   /// The rays: flickering only while the lamp is lit, so nothing moves
   /// (nor is drawn again) when it is out.
@@ -1043,7 +1134,7 @@ class _GlowLampState extends State<_GlowLamp>
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([widget.settings, widget.juzName]),
+    listenable: widget.settings,
     builder: (context, _) => LayoutBuilder(
       builder: (context, box) {
         final room = Size(
@@ -1098,23 +1189,36 @@ class _GlowLampState extends State<_GlowLamp>
     ),
   );
 
-  /// Where it was left; else beside the juz's name, to its left, over the
-  /// hamesh's head; to its right when the page leaves no room there.
+  /// Where it was left; else in its place in the bottom bar, or at the top
+  /// left of the screen.
   Offset _place(BuildContext context, Size room) {
     final left = widget.settings.lampAt;
     if (left != null) {
       return Offset(left.dx * room.width, left.dy * room.height);
     }
-    final name = widget.juzName.value;
+    if (widget.small) return Offset(16, room.height);
+    if (widget.slot == null) return const Offset(6, 0);
+    // Measured once the frame is laid out; out of sight until then.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureSlot());
+    final at = _slotAt;
+    if (at == null) return Offset(room.width, room.height);
+    return Offset(at.dx - _width / 2, at.dy - _size / 2);
+  }
+
+  /// The middle of its place in the bottom bar, here.
+  Offset? _slotAt;
+
+  void _measureSlot() {
+    if (!mounted) return;
+    final at = widget.slot?.currentContext?.findRenderObject();
     final box = context.findRenderObject();
-    if (name == null || box is! RenderBox || !box.attached) {
-      return Offset(room.width, 0);
+    if (at is! RenderBox || !at.hasSize || box is! RenderBox || !box.hasSize) {
+      return;
     }
-    final local = box.globalToLocal(name.centerLeft);
-    final x = local.dx - _gap - _width;
-    if (x >= 0) return Offset(x, local.dy - _size / 2);
-    final right = box.globalToLocal(name.centerRight);
-    return Offset(right.dx + _gap, right.dy - _size / 2);
+    final middle = box.globalToLocal(
+      at.localToGlobal(at.size.center(Offset.zero)),
+    );
+    if (middle != _slotAt) setState(() => _slotAt = middle);
   }
 
   Widget _lamp(bool lit) => Tooltip(
@@ -1146,7 +1250,7 @@ class _GlowLampState extends State<_GlowLamp>
               ),
               child: Icon(
                 lit ? Icons.lightbulb : Icons.lightbulb_outline,
-                size: 20,
+                size: widget.small ? 15 : 20,
                 color: lit ? MushafColors.gold : MushafColors.green,
               ),
             ),
@@ -1178,7 +1282,7 @@ class _GlowLampState extends State<_GlowLamp>
             // Two pages alike, one over the other.
             child: Icon(
               on ? Icons.difference_rounded : Icons.difference_outlined,
-              size: 19,
+              size: widget.small ? 14 : 19,
               color: colour,
             ),
           ),
