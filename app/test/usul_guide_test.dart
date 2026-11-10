@@ -219,8 +219,8 @@ void main() {
     expect(usulGuideLabel('الهمز المفرد (الهمز المتحرك)'), 'الهمز المفرد');
     // هأنتم 4, the ibdal of the single hamza 986, مِنسَاتَهُۥ; the 80 of
     // «ٱلنَّبِيٓءُ» and its bab, the 12 of «هُزُؤًا، كُفُؤًا» and the 3 of
-    // «وَٱلصَّٰبِـِٔينَ».
-    expect(lin['الهمز المفرد'], hasLength(1086));
+    // «وَٱلصَّٰبِـِٔينَ»; the 4 of «ٱلَّٰٓـِٔي».
+    expect(lin['الهمز المفرد'], hasLength(1090));
     expect(
       kinds('الهمز المفرد')
           .where((k) => !k.startsWith('همز «ائتنا» ابتداءً: ')),
@@ -231,6 +231,7 @@ void main() {
         'الإبدال ياءً',
         'زيادة الهمزة',
         'حذف الهمزة',
+        'الهمز المتطرف',
       ]),
     );
     expect(
@@ -385,9 +386,15 @@ void main() {
       usulOfRiwaya(variants, quran, 'ruways')['الهمزتان من كلمتين'],
       hasLength(115),
     );
+    // Abu 'Amr's single hamza is told only at «ٱلَّٰٓـِٔي», in the chapter of
+    // the verified readers.
     expect(
-      usulOfRiwaya(variants, quran, 'susi').keys,
-      isNot(contains('الهمز المفرد')),
+      usulOfRiwaya(
+        variants,
+        quran,
+        'susi',
+      )['الهمز المفرد']!.map((v) => v.rule).toSet(),
+      {'hamza_mutatarrif'},
     );
   });
 

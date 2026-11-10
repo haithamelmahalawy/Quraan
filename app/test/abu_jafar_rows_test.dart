@@ -242,7 +242,8 @@ void main() {
           expect(canon(at(4, 73, 8).single[4]), canon('يَكُنۢ'));
           // Ibn Wardan's alone: Ibn Jammaz reads it with the shadda.
           if (id == 'ibn_wardan') {
-            expect(canon(at(36, 32, 2).single[4]), canon('لَمَا'));
+            // As Qalun's and Ibn Kathir's, the lam doubled by the tanween before it.
+            expect(canon(at(36, 32, 2).single[4]), canon('لَّمَا'));
           }
         },
       );
@@ -914,7 +915,9 @@ void main() {
           (65, 4, 11),
         ]) {
           final v = where('qalun', s, a, w).single;
-          expect('${v[4]}', endsWith('ٱلَّٰٓءِ'), reason: '$s:$a:$w');
+          // Ya'qub's rasm, its hamza made and its ya dropped.
+          expect('${v[4]}', endsWith('ٱلَّــٰٓيِٕ'), reason: '$s:$a:$w');
+          expect(v[7], 'hamza_mutatarrif', reason: '$s:$a:$w');
           expect('${v[4]}'.startsWith('وَ'), s == 65, reason: '$s:$a:$w');
         }
       },

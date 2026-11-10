@@ -261,6 +261,24 @@ String usulReadingText(
       return madinahScript('$target $second');
     }
   }
+  // The first of two sakins, moved for the second, of two words (قُلِ
+  // ٱدۡعُواْ): the word it meets as well.
+  if (reading.rule == 'first_sakin' &&
+      reading.count == 1 &&
+      !target.contains(' ')) {
+    final following = reading.word + 1 < ayah.words.length ? ayah : nextAyah;
+    final nextWord = following == ayah ? reading.word + 1 : 0;
+    if (following != null) {
+      final second = readingText(
+        variants,
+        reading.riwayaId,
+        following,
+        nextWord,
+        nextWord + 1,
+      );
+      return madinahScript('$target $second');
+    }
+  }
   // Abu Ja'far's ikhfa of the nun before kha and ghayn is of two words
   // (قَوۡلًا غَيۡرَ): the one it is hidden before as well.
   if (reading.rule == 'ikhfa' && reading.count == 1 && !target.contains(' ')) {

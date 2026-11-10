@@ -98,6 +98,8 @@ List<String> usulOf(Variant v) {
     ];
   }
   if (v.rule == 'ha_antum') return ['الهمز المفرد (الهمز المتحرك)'];
+  // «ٱلَّٰٓـِٔي»: its last hamza, with the ya after it or without.
+  if (v.rule == 'hamza_mutatarrif') return ['الهمز المفرد (الهمز المتطرف)'];
   if (v.rule == 'hamza_hadhf') return ['الهمز المفرد (حذف الهمزة)'];
   // «ٱلنَّبِيٓءُ» and its bab, for Warsh as for Qalun.
   if (v.rule == 'hamza_zaida') {

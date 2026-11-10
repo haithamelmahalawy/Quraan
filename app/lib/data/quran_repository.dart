@@ -134,7 +134,13 @@ class QuranRepository {
                   juz: a[3] as int,
                   // The sajda overline (ۤ) is not drawn across the word by
                   // the Hafs font, only as a stray dash after it.
-                  words: (a[4] as String).replaceAll('ۤ', '').split(' '),
+                  // «ٱلَّٰٓـِٔي»: its madd drawn into the shadda; drawn out
+                  // between the lam and the hamza, the dagger alif by the
+                  // hamza.
+                  words: (a[4] as String)
+                      .replaceAll('ۤ', '')
+                      .replaceAll('ٱلَّٰٓـِٔي', 'ٱلَّــٰٓـِٔي')
+                      .split(' '),
                 )
                 ..rubStart = starts[(a[0], a[1])]
                 ..juzStart = previousJuz != a[3];

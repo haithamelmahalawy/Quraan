@@ -543,20 +543,27 @@ void main() {
             final zaida = variants
                 .at(['warsh'], ayah.surah, ayah.number, w)
                 .any((v) => v.word == w && v.rule == 'ya_zaida');
+            // «ٱلَّٰٓـِٔي», its row's rasm (الهمز المتطرف), as Abu Ja'far's.
+            final last = variants
+                .at(['warsh'], ayah.surah, ayah.number, w)
+                .where((v) => v.word == w && v.rule == 'hamza_mutatarrif')
+                .firstOrNull
+                ?.text;
             final written = marked ?? rawSource;
             expect(
               shown?.text ?? '',
-              eased
-                  ? ayah.words[w]
-                  : zaida
-                  ? withSmallYa(written)
-                  : written,
+              last ??
+                  (eased
+                      ? ayah.words[w]
+                      : zaida
+                      ? withSmallYa(written)
+                      : written),
               reason: 'page $p ${ayah.surah}:${ayah.number}:$w',
             );
             // Only the explicitly tested display madd is additional to the
             // archived source; all other letters and marks remain exact.
             (actual[ayah.surah] ??= StringBuffer()).write(
-              marked == null && !eased && !zaida
+              marked == null && !eased && !zaida && last == null
                   ? shown?.text ?? ''
                   : rawSource,
             );

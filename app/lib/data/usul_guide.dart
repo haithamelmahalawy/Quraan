@@ -550,6 +550,7 @@ String? _linKind(Variant v, List<String> letters) {
 
 String _singleHamzaKind(Variant v, String hafs) {
   if (v.rule == 'ha_antum') return 'الهمز المتحرك';
+  if (v.rule == 'hamza_mutatarrif') return 'الهمز المتطرف';
   // Nafi''s «ٱلنَّبِيٓءُ» and its bab, Warsh's too.
   if (v.rule == 'hamza_zaida') return 'زيادة الهمزة';
   // «وَٱلصَّٰبِـِٔينَ» without it, for Nafi' and Abu Ja'far.

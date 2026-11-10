@@ -374,7 +374,16 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
           // Nafi''s «ٱلنَّبِيٓءُ» and its bab, told in the usul; the book's
           // «مع المد المتصل» with it is the madd of the added hamza.
           // And «وَٱلصَّٰبِـِٔينَ» without it.
-          if (v.rule == 'hamza_zaida' || v.rule == 'hamza_hadhf') found = true;
+          // And «ٱلَّٰٓـِٔي», its last hamza told in the usul alone.
+          if (const {
+            'hamza_zaida',
+            'hamza_hadhf',
+            'hamza_mutatarrif',
+            // «مَّرۡقَدِنَاۜ»: joined without the sakt, told in ترك السكت.
+            'no_sakt',
+          }.contains(v.rule)) {
+            found = true;
+          }
           // Nor the riwaya's own hamza turned to a letter, which the book
           // writes out (يُوَدِّهِ، تَامَنْهُ): told in the usul.
           if (const {

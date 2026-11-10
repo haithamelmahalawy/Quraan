@@ -236,6 +236,8 @@ class Variant {
             'tasheel_pair_first',
             'hamza_wasl',
             'ha_antum',
+            // «ٱلَّــٰٓى۪», Warsh's dot under its ya.
+            'hamza_mutatarrif',
           }.contains(rule)) ||
       RegExp(r'إمالة|الإمالة|تقليل|التقليل|بين اللفظين')
           .hasMatch(description) ||

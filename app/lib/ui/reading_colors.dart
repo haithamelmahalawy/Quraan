@@ -75,6 +75,7 @@ abstract final class ReadingColors {
       'tasheel_word',
       'ibdal_single',
       'ha_antum',
+      'hamza_mutatarrif',
       'hamza_wasl',
     }.contains(v.rule)) {
       return hamza;

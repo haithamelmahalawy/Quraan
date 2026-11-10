@@ -91,7 +91,9 @@ String _madaniSukun(String text) {
         c.startsWith('و') && before.startsWith('أ') && before.contains('ُ') ||
         c.startsWith('ي') && before.startsWith('إ') && before.contains('ِ') ||
         // بِأَيۡيْدٖ, as Hafs's second ya.
-        c.startsWith('ي') && before.startsWith('ي') && before.contains('ۡ');
+        c.startsWith('ي') && before.startsWith('ي') && before.contains('ۡ') ||
+        // Hafs's seat of the hamza after one eased (أَٰاَ۬يْن for أَئِن).
+        c.startsWith('ي') && before.startsWith('ا') && before.contains('۬');
     if (silent) continue;
     final madd =
         c.startsWith('و') && before.contains('ُ') ||

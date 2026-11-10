@@ -107,6 +107,13 @@ Map<int, Unit> _align(List<Unit> own, List<Unit> base, bool quotedMadd) {
 String _descriptionKey(String s) =>
     s.replaceAll(RegExp('[ً-ٰٟ]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
 
+/// [text] without the silah of a ha at a word's end (عَمِلَتۡهُۥ، بِهِۦ): told
+/// in the usul (هاء الكناية), no difference of the word.
+String withoutHaSilah(String text) => text.replaceAllMapped(
+  RegExp('ه([ُِ])[ۥۦ]ٓ?(?=[ۖ-ۜ]*( |\$))'),
+  (m) => 'ه${m[1]}',
+);
+
 /// Group equal readings by their actual vowels, not just bare letters or
 /// a generic description such as "بضم الميم".
 String readingVariantKey(Variant v, {String? baseline}) {
@@ -120,7 +127,10 @@ String readingVariantKey(Variant v, {String? baseline}) {
   if (v.isUsul || v.isMarginNote) {
     return 'rule:${v.count}:${v.shownDescription.isNotEmpty ? _descriptionKey(v.shownDescription) : '${v.rule}:${readingTextKey(v.text)}:$marks'}';
   }
-  return 'farsh:${v.count}:${readingTextKey(v.text, baseline: baseline)}:$marks:'
+  // A comparison's silah of the ha is told in the usul: Ibn Kathir's
+  // «عَمِلَتۡهُۥ» with the others' «عَمِلَتۡهُ».
+  final text = v.rule == 'comparison' ? withoutHaSilah(v.text) : v.text;
+  return 'farsh:${v.count}:${readingTextKey(text, baseline: baseline)}:$marks:'
       '${v.description.startsWith('بوجهين') ? _descriptionKey(v.description) : ''}:'
       '${v.text.isEmpty ? _descriptionKey(v.description) : ''}:'
       '${_descriptionKey(v.bookWujuh)}';
@@ -302,12 +312,15 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
   ]..sort();
   // A silah is told in the usul: no difference of the word here, or Hafs would
   // be noted against Abu Ja'far in «تُفَٰدُوهُمۡ» when another reads it otherwise.
-  final applied = _apply(
-    ayah,
-    rows.where((v) => !v.stopOnly).toList(),
-    from,
-    to,
-  ).replaceAll(RegExp('مُۥٓ?(?=[ۖ-ۜ]*( |\$))'), 'مۡ');
+  // So the silah of the ha (عَمِلَتۡهُۥ): Ibn Kathir's word is the others'.
+  final applied = withoutHaSilah(
+    _apply(
+      ayah,
+      rows.where((v) => !v.stopOnly).toList(),
+      from,
+      to,
+    ).replaceAll(RegExp('مُۥٓ?(?=[ۖ-ۜ]*( |\$))'), 'مۡ'),
+  );
   // Hafs's alif marked ۠ (ٱلظُّنُونَا۠) is dropped in wasl only: a reading
   // without it at all (ٱلظُّنُونَ) differs from him when stopping.
   final ownWords = applied.split(' ');

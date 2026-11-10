@@ -43,7 +43,8 @@ const _ashabSilah = {'qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz'};
 /// هَٰؤُلَآءِ۬); the first, before an alif, its sifr dropped with the alif
 /// taken for a naql (جَآءَ ا۟لَ → ءَ۬الَ).
 String _easedAsHafs(String text, String hafs, bool hamza) {
-  final last = RegExp(r'ء[َُِ]$').firstMatch(hafs)?[0];
+  // Before a pause mark too (ٱلسَّمَآءِۚ).
+  final last = RegExp(r'ء[َُِ](?=[ۖ-ۜ]*$)').firstMatch(hafs)?[0];
   if (hamza && hafs.startsWith('ءَا') && RegExp('^ا[^ً-ٰ]').hasMatch(text)) {
     text = 'ءَ۬$text';
   }
@@ -51,8 +52,8 @@ String _easedAsHafs(String text, String hafs, bool hamza) {
       .replaceAll('رَٰ۬', 'رَءَ۬')
       .replaceAll('وْ۟', 'ؤُ۬')
       .replaceFirstMapped(
-        RegExp(r'([اآ]ٓ?)۟$'),
-        (m) => last == null ? m[0]! : '${m[1]}$last۬',
+        RegExp(r'([اآ]ٓ?)۟([ۖ-ۜ]*)$'),
+        (m) => last == null ? m[0]! : '${m[1]}$last۬${m[2]}',
       );
 }
 
@@ -86,13 +87,17 @@ bool _easesFirstHamza(Variant v) =>
       continue;
     }
     final h = own.elementAtOrNull(i);
+    // Its own vowel where it differs from Hafs's (أَٰاَ۬يْن for أَئِن).
+    final vowel = RegExp('[َُِ]').firstMatch(letters[i])?[0];
     return (
       i,
       RegExp('^[ءؤئ]').hasMatch(letters[i])
           ? letters[i]
-          : h != null && hamza.hasMatch(h)
+          : h != null &&
+                hamza.hasMatch(h) &&
+                (vowel == null || h.contains(vowel))
           ? h
-          : 'أَ',
+          : 'أ${vowel ?? 'َ'}',
     );
   }
   final first = letters.firstOrNull ?? '';
@@ -1583,6 +1588,13 @@ class _MushafPageState extends State<MushafPage>
         _ruwaysTasheelAt(ayah, w) != null) {
       return (text: ayah.words[w], font: 'Hafs');
     }
+    // «ٱلَّٰٓـِٔي» of Warsh as of Abu Ja'far, its row's rasm, not his text's.
+    final last = base
+        .where((v) => v.word == w && v.rule == 'hamza_mutatarrif')
+        .firstOrNull;
+    if (source != null && last != null && last.text.isNotEmpty) {
+      return (text: last.text, font: 'Hafs');
+    }
     if (source != null) {
       final marked = base
           .map((v) => hamzaPairMaddText(v, source))
@@ -2397,7 +2409,23 @@ class _MushafPageState extends State<MushafPage>
 
     final drawn = drawnText;
     Widget word = ink(drawn);
-    if (eased != null) {
+    final yaBelow =
+        hafsFont &&
+        YaBelowMark.applies(drawn) &&
+        _baseAt(
+          widget.variants,
+          widget.settings,
+          ayah,
+          w,
+        ).any((v) => v.word == w && v.rule == 'hamza_mutatarrif');
+    if (yaBelow) {
+      word = YaBelowMark(
+        text: drawn,
+        style: TextStyle(fontFamily: 'Hafs', fontSize: fontSize, height: 1),
+        color: expanded?.lastOrNull?.$2 ?? m.color ?? MushafColors.ink,
+        builder: ink,
+      );
+    } else if (eased != null) {
       final (i, hamza) = eased;
       word = HamzaReplacementMark(
         text: drawn,
@@ -2915,6 +2943,11 @@ List<_UsulGroup> _usulNotes(
             .replaceAll(RegExp('[ۖ-ۜ]'), '')
             .replaceAll('ۡ', 'ْ')
             .replaceAll(RegExp('[ىے]'), 'ي')
+            // Nor its madd, Qalun's short and Warsh's long (ٱلنَّبِيٓءُ إِنَّآ).
+            .replaceAll(
+              RegExp(label.startsWith('الهمزتان من كلمتين') ? 'ٓ' : r'(?!)'),
+              '',
+            )
             // Nor its dhal merged into the ta, told in its own chapter: one
             // silah of «أَتَّخَذۡتُمُۥ» for al-Bazzi and Abu Ja'far.
             .replaceAllMapped(
@@ -2954,8 +2987,12 @@ List<_UsulGroup> _usulNotes(
 
 /// The readers verified so far share one set of chapters: their rules are
 /// told by chapter, kind, then a table of the word, reader and face.
-bool _isUnifiedGroup(_UsulGroup g) =>
-    g.items.values.every((i) => i.riwayat.every(usulUnifiedRiwayat.contains));
+bool _isUnifiedGroup(_UsulGroup g) => g.items.values.every(
+  (i) =>
+      i.riwayat.every(usulUnifiedRiwayat.contains) ||
+      // Abu 'Amr's «ٱلَّٰٓـِٔي», told with theirs.
+      i.readings.every((v) => v.rule == 'hamza_mutatarrif'),
+);
 
 /// Below this a phone's margin has no room for three columns: a table's row
 /// is then told in one column.
@@ -3190,6 +3227,8 @@ List<HameshEntry> _entriesOf(
 /// And its يسٓ وَٱلۡقُرۡءَانِ, read as one with the idgham.
 bool _shadedFarsh(Variant v) =>
     v.description == 'بحذف المد الطبيعي بعد الهمزة' ||
+    // «لَأَتَوۡهَا» of Ashab al-Silah: written as Hafs's, read short.
+    v.description == 'بقصر الهمزة' ||
     // ٱلۡغَنِيُّ ٱلۡحَمِيدُ (الحديد 24), without هُوَ.
     v.description == 'بحذف هو' ||
     _farshAcrossAyahs(v) ||
@@ -4322,13 +4361,11 @@ class _UsulBox extends StatelessWidget {
       children: [
         _usulWord(i, g.color),
         // How the ya is read (يَدِي: بإسكان الياء).
+        // With more told of the word, its own wording (تَأۡمُرُوٓنِّيَ: بفتح الياء
+        // وتشديد النون مع المد المشبع).
         if (i.readings.any((v) => v.rule == 'ya_idafa'))
           Text(
-            i.readings.any(
-                  (v) => v.rule == 'ya_idafa' && v.description.contains('فتح'),
-                )
-                ? ' (بفتح الياء)'
-                : ' (بإسكان الياء)',
+            ' (${i.readings.where((v) => v.rule == 'ya_idafa' && RegExp('^بفتح الياء و').hasMatch(v.description)).firstOrNull?.description ?? (i.readings.any((v) => v.rule == 'ya_idafa' && v.description.contains('فتح')) ? 'بفتح الياء' : 'بإسكان الياء')})',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
         // Abu Ja'far's ya of the zawaid, in wasl alone (ٱلدَّاعِۦ، دَعَانِۦ).
@@ -4435,6 +4472,15 @@ class _UsulBox extends StatelessWidget {
     );
     Widget text(String shown, [int? hiddenHamza]) =>
         _withHiddenHamza(shown, hiddenHamza, style);
+    if (item.readings.any((v) => v.rule == 'hamza_mutatarrif') &&
+        YaBelowMark.applies(item.text)) {
+      return YaBelowMark(
+        text: item.text,
+        style: style,
+        color: color,
+        builder: text,
+      );
+    }
     final eased =
         item.replacement == null &&
             item.readings.isNotEmpty &&
@@ -4779,22 +4825,30 @@ class _EntryView extends StatelessWidget {
     void add(String name, Color color, String font, Variant v) {
       final key = readingVariantKey(v, baseline: baseline);
       final same = out.where((g) => g.key == key).firstOrNull;
-      same != null
-          ? same.names.add((name, color))
-          : out.add(
-              _Reading(
-                [(name, color)],
-                font,
-                v.marginText.isNotEmpty
-                    ? v.marginText
-                    : _spacedImala(v)
-                    ? spacedImalaSigns(v.text)
-                    : v.text,
-                _brief(v),
-                key,
-                imala: v.isImala,
-              ),
-            );
+      final group =
+          same ??
+          _Reading(
+            [],
+            font,
+            v.marginText.isNotEmpty
+                ? v.marginText
+                : _spacedImala(v)
+                ? spacedImalaSigns(v.text)
+                : v.text,
+            _brief(v),
+            key,
+            imala: v.isImala,
+          );
+      if (same == null) out.add(group);
+      // The first told without one (al-Bazzi's ta, told in the usul): the
+      // wording of another read alike (لَآ تَّنَاصَرُونَ «بتشديد التاء»).
+      if (group.description.isEmpty) group.description = _brief(v);
+      group.names.add((name, color));
+      if (v.rule == 'comparison' && withoutHaSilah(v.text) != v.text) {
+        group.silah.add(name);
+      } else {
+        group.withoutSilah = true;
+      }
     }
 
     for (final q in qiraat) {
@@ -4825,6 +4879,17 @@ class _EntryView extends StatelessWidget {
         }
       }
     }
+    // Read alike but for the silah of the ha (عَمِلَتۡهُ، ولابن كثير بالصلة):
+    // the word as the others read it, the silah told of its readers.
+    for (final g in out) {
+      if (g.silah.isEmpty || !g.withoutSilah) continue;
+      g.text = withoutHaSilah(g.text);
+      g.description = [
+        if (g.description.isNotEmpty) g.description,
+        // «ولابن كثير»، «وللدوري» (the lam with the al of the name).
+        'و${[for (final n in g.silah) n.startsWith('ال') ? 'ل${n.substring(1)}' : 'ل$n'].join(' و')} بالصلة',
+      ].join('، ');
+    }
     return out;
   }
 
@@ -4845,11 +4910,16 @@ class _Reading {
 
   final List<(String, Color)> names;
   final String font;
-  final String text;
+  String text;
 
   /// e.g. "بالتاء", "بضم الهاء"; empty when not generated.
-  final String description;
+  String description;
   final String key;
+
+  /// Who of [names] reads the ha of the word with its silah (عَمِلَتۡهُۥ),
+  /// and whether one reads it without.
+  final silah = <String>[];
+  var withoutSilah = false;
 
   /// Read with imala: shown as the word with the imala sign, in green.
   final bool imala;

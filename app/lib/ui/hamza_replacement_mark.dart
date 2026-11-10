@@ -210,6 +210,13 @@ class _ReplacementPainter extends CustomPainter {
                   ? 0.15
                   : letter.isEmpty && RegExp('^[ؤئ]').hasMatch(hamza)
                   ? -.48
+                  // A bare seat after the small alif of the idkhal, Hafs's ya after it,
+                  // above it, clear of that alif (أَٰاَ۬يْن).
+                  : letter.isEmpty &&
+                        text.startsWith('ا', offset) &&
+                        text.substring(0, offset).endsWith('ٰ') &&
+                        RegExp('^ا[^ي]*ي').hasMatch(text.substring(offset))
+                  ? -1.0
                   : -0.83),
     );
     // The tasheel dot filled, as Warsh's (أَءِذَا، أَىِ۪مَّةَ); the circle of
@@ -294,5 +301,146 @@ class _ReplacementPainter extends CustomPainter {
       color != old.color ||
       offset != old.offset ||
       originalHamza != old.originalHamza ||
+      textScaler != old.textScaler;
+}
+
+/// «ٱلَّــٰٓى۪» and «ٱلَّــٰٓيِٕ»: the tasheel dot, or the hamza with its kasra,
+/// under the middle of the last ya, where the font sets it at the ya's start.
+class YaBelowMark extends StatelessWidget {
+  const YaBelowMark({
+    super.key,
+    required this.text,
+    required this.style,
+    required this.color,
+    required this.builder,
+  });
+
+  final String text;
+  final TextStyle style;
+  final Color color;
+
+  /// Builds the text with its ya bare, dotless as Hafs's final ya.
+  final Widget Function(String text) builder;
+
+  static final _end = RegExp(r'([يىی])([ِ۪ٕ]+)$');
+
+  /// Whether [text] ends in a ya with the dot or the hamza under it.
+  static bool applies(String text) =>
+      _end.firstMatch(text)?[2]?.contains(RegExp('[۪ٕ]')) ?? false;
+
+  static String seat(String text) => text.replaceFirstMapped(_end, (_) => 'ى');
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    foregroundPainter: _YaBelowPainter(
+      text,
+      DefaultTextStyle.of(context).style.merge(style),
+      color,
+      MediaQuery.textScalerOf(context),
+    ),
+    child: builder(seat(text)),
+  );
+}
+
+class _YaBelowPainter extends CustomPainter {
+  _YaBelowPainter(this.text, this.style, this.color, this.textScaler);
+
+  final String text;
+  final TextStyle style;
+  final Color color;
+  final TextScaler textScaler;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final shown = YaBelowMark.seat(text);
+    final painter = TextPainter(
+      text: TextSpan(text: shown, style: style),
+      textDirection: TextDirection.rtl,
+      textScaler: textScaler,
+    )..layout(maxWidth: size.width);
+    var squeeze = 1.0;
+    if (painter.computeLineMetrics().length > 1 && size.width > 0) {
+      painter.layout();
+      squeeze = size.width / painter.width;
+    }
+    final boxes = painter.getBoxesForSelection(
+      TextSelection(baseOffset: shown.length - 1, extentOffset: shown.length),
+    );
+    final lines = painter.computeLineMetrics();
+    if (boxes.isEmpty || lines.isEmpty) {
+      painter.dispose();
+      return;
+    }
+    final box = boxes.first;
+    final fontSize = textScaler.scale(style.fontSize ?? 14);
+    final x = squeeze * (box.left + box.right) / 2;
+    final baseline = lines.last.baseline;
+    final marks = text.substring(shown.length);
+    // Below the bowl of the ya, clear of its stroke.
+    var top = baseline + fontSize * .38;
+    if (marks.contains('۪')) {
+      final r = fontSize * .08;
+      canvas.drawCircle(Offset(x, top + r), r, Paint()..color = color);
+      painter.dispose();
+      return;
+    }
+    // The hamza, then its kasra under it; the hamza's ink lies low in its
+    // line, so set higher than the dot.
+    top -= fontSize * .08;
+    final hamza = TextPainter(
+      text: TextSpan(
+        text: 'ء',
+        style: TextStyle(
+          fontFamily: 'Hafs',
+          fontSize: fontSize,
+          height: 1,
+          color: color,
+        ),
+      ),
+      textDirection: TextDirection.rtl,
+    )..layout();
+    final ink = hamza.computeLineMetrics().single;
+    // The hamza's ink sits on its baseline, about its ascent tall.
+    final inkTop = ink.baseline - ink.ascent * .55;
+    hamza.paint(canvas, Offset(x - hamza.width / 2, top - inkTop));
+    top += ink.ascent * .55 + fontSize * .04;
+    hamza.dispose();
+    if (marks.contains('ِ')) {
+      final kasra = TextPainter(
+        text: TextSpan(
+          style: TextStyle(
+            fontFamily: 'Hafs',
+            fontSize: fontSize * .9,
+            height: 1,
+          ),
+          children: [
+            const TextSpan(
+              text: 'ا',
+              style: TextStyle(color: Colors.transparent),
+            ),
+            TextSpan(
+              text: 'ِ',
+              style: TextStyle(color: color),
+            ),
+          ],
+        ),
+        textDirection: TextDirection.rtl,
+      )..layout();
+      final line = kasra.computeLineMetrics().single;
+      // A kasra hangs just under the alif's baseline.
+      kasra.paint(
+        canvas,
+        Offset(x - kasra.width / 2, top - line.baseline - fontSize * .02),
+      );
+      kasra.dispose();
+    }
+    painter.dispose();
+  }
+
+  @override
+  bool shouldRepaint(_YaBelowPainter old) =>
+      text != old.text ||
+      style != old.style ||
+      color != old.color ||
       textScaler != old.textScaler;
 }
