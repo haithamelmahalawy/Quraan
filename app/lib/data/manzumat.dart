@@ -1204,7 +1204,11 @@ class Manzumat {
     if (poem == Poem.shatibiyya &&
         const {'qalun', 'bazzi', 'qunbul'}.contains(v.riwayaId) &&
         !v.isUsul &&
-        '${v.surah}:${v.ayah}:${v.word}' == '25:48:3') {
+        const {
+          '25:48:3',
+          // «ٱلرِّيَٰحَ» (الشورى ٣٣): «وَفي سُورَةِ الشُّورَى».
+          '42:33:3',
+        }.contains('${v.surah}:${v.ayah}:${v.word}')) {
       return {490, 491, 492};
     }
     // Qalun's «وَمَحْيَآيْ» (الأنعام ١٦٢): «وَمَحْيَايَ وَالإِسْكَانُ صَحَّ تَحَمُّلَا».
@@ -1339,8 +1343,10 @@ class Manzumat {
         at == '15:2:0') {
       return {802};
     }
+    // «وَنَـَٔا» (الإسراء ٨٣، فصلت ٥١), of every reader, its hamza after the
+    // alif or before it: «نَآى أَخِّرْ مَعاً هَمْزَهُ مَلَا».
     if (poem == Poem.shatibiyya &&
-        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        !v.isUsul &&
         const {'17:83:5', '41:51:5'}.contains(at)) {
       return {826};
     }
@@ -1691,6 +1697,37 @@ class Manzumat {
         RegExp(r'^(هاد|وال|واق|باق)$').hasMatch(_letters(v.stopText))) {
       return {794};
     }
+    // «وَصَدَّ» (غافر ٣٧) with the fatha: «وَضَمُّهُمْ / وَصُدُّوا ثَوَى مَعْ صُدَّ
+    // فِي الطَّوْلِ وَانْجَلَا».
+    if (poem == Poem.shatibiyya && at == '40:37:14' && !v.isUsul) {
+      return {795};
+    }
+    // «ٱدۡخُلُوٓاْ» (غافر ٤٦) with a hamzat al-wasl: «أَدْخِلُوا نَفَرٌ صِلَا / عَلَى
+    // الْوَصْلِ وَاضْمُمْ كَسْرَهُ»; «يَتَذَكَّرُونَ» (غافر ٥٨): «يَتَذَكَّرُو / نَ
+    // كَهْفٌ سَماَ».
+    if (poem == Poem.shatibiyya && at == '40:46:8' && !v.isUsul) {
+      return {1012, 1013};
+    }
+    if (poem == Poem.shatibiyya && at == '40:58:12' && !v.isUsul) {
+      return {1013};
+    }
+    // «وَهۡيَ» (فصلت ١١): «وَهَا هُوَ بَعْدَ الْوَاوِ … / وَهَا هِيَ أَسْكِنْ».
+    // «يُبَشِّرُ» (الشورى ٢٣): «يَبْشُرُ كَمْ سَمَا / نَعَمْ ضُمَّ حَرِّكْ وَاكْسِرِ
+    // الضَّمَّ أَثْقَلَا / نعَمْ عَمَّ فِي الشُّورَى».
+    if (poem == Poem.shatibiyya && at == '42:23:2' && !v.isUsul) {
+      return {555, 556};
+    }
+    // «يَفۡعَلُونَ» (الشورى ٢٥) with the ya: «وَيَفْعَلُو / نَ غَيْرُ صِحَابٍ».
+    if (poem == Poem.shatibiyya && at == '42:25:11' && !v.isUsul) {
+      return {1018};
+    }
+    if (poem == Poem.shatibiyya && at == '41:11:4' && !v.isUsul) {
+      return {449};
+    }
+    // «ثَمَرَتٖ» (فصلت ٤٧) singular: «وَالْجَمْعُ عَمَّ عَقَنْقَلَا / لَدَى ثَمَرَاتٍ».
+    if (poem == Poem.shatibiyya && at == '41:47:7' && !v.isUsul) {
+      return {1016, 1017};
+    }
     if (at == '27:25:0') {
       if (poem == Poem.shatibiyya &&
           const {'duri_kisai', 'abul_harith'}.contains(v.riwayaId)) {
@@ -1772,6 +1809,25 @@ class Manzumat {
       if (at == '38:53:2' && !v.isUsul) return {197};
       // «إِنَّمَا أَنَا۠ نَذِيرٞ» (ص ٧٠) with the kasra: «وَأُدْ كَسْرَ أَنَّمَا».
       if (at == '38:70:4' && !v.isUsul) return {197};
+      // «يَدۡعُونَ» (غافر ٢٠) with the ya, as Hafs: «يَدْعُو اتْلُ».
+      if (at == '40:20:4' && !v.isUsul) return {198};
+      // «دِينَكُمُۥ وَأَن» (غافر ٢٦) with the waw: «أَوْ أَنْ وَقَلْبِ لَا»; and
+      // «يُظۡهِرَ … ٱلۡفَسَادَ» as Hafs: «… تُنَوِّنْهُ وَاقْطَعِ ادْخُلُوا حُمْ».
+      if ((at == '40:26:11' || at == '40:26:12') && !v.isUsul) return {198};
+      if ((at == '40:26:14' || at == '40:26:17') && !v.isUsul) return {199};
+      // «وَصَدَّ» (غافر ٣٧) with the fatha, the damma Ya'qub's: «صَدَّ اضْمُمَنْ حَلَا».
+      if (at == '40:37:14' && !v.isUsul) return {137};
+      // «يُدۡخَلُونَ» (غافر ٤٠) unnamed of its doer: «وَيَدْ / خُلُوا سَمِّ طِبْ
+      // جَهِّلْ كَطَوْلٍ وَكَافَ الَا».
+      if (at == '40:40:17' && !v.isUsul) return {97};
+      // «سَيُدۡخَلُونَ» (غافر ٦٠): «سَيَدْخُلُو / نَ جَهِّلْ أَلاَ طِبْ»; «شُيُوخٗا»
+      // (غافر ٦٧) with the damma, as Hafs: «اضْمُمْ … شُيُوخًا فِدْ».
+      if (at == '40:60:10' && !v.isUsul) return {199};
+      if (at == '40:67:19' && !v.isUsul) return {102};
+      // «تَكَادُ» (الشورى ٥) with the ta, as Hafs: «يَكَادُ أَنْ / نِثِ».
+      if (at == '42:5:0' && !v.isUsul) return {156};
+      // «يُبَشِّرُ» (الشورى ٢٣) doubled, as Hafs: «يُبَشِّرُ فِي حِمًى».
+      if (at == '42:23:2' && !v.isUsul) return {201};
       // «لَٰكِنَّ ٱلَّذِينَ» (آل عمران ١٩٨، الزمر ٢٠): «وَشَدِّدْ لَكِنِ الَّذْ مَعًا أَلَا».
       if ((at == '3:198:0' || at == '39:20:0') && !v.isUsul) return {93};
       // «أَمَّنۡ» (الزمر ٩) doubled, as Hafs: «أَمَنْ شَدِّدِ اعْلَمْ فِدْ».

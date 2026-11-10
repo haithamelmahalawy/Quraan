@@ -2330,6 +2330,25 @@ class _MushafPageState extends State<MushafPage>
         );
   }
 
+  /// The other word of two hamzas from two words (يَشَآءُ إِنَّهُۥ): it glows
+  /// with the word its rule is told on, the two read as one.
+  bool _pairGlows(Ayah ayah, int w) {
+    bool pair(Variant v) =>
+        usulOf(v).any((l) => l.startsWith('الهمزتان من كلمتين'));
+    List<Variant> at(int i) => i < 0 || i >= ayah.words.length
+        ? const []
+        : [
+            ..._readingsAt(widget.variants, widget.settings, ayah, i).shown,
+            ...?_letterReadings(ayah, i),
+          ].where((v) => v.word == i).toList();
+    final next = at(w + 1).where(pair).toList();
+    final before = at(w - 1)
+        .where((v) => v.rule == 'tasheel_pair_first')
+        .toList();
+    return next.isNotEmpty && _glows(next) ||
+        before.isNotEmpty && _glows(before);
+  }
+
   Widget _word(Ayah ayah, int w, double fontSize, [int kashida = 0]) {
     final m = _mark(ayah, w);
     final shown = _display(ayah, w)!;
@@ -2520,8 +2539,9 @@ class _MushafPageState extends State<MushafPage>
     }
     if (alert != null &&
         !stopping &&
-        (m.color != null || coloured != null) &&
-        _glows([...m.shown, ...?_letterReadings(ayah, w)])) {
+        ((m.color != null || coloured != null) &&
+                _glows([...m.shown, ...?_letterReadings(ayah, w)]) ||
+            _pairGlows(ayah, w))) {
       word = _Alerting(child: word);
     }
     if (m.colors.length > 1 && widget.settings.mode == DisplayMode.highlight) {
@@ -4365,7 +4385,10 @@ class _UsulBox extends StatelessWidget {
         // وتشديد النون مع المد المشبع).
         if (i.readings.any((v) => v.rule == 'ya_idafa'))
           Text(
-            ' (${i.readings.where((v) => v.rule == 'ya_idafa' && RegExp('^بفتح الياء و').hasMatch(v.description)).firstOrNull?.description ?? (i.readings.any((v) => v.rule == 'ya_idafa' && v.description.contains('فتح')) ? 'بفتح الياء' : 'بإسكان الياء')})',
+            ' (${i.readings.where((v) => v.rule == 'ya_idafa' && RegExp('^بفتح الياء و').hasMatch(v.description)).firstOrNull?.description ?? (i.readings.any((v) => v.rule == 'ya_idafa' && v.description.contains('فتح')) ? 'بفتح الياء' : 'بإسكان الياء')}'
+            // A second face of one of them (رَبِّيَ: ولقالون وجه ثانٍ بإسكان الياء).
+            '${{for (final v in i.readings)
+              if (v.rule == 'ya_idafa' && v.description.contains('، ول')) v.description.substring(v.description.indexOf('، ول'))}.join()})',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
         // Abu Ja'far's ya of the zawaid, in wasl alone (ٱلدَّاعِۦ، دَعَانِۦ).
@@ -4650,12 +4673,20 @@ class _EntryView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final g in _readings(
+                    for (final (i, g) in _readings(
                       e.readings,
                       e.ayah.words
                           .sublist(e.word, e.word + e.readings.first.count)
                           .join(' '),
-                    ))
+                    ).indexed) ...[
+                      // A faint line between the readers of one word
+                      // (ابن وردان … / ابن جماز …).
+                      if (i > 0)
+                        Divider(
+                          height: 4,
+                          thickness: .4,
+                          color: MushafColors.gold.withAlpha(90),
+                        ),
                       Text.rich(
                         textAlign: TextAlign.start,
                         TextSpan(
@@ -4676,16 +4707,16 @@ class _EntryView extends StatelessWidget {
                                 g.imala)
                               _wordSpan(g, e, reading),
                             if (g.description.isNotEmpty)
-                              TextSpan(
-                                text: ' ${g.description}',
-                                style: label.copyWith(
-                                  color: MushafColors.frame,
-                                ),
+                              _descriptionSpan(
+                                g.description,
+                                label.copyWith(color: MushafColors.frame),
+                                quran,
                               ),
                             if (certified) tick,
                           ],
                         ),
                       ),
+                    ],
                   ],
                 ),
         ),
@@ -4751,9 +4782,10 @@ class _EntryView extends StatelessWidget {
                       if (g.text.isNotEmpty || g.description.isEmpty || g.imala)
                         _wordSpan(g, e, reading),
                       if (g.description.isNotEmpty)
-                        TextSpan(
-                          text: ' ${g.description}',
-                          style: label.copyWith(color: MushafColors.frame),
+                        _descriptionSpan(
+                          g.description,
+                          label.copyWith(color: MushafColors.frame),
+                          reading * 13 / 17,
                         ),
                       ?tick,
                     ],
@@ -4762,6 +4794,58 @@ class _EntryView extends StatelessWidget {
               ),
             ],
           ),
+      ],
+    );
+  }
+
+  /// A reading's description, the vowelled word it quotes («يَٰحَسۡرَتَٰٓيۡ»)
+  /// in the mushaf's font, its marks in their places.
+  static InlineSpan _descriptionSpan(
+    String text,
+    TextStyle style,
+    double size,
+  ) {
+    final quoted = RegExp('«([^»]*[ً-ْٰۖ-ۭ][^»]*)»');
+    final parts = <InlineSpan>[];
+    var at = 0;
+    for (final m in quoted.allMatches(text)) {
+      parts.add(TextSpan(text: text.substring(at, m.start).trimRight()));
+      // The quotes with the word, never parted from it at a line's end.
+      final word = m[1]!;
+      final hafs = TextStyle(
+        fontFamily: 'Hafs',
+        fontSize: size,
+        color: style.color,
+      );
+      parts.add(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(' «', style: style),
+              // The font's line is tall for its marks: the word in a box
+              // no taller than its letters, its marks overflowing it.
+              Align(
+                widthFactor: 1,
+                heightFactor: .6,
+                alignment: Alignment.bottomCenter,
+                child: QuranWordText(word, style: hafs),
+              ),
+              Text('»', style: style),
+            ],
+          ),
+        ),
+      );
+      at = m.end;
+    }
+    if (parts.isEmpty) return TextSpan(text: ' $text', style: style);
+    parts.add(TextSpan(text: text.substring(at)));
+    return TextSpan(
+      style: style,
+      children: [
+        const TextSpan(text: ' '),
+        ...parts,
       ],
     );
   }
@@ -4824,7 +4908,25 @@ class _EntryView extends StatelessWidget {
     final out = <_Reading>[];
     void add(String name, Color color, String font, Variant v) {
       final key = readingVariantKey(v, baseline: baseline);
-      final same = out.where((g) => g.key == key).firstOrNull;
+      final text = v.marginText.isNotEmpty ? v.marginText : v.text;
+      // A farsh read alike but for the silah of the ha (نَنكُسۡهُ، ولابن كثير
+      // بالصلة): one line, the silah told of its readers.
+      final bare = withoutHaSilah(text);
+      final same =
+          out.where((g) => g.key == key).firstOrNull ??
+          out
+              .where(
+                (g) =>
+                    !g.imala &&
+                    !v.isImala &&
+                    g.font == font &&
+                    g.text != text &&
+                    withoutHaSilah(g.text) == bare &&
+                    (g.description.isEmpty ||
+                        _brief(v).isEmpty ||
+                        g.description == _brief(v)),
+              )
+              .firstOrNull;
       final group =
           same ??
           _Reading(
@@ -4844,7 +4946,7 @@ class _EntryView extends StatelessWidget {
       // wording of another read alike (لَآ تَّنَاصَرُونَ «بتشديد التاء»).
       if (group.description.isEmpty) group.description = _brief(v);
       group.names.add((name, color));
-      if (v.rule == 'comparison' && withoutHaSilah(v.text) != v.text) {
+      if (bare != text) {
         group.silah.add(name);
       } else {
         group.withoutSilah = true;

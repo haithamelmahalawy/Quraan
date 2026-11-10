@@ -280,7 +280,7 @@ void main() {
   test("no word of Abu Ja'far is lost, and «يأمركم» is usul", () {
     // Each row on the words its text reads; these alone are read as one or
     // leave a word out.
-    const asOne = {'40:26:12', '53:50:2', '57:24:9'};
+    const asOne = {'40:26:11', '53:50:2', '57:24:9'};
     for (final id in ['ibn_wardan', 'ibn_jammaz']) {
       for (final v in variants.allOf(id)) {
         if (v.text.trim().isEmpty) continue;

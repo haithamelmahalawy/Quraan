@@ -313,10 +313,18 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
   // A silah is told in the usul: no difference of the word here, or Hafs would
   // be noted against Abu Ja'far in «تُفَٰدُوهُمۡ» when another reads it otherwise.
   // So the silah of the ha (عَمِلَتۡهُۥ): Ibn Kathir's word is the others'.
+  // And two hamzas of a word eased (ءَا۬عۡجَمِيّٞ of Qalun, with the idkhal):
+  // told in their usul, no farsh beside the others'.
   final applied = withoutHaSilah(
     _apply(
       ayah,
-      rows.where((v) => !v.stopOnly).toList(),
+      rows
+          .where(
+            (v) =>
+                !v.stopOnly &&
+                !(v.rule == 'tasheel_word' && v.text.contains('۬')),
+          )
+          .toList(),
       from,
       to,
     ).replaceAll(RegExp('مُۥٓ?(?=[ۖ-ۜ]*( |\$))'), 'مۡ'),

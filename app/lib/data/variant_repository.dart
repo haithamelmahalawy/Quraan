@@ -361,6 +361,14 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
               v.description.contains('ألفًا خالصة مع المد المشبع للساكنين')) {
             found = true;
           }
+          // «ءَا۬عۡجَمِيّٞ» (فصلت 44) of Qalun and Abu Ja'far, eased with the
+          // idkhal: told in the usul alone, the book's farsh of it too.
+          if (v.rule == 'tasheel_word' &&
+              surah == 41 &&
+              ayah == 44 &&
+              v.word == 8) {
+            found = true;
+          }
           // ٱلسَّمَآءَ أَن (الحج 65), its two faces told in the usul: the book
           // quotes the two words joined.
           if (id == 'warsh' &&
