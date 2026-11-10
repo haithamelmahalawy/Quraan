@@ -13,7 +13,7 @@ Future<List<EyeGesture>> run(List<(double, double, int)> steps) async {
       d.feed(l, r, at: at);
       at = at.add(const Duration(milliseconds: 40));
     }
-  }
+  } 
   await Future<void>.delayed(const Duration(seconds: 1)); // sequence ends
   await sub.cancel();
   return seen;
