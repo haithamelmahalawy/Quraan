@@ -88,6 +88,8 @@ String _madaniSukun(String text) {
     final before = i > 0 ? cs[i - 1] : '';
     final silent =
         c.startsWith('ا') ||
+        // Abu Ja'far's «لِإْيلَٰفِ»: the alif of a hamza not read.
+        c.startsWith('إ') && !RegExp('[ً-ِ]').hasMatch(c) ||
         c.startsWith('و') && before.startsWith('أ') && before.contains('ُ') ||
         c.startsWith('ي') && before.startsWith('إ') && before.contains('ِ') ||
         // بِأَيۡيْدٖ, as Hafs's second ya.

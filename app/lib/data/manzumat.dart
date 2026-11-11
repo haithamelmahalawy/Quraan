@@ -199,7 +199,10 @@ class Manzumat {
                 qiraaOf(reading.riwayaId).id == 'abu_jafar' ||
             _yaqubShatibiyya(reading) != null ||
             (_idghamDhal(reading, hafs) ||
-                    reading.rule == 'hamza_zaida' ||
+                    // Not «كُفُؤًا» (الإخلاص ٤), told in the Durrah:
+                    // «وَكُفْؤًا سُكُونُ الْفَاءِ حِصْنٌ».
+                    reading.rule == 'hamza_zaida' &&
+                        _at(reading) != '112:4:3' ||
                     reading.rule == 'ana_madd' ||
                     // «ٱلصَّٰبِـِٔينَ» with Nafi'; his bab of «مُسۡتَهۡزُونَ» has
                     // its verse in the Durrah.
@@ -1585,10 +1588,27 @@ class Manzumat {
     }
     // «مَنۡۜ رَاقٖ» (القيامة ٢٧) joined: «وَسَكْتَةُ حَفْصٍ دُونَ قَطْعٍ لَطِيفَةٌ ... /
     // وَفِي نُونِ مَنْ رَاق ... وَالْبَاقُونَ لاَ سَكْتَ مُوصَلَا».
-    if (poem == Poem.shatibiyya && at == '75:27:1') return {830, 831};
+    if (poem == Poem.shatibiyya && (at == '75:27:1' || at == '83:14:1')) {
+      return {830, 831};
+    }
     // «سَلَٰسِلَاْ» (الإنسان ٤): «يُمْنَى حُلًى وَسَلاسِلَا / لَدَى الْوَقْفِ فَاقْصُرْ
     // طُلْ».
     if (poem == Poem.durrah && at == '76:4:3') return {223, 224};
+    // Abu Ja'far's «مُنذِرٞ» (النازعات ٤٥): «وَنُونُ مُنْـ / ـذِرٌ … شَدِّدْ أَلاَ».
+    if (poem == Poem.durrah && at == '79:45:2') return {228};
+    // «تُكَذِّبُونَ» (الانفطار ٩) with the ta, as Hafs: «تُكَذِّبُ غَيْبًا أُدْ».
+    if (poem == Poem.durrah && at == '82:9:2') return {229};
+    // «وَيَصۡلَىٰ» (الانشقاق ١٢) as Hafs: «وَاتْلُ يَصْلَى وَآخِرَ الْـ / بُرُوجِ كَحَفْصٍ».
+    // «لِإِيلَٰفِ … إِۦلَٰفِهِمۡ» (قريش ١، ٢): «لِيْلافِ اتْلُ مَعْهُ إِلاَفِهِمْ».
+    // And «كُفُؤًا» (الإخلاص ٤) with the damma, as Hafs: «وَكُفْؤًا سُكُونُ الْفَاءِ
+    // حِصْنٌ تَكَمَّلَا».
+    if (poem == Poem.durrah &&
+        const {'106:1:0', '106:2:0', '112:4:3'}.contains(at)) {
+      return {234};
+    }
+    if (poem == Poem.durrah && (at == '84:12:0' || at == '85:22:2')) {
+      return {230};
+    }
     // «نُذۡرًا» (المرسلات ٦): «وَفي سُبْلَنَا فِي الضَّمِّ الاِسْكَانُ حُصِّلَا ... / وَنُذْرًا
     // صِحَابُهُمْ حَمَوْهُ»; the Durrah: «وَالْعُسْرُ وَالْيُسْرُ أُثْقِلَا / ... وَنُذْرًا».
     if (at == '77:6:2' && !v.isUsul) {

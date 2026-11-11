@@ -2959,6 +2959,14 @@ void main() {
             expect(v.description, 'بإبدال الواو همزة');
             expect((v.word, v.count), (w, 1));
             expect(v.inHamesh, isFalse);
+            // Abu Ja'far's «كُفُؤًا» told in the Durrah: «وَكُفْؤًا سُكُونُ الْفَاءِ».
+            if (a.surah == 112 && id.startsWith('ibn_')) {
+              expect(
+                manzumat.referenceOf(v, word, a.surah, surahs).mention,
+                {234},
+              );
+              continue;
+            }
             expect(manzumat.referenceOf(v, word, a.surah, surahs).mention, {
               460,
               461,
@@ -5327,8 +5335,16 @@ void main() {
       ('ibn_wardan', 74, 5, 0, 'وَٱلرُّجۡزَ', 'comparison', Poem.durrah, {222, 223}),
       ('ibn_wardan', 76, 4, 3, 'سَلَٰسِلٗا', '', Poem.durrah, {223, 224}),
       ('ibn_wardan', 77, 6, 2, 'نُذُرًا', '', Poem.durrah, {74, 76}),
+      ('ibn_wardan', 79, 45, 2, 'مُنذِرٌ', '', Poem.durrah, {228}),
+      ('ibn_wardan', 82, 9, 2, 'تُكَذِّبُونَ', 'comparison', Poem.durrah, {229}),
+      ('ibn_wardan', 84, 12, 0, 'وَيَصۡلَىٰ', 'comparison', Poem.durrah, {230}),
+      ('ibn_wardan', 85, 22, 2, 'مَّحۡفُوظِۭ', 'comparison', Poem.durrah, {230}),
+      ('ibn_wardan', 106, 1, 0, 'لِإْيلَٰفِ', '', Poem.durrah, {234}),
+      ('ibn_wardan', 106, 2, 0, 'إِلَٰفِهِمُۥ', '', Poem.durrah, {234}),
+      ('ibn_wardan', 112, 4, 3, 'كُفُؤًا', 'hamza_zaida', Poem.durrah, {234}),
       ('qalun', 77, 6, 2, 'نُذُرًا', '', Poem.shatibiyya, {616, 618}),
       ('qalun', 75, 27, 1, 'مَن رَّاقٖ', 'no_sakt', Poem.shatibiyya, {830, 831}),
+      ('bazzi', 83, 14, 1, 'بَل رَّانَ', 'no_sakt', Poem.shatibiyya, {830, 831}),
       ('ibn_wardan', 69, 28, 3, 'مَالِيَهۡ', 'no_sakt', Poem.durrah, {48, 49}),
       ('ruways', 69, 28, 3, 'مَالِيَه۠ۜ', 'no_sakt', Poem.durrah, {48, 49}),
       ('qalun', 69, 28, 3, 'مَالِيَهۡ', 'no_sakt', Poem.shatibiyya, {1079}),

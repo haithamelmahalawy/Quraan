@@ -165,7 +165,11 @@ class HafsFontMarks extends StatelessWidget {
       cluster.startsWith('ـ') && cluster.contains('ۧ') && cluster.contains('ّ');
 
   static bool _iqlabApart(String cluster) =>
-      cluster.contains('ۭ') || cluster.contains('ۢ') && cluster.contains('ِ');
+      cluster.contains('ۭ') ||
+      cluster.contains('ۢ') &&
+          (cluster.contains('ِ') ||
+              // Over the za's stem (مَّحۡفُوظُۢ): moved off it, to its left.
+              cluster.startsWith('ظ'));
 
   static bool needsAdjustment(String text) =>
       _cluster.allMatches(text).any((m) => _iqlabApart(m[0]!)) ||
@@ -591,6 +595,8 @@ class _QuranMarkPainter extends CustomPainter {
       final raDagger = dagger && source.startsWith('ر', at);
       // So on a kaf (وَمِيكَٰٓئِلَ): over its dagger alif, not the kaf's stem.
       final kafDagger = dagger && source.startsWith('ك', at);
+      // So on a ha (تَحَٰٓضُّونَ، أَتُحَٰٓجُّوٓنِّي): further left, over its dagger alif.
+      final haDagger = dagger && source.startsWith('ح', at);
       // On the others with a fatha (أَتُحَٰٓجُّوٓنِّي، هَٰٓأَنتُمۡ) the dagger
       // alif stands after it, to its left: so its madd.
       final fathaDagger =
@@ -616,6 +622,9 @@ class _QuranMarkPainter extends CustomPainter {
                 // clear of the kasra.
                 : low && RegExp('[رز]').hasMatch(source[at])
                 ? font * .16
+                // The high mim over the za, off its stem.
+                : iqlab && !low && source.startsWith('ظ', at)
+                ? font * .08
                 : lamAlif
                 ? font * .22
                 : lamDagger
@@ -624,6 +633,8 @@ class _QuranMarkPainter extends CustomPainter {
                 ? font * .12
                 : kafDagger
                 ? font * .27
+                : haDagger
+                ? font * .16
                 : fathaDagger
                 ? font * .08
                 // The dagger alif of a final ى (عَلَىٰٓ) stands at its left,
