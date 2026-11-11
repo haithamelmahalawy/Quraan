@@ -163,6 +163,15 @@ class Variant {
             (usulWays.firstOrNull?.startsWith('إبدال الهمزة الثانية واوًا') ??
                 false) =>
       'و',
+    // Abu Ja'far's «وُقِتَتۡ» (المرسلات ١١): the waw in a circle on Hafs's
+    // alif, its own description and bab kept.
+    _
+        when surah == 77 &&
+            ayah == 11 &&
+            word == 2 &&
+            const {'ibn_wardan', 'ibn_jammaz'}.contains(riwayaId) &&
+            text.startsWith('أ') =>
+      'و',
     _ => null,
   };
 
