@@ -2861,7 +2861,10 @@ void main() {
       });
     }
     // «مُنْشُونَ خُلْفٌ بَدَا»: Ibn Wardan's two faces, Ibn Jammaz as Hafs.
-    final munshi = variants.at(['ibn_wardan'], 56, 72, 5).single;
+    final munshi = variants
+        .at(['ibn_wardan'], 56, 72, 5)
+        .where((v) => v.rule != 'note')
+        .single;
     expect(munshi.usulWays, hasLength(2));
     expect(munshi.usulWays.first, contains('المقدّم'));
     expect(variants.at(['ibn_jammaz'], 56, 72, 5), isEmpty);
@@ -5307,10 +5310,54 @@ void main() {
   test('غافر and فصلت: «سيدخلون», «شيوخا», «وهي», «ثمرت»', () {
     for (final (id, s, a, w, text, rule, poem, bayts) in [
       ('ibn_wardan', 40, 60, 10, 'سَيُدۡخَلُونَ', '', Poem.durrah, {199}),
+      ('ibn_wardan', 43, 57, 8, 'يَصُدُّونَ', '', Poem.durrah, {203}),
+      ('ibn_jammaz', 43, 57, 8, 'يَصُدُّونَ', '', Poem.durrah, {203}),
+      ('ibn_wardan', 43, 85, 12, 'تُرۡجَعُونَ', 'comparison', Poem.durrah, {204}),
+      ('ibn_jammaz', 43, 85, 12, 'تُرۡجَعُونَ', 'comparison', Poem.durrah, {204}),
+      ('ibn_wardan', 47, 22, 1, 'عَسَيۡتُمُۥ', 'comparison', Poem.durrah, {82}),
+      ('ibn_jammaz', 2, 246, 23, 'عَسَيۡتُمُۥ', 'comparison', Poem.durrah, {82}),
+      ('ibn_wardan', 51, 3, 1, 'يُسُرٗا', '', Poem.durrah, {74}),
+      ('ibn_wardan', 53, 47, 2, 'ٱلنَّشۡأَةَ', 'comparison', Poem.durrah, {177}),
+      ('ibn_wardan', 55, 35, 5, 'وَنُحَاسٞ', 'comparison', Poem.durrah, {213}),
+      ('ibn_wardan', 58, 7, 12, 'تَكُونُ', '', Poem.durrah, {216}),
+      ('ibn_wardan', 63, 4, 9, 'خُشُبٞ', 'comparison', Poem.durrah, {74, 76}),
       ('ibn_jammaz', 40, 67, 19, 'شُيُوخٗاۚ', 'comparison', Poem.durrah, {102}),
       ('qalun', 41, 11, 4, 'وَهۡيَ', '', Poem.shatibiyya, {449}),
       ('bazzi', 41, 47, 7, 'ثَمَرَتٖ', '', Poem.shatibiyya, {1016, 1017}),
       ('qunbul', 41, 47, 7, 'ثَمَرَتٖ', '', Poem.shatibiyya, {1016, 1017}),
+      ('bazzi', 43, 33, 11, 'سَقۡفٗا', '', Poem.shatibiyya, {1023}),
+      ('qunbul', 43, 33, 11, 'سَقۡفٗا', '', Poem.shatibiyya, {1023}),
+      ('bazzi', 43, 53, 3, 'أَسَٰوِرَةٞ', '', Poem.shatibiyya, {1024}),
+      ('qalun', 45, 11, 10, 'أَلِيمٍۖ', '', Poem.shatibiyya, {975, 976}),
+      ('bazzi', 45, 11, 10, 'أَلِيمٌ', 'comparison', Poem.shatibiyya, {975, 976}),
+      ('qunbul', 34, 5, 10, 'أَلِيمٞ', 'comparison', Poem.shatibiyya, {975, 976}),
+      ('qalun', 45, 14, 9, 'لِيَجۡزِيَ', 'comparison', Poem.shatibiyya, {1032}),
+      ('bazzi', 45, 14, 9, 'لِيَجۡزِيَ', 'comparison', Poem.shatibiyya, {1032}),
+      ('qalun', 46, 19, 4, 'وَلِنُوَفِّيَهُمُۥ', '', Poem.shatibiyya, {1035}),
+      ('bazzi', 46, 19, 4, 'وَلِيُوَفِّيَهُمُۥ', 'comparison', Poem.shatibiyya, {1035}),
+      ('qalun', 48, 10, 22, 'فَسَنُؤۡتِيهِ', '', Poem.shatibiyya, {1041}),
+      ('qunbul', 48, 10, 22, 'فَسَنُؤۡتِيهِۦ', '', Poem.shatibiyya, {1041}),
+      ('qalun', 48, 17, 16, 'نُدۡخِلۡهُ', '', Poem.shatibiyya, {592}),
+      ('qalun', 48, 17, 24, 'نُعَذِّبۡهُ', '', Poem.shatibiyya, {592}),
+      ('bazzi', 48, 17, 16, 'يُدۡخِلۡهُۥ', 'comparison', Poem.shatibiyya, {592}),
+      ('bazzi', 48, 29, 33, 'شَطَـَٔهُۥ', '', Poem.shatibiyya, {1043}),
+      ('qunbul', 48, 29, 33, 'شَطَـَٔهُۥ', '', Poem.shatibiyya, {1043}),
+      ('qalun', 52, 21, 7, 'ذُرِّيَّٰتِهِمُۥ', '', Poem.shatibiyya, {706, 707}),
+      ('bazzi', 53, 20, 0, 'وَمَنَوٰٓءَةَ', '', Poem.shatibiyya, {1050}),
+      ('qunbul', 53, 47, 2, 'ٱلنَّشَآءَةَ', '', Poem.shatibiyya, {952}),
+      ('qalun', 53, 50, 3, 'اَ۬لُّاؤۡلَىٰ', '', Poem.shatibiyya, {230, 231, 232, 233}),
+      ('bazzi', 54, 6, 7, 'نُّكۡرٍ', '', Poem.shatibiyya, {616, 619}),
+      ('bazzi', 55, 35, 5, 'وَنُحَاسٖ', '', Poem.shatibiyya, {1054, 1055}),
+      ('qalun', 58, 10, 4, 'لِيُحۡزِنَ', '', Poem.shatibiyya, {578}),
+      ('bazzi', 58, 10, 4, 'لِيَحۡزُنَ', 'comparison', Poem.shatibiyya, {578}),
+      ('hafs', 59, 2, 33, 'بُيُوتَهُم', 'comparison', Poem.shatibiyya, {503}),
+      ('qalun', 64, 9, 12, 'نُّكَفِّرۡ', '', Poem.shatibiyya, {592}),
+      ('qalun', 64, 9, 15, 'وَنُدۡخِلۡهُ', '', Poem.shatibiyya, {592}),
+      ('qalun', 65, 8, 13, 'نُّكُرٗا', 'comparison', Poem.shatibiyya, {616, 618}),
+      ('qalun', 65, 11, 20, 'نُدۡخِلۡهُ', '', Poem.shatibiyya, {592}),
+      ('qalun', 55, 35, 5, 'وَنُحَاسٞ', 'comparison', Poem.shatibiyya, {1054, 1055}),
+      ('bazzi', 52, 21, 7, 'ذُرِّيَّتَهُمُۥ', 'comparison', Poem.shatibiyya, {706, 707}),
+      ('qalun', 43, 53, 3, 'أَسَٰوِرَةٞ', '', Poem.shatibiyya, {1024}),
     ]) {
       final r = manzumat.referenceOf(
         Variant(
@@ -5331,6 +5378,28 @@ void main() {
       );
       expect(r.poem, poem, reason: '$id $s:$a');
       expect(r.mention, bayts, reason: '$id $s:$a');
+    }
+  });
+  test("Ibn Kathir's «أَسَٰوِرَةٞ» cites 1024, not the naql of «وَسَلْ»", () {
+    for (final id in ['bazzi', 'qunbul', 'qalun']) {
+      const text = 'أَسَٰوِرَةٞ';
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 43,
+          ayah: 53,
+          word: 3,
+          count: 1,
+          text: text,
+          kind: VariantKind.farsh,
+          description: 'بفتح السين وإثبات الألف',
+        ),
+        text,
+        43,
+        surahs,
+        entries: book.at(43, 53, 3),
+      );
+      expect(r.mention, {1024}, reason: id);
     }
   });
   test("Abu Ja'far's «ونأى» of فصلت cites the Shatibiyya 826", () {

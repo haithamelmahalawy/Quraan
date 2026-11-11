@@ -651,6 +651,9 @@ void main() {
       variants.sourceTextAt('warsh', 51, 47, 2),
       quran.ayah(51, 47).words[2],
     );
+    // Qalun has no text of his own here: Hafs's word is his.
+    expect(variants.at(['qalun'], 51, 47, 2), isEmpty);
+    expect(variants.sourceTextAt('qalun', 51, 47, 2), isNull);
   });
 
   test('امرئ 52:21 is written as Hafs writes it, with nothing told', () {

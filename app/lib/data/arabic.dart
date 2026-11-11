@@ -250,7 +250,8 @@ String tanweenBefore(String text, String? next) {
     };
     // The naql into the lam before a bare alif (عَادٗا ٱلُّاولَىٰ): the tanween
     // merges into the lam (not ٱلَّذِينَ, whose wasla takes the tanween).
-    final merged = after != null && RegExp('^ٱلّ[ًَ-ِ]?ا').hasMatch(after);
+    final merged =
+        after != null && RegExp('^ٱل(?:ّ[ً-ِ]?|[ً-ِ]ّ)ا').hasMatch(after);
     final form = !merged && 'ءأإآؤئعحغخهاٱ'.contains(letter)
         ? const ['ً', 'ٌ', 'ٍ'][kind]
         : letter == 'ب'

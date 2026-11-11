@@ -2341,7 +2341,11 @@ class _MushafPageState extends State<MushafPage>
             ..._readingsAt(widget.variants, widget.settings, ayah, i).shown,
             ...?_letterReadings(ayah, i),
           ].where((v) => v.word == i).toList();
-    final next = at(w + 1).where(pair).toList();
+    // The pair's first word told on itself (أَوۡلِيَآءُ أُوْلَٰٓئِكَ): the word
+    // before it is not of the pair.
+    final next = at(
+      w + 1,
+    ).where((v) => pair(v) && v.rule != 'tasheel_pair_first').toList();
     final before = at(w - 1)
         .where((v) => v.rule == 'tasheel_pair_first')
         .toList();
@@ -2569,12 +2573,19 @@ class _MushafPageState extends State<MushafPage>
   /// A note of the hamesh tapped: where its readings are stated in the
   /// Shatibiyya and the Durrah.
   void _openReference(Ayah ayah, int w) {
-    final readings = _readingsAt(
-      widget.variants,
-      widget.settings,
-      ayah,
-      w,
-    ).shown.where((v) => v.word == w).toList();
+    final here = _readingsAt(widget.variants, widget.settings, ayah, w).shown;
+    // A note over two words (عَادٗا ٱلُّولَىٰ of Abu Ja'far) holds the readings
+    // of its second word too (Qalun's ٱلُّؤۡلَىٰ).
+    final end = here
+        .where((v) => v.word == w)
+        .fold(w + 1, (e, v) => v.word + v.count > e ? v.word + v.count : e);
+    final readings = <Variant>[
+      for (var i = w; i < end; i++)
+        ...(i == w
+                ? here
+                : _readingsAt(widget.variants, widget.settings, ayah, i).shown)
+            .where((v) => v.word == i),
+    ];
     readings.addAll(
       _otherBodies(widget.variants, widget.settings, ayah, w, readings),
     );
@@ -4724,13 +4735,14 @@ class _EntryView extends StatelessWidget {
     );
   }
 
-  /// The line under a note, parting it from the next.
+  /// The line under a note, parting it from the next place: plainer than the
+  /// faint one between the readers of one word.
   static Widget _noteLine(Widget note) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.only(bottom: 2),
+    padding: const EdgeInsets.only(bottom: 3),
     decoration: BoxDecoration(
       border: Border(
-        bottom: BorderSide(color: MushafColors.gold.withAlpha(160), width: .6),
+        bottom: BorderSide(color: MushafColors.gold, width: 1.4),
       ),
     ),
     child: note,
@@ -4805,11 +4817,44 @@ class _EntryView extends StatelessWidget {
     TextStyle style,
     double size,
   ) {
+    // Its faces each on a line of their own (\n before them: «ٱلۡأُولَىٰ» بضم
+    // الهمزة / و«ٱلُولَىٰ» بضم اللام), as wide as the note.
+    final lines = text.split('\n');
+    if (lines.length == 1) return _quotedSpan(text, style, size);
+    return TextSpan(
+      children: [
+        _quotedSpan(lines.first, style, size),
+        for (final line in lines.skip(1))
+          WidgetSpan(
+            child: SizedBox(
+              width: double.infinity,
+              child: Text.rich(
+                _quotedSpan(line, style, size),
+                textAlign: TextAlign.start,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  static InlineSpan _quotedSpan(String text, TextStyle style, double size) {
     final quoted = RegExp('«([^»]*[ً-ْٰۖ-ۭ][^»]*)»');
     final parts = <InlineSpan>[];
     var at = 0;
     for (final m in quoted.allMatches(text)) {
-      parts.add(TextSpan(text: text.substring(at, m.start).trimRight()));
+      var before = text.substring(at, m.start).replaceAll(RegExp(r' +$'), '');
+      // «و» and «بـ» go with the word they lead (و«ٱلُولَىٰ»), never left at
+      // a line's end beside the word before.
+      final lead = RegExp(r'(?:^|(?<=[\s،:]))(و|بـ)$').firstMatch(before)?[1];
+      if (lead != null) {
+        before = before
+            .substring(0, before.length - lead.length)
+            .replaceAll(RegExp(r' +$'), '');
+      }
+      // A face of its own line (\n before it) starts without a space.
+      final space = before.isEmpty || before.endsWith('\n') ? '' : ' ';
+      parts.add(TextSpan(text: before));
       // The quotes with the word, never parted from it at a line's end.
       final word = m[1]!;
       final hafs = TextStyle(
@@ -4823,12 +4868,12 @@ class _EntryView extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(' «', style: style),
+              Text('$space${lead ?? ''}«', style: style),
               // The font's line is tall for its marks: the word in a box
               // no taller than its letters, its marks overflowing it.
               Align(
                 widthFactor: 1,
-                heightFactor: .6,
+                heightFactor: .85,
                 alignment: Alignment.bottomCenter,
                 child: QuranWordText(word, style: hafs),
               ),
@@ -4898,13 +4943,23 @@ class _EntryView extends StatelessWidget {
         child: QuranWordText(text, style: style),
       );
     }
-    return TextSpan(text: text, style: style);
+    return TextSpan(
+      text: g.font == 'Hafs' ? hafsDrawable(text) : text,
+      style: style,
+    );
   }
 
   /// Who reads what: a qiraa by its name ("نافع") when both its riwayat
   /// read alike, otherwise each riwaya ("ورش عن نافع"); qiraat with the same
   /// reading share one line ("نافع وابن كثير: مَلِكِ").
-  static List<_Reading> _readings(List<Variant> vs, String baseline) {
+  static List<_Reading> _readings(List<Variant> all, String baseline) {
+    // A reader's note of the word (the faces of beginning with ٱلۡأُولَىٰ)
+    // told on his own line, not a line of its own.
+    final notes = [for (final v in all) if (v.rule == 'note') v];
+    final vs = notes.isEmpty
+        ? all
+        : [for (final v in all) if (v.rule != 'note') v];
+    final byRiwaya = <String, _Reading>{};
     final out = <_Reading>[];
     void add(String name, Color color, String font, Variant v) {
       final key = readingVariantKey(v, baseline: baseline);
@@ -4946,6 +5001,7 @@ class _EntryView extends StatelessWidget {
       // wording of another read alike (لَآ تَّنَاصَرُونَ «بتشديد التاء»).
       if (group.description.isEmpty) group.description = _brief(v);
       group.names.add((name, color));
+      byRiwaya[v.riwayaId] = group;
       if (bare != text) {
         group.silah.add(name);
       } else {
@@ -4970,6 +5026,9 @@ class _EntryView extends StatelessWidget {
       if (sameReading) {
         final (r, v) = mine.first;
         add(q.shortAr, q.color, r.fontFamily ?? 'Hafs', v);
+        for (final (_, o) in mine) {
+          byRiwaya[o.riwayaId] = byRiwaya[v.riwayaId]!;
+        }
       } else {
         for (final (r, v) in mine) {
           add(
@@ -4991,6 +5050,28 @@ class _EntryView extends StatelessWidget {
         // «ولابن كثير»، «وللدوري» (the lam with the al of the name).
         'و${[for (final n in g.silah) n.startsWith('ال') ? 'ل${n.substring(1)}' : 'ل$n'].join(' و')} بالصلة',
       ].join('، ');
+    }
+    // The notes on their readers' lines, once for a line of two riwayat
+    // (أبو عمرو); a reader without a line here keeps his note apart.
+    final told = <_Reading>{};
+    for (final v in notes) {
+      final group = byRiwaya[v.riwayaId];
+      if (group == null) {
+        final q = qiraaOf(v.riwayaId);
+        final apart = _Reading(
+          [('${riwayaById(v.riwayaId).nameAr} عن ${_genitive(q.shortAr)}', q.color)],
+          'Hafs',
+          v.text,
+          _brief(v),
+          'note:${v.riwayaId}',
+        );
+        out.add(apart);
+      } else if (told.add(group) && !group.description.contains(_brief(v))) {
+        group.description = [
+          if (group.description.isNotEmpty) group.description,
+          _brief(v).replaceFirst(RegExp('^و'), ''),
+        ].join('، و');
+      }
     }
     return out;
   }

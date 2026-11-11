@@ -79,6 +79,9 @@ void main() {
           // Its madd drawn where Hafs has none, made lazim by the reading's
           // sukun after it (ٱثۡنَآ عۡشَرَ for ٱثۡنَا عَشَرَ).
           if (own.first.contains('ٓ') && !first.contains('ٓ')) continue;
+          // Its tanween hidden in the next word (عَادٗا ٱلُّولَىٰ), where Hafs's
+          // is told plainly (عَادًا ٱلۡأُولَىٰ).
+          if (own.first.contains('ٗ') && first.contains('ً')) continue;
           // Written as Hafs's on the page, told apart in the hamesh
           // (أَلَا يَا ٱسۡجُدُواْ).
           if (v.length > 8 && (v[8] as Map).containsKey('marginText')) {
@@ -502,7 +505,7 @@ void main() {
         ]) {
           final v = where(id, s, a, 0).firstWhere((v) => '${v[4]}'.isNotEmpty);
           expect('${v[4]}', contains('۬'), reason: '$s:$a');
-          expect('${v[6]}', contains('مسهلة'), reason: '$s:$a');
+          expect('${v[6]}', contains('تسهيلها'), reason: '$s:$a');
         }
       }
     });

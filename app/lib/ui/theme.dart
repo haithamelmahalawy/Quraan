@@ -133,6 +133,20 @@ class InkText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (style.fontFamily == 'Hafs' &&
+        (hafsDrawable(text) != text ||
+            (parts?.any((p) => hafsDrawable(p.$1) != p.$1) ?? false))) {
+      return InkText(
+        hafsDrawable(text),
+        style: style,
+        firmness: firmness,
+        parts: parts == null
+            ? null
+            : [for (final (s, c) in parts!) (hafsDrawable(s), c)],
+        glowFinalAlif: glowFinalAlif,
+        glowStrength: glowStrength,
+      );
+    }
     final small = style.fontFamily == 'Hafs'
         ? smallHamzaAlifParts(parts ?? [(text, null)])
         : null;

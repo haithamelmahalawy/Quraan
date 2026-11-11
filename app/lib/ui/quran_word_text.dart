@@ -17,6 +17,13 @@ class QuranWordText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (style.fontFamily == 'Hafs' && hafsDrawable(text) != text) {
+      return QuranWordText(
+        hafsDrawable(text),
+        style: style,
+        textAlign: textAlign,
+      );
+    }
     final small = style.fontFamily == 'Hafs'
         ? smallHamzaAlifParts([(text, style.color)])
         : null;

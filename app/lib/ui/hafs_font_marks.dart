@@ -143,11 +143,16 @@ class HafsFontMarks extends StatelessWidget {
   /// The hamza over a lam-alif, the madd alif after it unwritten (ٱلۡأَخِرَةِ،
   /// لَأَيَةٗ): the lam-alif is written bare and the hamza with its fatha drawn
   /// apart, a little to the right of where the font sets it.
-  static bool _lamHamzaApart(String cluster, String? previous, String? next) =>
-      cluster == 'أَ' &&
-      (previous?.startsWith('ل') ?? false) &&
-      next != null &&
-      RegExp('[ً-ِ]').hasMatch(next);
+  /// Not a short hamza before a long a (ٱلۡأَمَانِيُّ، ٱلۡأَمَٰنَٰتِ): its hamza
+  /// stands on the alif, as in ٱلۡأَرۡضِ.
+  static bool _lamHamzaApart(String cluster, String? previous, String after) {
+    final next = _cluster.matchAsPrefix(after)?[0];
+    return cluster == 'أَ' &&
+        (previous?.startsWith('ل') ?? false) &&
+        next != null &&
+        RegExp('[ً-ِ]').hasMatch(next) &&
+        !RegExp('^مَ[اٰ]').hasMatch(after);
+  }
 
   /// The dagger alif of a ta with its madd (طَٰٓئِفٞ، الأعراف ٢٠١): the font
   /// sets it over the ta; it stands beside it, at its left, the madd on it.
@@ -172,11 +177,7 @@ class HafsFontMarks extends StatelessWidget {
     String? previous;
     for (final m in _cluster.allMatches(text)) {
       final cluster = m[0]!;
-      if (_lamHamzaApart(
-            cluster,
-            previous,
-            _cluster.matchAsPrefix(text, m.end)?[0],
-          ) ||
+      if (_lamHamzaApart(cluster, previous, text.substring(m.end)) ||
           _raisedMadd(cluster, previous) ||
           _lowerImala(cluster) ||
           _kasraUnderHamza(cluster) ||
@@ -244,11 +245,7 @@ class HafsFontMarks extends StatelessWidget {
     final seats = <int>{};
     String? previous;
     for (final m in _cluster.allMatches(full)) {
-      if (_lamHamzaApart(
-        m[0]!,
-        previous,
-        _cluster.matchAsPrefix(full, m.end)?[0],
-      )) {
+      if (_lamHamzaApart(m[0]!, previous, full.substring(m.end))) {
         seats.add(m.start);
         dropped.add(m.start + 1);
       }
@@ -615,6 +612,10 @@ class _QuranMarkPainter extends CustomPainter {
             mark.width / 2 -
             (besideHamza
                 ? font * .20
+                // The low mim under a ra with its kasra (جُدُرِۭ): to its left,
+                // clear of the kasra.
+                : low && RegExp('[رز]').hasMatch(source[at])
+                ? font * .16
                 : lamAlif
                 ? font * .22
                 : lamDagger
@@ -662,6 +663,10 @@ class _QuranMarkPainter extends CustomPainter {
                           // Under the tasheel dot on its tooth (أَىِ۪مَّةَ).
                           : source.startsWith('ى', at)
                           ? .30
+                          // Raised a little under the ya's hamza (ٱلَّــٰٓيِٕ),
+                          // clear of the line below.
+                          : sign == 'ِ' && source.startsWith('ي', at)
+                          ? .28
                           : sign == 'ِ'
                           ? .36
                           : .44)
@@ -778,3 +783,12 @@ List<(String, Color?, bool)>? smallHamzaAlifParts(
   }
   return out;
 }
+
+/// The text as the Hafs font can draw it: the small low seen under the sad
+/// (ٱلۡمُصَۣيۡطِرُونَ) has no glyph in it, and would show as a dotted circle.
+/// Only what is drawn; the Quran text itself keeps the mark.
+String hafsDrawable(String text) => text
+    .replaceAll('ۣ', '')
+    // ٱلَّٰٓـِٔي: the dagger alif and its madd on the lam crowd its shadda and
+    // fatha. Drawn out, they stand apart between the lam and the hamza.
+    .replaceAll('لَّٰٓ', 'لَّـــٰٓ');

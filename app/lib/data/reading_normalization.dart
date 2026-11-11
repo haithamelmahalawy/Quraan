@@ -65,8 +65,19 @@ final _unitCache = <String, List<Unit>>{};
 List<Unit> _units(String word) {
   // Group into base letter + its marks.
   final groups = <(String, List<int>)>[];
-  for (final c in word.runes) {
-    if (_smallLetters.containsKey(c)) {
+  final runes = word.runes.toList();
+  for (final (i, c) in runes.indexed) {
+    // A tatweel carrying a hamza (شَطۡـَٔهُۥ، يَسۡـَٔلُونَ) is the hamza's seat,
+    // not a mark of the letter before it, which keeps its own vowel.
+    final hamzaSeat =
+        c == 0x0640 &&
+        runes
+            .skip(i + 1)
+            .takeWhile((r) => _isMark(r) || r == 0x0654 || r == 0x0655)
+            .any((r) => r == 0x0654 || r == 0x0655);
+    if (hamzaSeat) {
+      groups.add(('ـ', []));
+    } else if (_smallLetters.containsKey(c)) {
       groups.add((_smallLetters[c]!, []));
     } else if (_isMark(c) || c == 0x0654 || c == 0x0655) {
       if (groups.isEmpty) groups.add(('', []));

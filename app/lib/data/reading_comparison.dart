@@ -56,7 +56,14 @@ String _textKey(String text, {String? baseline}) {
                   i > 0 &&
                   (i + 1 < letters.length || (h?.shadda ?? false)) &&
                   letters.any((l) => l.vocalized);
-              final fill = !u.vocalized && !hidden && h?.letter == letter;
+              // A bare letter of madd (ٱلۡأَمَانِي after its kasra) is read
+              // long, not with Hafs's vowel and shadda (ٱلۡأَمَانِيُّ).
+              final previous = i > 0 ? letters[i - 1].vowel : null;
+              final madd =
+                  letter == 'ي' && previous == 0x0650 ||
+                  letter == 'و' && previous == 0x064F;
+              final fill =
+                  !u.vocalized && !hidden && !madd && h?.letter == letter;
               return '$letter:${(fill ? h!.vowel : u.vowel) ?? ''}:'
                   '${(fill ? h!.tanween : u.tanween) ?? ''}:'
                   '${i > 0 && (fill ? h!.shadda : u.shadda) ? 'ّ' : ''}:'
