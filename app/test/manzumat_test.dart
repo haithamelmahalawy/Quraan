@@ -5317,6 +5317,23 @@ void main() {
       ('ibn_wardan', 47, 22, 1, 'عَسَيۡتُمُۥ', 'comparison', Poem.durrah, {82}),
       ('ibn_jammaz', 2, 246, 23, 'عَسَيۡتُمُۥ', 'comparison', Poem.durrah, {82}),
       ('ibn_wardan', 51, 3, 1, 'يُسُرٗا', '', Poem.durrah, {74}),
+      ('ibn_wardan', 65, 7, 23, 'عُسُرٖ يُسُرٗا', '', Poem.durrah, {74}),
+      ('ibn_wardan', 66, 5, 5, 'يُبَدِّلَهُ', '', Poem.durrah, {151}),
+      ('ibn_wardan', 68, 32, 3, 'يُبَدِّلَنَا', '', Poem.durrah, {151}),
+      ('ibn_wardan', 69, 41, 6, 'تُؤۡمِنُونَ', 'comparison', Poem.durrah, {220}),
+      ('ibn_wardan', 69, 42, 5, 'تَذَّكَّرُونَ', '', Poem.durrah, {220}),
+      ('ibn_wardan', 71, 21, 10, 'وَوَلَدُهُۥٓ', 'comparison', Poem.durrah, {156}),
+      ('ibn_wardan', 72, 20, 0, 'قُلۡ', 'comparison', Poem.durrah, {221, 222}),
+      ('ibn_wardan', 74, 5, 0, 'وَٱلرُّجۡزَ', 'comparison', Poem.durrah, {222, 223}),
+      ('ibn_wardan', 76, 4, 3, 'سَلَٰسِلٗا', '', Poem.durrah, {223, 224}),
+      ('ibn_wardan', 77, 6, 2, 'نُذُرًا', '', Poem.durrah, {74, 76}),
+      ('qalun', 77, 6, 2, 'نُذُرًا', '', Poem.shatibiyya, {616, 618}),
+      ('qalun', 75, 27, 1, 'مَن رَّاقٖ', 'no_sakt', Poem.shatibiyya, {830, 831}),
+      ('ibn_wardan', 69, 28, 3, 'مَالِيَهۡ', 'no_sakt', Poem.durrah, {48, 49}),
+      ('ruways', 69, 28, 3, 'مَالِيَه۠ۜ', 'no_sakt', Poem.durrah, {48, 49}),
+      ('qalun', 69, 28, 3, 'مَالِيَهۡ', 'no_sakt', Poem.shatibiyya, {1079}),
+      ('khallad', 69, 28, 3, 'مَالِيَه۠ۜ', 'no_sakt', Poem.shatibiyya, {1079}),
+      ('ibn_wardan', 67, 27, 3, 'س۬يٓـَٔتۡ', '', Poem.durrah, {62, 63}),
       ('ibn_wardan', 53, 47, 2, 'ٱلنَّشۡأَةَ', 'comparison', Poem.durrah, {177}),
       ('ibn_wardan', 55, 35, 5, 'وَنُحَاسٞ', 'comparison', Poem.durrah, {213}),
       ('ibn_wardan', 58, 7, 12, 'تَكُونُ', '', Poem.durrah, {216}),
@@ -5355,6 +5372,7 @@ void main() {
       ('qalun', 64, 9, 15, 'وَنُدۡخِلۡهُ', '', Poem.shatibiyya, {592}),
       ('qalun', 65, 8, 13, 'نُّكُرٗا', 'comparison', Poem.shatibiyya, {616, 618}),
       ('qalun', 65, 11, 20, 'نُدۡخِلۡهُ', '', Poem.shatibiyya, {592}),
+      ('bazzi', 66, 4, 14, 'وَجَبۡرِيلُ', '', Poem.shatibiyya, {471, 472}),
       ('qalun', 55, 35, 5, 'وَنُحَاسٞ', 'comparison', Poem.shatibiyya, {1054, 1055}),
       ('bazzi', 52, 21, 7, 'ذُرِّيَّتَهُمُۥ', 'comparison', Poem.shatibiyya, {706, 707}),
       ('qalun', 43, 53, 3, 'أَسَٰوِرَةٞ', '', Poem.shatibiyya, {1024}),
@@ -5963,13 +5981,14 @@ void main() {
             surahs,
             entries: book.at(s, a, w),
           );
-          expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
-          expect(r.mention, {448}, reason: '$id $s:$a');
+          // Abu Ja'far's in the Durrah: «وَاشْمِمًا طِلَا / بِقِيْلَ وَمَا مَعْهُ».
+          final aj = id.startsWith('ibn_');
           expect(
-            r.asl.map((b) => b.n),
-            id.startsWith('ibn_') ? [7, 8] : isEmpty,
+            r.poem,
+            aj ? Poem.durrah : Poem.shatibiyya,
             reason: '$id $s:$a',
           );
+          expect(r.mention, aj ? {62, 63} : {448}, reason: '$id $s:$a');
         }
       }
     },

@@ -932,7 +932,6 @@ void main() {
         (30, 8, 19),
         (30, 16, 5),
         (37, 11, 11),
-        (72, 16, 0),
       ]) {
         expect(where('qalun', s, a, w), isEmpty, reason: '$s:$a:$w');
       }

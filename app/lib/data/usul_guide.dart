@@ -140,9 +140,9 @@ String twoWordsKind(Variant v) {
   final hamza = RegExp('[ءأإئؤ][ً-ٰٟ]*');
   String vowel(String? h) => h == null
       ? ''
-      : h.startsWith('إ') || h.contains('ِ')
+      : h.startsWith('إ') || RegExp('[ٍِٖ]').hasMatch(h)
       ? 'كسر'
-      : h.contains('ُ')
+      : RegExp('[ٌُٞ]').hasMatch(h)
       ? 'ضم'
       : 'فتح';
   final first = vowel(hamza.allMatches(words.first).lastOrNull?.group(0));

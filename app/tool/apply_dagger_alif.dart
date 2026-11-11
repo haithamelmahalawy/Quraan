@@ -119,8 +119,9 @@ String daggerAlif(String text, List<String> hafs) {
 }
 
 /// Words whose alif the reviewer would have in the word's body: Abu Ja'far's
-/// «وَنَآءَ» (الإسراء ٨٣، فصلت ٥١), its alif with the madd before the hamza.
-const keptAlif = {'وَنَآءَ'};
+/// «وَنَآءَ» (الإسراء ٨٣، فصلت ٥١), its alif with the madd before the hamza;
+/// Ibn Kathir's and Abu Ja'far's «إِذَا دَبَرَ» (المدثر ٣٣).
+const keptAlif = {'وَنَآءَ', 'إِذَا دَبَرَ'};
 
 /// Applies it to the rows of a riwaya with a written text.
 int applyDaggerAlif(Map quran, List rows) {

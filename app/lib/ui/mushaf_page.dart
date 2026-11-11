@@ -4967,8 +4967,13 @@ class _EntryView extends StatelessWidget {
       // A farsh read alike but for the silah of the ha (نَنكُسۡهُ، ولابن كثير
       // بالصلة): one line, the silah told of its readers.
       final bare = withoutHaSilah(text);
+      // Two faces by khulf (al-Bazzi's لَأُقۡسِمُ) are not the one of another.
+      bool sameFaces(_Reading g) =>
+          !(g.description.startsWith('بخلف') ||
+              _brief(v).startsWith('بخلف')) ||
+          g.description == _brief(v);
       final same =
-          out.where((g) => g.key == key).firstOrNull ??
+          out.where((g) => g.key == key && sameFaces(g)).firstOrNull ??
           out
               .where(
                 (g) =>
@@ -5021,7 +5026,12 @@ class _EntryView extends StatelessWidget {
           mine.every(
             (m) =>
                 readingVariantKey(m.$2, baseline: baseline) ==
-                readingVariantKey(mine.first.$2, baseline: baseline),
+                    readingVariantKey(mine.first.$2, baseline: baseline) &&
+                // Al-Bazzi's two faces, Qunbul's one (لَأُقۡسِمُ): apart.
+                (_brief(m.$2).startsWith('بخلف') ||
+                        _brief(mine.first.$2).startsWith('بخلف')
+                    ? _brief(m.$2) == _brief(mine.first.$2)
+                    : true),
           );
       if (sameReading) {
         final (r, v) = mine.first;

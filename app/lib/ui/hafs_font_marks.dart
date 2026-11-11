@@ -791,4 +791,4 @@ String hafsDrawable(String text) => text
     .replaceAll('ۣ', '')
     // ٱلَّٰٓـِٔي: the dagger alif and its madd on the lam crowd its shadda and
     // fatha. Drawn out, they stand apart between the lam and the hamza.
-    .replaceAll('لَّٰٓ', 'لَّـــٰٓ');
+    .replaceAll('لَّٰٓ', 'لَّــٰٓ');
