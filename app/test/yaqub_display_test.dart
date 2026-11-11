@@ -960,7 +960,8 @@ void main() {
         );
         final reference = readingText(variants, id, quran.ayah(2, 30), 23, 24);
         expect(lettersOf(reference).last.contains('َ'), id == 'warsh');
-        expect(note(), id == 'warsh' ? findsOneWidget : findsNothing);
+        // Against Warsh: his opened ya and Ya'qub's quiet one, each a line.
+        expect(note(), id == 'warsh' ? findsNWidgets(2) : findsNothing);
         if (id != 'warsh') {
           expect(
             t.widget<InkText>(word(2, 30, 23)).style.color,

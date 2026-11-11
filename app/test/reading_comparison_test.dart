@@ -108,7 +108,8 @@ void main() {
         expect(compared.any((v) => v.rule == 'naql'), isTrue);
       }
     }
-    // Preserve Hamzah's lexical changes and its explicit tanween/idgham span.
+    // Hamzah's lexical changes: سَيُكۡتَبُ، وَقَتۡلُهُمُ، وَيَقُولُ, each on its
+    // word; the idgham without ghunna before «وَيَقُولُ» is usul.
     for (var w = 11; w <= 18; w++) {
       final compared = compareReadings(
         repository: repository,
@@ -119,7 +120,7 @@ void main() {
       );
       expect(
         compared.any((v) => v.inHamesh),
-        {11, 14, 17, 18}.contains(w),
+        {11, 14, 18}.contains(w),
         reason: 'Hamzah word $w',
       );
     }

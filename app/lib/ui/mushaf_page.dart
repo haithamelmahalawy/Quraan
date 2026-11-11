@@ -2773,9 +2773,8 @@ bool _showYaIdafa(
   VariantRepository variants,
   ReaderSettings s,
 ) {
-  if (v.rule != 'ya_idafa' || !const {'ruways', 'rawh'}.contains(v.riwayaId)) {
-    return true;
-  }
+  // Every riwaya's ya as Hafs reads it is no difference (إِنِّيٓ أَعۡلَمُ).
+  if (v.rule != 'ya_idafa') return true;
   final reference = s.displayed == null || s.displayed == v.riwayaId
       ? ayah.words[v.word]
       : readingText(variants, s.displayed, ayah, v.word, v.word + v.count);
@@ -4391,12 +4390,12 @@ class _UsulBox extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _usulWord(i, g.color),
-        // How the ya is read (يَدِي: بإسكان الياء).
+        // How the ya is read (يَدِي: بإسكان ياء الإضافة).
         // With more told of the word, its own wording (تَأۡمُرُوٓنِّيَ: بفتح الياء
         // وتشديد النون مع المد المشبع).
         if (i.readings.any((v) => v.rule == 'ya_idafa'))
           Text(
-            ' (${i.readings.where((v) => v.rule == 'ya_idafa' && RegExp('^بفتح الياء و').hasMatch(v.description)).firstOrNull?.description ?? (i.readings.any((v) => v.rule == 'ya_idafa' && v.description.contains('فتح')) ? 'بفتح الياء' : 'بإسكان الياء')}'
+            ' (${i.readings.where((v) => v.rule == 'ya_idafa' && RegExp('^بفتح الياء و').hasMatch(v.description)).firstOrNull?.description ?? (i.readings.any((v) => v.rule == 'ya_idafa' && v.description.contains('فتح')) ? 'بفتح ياء الإضافة' : 'بإسكان ياء الإضافة')}'
             // A second face of one of them (رَبِّيَ: ولقالون وجه ثانٍ بإسكان الياء).
             '${{for (final v in i.readings)
               if (v.rule == 'ya_idafa' && v.description.contains('، ول')) v.description.substring(v.description.indexOf('، ول'))}.join()})',

@@ -2382,14 +2382,13 @@ void main() {
       expect(at.any((v) => v.rule == 'tasheel_word'), isTrue, reason: '$s:$a');
       expect(at.where((v) => v.inHamesh), isEmpty, reason: '$s:$a');
     }
-    // إِنِّيٓ أُمِرۡتُ: the ya opened, its own farsh; أُمِرۡتُ no difference.
+    // إِنِّيٓ أُمِرۡتُ: the ya opened, in its chapter of the usul, not the
+    // hamesh; أُمِرۡتُ no difference.
+    final inni = variants.at(['warsh'], 6, 14, 13);
+    expect(inni.where((v) => v.inHamesh), isEmpty);
     expect(
-      variants
-          .at(['warsh'], 6, 14, 13)
-          .where((v) => v.inHamesh)
-          .single
-          .description,
-      'بفتح الياء',
+      inni.where((v) => v.rule == 'ya_idafa').single.description,
+      'بفتح ياء الإضافة',
     );
     expect(variants.at(['warsh'], 6, 14, 14), isEmpty);
   });

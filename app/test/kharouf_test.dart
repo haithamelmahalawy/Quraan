@@ -27,10 +27,11 @@ void main() {
     final warsh = variants.at(['warsh'], 2, 9, 5).toList();
     expect(warsh, isNotEmpty);
     expect(warsh.every((v) => v.certified), isTrue);
-    // 2:29 «وَهْوَ» (al-Kisa'i): stated by the book, missing from Quranpedia.
+    // 2:29 «وَهْوَ» (al-Kisa'i): stated by the book, written in his file as
+    // Qalun reads it (tool/build_ashab_usul.dart), certified by the book.
     await variants.ensureLoaded(['abul_harith']);
     final kisai = variants.at(['abul_harith'], 2, 29, 15).toList();
-    expect(kisai.map((v) => v.rule), contains('kharouf'));
+    expect(kisai.single.text, 'وَهۡوَ');
     expect(kisai.single.certified, isTrue);
   });
 
@@ -45,15 +46,17 @@ void main() {
       expect(variants.at(['shubah'], 2, 72, 3), isEmpty);
       // 2:51 «اتخذتم»: idgham, not a shadda.
       expect(at(2, 51, 6).description, 'بإدغام الذال في التاء');
-      // Ya' al-idafa: farsh, in the hamesh (بيتي، وجهي، معي، أجري).
+      // Ya' al-idafa: in its chapter of the usul, not the hamesh (بيتي،
+      // وجهي، معي، أجري).
       for (final (s, a, w) in [
         (2, 125, 17),
         (3, 20, 4),
         (9, 83, 11),
         (10, 72, 7),
       ]) {
-        expect(at(s, a, w).description, 'بإسكان الياء');
-        expect(at(s, a, w).inHamesh, isTrue);
+        expect(at(s, a, w).description, 'بإسكان ياء الإضافة');
+        expect(at(s, a, w).rule, 'ya_idafa');
+        expect(at(s, a, w).inHamesh, isFalse);
       }
       // 2:143 «رؤف»: nothing of Hamzah's stop or Warsh's badal.
       expect(at(2, 143, 43).shownDescription, 'بحذف الواو');

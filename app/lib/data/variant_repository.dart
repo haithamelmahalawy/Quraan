@@ -201,6 +201,16 @@ Map<int, List<Variant>> _index((String, String, String?, String?) input) {
       if (kept.isEmpty && description.isNotEmpty) continue;
       v[6] = kept;
     }
+    // Ya' al-idafa in its chapter for every riwaya, however its file tells
+    // it (Warsh's and Shu'bah's as farsh): the ya alone, opened or quiet.
+    final how = yaIdafaWording(
+      v.length > 6 ? v[6] as String : '',
+      v[4] as String,
+      rule,
+    );
+    final yaChapter =
+        rule.isEmpty &&
+        const {'بإسكان ياء الإضافة', 'بفتح ياء الإضافة'}.contains(how);
     final variant = Variant(
       riwayaId: id,
       surah: v[0] as int,
@@ -223,9 +233,9 @@ Map<int, List<Variant>> _index((String, String, String?, String?) input) {
         ),
         after(v[0] as int, v[1] as int, v[2] as int, v[3] as int),
       ),
-      kind: VariantKind.fromCode(v[5] as String),
-      description: v.length > 6 ? v[6] as String : '',
-      rule: v.length > 7 ? v[7] as String : '',
+      kind: yaChapter ? VariantKind.usul : VariantKind.fromCode(v[5] as String),
+      description: how,
+      rule: yaChapter ? 'ya_idafa' : rule,
       bookWujuh: v.length > 8 ? (v[8] as Map)['wujuh'] as String? ?? '' : '',
       stopOnly: v.length > 8 && (v[8] as Map)['stopOnly'] == true,
       stopText: v.length > 8
@@ -387,6 +397,8 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
             'hamza_zaida',
             'hamza_hadhf',
             'hamza_mutatarrif',
+            // Ya' al-idafa, told in its chapter for every riwaya.
+            'ya_idafa',
             // «مَّرۡقَدِنَاۜ»: joined without the sakt, told in ترك السكت.
             'no_sakt',
           }.contains(v.rule)) {
@@ -448,11 +460,21 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       );
     }
     // A farsh reading the book states and the riwaya file lacks. Ibn 'Amir's
-    // files have its farsh written in, reviewed: the book's notes (stopping
-    // on the hamza, ishmam, two hamzas) are their usul, not farsh.
+    // and al-Ashab's files have its farsh written in (al-Ashab's by
+    // tool/build_ashab_usul.dart): the book's notes (stopping on the hamza,
+    // ishmam, two hamzas) are their usul, not farsh.
     if (!found &&
         p[6] == 'farsh' &&
-        !const {'hisham', 'ibn_dhakwan'}.contains(id)) {
+        !const {
+          'hisham',
+          'ibn_dhakwan',
+          'khalaf_hamzah',
+          'khallad',
+          'abul_harith',
+          'duri_kisai',
+          'ishaq',
+          'idris',
+        }.contains(id)) {
       final variant = Variant(
         riwayaId: id,
         surah: surah,
@@ -473,6 +495,20 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
       }
     }
   }
+}
+
+/// One wording of ya' al-idafa for every riwaya, Ruways's: «بإسكان ياء
+/// الإضافة»، «بفتح ياء الإضافة» (the user, 2026-11-12), whatever the file
+/// says («بإسكان الياء»، «باسكان ياء الإضافة»). Only a word's last ya, the
+/// speaker's.
+String yaIdafaWording(String description, String text, String rule) {
+  final last = RegExp(r'[يىے][ً-ٰٟۖ-ۭ]*$').hasMatch(text.trim());
+  if (rule != 'ya_idafa' && !last) return description;
+  return switch (description) {
+    'بإسكان الياء' || 'باسكان ياء الإضافة' => 'بإسكان ياء الإضافة',
+    'بفتح الياء' => 'بفتح ياء الإضافة',
+    _ => description,
+  };
 }
 
 /// The letters of [text], without vowels and marks.

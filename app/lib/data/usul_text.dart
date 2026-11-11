@@ -36,10 +36,8 @@ bool isRoutineMadd(Variant reading) {
 }
 
 bool showYaqubYaIdafaExample(Variant reading, String reference) {
-  if (!const {'ruways', 'rawh'}.contains(reading.riwayaId) ||
-      reading.rule != 'ya_idafa') {
-    return true;
-  }
+  // Every riwaya's ya as the other reads it is no difference (إِنِّيٓ أَعۡلَمُ).
+  if (reading.rule != 'ya_idafa') return true;
   final own = lettersOf(reading.text), other = lettersOf(reference);
   if (own.isEmpty || other.isEmpty) return false;
   return own.last.contains('َ') != other.last.contains('َ');

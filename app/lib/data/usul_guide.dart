@@ -32,6 +32,13 @@ const usulUnifiedRiwayat = {
   'qunbul',
   'ibn_wardan',
   'ibn_jammaz',
+  // al-Ashab, their usul built by tool/build_ashab_usul.dart.
+  'khalaf_hamzah',
+  'khallad',
+  'abul_harith',
+  'duri_kisai',
+  'ishaq',
+  'idris',
 };
 
 /// The words told in «مد الفرق», a kind of «الهمزتان من كلمة»: the
@@ -663,7 +670,9 @@ String? hafsWayIn(String chapter, String label, Variant v, String hafs) {
           : 'دون صلة الهاء',
     'ياءات الزوائد' => 'بحذف الياء وصلاً ووقفًا',
     'ياءات الإضافة' =>
-      RegExp('يَ[ۖ-ۭ]*\$').hasMatch(hafs) ? 'بفتح الياء' : 'بإسكان الياء',
+      RegExp('يَ[ۖ-ۭ]*\$').hasMatch(hafs)
+          ? 'بفتح ياء الإضافة'
+          : 'بإسكان ياء الإضافة',
     'الإدغام' || 'الإدغام الكبير' =>
       RegExp('إظهار|اظهار').hasMatch(v.description) ? 'بالإدغام' : 'بالإظهار',
     'الإدغام بلا غنة' => 'بالإدغام بغنة',

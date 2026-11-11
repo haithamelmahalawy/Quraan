@@ -393,7 +393,15 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
     // Seven passive verbs: Ruways only; p.37 mistakenly says Rawh in its body.
     if (id == 'ruways' &&
         RegExp(r'^(و|ف)?(قيل|غيض|جيء|حيل|سيق|سيء|سيئت)$').hasMatch(b)) {
-      add(w, 'ishmam', 'بإشمام كسرة الحرف الأول ضمًّا', 37);
+      // Worded as Hisham's: the letter named (بإشمام كسرة القاف ضمًّا).
+      final letter = switch (b.replaceFirst(RegExp('^[وف]'), '')[0]) {
+        'ق' => 'القاف',
+        'غ' => 'الغين',
+        'ج' => 'الجيم',
+        'ح' => 'الحاء',
+        _ => 'السين',
+      };
+      add(w, 'ishmam', 'بإشمام كسرة $letter ضمًّا', 37);
     }
     if (id == 'ruways' &&
         (b.contains('أصدق') || b == 'يصدفون' || b == 'وتصدية')) {
