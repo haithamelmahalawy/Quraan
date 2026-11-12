@@ -352,6 +352,13 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
           '۟'.allMatches(ownWords[w - from]).length >
               '۟'.allMatches(ayah.words[w]).length)
         '${w - from}:unread-letter',
+    // A letter dropped joined and kept at the stop, marked as «أنا»'s alif
+    // (يَتَسَنَّه۠), where Hafs reads it joined too (يَتَسَنَّهۡ).
+    for (var w = from; w < to; w++)
+      if (w - from < ownWords.length &&
+          '۠'.allMatches(ownWords[w - from]).length >
+              '۠'.allMatches(ayah.words[w]).length)
+        '${w - from}:dropped-joined',
     // Hafs's sad with the small sin (ٱلۡمُصَۣيۡطِرُونَ) is read with either; a
     // plain sad is that one way only.
     for (var w = from; w < to; w++)

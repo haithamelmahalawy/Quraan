@@ -12,7 +12,12 @@ class MushafZoom extends StatefulWidget {
     required this.child,
     required this.onPinchChanged,
     this.onEdgeTurn,
+    this.onDoubleTap,
   });
+
+  /// Two quick taps: the page enlarged as by «ملء الشاشة» in the top panel,
+  /// or back (the user, 2026-11-12); not zoomed in on the place tapped.
+  final VoidCallback? onDoubleTap;
 
   /// Zoomed in, a drag carried on past the page's side: the page turned
   /// (1 the next, dragged to the right as the mushaf turns; -1 back).
@@ -55,22 +60,6 @@ class _MushafZoomState extends State<MushafZoom> {
       ..setEntry(1, 1, s)
       ..setEntry(0, 3, x)
       ..setEntry(1, 3, y);
-  }
-
-  /// Where the second of two quick taps came down.
-  Offset? _doubleTapAt;
-
-  /// How far two quick taps zoom in.
-  static const doubleTapScale = 2.0;
-
-  void _toggleZoom() {
-    if (_scale > 1.001) {
-      widget.controller.value = Matrix4.identity();
-      return;
-    }
-    final at = _doubleTapAt ?? _size.center(Offset.zero);
-    // The place tapped stays under the finger.
-    _setTransform(doubleTapScale, at - at * doubleTapScale);
   }
 
   void _setPinching(bool value) {
@@ -179,25 +168,21 @@ class _MushafZoomState extends State<MushafZoom> {
                       () => _recognizer = _PinchPriorityGestureRecognizer(),
                       (_) {},
                     ),
-                // Two quick taps: zoomed in on the place tapped, or back to
-                // the whole page when already zoomed (the user, 2026-11-12).
-                DoubleTapGestureRecognizer:
-                    GestureRecognizerFactoryWithHandlers<
-                      DoubleTapGestureRecognizer
-                    >(
-                      () => DoubleTapGestureRecognizer(
-                        supportedDevices: {
-                          PointerDeviceKind.touch,
-                          PointerDeviceKind.mouse,
-                          PointerDeviceKind.stylus,
-                        },
+                // Two quick taps: the page enlarged, or back.
+                if (widget.onDoubleTap != null)
+                  DoubleTapGestureRecognizer:
+                      GestureRecognizerFactoryWithHandlers<
+                        DoubleTapGestureRecognizer
+                      >(
+                        () => DoubleTapGestureRecognizer(
+                          supportedDevices: {
+                            PointerDeviceKind.touch,
+                            PointerDeviceKind.mouse,
+                            PointerDeviceKind.stylus,
+                          },
+                        ),
+                        (r) => r..onDoubleTap = widget.onDoubleTap,
                       ),
-                      (r) => r
-                        ..onDoubleTapDown = (d) {
-                          _doubleTapAt = d.localPosition;
-                        }
-                        ..onDoubleTap = _toggleZoom,
-                    ),
                 if (_scale > 1.001 && !_pinching)
                   PanGestureRecognizer:
                       GestureRecognizerFactoryWithHandlers<

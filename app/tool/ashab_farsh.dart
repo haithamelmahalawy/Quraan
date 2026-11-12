@@ -43,10 +43,16 @@ List<(String, String)> _clusters(String x, {required bool dagger}) {
       .replaceAll('ٗ', 'ً')
       .replaceAll('ٞ', 'ٌ')
       .replaceAll('ٖ', 'ٍ')
-      .replaceAllMapped(RegExp('ـ([ً-ْ]*)[ٕٔ]([ً-ْ]*)'), (m) => 'ء${m[1]}${m[2]}')
+      .replaceAllMapped(
+        RegExp('ـ([ً-ْ]*)[ٕٔ]([ً-ْ]*)'),
+        (m) => 'ء${m[1]}${m[2]}',
+      )
       .replaceAllMapped(RegExp('([^اى])ٰ'), (m) => '${m[1]}ا')
       // The hamza under the alif is a kasra: «إِنَّ» is not «أَنَّ».
-      .replaceAllMapped(RegExp('إ([ً-ْ]*)'), (m) => 'ءِ${m[1]!.replaceAll('ِ', '')}');
+      .replaceAllMapped(
+        RegExp('إ([ً-ْ]*)'),
+        (m) => 'ءِ${m[1]!.replaceAll('ِ', '')}',
+      );
   final out = <(String, String)>[];
   for (final m in RegExp(r'([^ً-ٰٟۖ-ۭs])([ً-ٰٟۖ-ۭ]*)').allMatches(t)) {
     var base = m[1]!;
@@ -75,9 +81,8 @@ List<(String, String)> _clusters(String x, {required bool dagger}) {
 bool _same(String a, String b) {
   final x = _clusters(a, dagger: true), y = _clusters(b, dagger: true);
   return x.length == y.length &&
-      [for (var i = 0; i < x.length; i++) i].every(
-        (i) => x[i].$1 == y[i].$1 && x[i].$2 == y[i].$2,
-      );
+      [for (var i = 0; i < x.length; i++) i]
+          .every((i) => x[i].$1 == y[i].$1 && x[i].$2 == y[i].$2);
 }
 
 /// Two words read alike: the same letters, and each of the book's vowels on
@@ -121,9 +126,13 @@ String _oneTanween(String text) => text
 bool _says(String how) =>
     // A note of the book (ولا يخفى أنهم يقرؤون بالإمالة) is not how.
     how.startsWith('ب') &&
-    !RegExp(
-      r'^(معاً|معا|وصلاً|وقفاً|وصلاً ووقفاً|كله|حيث وقع|[،\s])*$',
-    ).hasMatch(how);
+    !RegExp(r'^(معاً|معا|وصلاً|وقفاً|وصلاً ووقفاً|كله|حيث وقع|[،\s])*$')
+        .hasMatch(how);
+
+/// The book's entries put at another ayah: «ولا تحسبن الذين كفروا» (آل
+/// عمران ١٧٨, told there too) under ١٨٠, over «وَلَا يَحۡسَبَنَّ ٱلَّذِينَ»,
+/// which shaded the three words and wrote «كفروا» in the ayah.
+const _misplaced = {'3:180:0:3'};
 
 typedef _FarshCounts = ({int copied, int worded, int quoted, int usul});
 
@@ -163,14 +172,20 @@ _FarshCounts _farsh(
   // The readers who read each of the book's readings with [id], and whether
   // [id] reads it by khulf.
   final siblings = <String, (List<String>, bool)>{};
+  // The other readings of the same place, as the book writes them: a word
+  // they write with other letters is a difference (قَاتَلُوكُم against
+  // قَتَلُوكُم, Hafs's dagger alif a full one there).
+  final others = <String, List<String>>{};
   for (final e in book['entries'] as List) {
     for (final g in e[5] as List) {
       final all = [...(g[1] as List), ...(g[2] as List)].cast<String>();
       if (!all.contains(id) || g[4] == true) continue;
-      siblings['${e[0]}:${e[1]}:${e[2]}:${_plain(g[0] as String)}'] = (
-        all,
-        (g[2] as List).contains(id),
-      );
+      final at = '${e[0]}:${e[1]}:${e[2]}:${_plain(g[0] as String)}';
+      siblings[at] = (all, (g[2] as List).contains(id));
+      others[at] = [
+        for (final o in e[5] as List)
+          if (!identical(o, g) && '${o[0]}'.isNotEmpty) '${o[0]}',
+      ];
     }
   }
   final done = <String>{};
@@ -180,6 +195,7 @@ _FarshCounts _farsh(
     final quote = p[4] as String, how = p[5] as String;
     // «أئنا ... إذا»: the repeated question, told with the two hamzas.
     if (p[6] != 'farsh' || quote.isEmpty || quote.contains('...')) continue;
+    if (_misplaced.contains('$s:$a:$w:$c')) continue;
     final span = [for (var i = w; i < w + c; i++) index[_key(s, a, i)]];
     if (span.contains(null)) continue;
     final hafs = span.map((x) => x!.t).join(' ');
@@ -205,9 +221,30 @@ _FarshCounts _farsh(
                 dagger: dagger,
               ),
       ];
-      // The dagger alif a difference only where nothing else is.
+      // The dagger alif a difference only where nothing else is, or where
+      // the book's other reading writes the word with other letters.
       final loose = changedBy(dagger: false);
-      final changed = loose.contains(true) ? loose : changedBy(dagger: true);
+      final ownWords = own.split(' ');
+      final contrast = [
+        for (final o in others['$s:$a:$w:${_plain(quote)}'] ?? const <String>[])
+          if (o.split(' ').length == ownWords.length) o.split(' '),
+      ];
+      final strict = changedBy(dagger: true);
+      final changed = loose.contains(true)
+          ? [
+              for (var i = 0; i < c; i++)
+                loose[i] ||
+                    strict[i] &&
+                        ownWords.length == c &&
+                        // Hafs's word without its dagger alif, the
+                        // book's other reading with a full one.
+                        _plain(ownWords[i]) ==
+                            _plain(span[i]!.t.replaceAll('ٰ', '')) &&
+                        contrast.any(
+                          (o) => _plain(o[i]) != _plain(ownWords[i]),
+                        ),
+            ]
+          : strict;
       // A verified reader's chapter row the book's wording does not show
       // (أَجۡرِي إِلَّا, its ya without a sukun): his row then.
       if (!changed.contains(true)) {
@@ -322,9 +359,7 @@ List _taken(
   String Function(String) withKhulf,
 ) {
   // Qalun's small ya «مَعِے» as Hafs's script writes it.
-  final own = _ownFont.contains(who)
-      ? text.replaceAll('ے', 'ي')
-      : row[4];
+  final own = _ownFont.contains(who) ? text.replaceAll('ے', 'ي') : row[4];
   return [
     s,
     a,

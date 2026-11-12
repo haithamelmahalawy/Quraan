@@ -125,6 +125,7 @@ class MushafPage extends StatefulWidget {
     this.showHamesh = true,
     this.onZoomChanged,
     this.onEdgeTurn,
+    this.onDoubleTap,
     this.onShowRiwaya,
     this.onPageNumberTap,
     this.qcf = false,
@@ -146,6 +147,11 @@ class MushafPage extends StatefulWidget {
   /// the riwayat stands there, between the surah and the juz.
   final ValueChanged<double>? onHeaderMiddle;
 
+  /// The pages built, in order: turning one page should build only the
+  /// page newly come near, whatever the riwayat chosen.
+  @visibleForTesting
+  static final built = <int>[];
+
   final int page;
   final QuranRepository quran;
   final VariantRepository variants;
@@ -161,6 +167,9 @@ class MushafPage extends StatefulWidget {
 
   /// Zoomed in, dragged on past the page's side: turn the page that way.
   final ValueChanged<int>? onEdgeTurn;
+
+  /// Two quick taps on the page (full screen on or off).
+  final VoidCallback? onDoubleTap;
 
   /// A riwaya's square on the frame touched: the page shown in it (null:
   /// Hafs). Without it, no squares.
@@ -250,6 +259,10 @@ class _MushafPageState extends State<MushafPage>
 
   @override
   Widget build(BuildContext context) {
+    assert(() {
+      MushafPage.built.add(widget.page);
+      return true;
+    }());
     _disposeRecognizers();
     // The riwayat or their data may have changed since the last build.
     _readingsMemo.clear();
@@ -299,6 +312,7 @@ class _MushafPageState extends State<MushafPage>
             MushafZoom(
               controller: _zoom,
               onEdgeTurn: widget.onEdgeTurn,
+              onDoubleTap: widget.onDoubleTap,
               onPinchChanged: (active) {
                 _pinching = active;
                 _syncZoom();
@@ -1435,6 +1449,21 @@ class _MushafPageState extends State<MushafPage>
     return (text: spacedImalaSigns(text), font: shown.font);
   }
 
+  /// The shown riwaya's own imala of word [w], whose sign is drawn.
+  static Variant? _ownImala(Iterable<Variant> base, int w) => base
+      .where(
+        (v) =>
+            v.word == w &&
+            v.isImala &&
+            !v.isStoppingTaqlil &&
+            // Nor a stop's own imala (مُوسَى ٱلۡكِتَٰبَ، the feminine ha):
+            // its letter coloured, no sign (the user, 2026-11-12).
+            !v.stopOnly &&
+            v.rule != 'imala_ha' &&
+            !v.fathPreferred,
+      )
+      .firstOrNull;
+
   ({String text, String font})? _displayWord(
     Ayah ayah,
     int w, {
@@ -1636,7 +1665,12 @@ class _MushafPageState extends State<MushafPage>
       if (_dadAsZa(ayah, w) != null) {
         return (text: ayah.words[w], font: 'Hafs');
       }
-      final text = withNaqlVowel(v.text, ayah.words[w]);
+      var text = withNaqlVowel(v.text, ayah.words[w]);
+      // Its own word read with imala: the sign under it too, as under
+      // Hafs's words (al-Kisa'i's «فَنَادَ۪ىٰهُ»).
+      if (_ownImala(base, w) case final imala?) {
+        text = withImalaSign(text, imala.text.isEmpty ? null : imala.text);
+      }
       return (
         text: _ashabSilah.contains(s.displayed)
             ? _easedAsHafs(text, ayah.words[w], v.kind == VariantKind.hamza)
@@ -1651,19 +1685,7 @@ class _MushafPageState extends State<MushafPage>
     if (glyph != null && glyph.isEmpty) return null;
     // The sign is the shown riwaya's own: a riwaya of the hamesh shades the
     // word, never marks Hafs's letters (the user, 2026-11-12).
-    final imala = base
-        .where(
-          (v) =>
-              v.word == w &&
-              v.isImala &&
-              !v.isStoppingTaqlil &&
-              // Nor a stop's own imala (مُوسَى ٱلۡكِتَٰبَ، the feminine ha):
-              // its letter coloured, no sign (the user, 2026-11-12).
-              !v.stopOnly &&
-              v.rule != 'imala_ha' &&
-              !v.fathPreferred,
-        )
-        .firstOrNull;
+    final imala = _ownImala(base, w);
     // The page font has no imala sign to add: such a word is drawn in the
     // Hafs font, with the sign under the letters the reading marks.
     if (imala != null) {
@@ -2162,7 +2184,19 @@ class _MushafPageState extends State<MushafPage>
             ? _mergedLetters(d, letters)
             : null;
         final into = _idghamLetters(d);
-        if (merged != null) {
+        // The two words drawn as one (لَّقَد سَّمِعَ): the merged letter
+        // before the space and the one it merges in after it, not the
+        // first word's own doubled letter.
+        final space = letters.indexWhere((l) => l.trim().isEmpty);
+        if (merged == null &&
+            into != null &&
+            space > 0 &&
+            space + 1 < letters.length &&
+            letters[space - 1].startsWith(into.$1) &&
+            letters[space + 1].startsWith(into.$2)) {
+          mark(space - 1, ReadingColors.idgham);
+          mark(space + 1, ReadingColors.idgham);
+        } else if (merged != null) {
           for (final i in merged) {
             mark(i, ReadingColors.idgham);
           }

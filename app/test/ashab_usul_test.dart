@@ -157,4 +157,154 @@ void main() {
       expect(how(36, 80, 4), isNull); // ٱلشَّجَرِ: no ha
     },
   );
+
+  test('«فإن قاتلوكم» البقرة ١٩١: «قتلوكم» for Hamza, al-Kisai and Khalaf', () {
+    // The book's run of ten words: Hafs's dagger alif in «قَٰتَلُوكُمۡ» is
+    // the full alif of the other reading (قَاتَلُوكُم), a difference.
+    for (final id in [
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+      'ishaq',
+      'idris',
+    ]) {
+      final words = {
+        for (final v in (load(id)['variants'] as List).cast<List>())
+          if (v[0] == 2 && v[1] == 191 && v[5] == 'f') v[2]: v[4],
+      };
+      expect(words, {
+        12: 'تَقۡتُلُوهُمۡ',
+        17: 'يَقۡتُلُوكُمۡ',
+        20: 'قَتَلُوكُمۡ',
+      }, reason: id);
+    }
+  });
+
+  test('the farsh the user set: تماسوهن، ويبصط، يتسنه، اعلم', () {
+    Map<int, String> farsh(String id, int s, int a) => {
+      for (final v in (load(id)['variants'] as List).cast<List>())
+        if (v[0] == s && v[1] == a && v[5] == 'f')
+          v[2] as int: '${v[4]}|${v[6]}',
+    };
+    const all = [
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+      'ishaq',
+      'idris',
+    ];
+    for (final id in all) {
+      // The madd over the dagger alif.
+      for (final (s, a, w) in [(2, 236, 8), (2, 237, 5), (33, 49, 11)]) {
+        expect(
+          farsh(id, s, a)[w],
+          'تُمَٰٓسُّوهُنَّ|بضم التاء وتشديد السين مع المد المشبع',
+          reason: '$id $s:$a',
+        );
+      }
+      // The oval of «أنا» on the ha, gone joined.
+      expect(
+        farsh(id, 2, 259)[41],
+        'يَتَسَنَّه۠ۖ|بحذف الهاء وصلًا وإثباتها وقفًا',
+        reason: id,
+      );
+      final kisai = id == 'abul_harith' || id == 'duri_kisai';
+      expect(
+        farsh(id, 2, 245)[13],
+        kisai
+            ? 'وَيَبۡصُطُ|بالصاد'
+            : id == 'khallad'
+            ? 'وَيَبۡصُۣطُ|بالصاد والسين، والصاد هو المقدّم'
+            : isNull,
+        reason: id,
+      );
+      // «ولا يحسبن الذين يبخلون»: the verb alone, not the book's entry of
+      // ١٧٨ («الذين كفروا») misplaced over three words.
+      expect(farsh(id, 3, 180).keys.toSet(), {1}, reason: id);
+      // Hafs's word, its ya a ta, the dagger alif kept.
+      expect(farsh(id, 3, 154)[8], 'تَغۡشَىٰ|بالتاء', reason: id);
+      // Khalaf's idgham without ghunna only before a ya or waw he reads:
+      // none before the ta or nun of his farsh.
+      if (id == 'khalaf_hamzah') {
+        for (final (s, a, w) in [
+          (3, 154, 7),
+          (6, 145, 12),
+          (13, 4, 11),
+          (24, 35, 15),
+          (25, 8, 7),
+          (75, 37, 4),
+        ]) {
+          expect(
+            (load(id)['variants'] as List).cast<List>().where(
+              (v) =>
+                  v[0] == s &&
+                  v[1] == a &&
+                  v[2] == w &&
+                  v[7] == 'idgham_bila_ghunna',
+            ),
+            isEmpty,
+            reason: '$s:$a',
+          );
+        }
+      }
+      // Hafs's ta's tooth without its dots, the dagger alif on it.
+      expect(farsh(id, 3, 39)[0], 'فَنَادَىٰهُ|بالألف', reason: id);
+      expect(
+        farsh(id, 6, 90)[5],
+        'ٱقۡتَدِه۠ۗ|بحذف الهاء وصلًا وإثباتها وقفًا',
+        reason: id,
+      );
+      expect(
+        farsh(id, 3, 195)[24],
+        'وَقُتِلُواْ|بضم القاف وحذف الألف وكسر التاء',
+        reason: id,
+      );
+      expect(
+        farsh(id, 3, 195)[25],
+        'وَقَٰتَلُواْ|بفتح القاف وإثبات الألف وفتح التاء',
+        reason: id,
+      );
+      final hamzaOrKisai = !id.startsWith('i');
+      expect(
+        farsh(id, 2, 259)[60],
+        hamzaOrKisai
+            ? 'ٱعۡلَمۡ|بإبدال همزة القطع همزة وصل وإسكان الميم'
+            : isNull,
+        reason: id,
+      );
+    }
+  });
+
+  test(
+    '«التوراة»: al-Kisai and Khalaf al-Ashir lean it, Hamza reduces it, all 18',
+    () {
+      final quran =
+          jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
+      final places = <String>{
+        for (final a in (quran['ayahs'] as List).cast<List>())
+          for (final (i, w) in '${a[4]}'.split(' ').indexed)
+            if (w.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '').contains('تورىة'))
+              '${a[0]}:${a[1]}:$i',
+      };
+      expect(places, hasLength(18));
+      for (final (id, how) in [
+        ('abul_harith', 'بالإمالة'),
+        ('duri_kisai', 'بالإمالة'),
+        ('ishaq', 'بالإمالة'),
+        ('idris', 'بالإمالة'),
+        ('khalaf_hamzah', 'بالتقليل'),
+        ('khallad', 'بالتقليل'),
+      ]) {
+        final told = {
+          for (final v in (load(id)['variants'] as List).cast<List>())
+            if (places.contains('${v[0]}:${v[1]}:${v[2]}'))
+              '${v[0]}:${v[1]}:${v[2]}': v[6],
+        };
+        expect(told.keys.toSet(), places, reason: id);
+        expect(told.values.toSet(), {how}, reason: id);
+      }
+    },
+  );
 }

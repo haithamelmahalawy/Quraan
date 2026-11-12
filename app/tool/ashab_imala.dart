@@ -4,6 +4,10 @@ part of 'build_ashab_usul.dart';
 /// لقراءات التنزيل»: Ibn Dhakwan's row where he reads the word alike, worded
 /// as his («بإمالة الألف»); a stop's own imala as Warsh's taqlil
 /// («بالإمالة وقفًا»), and al-Kisa'i's feminine ha with the letter before it.
+/// A word's letters without its prefixes (و، ف، ب، ل) and marks.
+String _imalaStem(String word) =>
+    _bare(word).replaceFirst(RegExp('^[وفبل]+(?=ال)'), '');
+
 int _imala(
   String id,
   Map book,
@@ -51,9 +55,15 @@ int _imala(
       final all = (g[1] as List).cast<String>();
       final disputed = (g[2] as List).cast<String>();
       if (!all.contains(id) && !disputed.contains(id)) continue;
-      // al-Kisa'i's feminine ha (غِشَٰوَةٞ): when stopping, whatever the book.
+      // al-Kisa'i's feminine ha (غِشَٰوَةٞ): when stopping, whatever the book;
+      // but an imala the book gives others too is its alif's (ٱلتَّوۡرَىٰةَ,
+      // with Abu 'Amr, Ibn Dhakwan and Khalaf al-'Ashir), not the ha's.
       final kisaiHa =
-          _kisai.contains(id) && RegExp(r'ة[ً-ٟۖ-ۛ]*$').hasMatch(word.t);
+          _kisai.contains(id) &&
+          RegExp(r'ة[ً-ٟۖ-ۛ]*$').hasMatch(word.t) &&
+          ([...all, ...disputed].every(_kisai.contains) ||
+              // No alif to lean, the book's number amiss (سِتَّةِ).
+              !RegExp('[اىٰ]').hasMatch(word.t.substring(1)));
       // Told below by the letter before it, the book aside.
       if (kisaiHa) continue;
       // The taqlil as the book words the reading (التوراة: «وقللها» for
@@ -63,6 +73,16 @@ int _imala(
           taqlil = RegExp('قلل|(?<!لا )تقليل').hasMatch('${g[3]}');
       if (!done.add('${_key(s, a, w)}:$stop')) continue;
       final khulf = disputed.contains(id);
+      // «معاً»: the same word again in the ayah too (بِٱلتَّوۡرَىٰةِ, آل عمران ٩٣).
+      final also = [
+        w,
+        // Said of the entry, in any of its readings.
+        if ((e[5] as List).any((o) => '${o[3]}'.contains('معا')))
+          for (var i = w + 1; index.containsKey(_key(s, a, i)); i++)
+            if (_imalaStem(index[_key(s, a, i)]!.t) == _imalaStem(word.t) &&
+                done.add('${_key(s, a, i)}:$stop'))
+              i,
+      ];
       // Ibn Dhakwan's row where he reads it alike, by the same name.
       final his = (ibnDhakwan[_key(s, a, w)] ?? const <List>[])
           .where(
@@ -81,23 +101,32 @@ int _imala(
           (all.contains('ibn_dhakwan') || disputed.contains('ibn_dhakwan')) &&
           !khulf &&
           !taqlil) {
-        put([
-          s,
-          a,
-          w,
-          1,
-          his[4],
-          'u',
-          his[6],
-          his.length > 7 ? his[7] : '',
-          {
-            if (his.length > 8 && his[8] is Map)
-              ...Map<String, Object?>.from(his[8] as Map)..remove('source'),
-            'source': ashabSource,
-            'farshFrom': 'ibn_dhakwan',
-          },
-        ]);
-        n++;
+        for (final at in also) {
+          // His row at each place, or the first's.
+          final row =
+              (ibnDhakwan[_key(s, a, at)] ?? const <List>[])
+                  .where((v) => v[3] == 1 && v[6] == his[6])
+                  .firstOrNull ??
+              his;
+          put([
+            s,
+            a,
+            at,
+            1,
+            // Not the first word's letters at another (بِٱلتَّوۡرَىٰةِ).
+            identical(row, his) && at != w ? '' : row[4],
+            'u',
+            row[6],
+            row.length > 7 ? row[7] : '',
+            {
+              if (row.length > 8 && row[8] is Map)
+                ...Map<String, Object?>.from(row[8] as Map)..remove('source'),
+              'source': ashabSource,
+              'farshFrom': 'ibn_dhakwan',
+            },
+          ]);
+          n++;
+        }
         continue;
       }
       // The alif before a final ra leans only with the ra's kasra (ٱلنَّارِ،
@@ -115,25 +144,27 @@ int _imala(
           : 'بإمالة الألف';
       if (stop) how = '$how وقفًا';
       if (khulf) how = '$how بخلف عنه';
-      put([
-        s,
-        a,
-        w,
-        1,
-        '',
-        'u',
-        how,
-        // «إمالة هاء التأنيث», a chapter of its own (the user, 2026-11-12).
-        ha && !taqlil ? 'imala_ha' : '',
-        {
-          'source': ashabSource,
-          'book': 'kharouf',
-          if (stop) 'stopOnly': true,
-          if (khulf) 'ways': [taqlil ? 'التقليل' : 'الإمالة', 'الفتح'],
-          if (khulf) 'ownWays': true,
-        },
-      ]);
-      n++;
+      for (final at in also) {
+        put([
+          s,
+          a,
+          at,
+          1,
+          '',
+          'u',
+          how,
+          // «إمالة هاء التأنيث», a chapter of its own (the user, 2026-11-12).
+          ha && !taqlil ? 'imala_ha' : '',
+          {
+            'source': ashabSource,
+            'book': 'kharouf',
+            if (stop) 'stopOnly': true,
+            if (khulf) 'ways': [taqlil ? 'التقليل' : 'الإمالة', 'الفتح'],
+            if (khulf) 'ownWays': true,
+          },
+        ]);
+        n++;
+      }
     }
   }
   // هاء التأنيث وقفًا للكسائي، بالمذهبين معًا (المستخدم، 2026-11-12):

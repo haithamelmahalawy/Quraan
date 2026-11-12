@@ -7,12 +7,14 @@ void main() {
   late TransformationController controller;
   late List<bool> pinches;
   var taps = 0;
+  var doubles = 0;
   late List<int> turns;
 
   setUp(() {
     controller = TransformationController();
     pinches = [];
     taps = 0;
+    doubles = 0;
     turns = [];
   });
   tearDown(() => controller.dispose());
@@ -27,6 +29,7 @@ void main() {
             controller: controller,
             onPinchChanged: pinches.add,
             onEdgeTurn: turns.add,
+            onDoubleTap: () => doubles++,
             child: GestureDetector(
               onTap: () => taps++,
               child: const ColoredBox(color: Colors.white),
@@ -221,7 +224,7 @@ void main() {
     expect(controller.value, Matrix4.identity());
   });
 
-  testWidgets('two quick taps zoom in on the place, two more zoom out', (
+  testWidgets('two quick taps enlarge the page as full screen, not zoom', (
     t,
   ) async {
     await show(t);
@@ -234,13 +237,11 @@ void main() {
     }
 
     await twice();
-    expect(controller.value.getMaxScaleOnAxis(), closeTo(2, .001));
-    // The place tapped stays under the finger.
-    final scene = controller.toScene(const Offset(100, 120));
-    expect(scene.dx, closeTo(100, .5));
-    expect(scene.dy, closeTo(120, .5));
+    expect(doubles, 1);
+    // The place tapped is not zoomed in on: the panel's enlarging is used.
+    expect(controller.value, Matrix4.identity());
     expect(taps, 0);
     await twice();
-    expect(controller.value, Matrix4.identity());
+    expect(doubles, 2);
   });
 }

@@ -91,6 +91,13 @@ class MushafLines extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The lines are measured unscaled (_measure) and their font fitted to
+    // the width: drawn so too, whatever the system's text size (a larger one,
+    // as on some Android phones, pushed the line's start over the frame).
+    return MediaQuery.withNoTextScaling(child: _lines());
+  }
+
+  Widget _lines() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final (:fontSize, :lineHeight) = metrics(constraints.maxWidth);

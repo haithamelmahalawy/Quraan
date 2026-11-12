@@ -146,6 +146,15 @@ class _ReaderScreenState extends State<ReaderScreen>
   bool _fullScreen = false;
   final _headerMiddle = ValueNotifier<double?>(null);
 
+  /// The middle of each page's header, as each page near reported it: the
+  /// arrow follows the page turned to without building it again.
+  final _middles = <int, double>{};
+
+  /// Bumped whenever what the pages are drawn with changes (the settings,
+  /// the riwayat loaded, the page fonts): the pager keeps the pages built
+  /// until then.
+  int _pagesRevision = 0;
+
   /// Where the surah's name of the page read is, on the screen.
   /// The riwayat's panel, opened from the top bar.
   final _riwayatOpen = ValueNotifier<bool>(false);
@@ -241,8 +250,10 @@ class _ReaderScreenState extends State<ReaderScreen>
         final facing = _quran.isRightPage(_page) ? index + 1 : index - 1;
         _currentPicture?.dispose();
         _facingPicture?.dispose();
-        _currentPicture = pager.capture(index);
-        _facingPicture = pager.capture(facing);
+        // A small picture: the screen's full pixels cost a weak phone
+        // much, after every turn.
+        _currentPicture = pager.capture(index, pixelRatio: 1);
+        _facingPicture = pager.capture(facing, pixelRatio: 1);
       }
       fly ? _hint.forward(from: 0) : setState(() {});
     });
@@ -374,6 +385,10 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   void _onFonts() {
+    // The page fonts draw the pages only when chosen.
+    if (widget.settings.qcfFont && _quran.edition == MushafEdition.madani) {
+      _pagesRevision++;
+    }
     if (mounted) setState(() {});
   }
 
@@ -386,6 +401,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   /// Loads newly selected riwayat before the pages are redrawn with them.
   Future<void> _onSettings() async {
+    _pagesRevision++;
     // Another mushaf: a new pager, at the page of the place read.
     if (widget.settings.edition != _edition) {
       setState(() {
@@ -404,6 +420,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     if (missing.isNotEmpty) {
       setState(() => _loading = true);
       await widget.variants.ensureLoaded(missing);
+      _pagesRevision++;
       if (mounted) setState(() => _loading = false);
     }
     if (mounted) setState(() {});
@@ -501,11 +518,16 @@ class _ReaderScreenState extends State<ReaderScreen>
       onZoomChanged: (z) => setState(() => _zoomed = z),
       // Zoomed in on a word, the page still turns from its side.
       onEdgeTurn: (direction) => _pager.currentState?.turn(direction),
+      // Two quick taps: «ملء الشاشة» of the top panel, on or off.
+      onDoubleTap: () => _setFullScreen(!_fullScreen),
       // The riwayat chosen, on the frame: gone between without their panel.
       onShowRiwaya: (id) => widget.settings.displayed = id,
       onPageNumberTap: _pickPage,
       // The arrow of the riwayat over the middle of the header in sight.
-      onHeaderMiddle: number == _page ? (x) => _headerMiddle.value = x : null,
+      onHeaderMiddle: (x) {
+        _middles[number] = x;
+        if (number == _page) _headerMiddle.value = x;
+      },
       // The QCF page fonts draw the Madinah pages only.
       qcf:
           widget.settings.qcfFont &&
@@ -520,8 +542,10 @@ class _ReaderScreenState extends State<ReaderScreen>
       itemCount: two ? (_quran.pageCount + 1) ~/ 2 : _quran.pageCount,
       initialIndex: _indexOf(_page),
       enabled: !_zoomed,
+      revision: (_pagesRevision, _fullScreen, two, _quran.edition),
       onPageChanged: (i) {
         final number = _pageAt(i);
+        if (_middles[number] case final x?) _headerMiddle.value = x;
         setState(() {
           _page = number;
           _zoomed = false;

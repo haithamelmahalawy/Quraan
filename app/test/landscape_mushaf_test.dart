@@ -132,6 +132,31 @@ void main() {
     await t.pumpAndSettle();
   });
 
+  testWidgets('two quick taps on the page: full screen, two more: back', (
+    t,
+  ) async {
+    await show(t, const Size(412, 900), reader: true);
+    bool full() => t
+        .widgetList<MushafPage>(find.byType(MushafPage))
+        .every((p) => !p.showHamesh);
+    Future<void> twice() async {
+      final at = t.getCenter(find.byType(MushafPage).last);
+      await t.tapAt(at);
+      await t.pump(const Duration(milliseconds: 80));
+      await t.tapAt(at);
+      await t.pumpAndSettle();
+    }
+
+    expect(full(), isFalse);
+    await twice();
+    // The page enlarged as by «ملء الشاشة», not zoomed in on the place.
+    expect(full(), isTrue);
+    expect(find.byTooltip('ملء الشاشة'), findsNothing);
+    await twice();
+    expect(full(), isFalse);
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('«الرواة» in the top bar lets the panel down and up', (t) async {
     final settings = ReaderSettings.memory(selected: {'warsh'})
       ..page = 3

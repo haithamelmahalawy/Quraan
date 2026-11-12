@@ -677,6 +677,13 @@ Map<String, int> buildAshabUsul(
         _key(v[0], v[1], v[2]): '${v[4]}',
   };
   String read(String k) => farshOf[k] ?? textAt[k] ?? index[k]!.t;
+  // None where his farsh starts the word otherwise (نُعَاسٗا تَغۡشَىٰ: the ta,
+  // the tanween hidden before it).
+  rows.removeWhere(
+    (v) =>
+        v[7] == 'idgham_bila_ghunna' &&
+        !RegExp('^[وي]').hasMatch(read(_key(v[0], v[1], (v[2] as int) + 1))),
+  );
   for (final v in rows) {
     if (v[7] != 'idgham_bila_ghunna') continue;
     final a = _key(v[0], v[1], v[2]), b = _key(v[0], v[1], (v[2] as int) + 1);
@@ -770,18 +777,23 @@ Map<String, int> buildAshabUsul(
         v[3] as int,
         (i) => _key(v[0], v[1], (v[2] as int) + i),
       ).any(told.contains);
-  data['variants'] =
-      [
-        for (final v in raw)
-          if (!covered(v)) v,
-        ...rows,
-      ]..sort((x, y) {
-        for (var i = 0; i < 3; i++) {
-          final c = (x[i] as int).compareTo(y[i] as int);
-          if (c != 0) return c;
-        }
-        return 0;
-      });
+  // By place, the rows of one word in the order made: List.sort is not
+  // stable, and a row added elsewhere reordered them (a word's two-word
+  // idgham before its sakt hid the word after it).
+  final made = [
+    for (final v in raw)
+      if (!covered(v)) v,
+    ...rows,
+  ];
+  final order = {for (final (i, v) in made.indexed) v: i};
+  data['variants'] = made
+    ..sort((x, y) {
+      for (var i = 0; i < 3; i++) {
+        final c = (x[i] as int).compareTo(y[i] as int);
+        if (c != 0) return c;
+      }
+      return order[x]!.compareTo(order[y]!);
+    });
   // An alif added to Hafs's rasm is the dagger one.
   applyDaggerAlif(quran, data['variants'] as List);
   // «هُزُوٗا» with its zay quiet and its hamza (Hamza, Khalaf al-'Ashir):
@@ -795,7 +807,125 @@ Map<String, int> buildAshabUsul(
     }
     v[4] = hafs.replaceFirst('زُو', 'زۡؤ');
   }
+  _userFarsh(id, data['variants'] as List);
   return counts;
+}
+
+/// The farsh the user set (2026-11-12) where the book's rows fall short.
+void _userFarsh(String id, List variants) {
+  const kisai = {'abul_harith', 'duri_kisai'};
+  const hamza = {'khalaf_hamzah', 'khallad'};
+  const khalaf = {'ishaq', 'idris'};
+  List? at(int s, int a, int w) => variants
+      .cast<List>()
+      .where((v) => v[0] == s && v[1] == a && v[2] == w && v[5] == 'f')
+      .firstOrNull;
+  void put(List row) {
+    final old = at(row[0] as int, row[1] as int, row[2] as int);
+    if (old != null) variants.remove(old);
+    final i = variants.cast<List>().indexWhere(
+      (v) =>
+          (v[0] as int) * 1000000 + (v[1] as int) * 1000 + (v[2] as int) >
+          (row[0] as int) * 1000000 + (row[1] as int) * 1000 + (row[2] as int),
+    );
+    variants.insert(i < 0 ? variants.length : i, row);
+  }
+
+  // «تُمَٰٓسُّوهُنَّ»: the madd over the dagger alif, the madd lazim.
+  for (final v in variants.cast<List>()) {
+    final letters = '${v[4]}'.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '');
+    if (v[5] == 'f' && letters == 'تمسوهن' && '${v[4]}'.contains('ٰ')) {
+      v[4] = 'تُمَٰٓسُّوهُنَّ';
+      v[6] = 'بضم التاء وتشديد السين مع المد المشبع';
+    }
+  }
+  // «وَيَبۡصُطُ» البقرة ٢٤٥ with the sad, the small sin above it gone, as the
+  // verified readers who read it so (Qalun, Shu'ba).
+  if (kisai.contains(id)) {
+    put([
+      2,
+      245,
+      13,
+      1,
+      'وَيَبۡصُطُ',
+      'f',
+      'بالصاد',
+      '',
+      {'source': ashabSource, 'farshFrom': 'shubah'},
+    ]);
+  }
+  // «يَتَسَنَّه۠» البقرة ٢٥٩: the ha gone joined and kept at the stop, the
+  // oval of «أنا» on it for its sukun, as Ya'qub's.
+  if (kisai.contains(id) || hamza.contains(id) || khalaf.contains(id)) {
+    put([
+      2,
+      259,
+      41,
+      1,
+      'يَتَسَنَّه۠ۖ',
+      'f',
+      'بحذف الهاء وصلًا وإثباتها وقفًا',
+      '',
+      {'source': ashabSource, 'farshFrom': 'ruways'},
+    ]);
+  }
+  // Khallad's «وَيَبۡصُۣطُ»: the sad and the sin, the sad first (the
+  // Taysir's), the small sin under the sad as the Madinah script writes
+  // a sad read both ways first (ٱلۡمُصَۣيۡطِرُونَ).
+  if (id == 'khallad') {
+    put([
+      2,
+      245,
+      13,
+      1,
+      'وَيَبۡصُۣطُ',
+      'f',
+      'بالصاد والسين، والصاد هو المقدّم',
+      '',
+      {
+        'source': ashabSource,
+        'ways': ['الصاد، وهو المقدّم', 'السين'],
+      },
+    ]);
+  }
+  // «ٱقۡتَدِه۠» الأنعام ٩٠: as «يَتَسَنَّه۠», the ha gone joined and kept at
+  // the stop, the hamza of the imperative a hamzat al-wasl.
+  if (at(6, 90, 5) case final v?) {
+    v[4] = 'ٱقۡتَدِه۠ۗ';
+    v[6] = 'بحذف الهاء وصلًا وإثباتها وقفًا';
+    (v[8] as Map)['farshFrom'] = 'ruways';
+  }
+  // «وَقُتِلُواْ وَقَٰتَلُواْ» آل عمران ١٩٥: the two words in the other order
+  // («هُنَا قَاتَلُوا أَخِّرْ شِفَاءً»), each told at its own word: the
+  // first's row the book's, the second, Hafs's «وَقُتِلُواْ», read
+  // «وَقَٰتَلُواْ» with the dagger alif (the user, 2026-11-12).
+  if (at(3, 195, 24) case final v?) {
+    put([
+      3,
+      195,
+      25,
+      1,
+      'وَقَٰتَلُواْ',
+      'f',
+      'بفتح القاف وإثبات الألف وفتح التاء',
+      '',
+      {...(v[8] as Map), 'source': ashabSource},
+    ]);
+  }
+  // «فَنَادَىٰهُ» آل عمران ٣٩: Hafs's ta's tooth without its dots, the
+  // dagger alif on it (as «هَدَىٰهُمُ»), not a full alif.
+  if (at(3, 39, 0) case final v?) v[4] = 'فَنَادَىٰهُ';
+  // «تَغۡشَىٰ» آل عمران ١٥٤: Hafs's word, its ya a ta; the dagger alif kept
+  // over the ya, the ta the only difference.
+  if (at(3, 154, 8) case final v?) {
+    v[4] = 'تَغۡشَىٰ';
+    v[6] = 'بالتاء';
+  }
+  // «قَالَ ٱعۡلَمۡ»: the hamza of the imperative, a hamzat al-wasl.
+  if (at(2, 259, 60) case final v?) {
+    v[4] = 'ٱعۡلَمۡ';
+    v[6] = 'بإبدال همزة القطع همزة وصل وإسكان الميم';
+  }
 }
 
 void main() {

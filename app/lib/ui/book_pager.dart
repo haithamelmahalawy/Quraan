@@ -20,7 +20,13 @@ class BookPager extends StatefulWidget {
     required this.itemBuilder,
     required this.onPageChanged,
     this.enabled = true,
+    this.revision,
   });
+
+  /// What the pages are drawn with: the pages built are kept until it
+  /// changes (a turn builds only the page newly come near). Null: built
+  /// again on every rebuild.
+  final Object? revision;
 
   final int itemCount;
   final int initialIndex;
@@ -74,7 +80,11 @@ class BookPagerState extends State<BookPager>
   @override
   void didUpdateWidget(BookPager oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _built.clear();
+    if (widget.revision == null ||
+        widget.revision != oldWidget.revision ||
+        widget.itemCount != oldWidget.itemCount) {
+      _built.clear();
+    }
   }
 
   /// A picture of page [i] as displayed (it must be the current page or a
@@ -212,8 +222,12 @@ class BookPagerState extends State<BookPager>
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         // Each page keeps its state (and its picture key) while it is near.
+        // Keyed by the page, a page moved among the layers as they turn is
+        // moved as it is: taken out and put back by its picture's key alone,
+        // it would be built again (with all its readings) on every turn.
         Widget page(int i, {bool show = true, bool preserveHitTest = false}) =>
             Offstage(
+              key: ValueKey('page:$i'),
               offstage: !show && !preserveHitTest,
               child: Opacity(
                 opacity: show ? 1 : 0,
