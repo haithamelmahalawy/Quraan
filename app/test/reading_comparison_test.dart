@@ -53,7 +53,7 @@ void main() {
       displayed: null,
       selected: ['khalaf_hamzah'],
     );
-    expect(readings.any((v) => v.rule == 'ghunna'), isTrue);
+    expect(readings.any((v) => v.rule == 'idgham_bila_ghunna'), isTrue);
   });
 
   test('Ibn Dhakwan أءذا ما مت: his two ways told once', () {

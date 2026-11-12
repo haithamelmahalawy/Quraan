@@ -342,7 +342,9 @@ void main() {
       await shot(
         t,
         225,
-        ReaderSettings.memory(selected: {'khalaf_hamzah', 'duri_kisai'}),
+        // Shown in Khalaf's riwaya: the sign is his own, never on Hafs's text.
+        ReaderSettings.memory(selected: {'khalaf_hamzah', 'duri_kisai'})
+          ..displayed = 'khalaf_hamzah',
         'p225_imala',
       );
     },

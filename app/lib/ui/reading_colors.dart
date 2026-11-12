@@ -37,6 +37,7 @@ abstract final class ReadingColors {
     'hisham_waqf' => 'الوقف على الهمز',
     'first_sakin' => 'التقاء الساكنين',
     'idgham' || 'idgham_saghir' => 'الإدغام',
+    'idgham_bila_ghunna' => 'الإدغام بلا غنة',
     'idgham_kabir' => 'الإدغام الكبير',
     'madd_munfasil' => 'المد المنفصل',
     'madd_muttasil' => 'المد المتصل',

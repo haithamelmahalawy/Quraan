@@ -1,9 +1,9 @@
 part of 'build_ashab_usul.dart';
 
 /// «الوقف على الهمز» of Hamza: the final hamza as Hisham's rows («وَقَفَ
-/// هِشَامٌ مَعَهُ فِي الْمُتَطَرِّفِ»), worded as his; Khallad adds the rasm's
-/// faces where the hamza is written on a waw or a ya (the guide: the rasmi
-/// school for Khallad, not Khalaf).
+/// هِشَامٌ مَعَهُ فِي الْمُتَطَرِّفِ»), worded as his; both narrators add the
+/// rasm's faces where the hamza is written on a waw or a ya (the guide gives
+/// the rasmi school to Khallad alone; the user, 2026-11-12, to Khalaf too).
 int _waqfFinal(
   String id,
   Map<String, _Word> index,
@@ -16,17 +16,19 @@ int _waqfFinal(
   for (final v in hisham) {
     if (v.length < 9 || v[7] != 'hisham_waqf') continue;
     final word = index[_key(v[0], v[1], v[2])];
-    final rasm = id == 'khallad' && word != null
+    final rasm = word != null
         ? _rasmFaces(word.t, '${v[6]}')
         : const <String>[];
     final hisWays = ((v[8] as Map)['ways'] as List).cast<String>();
     final ordered = word == null
         ? hisWays
         : _hamzaOrder(id == 'khallad', word.t, hisWays);
+    final meta = Map<String, Object?>.from(v[8] as Map);
+    final kind = word == null ? null : waqfHamzaKindOfFinal(word.t);
+    if (kind != null) meta['kind'] = kind;
     if (rasm.isEmpty && identical(ordered, hisWays)) {
-      copy(v);
+      copy([...v.take(8), meta]);
     } else {
-      final meta = Map<String, Object?>.from(v[8] as Map);
       final ways = [...ordered, ...rasm];
       put([
         ...v.take(5),
@@ -131,7 +133,9 @@ List<String> _hamzaOrder(bool khallad, String word, List<String> ways) {
   }
   if (merged.isEmpty) return ways;
   String first(String w) => '$w، وهو المقدّم';
-  return khallad
+  // «شيء»: Khalaf's naql first (the guide, p3); a waw or ya of the root
+  // (السوء، المسيء): the merging first for both (the user, 2026-11-12).
+  return khallad || !shay
       ? [first(merged.first), ...merged.skip(1), ...moved]
       : [first(moved.first), ...moved.skip(1), ...merged];
 }

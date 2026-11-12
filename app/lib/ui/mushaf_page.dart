@@ -1648,7 +1648,9 @@ class _MushafPageState extends State<MushafPage>
         : null;
     // Drawn with the word before.
     if (glyph != null && glyph.isEmpty) return null;
-    final imala = [...base, ..._readingsAt(widget.variants, s, ayah, w).shown]
+    // The sign is the shown riwaya's own: a riwaya of the hamesh shades the
+    // word, never marks Hafs's letters (the user, 2026-11-12).
+    final imala = base
         .where(
           (v) =>
               v.word == w &&
@@ -1694,7 +1696,10 @@ class _MushafPageState extends State<MushafPage>
             ]
             .where(
               (v) =>
-                  (v.word == w || _shadedFarsh(v)) &&
+                  (v.word == w ||
+                      _shadedFarsh(v) ||
+                      // The next word's first letter of Khalaf's idgham.
+                      v.rule == 'idgham_bila_ghunna') &&
                   !v.isMarginNote &&
                   !isRoutineMadd(v) &&
                   showYaqubMimExample(v, ayah.words[v.word]) &&
@@ -2106,7 +2111,30 @@ class _MushafPageState extends State<MushafPage>
         final at = letters.lastIndexWhere((l) => l.startsWith(base));
         mark(at < 0 ? null : at, ReadingColors.silah);
       }
-      if (RegExp('إدغام|ادغام').hasMatch(d)) {
+      if (v.rule == 'idgham_bila_ghunna') {
+        // Khalaf's idgham without ghunna (مَن يَّقُولُ، غِشَٰوَةٞ وَّلَهُمۡ): the
+        // nun or the letter with the tanween, and the next word's first.
+        // The two words drawn as one: the letters on each side of the space.
+        final space = letters.indexWhere((l) => l.trim().isEmpty);
+        if (space > 0) {
+          var last = space - 1;
+          while (last > 0 && RegExp(r'^[اى][ۖ-ۭ]*$').hasMatch(letters[last])) {
+            last--;
+          }
+          mark(last, ReadingColors.idgham);
+          mark(space + 1, ReadingColors.idgham);
+        } else if (w == v.word) {
+          // Each word drawn apart: the first's last letter, the second's
+          // first.
+          var last = letters.length - 1;
+          while (last > 0 && RegExp(r'^[اى][ۖ-ۭ]*$').hasMatch(letters[last])) {
+            last--;
+          }
+          mark(last, ReadingColors.idgham);
+        } else {
+          mark(0, ReadingColors.idgham);
+        }
+      } else if (RegExp('إدغام|ادغام').hasMatch(d)) {
         final merged = const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId)
             ? _mergedLetters(d, letters)
             : null;

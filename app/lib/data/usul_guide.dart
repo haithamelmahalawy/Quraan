@@ -2,6 +2,7 @@ import '../models/quran.dart';
 import 'arabic.dart';
 import 'lin_hamz.dart';
 import 'manzumat.dart';
+import 'waqf_hamza.dart';
 
 /// The chapter a label of the page's key is explained in, without the kind it
 /// names apart: «مد اللين المهموز (مع مد البدل)».
@@ -267,6 +268,8 @@ int usulKindRank(String label, String group) {
       ? _twoHamzasOrder
       : label == 'الهمزتان من كلمتين'
       ? _twoWordsOrder
+      : label == 'الوقف على الهمز'
+      ? waqfHamzaKinds
       : const <String>[];
   final at = order.indexOf(group.split('، ').last);
   return at < 0 ? order.length : at;
@@ -431,6 +434,12 @@ String usulKindOf(
     'الهمزتان من كلمتين' when usulUnifiedRiwayat.contains(v.riwayaId) =>
       _twoWordsGuideKind(v),
     'الهمز المفرد' => _singleHamzaKind(v, hafs),
+    // Hamza's kinds by his builder; Hisham's final hamza by the same kinds.
+    'الوقف على الهمز'
+        when v.usulKind.isNotEmpty ||
+            v.riwayaId == 'hisham' && waqfHamzaKindOfFinal(hafs) != null =>
+      '${v.usulKind.isNotEmpty ? v.usulKind : waqfHamzaKindOfFinal(hafs)}: '
+          '${v.usulWays.isEmpty ? v.description : v.usulWays.join('، أو ')}',
     'الإشمام' =>
       '${v.rule == 'ishmam_sad' ? 'إشمام حرف بحرف' : 'إشمام حركة بحركة'}: '
           '${v.description}',

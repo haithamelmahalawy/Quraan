@@ -759,10 +759,15 @@ void main() {
     for (final id in [null, 'ruways']) {
       await page(t, id, number: 4, selected: {'ruways'});
       final text = t.widget<InkText>(word(2, 19, 18)).text;
-      expect(
-        lettersOf(text).singleWhere((c) => c.contains(imalaSign)),
-        startsWith('ك'),
-      );
+      // The sign is Ruways's own: on his text, not on Hafs's.
+      if (id == null) {
+        expect(text, isNot(contains(imalaSign)));
+      } else {
+        expect(
+          lettersOf(text).singleWhere((c) => c.contains(imalaSign)),
+          startsWith('ك'),
+        );
+      }
       expect(
         find.byKey(const ValueKey('usul-reference:الإمالة:2:19:18:ruways')),
         findsOneWidget,

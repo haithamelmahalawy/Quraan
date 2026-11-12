@@ -33,4 +33,22 @@ void main() {
     expect(search.search('  '), isEmpty);
     expect(search.search('كمبيوتر'), isEmpty);
   });
+  test('the text as typed, its hamzas aside: no other word of the root', () {
+    final shufaa = search.search('شفعاؤ');
+    expect(shufaa, isNotEmpty);
+    for (final h in shufaa) {
+      final w = h.ayah.words.sublist(h.from, h.to).join(' ');
+      expect(w, contains('شُفَعَ'), reason: w);
+    }
+    expect(
+      search.search('اشركوا').map(at).toSet(),
+      search.search('أشركوا').map(at).toSet(),
+    );
+    expect(search.search('الحياة').map(at), contains('2:85'));
+    // اشركوا is not شُرَكَآؤُكُمۡ, its alif a letter.
+    for (final h in search.search('اشركوا')) {
+      expect(h.ayah.words[h.from], contains('أَشۡرَكُو'));
+    }
+    expect(search.search('الرحمان').map(at), contains('1:3'));
+  });
 }

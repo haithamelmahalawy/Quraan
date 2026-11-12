@@ -226,7 +226,8 @@ class _RiwayaSection extends StatelessWidget {
             label != 'الهمزتان من كلمة' &&
             label != 'الهمزتان من كلمتين' &&
             label != 'الإشمام' &&
-            label != 'الهمز المفرد')
+            label != 'الهمز المفرد' &&
+            (label != 'الوقف على الهمز' || v.usulKind.isEmpty))
           v.description,
     }.take(_rulings).toList();
     // The numbered kinds, each with the wordings told under it.
@@ -254,6 +255,7 @@ class _RiwayaSection extends StatelessWidget {
           'الهمزتان من كلمتين',
           'الهمز المفرد',
           'الإشمام',
+          'الوقف على الهمز',
         }.contains(label)
         ? ordered
         : ordered.take(_kinds).toList();

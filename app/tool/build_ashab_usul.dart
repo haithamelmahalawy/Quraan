@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:qiraat_mushaf/data/arabic.dart';
+import 'package:qiraat_mushaf/data/waqf_hamza.dart';
 
 import 'apply_dagger_alif.dart';
 import 'build_data.dart' as bd show describe, currentRiwaya;
@@ -34,9 +35,8 @@ const _khalafAshir = {'ishaq', 'idris'};
 
 typedef _Word = ({int s, int a, int w, String t});
 
-String _bare(String s) => s
-    .replaceAll('ٱ', 'ا')
-    .replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), '');
+String _bare(String s) =>
+    s.replaceAll('ٱ', 'ا').replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), '');
 
 String _key(Object s, Object a, Object w) => '$s:$a:$w';
 
@@ -71,16 +71,22 @@ class AshabSources {
   static AshabSources load(String Function(String id) read) {
     List<List> rows(String id) =>
         ((jsonDecode(read(id)) as Map)['variants'] as List).cast<List>();
-    return AshabSources(rows('ruways'), rows('hisham'), rows('qalun'), rows('shubah'), {
-      for (final r in _verifiedOrder)
-        r: () {
-          final at = <String, List<List>>{};
-          for (final v in rows(r)) {
-            (at[_key(v[0], v[1], v[2])] ??= []).add(v);
-          }
-          return at;
-        }(),
-    });
+    return AshabSources(
+      rows('ruways'),
+      rows('hisham'),
+      rows('qalun'),
+      rows('shubah'),
+      {
+        for (final r in _verifiedOrder)
+          r: () {
+            final at = <String, List<List>>{};
+            for (final v in rows(r)) {
+              (at[_key(v[0], v[1], v[2])] ??= []).add(v);
+            }
+            return at;
+          }(),
+      },
+    );
   }
 }
 
@@ -230,7 +236,9 @@ Map<String, int> buildAshabUsul(
         'ishmam_sad',
         khulf ? '$how بخلف عنه، والإشمام هو المقدّم' : how,
         text: '',
-        ways: khulf ? const ['الإشمام، وهو المقدّم', 'الصاد الخالصة'] : const [],
+        ways: khulf
+            ? const ['الإشمام، وهو المقدّم', 'الصاد الخالصة']
+            : const [],
       );
     }
   }
@@ -297,10 +305,10 @@ Map<String, int> buildAshabUsul(
     for (final w in words) {
       final bare = _bare(w.t);
       if (!RegExp('^[وف]سل').hasMatch(bare) || !w.t.contains('ٔ')) continue;
-      final his = (sources.verified['bazzi']![_key(w.s, w.a, w.w)] ??
-              const <List>[])
-          .where((v) => '${v[6]}'.startsWith('بنقل حركة الهمزة'))
-          .firstOrNull;
+      final his =
+          (sources.verified['bazzi']![_key(w.s, w.a, w.w)] ?? const <List>[])
+              .where((v) => '${v[6]}'.startsWith('بنقل حركة الهمزة'))
+              .firstOrNull;
       if (his == null) continue;
       final row = [
         w.s,
@@ -346,10 +354,7 @@ Map<String, int> buildAshabUsul(
         w,
         'ya_idafa',
         'بإسكان ياء الإضافة',
-        text: w.t.replaceFirstMapped(
-          RegExp(r'يَ([ۖ-ۛ]*)$'),
-          (m) => 'ي${m[1]}',
-        ),
+        text: w.t.replaceFirstMapped(RegExp(r'يَ([ۖ-ۛ]*)$'), (m) => 'ي${m[1]}'),
       );
     }
     // The zawa'id: (riwaya the row is taken from, place, readers).
@@ -387,9 +392,17 @@ Map<String, int> buildAshabUsul(
         return;
       }
       final w = index[k]!;
-      final row = [w.s, w.a, w.w, 1, change(w.t), 'f', how, '', {
-        'source': ashabSource,
-      }];
+      final row = [
+        w.s,
+        w.a,
+        w.w,
+        1,
+        change(w.t),
+        'f',
+        how,
+        '',
+        {'source': ashabSource},
+      ];
       rows.add(row);
       told.add(k);
       counts.update('ha words', (n) => n + 1, ifAbsent: () => 1);
@@ -421,10 +434,9 @@ Map<String, int> buildAshabUsul(
     ha(
       '24:52:6',
       id == 'khallad' ? 'بكسر القاف وإسكان الهاء' : 'بكسر القاف والهاء وصلتها',
-      (t) => haWith(
-        id == 'khallad' ? 'ۡ' : 'ِ',
-        id == 'khallad' ? '' : 'ۦ',
-      )(t.replaceFirst('قۡ', 'قِ')),
+      (t) => haWith(id == 'khallad' ? 'ۡ' : 'ِ', id == 'khallad' ? '' : 'ۦ')(
+        t.replaceFirst('قۡ', 'قِ'),
+      ),
     );
     if (others) {
       for (final k in const ['7:111:1', '26:36:1', '27:28:3']) {
@@ -438,14 +450,14 @@ Map<String, int> buildAshabUsul(
   _idgham(id, words, sources, add, copy);
 
   // ---- الوقف على الهمز لحمزة: المتطرف كهشام، ولخلاد الرسمي معه.
-  counts['waqf final'] =
-      _waqfFinal(id, index, sources.hisham, copy, rows.add);
+  counts['waqf final'] = _waqfFinal(id, index, sources.hisham, copy, rows.add);
   counts['waqf middle'] = _waqfMiddle(id, words, rows.add);
   counts['waqf separated'] = _waqfSeparated(id, words, rows.add);
 
   // ---- السكت قبل الهمز، وصلًا، من التيسير وزيادة الشاطبية: لخلف على «أل»
-  // و«شيء» بلا خلاف، وعلى الساكن المفصول بخلف عنه؛ ولخلاد على «أل» و«شيء»
-  // بخلف عنه. ترك السكت هو المقدّم حيث كان الخلاف، طريق التيسير. لا سكت
+  // و«شيء» بلا خلاف، وعلى الساكن المفصول بخلف عنه؛ ولخلاد مثله على «أل»
+  // و«شيء» بلا خلاف (المستخدم، 2026-11-12). ترك السكت هو المقدّم حيث كان
+  // الخلاف، طريق التيسير. لا سكت
   // على حرف المد، ولا على الموصول في كلمة، ولا على آخر الآية.
   if (_hamza.contains(id)) {
     final khalaf = id == 'khalaf_hamzah';
@@ -457,9 +469,7 @@ Map<String, int> buildAshabUsul(
     );
     final shay = RegExp('^([وفبلك]?[َِ]?شَيۡ)(?=ـ?[ءٔ])');
     // The last letter sakin: a sukun, or a tanween (before its alif).
-    final sakinEnd = RegExp(
-      r'(ۡ|[ًࣰٌࣱٍࣲ])([اى]?[ۖ-ۛ]*)$|(ۡ)(ا۟[ۖ-ۛ]*)$',
-    );
+    final sakinEnd = RegExp(r'(ۡ|[ًࣰٌࣱٍࣲ])([اى]?[ۖ-ۛ]*)$|(ۡ)(ا۟[ۖ-ۛ]*)$');
     String marked(String key, String hafs, int at) {
       final t = textAt[key] ?? hafs;
       return '${t.substring(0, at)}ۜ${t.substring(at)}';
@@ -470,23 +480,48 @@ Map<String, int> buildAshabUsul(
       final key = _key(w.s, w.a, w.w);
       final own = textAt[key] ?? w.t;
       final a = al.firstMatch(own), b = shay.firstMatch(own);
+      // Khalaf's «شيء» with its tanween before a hamza (شَيۡءٍ إِنَّمَا): the
+      // sakt on its ya, and on its tanween by khulf (the user, 2026-11-12).
+      final next = i + 1 < words.length ? words[i + 1] : null;
+      final apart =
+          khalaf &&
+              b != null &&
+              next != null &&
+              next.s == w.s &&
+              next.a == w.a &&
+              RegExp('^[ءأإآ]').hasMatch(next.t)
+          ? sakinEnd.firstMatch(own)
+          : null;
+      if (apart != null) {
+        final t = marked(key, w.t, b!.end);
+        final at = apart.start + (apart[1] ?? apart[3])!.length + 1;
+        add(
+          w,
+          'sakt',
+          'بالسكت على الياء الساكنة في «شيء» قبل الهمز، وعلى تنوينها قبل '
+              'الهمز بعدها بخلف عنه، وترك السكت عليه هو المقدّم',
+          text: '${t.substring(0, at)}ۜ${t.substring(at)}',
+          ways: const [
+            'السكت على الياء والتنوين',
+            'السكت على الياء وحدها، وهو المقدّم',
+          ],
+        );
+        continue;
+      }
       if (a != null || b != null) {
         final what = a != null ? 'لام التعريف' : 'الياء الساكنة في «شيء»';
         add(
           w,
           'sakt',
-          khalaf
-              ? 'بالسكت على $what قبل الهمز'
-              : 'بالسكت على $what قبل الهمز بخلف عنه$after',
+          'بالسكت على $what قبل الهمز',
           text: marked(key, w.t, (a ?? b)!.end),
-          ways: khalaf ? const [] : khulf,
         );
         continue;
       }
       if (!khalaf || i + 1 == words.length) continue;
-      final next = words[i + 1];
-      if (next.s != w.s || next.a != w.a) continue;
-      if (!RegExp('^[ءأإآ]').hasMatch(next.t)) continue;
+      final following = words[i + 1];
+      if (following.s != w.s || following.a != w.a) continue;
+      if (!RegExp('^[ءأإآ]').hasMatch(following.t)) continue;
       final end = sakinEnd.firstMatch(own);
       if (end == null) continue;
       add(
@@ -533,6 +568,21 @@ Map<String, int> buildAshabUsul(
             (v[8] as Map).containsKey('farshFrom')),
   );
 
+  // The idgham without ghunna over the two words as the reader reads each
+  // (the sakt of «وَٱلۡۜأَرۡضِ» kept).
+  // And as his farsh reads the word (حَقّٖ وَّيَقُولُ, Hamza's «ويقول»).
+  final farshOf = {
+    for (final v in rows)
+      if (v[5] != 'u' && v[3] == 1 && '${v[4]}'.isNotEmpty)
+        _key(v[0], v[1], v[2]): '${v[4]}',
+  };
+  String read(String k) => farshOf[k] ?? textAt[k] ?? index[k]!.t;
+  for (final v in rows) {
+    if (v[7] != 'idgham_bila_ghunna') continue;
+    final a = _key(v[0], v[1], v[2]), b = _key(v[0], v[1], (v[2] as int) + 1);
+    v[4] = _merged(read(a), read(b));
+  }
+
   // One farsh row a word: the first told (a chapter here) over the book's.
   final farshAt = <String>{};
   rows.removeWhere(
@@ -544,19 +594,67 @@ Map<String, int> buildAshabUsul(
     for (final v in rows)
       if (v[5] == 'f' && v[3] == 1) _key(v[0], v[1], v[2]): '${v[4]}',
   };
+  bool hasHamza(String t) => RegExp('[ءأإؤئإٓٔ]').hasMatch(t);
   rows.removeWhere((v) {
-    final t = farshText[_key(v[0], v[1], v[2])];
-    return v[7] == 'hisham_waqf' &&
-        t != null &&
-        !RegExp('[ءأإؤئإٓٔ]').hasMatch(t);
+    // Nor on one Hisham reads and Hamza does not, with Hafs (زَكَرِيَّا،
+    // تُرۡجِي).
+    if (v[7] != 'hisham_waqf') return false;
+    final key = _key(v[0], v[1], v[2]);
+    final t = farshText[key] ?? index[key]!.t;
+    return !hasHamza(t);
   });
+  // The kind of a final hamza Hafs does not read, by the reader's word.
+  for (final v in rows) {
+    if (v[7] != 'hisham_waqf') continue;
+    final key = _key(v[0], v[1], v[2]);
+    (v[8] as Map)['kind'] ??= waqfHamzaKindOfFinal(
+      farshText[key] ?? index[key]!.t,
+    );
+  }
+  // A word with a middle hamza and a final one (بِأَسۡمَآءِ): one row, the
+  // middle hamzas first, each told by itself.
+  {
+    final middle = <String, List>{};
+    for (final v in rows) {
+      final meta = v.length > 8 && v[8] is Map ? v[8] as Map : const {};
+      if (v[7] == 'hisham_waqf' && meta.containsKey('_parts')) {
+        middle[_key(v[0], v[1], v[2])] = v;
+      }
+    }
+    final merged = <List>{};
+    for (final v in rows) {
+      final first = middle[_key(v[0], v[1], v[2])];
+      final meta = v.length > 8 && v[8] is Map ? v[8] as Map : const {};
+      if (v[7] != 'hisham_waqf' ||
+          first == null ||
+          identical(first, v) ||
+          meta['kind'] == 'الوقف على الساكن المفصول') {
+        continue;
+      }
+      final parts = [
+        ...((first[8] as Map)['_parts'] as List).map(
+          (p) => (p as List).cast<String>(),
+        ),
+        (meta['ways'] as List).cast<String>(),
+      ];
+      final ways = [_byHamza(parts)];
+      (first[8] as Map)['ways'] = ways;
+      first[6] = 'وقفًا: ${ways.single}';
+      merged.add(v);
+    }
+    rows.removeWhere(merged.contains);
+    for (final v in rows) {
+      if (v.length > 8 && v[8] is Map) (v[8] as Map).remove('_parts');
+    }
+  }
 
   // The Quranpedia rows still drawn: those on no word a chapter here tells,
   // and, till the farsh is built, those whose letters differ from Hafs's.
-  String letters(String s) => _bare(s)
-      .replaceAll(RegExp('[^ء-ي ]'), '')
-      .replaceAll(RegExp('[أإآءؤئى]'), 'ا')
-      .replaceAll(' ', '');
+  String letters(String s) =>
+      _bare(s)
+          .replaceAll(RegExp('[^ء-ي ]'), '')
+          .replaceAll(RegExp('[أإآءؤئى]'), 'ا')
+          .replaceAll(' ', '');
   bool farsh(List v) {
     final hafs = [
       for (var i = 0; i < (v[3] as int); i++)
@@ -572,17 +670,18 @@ Map<String, int> buildAshabUsul(
         v[3] as int,
         (i) => _key(v[0], v[1], (v[2] as int) + i),
       ).any(told.contains);
-  data['variants'] = [
-    for (final v in raw)
-      if (!covered(v)) v,
-    ...rows,
-  ]..sort((x, y) {
-      for (var i = 0; i < 3; i++) {
-        final c = (x[i] as int).compareTo(y[i] as int);
-        if (c != 0) return c;
-      }
-      return 0;
-    });
+  data['variants'] =
+      [
+        for (final v in raw)
+          if (!covered(v)) v,
+        ...rows,
+      ]..sort((x, y) {
+        for (var i = 0; i < 3; i++) {
+          final c = (x[i] as int).compareTo(y[i] as int);
+          if (c != 0) return c;
+        }
+        return 0;
+      });
   // An alif added to Hafs's rasm is the dagger one.
   applyDaggerAlif(quran, data['variants'] as List);
   return counts;

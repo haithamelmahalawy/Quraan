@@ -229,12 +229,14 @@ void _idgham(
       if (const {'36:1:0', '68:1:0'}.contains(key(w))) continue;
       final m = nun.firstMatch(w.t);
       if (m == null) continue;
-      final what = m[1]!.startsWith('ن') ? 'النون الساكنة' : 'التنوين';
+      // Written as the full idgham (مَن يَّقُولُ، خَيۡرٗا وَّأَبۡقَىٰ), the two
+      // letters named as an idgham's are, for the page to colour them.
+      final what = m[1]!.startsWith('ن') ? 'النون' : 'التنوين';
       add(
         (s: w.s, a: w.a, w: w.w, t: '${w.t} ${next.t}'),
-        'ghunna',
+        'idgham_bila_ghunna',
         'بإدغام $what في ${_letterName[first]} بلا غنة',
-        text: '',
+        text: _merged(w.t, next.t),
       );
     }
   }

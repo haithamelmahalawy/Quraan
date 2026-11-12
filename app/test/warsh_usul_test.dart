@@ -2459,6 +2459,14 @@ void main() {
           ..compareHafs = true
           ..displayed = displayed,
       );
+      // Hafs shown: Warsh's sign not on Hafs's word, which is shaded alone.
+      if (displayed == null) {
+        expect(
+          t.widget<InkText>(find.byKey(const ValueKey('word:2:28:5'))).text,
+          isNot(contains(imalaSign)),
+        );
+        continue;
+      }
       final green = coloured('word:2:28:5');
       expect(green.map((p) => p.$1[0]).join(), 'ي');
       expect(green.single.$1, contains(imalaSign));
@@ -2474,6 +2482,13 @@ void main() {
           ..compareHafs = true
           ..displayed = displayed,
       );
+      if (displayed == null) {
+        expect(
+          t.widget<InkText>(find.byKey(const ValueKey('word:12:19:7'))).text,
+          isNot(contains(imalaSign)),
+        );
+        continue;
+      }
       final parts = coloured('word:12:19:7');
       expect(
         parts.where((p) => p.$2 == MushafColors.green).map((p) => p.$1[0]),

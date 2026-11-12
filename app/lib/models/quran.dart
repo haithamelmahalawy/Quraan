@@ -64,6 +64,7 @@ class Variant {
     this.omission = false,
     this.usulText = '',
     this.usulWays = const [],
+    this.usulKind = '',
     this.hamesh = false,
   });
 
@@ -136,6 +137,10 @@ class Variant {
 
   /// The accepted ways of this general rule, shown once in its margin key.
   final List<String> usulWays;
+
+  /// The kind of its chapter this row is, when its builder tells it: the
+  /// divisions of «الوقف على الهمز» by the guide of al-Ashab.
+  final String usulKind;
 
   /// A general rule with a reviewed note of its faces, told in the hamesh
   /// as well as by its colour (يَصۡلَىٰهَا: taghliz with fath, or tarqiq
@@ -231,6 +236,7 @@ class Variant {
     omission: omission,
     usulText: usulText,
     usulWays: usulWays,
+    usulKind: usulKind,
     hamesh: hamesh,
   );
 

@@ -254,6 +254,7 @@ Map<int, List<Variant>> _index((String, String, String?, String?) input) {
       usulWays: v.length > 8
           ? ((v[8] as Map)['ways'] as List? ?? const []).cast<String>()
           : const [],
+      usulKind: v.length > 8 ? (v[8] as Map)['kind'] as String? ?? '' : '',
     );
     // Idgham kabir merges the word into the next one (ٱلۡكِتَٰبَ بِّٱلۡحَقِّ):
     // both are coloured, the note stays with the first.

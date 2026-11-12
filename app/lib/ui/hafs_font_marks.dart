@@ -53,10 +53,11 @@ class HafsFontMarks extends StatelessWidget {
     return result;
   }
 
-  static bool _lowerImala(String cluster) =>
-      'بيئجك'.contains(cluster[0]) && RegExp('[۪ٜ]').hasMatch(cluster) ||
-      // عِمۡرٰ۪نَ: the font puts the sign on the ra's tail.
-      cluster.startsWith('ر') && cluster.contains('ٰ') && cluster.contains('۪');
+  /// The imala sign drawn apart under its letter, on every letter: written
+  /// into the word it breaks the font's stacking of the letter's other marks
+  /// (مُّسَمّٗى: its tanween dropped onto the ya), and on the ra's tail
+  /// (عِمۡرٰ۪نَ) the font puts it astray.
+  static bool _lowerImala(String cluster) => RegExp('[۪ٜ]').hasMatch(cluster);
 
   /// The kasra (or kasratan) of a ya or waw with the hamza below it
   /// (وَرَآيِٕ، ٱللُّؤۡلُوِٕ، ٱمۡرِيٕٖ): the font draws it across the hamza; it
@@ -381,6 +382,10 @@ const lamHamzaShift = -.02;
 const lamHamzaRise = -.10;
 const lamHamzaClip = .70;
 
+/// How far under the line the imala sign stands, in font sizes; under a jim.
+const imalaDrop = .30;
+const imalaUnderJim = .36;
+
 /// How low the dagger alif beside a ta stands, and its madd, in font sizes.
 const taDaggerDrop = .30;
 const taDaggerMaddDrop = -.02;
@@ -541,7 +546,8 @@ class _QuranMarkPainter extends CustomPainter {
             text: 'س',
             style: TextStyle(
               fontFamily: 'Hafs',
-              fontSize: font * .38,
+              // Small, as the sign over a word's own sakin (ٱلۡۜأَرۡضِ).
+              fontSize: font * .28,
               height: 1,
               color: color ?? style.color,
             ),
@@ -666,7 +672,14 @@ class _QuranMarkPainter extends CustomPainter {
                                 RegExp('ِ[ً-ْ]*\$')
                                     .hasMatch(source.substring(0, at))
                           ? .56
-                          : .40)
+                          // Under the jim's dot (جَ۪آءَتۡهُمُ), a dotted ya's
+                          // dots (دِيَ۪ارِكُمۡ).
+                          : source.startsWith('ج', at)
+                          ? imalaUnderJim
+                          : source.startsWith('ي', at)
+                          ? .40
+                          // A little up from the line (the user, 2026-11-12).
+                          : imalaDrop)
                     : kasra
                     // The hamza hangs lower under the waw's tail.
                     ? (source.startsWith('و', at)

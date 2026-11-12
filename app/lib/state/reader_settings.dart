@@ -143,11 +143,16 @@ class ReaderSettings extends ChangeNotifier {
   set scanMode(ScanMode mode) => _set('scanMode', mode.name);
 
   /// The usul (by their label in the guide: «صلة ميم الجمع»...) whose words
-  /// the lamp leaves unlit; none at first, every asl glowing.
+  /// the lamp leaves unlit. At first only «الوقف على الهمز» (Hamza's and
+  /// Hisham's stop, on nearly every hamza) is unlit, the reader lighting it
+  /// at will (the user, 2026-11-12); every other asl glows.
   Set<String> get unlitUsul => {
-    for (final l in (_get('unlitUsul') as String? ?? '').split('\n'))
+    for (final l in (_get('unlitUsul') as String? ?? unlitAtFirst).split('\n'))
       if (l.isNotEmpty) l,
   };
+
+  /// The usul unlit till the reader lights them.
+  static const unlitAtFirst = 'الوقف على الهمز';
 
   /// Lets the words of the asl [label] glow, or not.
   void setUsulLit(String label, bool lit) {

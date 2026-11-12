@@ -222,7 +222,8 @@ void main() {
     );
     await t.tap(switches.first);
     await t.pump();
-    expect(settings.unlitUsul, {label});
+    // «الوقف على الهمز» unlit at first, not one of Warsh's.
+    expect(settings.unlitUsul, {ReaderSettings.unlitAtFirst, label});
     expect(t.widget<SwitchListTile>(switches.first).value, isFalse);
     // None, then all again.
     await t.tap(find.byKey(const ValueKey('glow-usul-none')));
