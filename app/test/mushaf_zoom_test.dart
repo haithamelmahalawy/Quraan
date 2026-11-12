@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/ui/mushaf_zoom.dart';
@@ -77,6 +78,8 @@ void main() {
       0,
       reason: 'A pinch must not open the word below either finger.',
     );
+    // The double tap's wait over.
+    await t.pump(kDoubleTapTimeout);
     expect(t.takeException(), isNull);
   });
 
@@ -142,6 +145,8 @@ void main() {
     );
     await first.up();
     await second.up();
+    // The double tap's wait over.
+    await t.pump(kDoubleTapTimeout);
     expect(t.takeException(), isNull);
   });
 
@@ -159,6 +164,8 @@ void main() {
     expect(after.x, closeTo(before.x - 12, .001));
     expect(after.y, closeTo(before.y - 9, .001));
     await first.up();
+    // The double tap's wait over.
+    await t.pump(kDoubleTapTimeout);
     expect(t.takeException(), isNull);
   });
 
@@ -175,6 +182,8 @@ void main() {
     expect(controller.value.getMaxScaleOnAxis(), greaterThan(1.08));
     await first.up();
     await second.up();
+    // The double tap's wait over.
+    await t.pump(kDoubleTapTimeout);
     expect(t.takeException(), isNull);
   });
 
@@ -197,15 +206,41 @@ void main() {
     await third.cancel();
     await t.pump();
     expect(pinches.last, isFalse);
+    // The double tap's wait over.
+    await t.pump(kDoubleTapTimeout);
     expect(t.takeException(), isNull);
   });
 
   testWidgets('normal taps still open a word at the base size', (t) async {
     await show(t);
     await t.tap(find.byType(MushafZoom));
-    await t.pump();
+    // Once no second tap follows.
+    await t.pump(kDoubleTapTimeout);
     expect(taps, 1);
     expect(pinches, isEmpty);
+    expect(controller.value, Matrix4.identity());
+  });
+
+  testWidgets('two quick taps zoom in on the place, two more zoom out', (
+    t,
+  ) async {
+    await show(t);
+    final at = t.getTopLeft(find.byType(MushafZoom)) + const Offset(100, 120);
+    Future<void> twice() async {
+      await t.tapAt(at);
+      await t.pump(const Duration(milliseconds: 80));
+      await t.tapAt(at);
+      await t.pumpAndSettle();
+    }
+
+    await twice();
+    expect(controller.value.getMaxScaleOnAxis(), closeTo(2, .001));
+    // The place tapped stays under the finger.
+    final scene = controller.toScene(const Offset(100, 120));
+    expect(scene.dx, closeTo(100, .5));
+    expect(scene.dy, closeTo(120, .5));
+    expect(taps, 0);
+    await twice();
     expect(controller.value, Matrix4.identity());
   });
 }

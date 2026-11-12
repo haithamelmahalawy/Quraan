@@ -35,7 +35,9 @@ int _imala(
             )
             .firstOrNull ??
         // An alif inside the word: «إِذۡ جَآءَهُمۡ».
-        span.where((x) => RegExp('[اٰ]').hasMatch(x.t.substring(1))).firstOrNull ??
+        span
+            .where((x) => RegExp('[اٰ]').hasMatch(x.t.substring(1)))
+            .firstOrNull ??
         span.first;
     final w = word.w;
     // A word with no alif to lean, the book's number amiss (لَّهُمۡ، سِتَّةِ):
@@ -52,7 +54,11 @@ int _imala(
       // al-Kisa'i's feminine ha (غِشَٰوَةٞ): when stopping, whatever the book.
       final kisaiHa =
           _kisai.contains(id) && RegExp(r'ة[ً-ٟۖ-ۛ]*$').hasMatch(word.t);
-      final stop = g[4] == true || kisaiHa, taqlil = g[5] == true;
+      // The taqlil as the book words the reading (التوراة: «وقللها» for
+      // Hamza), not its flag, set where any reader of the group reduces it
+      // (Warsh with al-Duri's imala, أَبۡصَٰرِهِمۡ).
+      final stop = g[4] == true || kisaiHa,
+          taqlil = RegExp('قلل|(?<!لا )تقليل').hasMatch('${g[3]}');
       if (!done.add('${_key(s, a, w)}:$stop')) continue;
       final khulf = disputed.contains(id);
       // Ibn Dhakwan's row where he reads it alike, by the same name.
@@ -61,7 +67,9 @@ int _imala(
             (v) =>
                 v[3] == 1 &&
                 RegExp('مال').hasMatch('${v.length > 6 ? v[6] : ''}') &&
-                (v.length > 8 && v[8] is Map && (v[8] as Map)['stopOnly'] == true) ==
+                (v.length > 8 &&
+                        v[8] is Map &&
+                        (v[8] as Map)['stopOnly'] == true) ==
                     stop &&
                 // His own khulf is not theirs; nor a note.
                 !RegExp('بخلف|وجه|يخفى').hasMatch('${v[6]}'),
@@ -90,7 +98,8 @@ int _imala(
         n++;
         continue;
       }
-      final ha = kisaiHa || stop && RegExp(r'[ةه][ًٌٍَُِۖ-ۛ]*$').hasMatch(word.t);
+      final ha =
+          kisaiHa || stop && RegExp(r'[ة][ًٌٍَُِۖ-ۛ]*$').hasMatch(word.t);
       var how = taqlil
           ? 'بالتقليل'
           : ha
@@ -106,7 +115,8 @@ int _imala(
         '',
         'u',
         how,
-        '',
+        // «إمالة هاء التأنيث», a chapter of its own (the user, 2026-11-12).
+        ha && !taqlil ? 'imala_ha' : '',
         {
           'source': ashabSource,
           'book': 'kharouf',
@@ -135,7 +145,7 @@ int _imala(
         '',
         'u',
         'بإمالة هاء التأنيث وما قبلها وقفًا',
-        '',
+        'imala_ha',
         {'source': ashabSource, 'stopOnly': true},
       ]);
       n++;

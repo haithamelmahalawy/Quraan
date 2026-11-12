@@ -1864,16 +1864,29 @@ class _MushafPageState extends State<MushafPage>
       priorities[i] = rank;
     }
 
+    // The letters a reading's imala falls on: those with the sign, or, in a
+    // text without it (Hafs's word, a riwaya of the hamesh read with imala:
+    // طُغۡيَٰنِهِمۡ), where the sign would go: that letter alone coloured, as
+    // the qaf of a reading's ishmam (the user, 2026-11-12).
+    Iterable<int> imalaLetters(Variant v) {
+      final signed = text.contains(imalaSign)
+          ? letters
+          : lettersOf(withImalaSign(text, v.text));
+      if (signed.length != letters.length) return const [];
+      return [
+        for (final (i, l) in signed.indexed)
+          if (l.contains(imalaSign)) i,
+      ];
+    }
+
     for (final v in readings) {
       priority = v.riwayaId == widget.settings.displayed ? 1 : 0;
       if (!v.isUsul) {
         // A farsh word read with imala: its letter green, in the farsh's
         // colour.
         if (v.isImala && _farshImala(v)) {
-          for (final (i, l) in letters.indexed) {
-            if (l.contains(imalaSign) && !l.startsWith('ا')) {
-              mark(i, MushafColors.green);
-            }
+          for (final i in imalaLetters(v)) {
+            if (!letters[i].startsWith('ا')) mark(i, MushafColors.green);
           }
         }
         continue;
@@ -2006,8 +2019,13 @@ class _MushafPageState extends State<MushafPage>
       }
       if (v.isImala) {
         // Every letter with the sign (رَ۪ءَ۪ا: the ra and the hamza).
-        for (final (i, l) in letters.indexed) {
-          if (l.contains(imalaSign)) mark(i, MushafColors.green);
+        for (final i in imalaLetters(v)) {
+          mark(i, MushafColors.green);
+        }
+        // The feminine ha itself, with the letter before it (غِشَٰوَةٞ).
+        if (v.rule == 'imala_ha') {
+          final ha = letters.lastIndexWhere((l) => l.startsWith('ة'));
+          if (ha >= 0) mark(ha, MushafColors.green);
         }
       }
       if (v.rule == 'ikhfa') {
@@ -4227,9 +4245,13 @@ class _UsulBox extends StatelessWidget {
       return (i.ayah.surah * 1000 + i.ayah.number) * 1000 + i.word;
     }
 
-    // Hamza's stop on the article: Khalaf's and Khallad's one row, the naql,
-    // and Khalaf's other face, the sakt, beside it (the user, 2026-11-12).
-    if (of.first.label == 'الوقف على الهمز (الوقف على لام التعريف)') {
+    // Hamza's stop on the article and on the separated sakin: Khalaf's and
+    // Khallad's one row, their faces, and Khalaf's other face, the sakt,
+    // beside them (the user, 2026-11-12).
+    if (const {
+      'الوقف على الهمز (الوقف على لام التعريف)',
+      'الوقف على الهمز (الوقف على الساكن المفصول)',
+    }.contains(of.first.label)) {
       String places(List<_UsulItem> items) =>
           (items
                   .map((i) => '${i.ayah.surah}:${i.ayah.number}:${i.word}')
@@ -4248,14 +4270,20 @@ class _UsulBox extends StatelessWidget {
                   places(r.$2) == places(khalaf.$2),
             )
             .firstOrNull;
-        if (khallad == null) continue;
+        // Khalaf's faces Khallad's and the sakt.
+        if (khallad == null ||
+            [...khallad.$1.ways, 'السكت'].join('|') !=
+                khalaf.$1.ways.join('|')) {
+          continue;
+        }
         final at = rows.indexOf(khalaf);
         rows
           ..[at] = (
             khallad.$1,
             khalaf.$2,
             const ['khalaf_hamzah', 'khallad'],
-            'النقل، ولخلف وجه آخر بالسكت',
+            '${khallad.$4}${khallad.$4.contains('؛') ? '؛' : '،'} '
+                'ولخلف وجه آخر بالسكت',
           )
           ..remove(khallad);
       }

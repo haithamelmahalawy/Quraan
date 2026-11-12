@@ -39,6 +39,7 @@ abstract final class ReadingColors {
     'idgham' || 'idgham_saghir' => 'الإدغام',
     'idgham_bila_ghunna' => 'الإدغام بلا غنة',
     'idgham_kabir' => 'الإدغام الكبير',
+    'imala_ha' => 'إمالة هاء التأنيث',
     'madd_munfasil' => 'المد المنفصل',
     'madd_muttasil' => 'المد المتصل',
     'madd' => 'المدود',
@@ -100,7 +101,9 @@ abstract final class ReadingColors {
     if (label == 'المد المنفصل') return separatedMadd;
     if (label == 'الإدغام الكبير') return kabirIdgham;
     if (label == 'هاء الكناية' || label == 'ميم الجمع') return silah;
-    if (label == 'ياءات الزوائد' || label == 'مد أنا') {
+    if (label == 'ياءات الزوائد' ||
+        label == 'مد أنا' ||
+        label == 'إمالة هاء التأنيث') {
       return MushafColors.green;
     }
     if (label.contains('مد اللين المهموز')) return MushafColors.green;

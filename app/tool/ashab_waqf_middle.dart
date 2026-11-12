@@ -226,7 +226,7 @@ int _waqfSeparated(String id, List<_Word> words, void Function(List row) put) {
   const naql = 'النقل، ما لم يكن الساكن ميم الجمع، فلا نقل فيها';
   final ways = id == 'khallad'
       ? const ['التحقيق، وهو المقدّم', naql]
-      : const ['التحقيق، وهو المقدّم', 'السكت', naql];
+      : const ['التحقيق، وهو المقدّم', naql, 'السكت'];
   final sakinEnd = RegExp(r'(ۡ|[ًࣰٌࣱٍࣲ])([اى]?[ۖ-ۛ]*)$|(ۡ)(ا[ْ۟][ۖ-ۛ]*)$');
   final mimJam = RegExp(r'(ه[ُِ]|ك[ُ]|ت[ُ])مۡ[ۖ-ۛ]*$');
   for (var i = 1; i < words.length; i++) {

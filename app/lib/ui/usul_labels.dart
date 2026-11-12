@@ -25,6 +25,8 @@ List<(String, Color)> usulKindsOf(Variant v) {
       ? [('الإدغام بلا غنة', own)]
       : v.isQasr
       ? [('قصر المنفصل', own)]
+      : v.rule == 'imala_ha'
+      ? [('إمالة هاء التأنيث', MushafColors.green)]
       : [
           if (v.isImala)
             // Warsh has no imala of his own: taqlil only.

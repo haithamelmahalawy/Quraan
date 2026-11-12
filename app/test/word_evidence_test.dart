@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,6 +115,8 @@ void main() {
         await t.ensureVisible(example);
         await t.pumpAndSettle();
         await t.tap(example);
+        // A second tap awaited first.
+        await t.pump(kDoubleTapTimeout);
         await settleSources(t);
         final sheet = t.widget<ReferenceSheet>(find.byType(ReferenceSheet));
         expect(sheet.readings, isNotEmpty);
@@ -134,6 +137,8 @@ void main() {
     (t) async {
       await showReader(t);
       await t.tap(find.byKey(const ValueKey('word:2:9:5')));
+      // A second tap awaited first.
+      await t.pump(kDoubleTapTimeout);
       await t.pump();
       expect(find.byType(VariantSheet), findsOneWidget);
       await settleSources(t);
@@ -147,6 +152,8 @@ void main() {
       await t.ensureVisible(help);
       await t.pumpAndSettle();
       await t.tap(help);
+      // A second tap awaited first.
+      await t.pump(kDoubleTapTimeout);
       await t.pumpAndSettle();
       expect(find.text(explanation), findsOneWidget);
 
@@ -163,6 +170,8 @@ void main() {
   ) async {
     await showReader(t, page: 43);
     await t.tap(find.byKey(const ValueKey('word:2:258:20')));
+    // A second tap awaited first.
+    await t.pump(kDoubleTapTimeout);
     await settleSources(t);
     expect(verseKeys(t, find.byType(VariantSheet)), {
       const ValueKey('shatibiyya-521'),
@@ -175,6 +184,8 @@ void main() {
     await t.ensureVisible(margin);
     await t.pumpAndSettle();
     await t.tap(margin);
+    // A second tap awaited first.
+    await t.pump(kDoubleTapTimeout);
     await settleSources(t);
     expect(verseKeys(t, find.byType(ReferenceSheet)), {
       const ValueKey('shatibiyya-521'),
@@ -187,6 +198,8 @@ void main() {
   ) async {
     await showReader(t, page: 1, selected: {'warsh', 'ibn_wardan'});
     await t.tap(find.byKey(const ValueKey('word:1:4:0')));
+    // A second tap awaited first.
+    await t.pump(kDoubleTapTimeout);
     await t.pump();
     expect(find.byType(VariantSheet), findsOneWidget);
     await settleSources(t);
@@ -205,6 +218,8 @@ void main() {
     await t.ensureVisible(margin);
     await t.pumpAndSettle();
     await t.tap(margin);
+    // A second tap awaited first.
+    await t.pump(kDoubleTapTimeout);
     await settleSources(t);
     expect(find.byType(ReferenceSheet), findsOneWidget);
     expect(verseKeys(t, find.byType(ReferenceSheet)), direct);
@@ -216,6 +231,8 @@ void main() {
     (t) async {
       await showReader(t, page: 2);
       await t.tap(find.byKey(const ValueKey('word:2:4:9')));
+      // A second tap awaited first.
+      await t.pump(kDoubleTapTimeout);
       await t.pump();
       expect(find.byType(VariantSheet), findsOneWidget);
       await settleSources(t);
@@ -239,6 +256,8 @@ void main() {
     (t) async {
       await showReader(t, page: 1, selected: {'warsh', 'ibn_wardan'});
       await t.tap(find.byKey(const ValueKey('word:1:4:0')));
+      // A second tap awaited first.
+      await t.pump(kDoubleTapTimeout);
       await settleSources(t);
       await expectLater(
         find.byType(VariantSheet),
@@ -274,6 +293,8 @@ void main() {
       await t.tap(
         find.byKey(const ValueKey('frame-riwaya-ibn_wardan')).hitTestable(),
       );
+      // A second tap awaited first.
+      await t.pump(kDoubleTapTimeout);
       await t.pumpAndSettle();
       final settings = t
           .widget<ReaderScreen>(find.byType(ReaderScreen))
@@ -286,6 +307,8 @@ void main() {
       await t.tap(
         find.byKey(const ValueKey('frame-riwaya-hafs')).hitTestable(),
       );
+      // A second tap awaited first.
+      await t.pump(kDoubleTapTimeout);
       await t.pumpAndSettle();
       expect(settings.displayed, isNull);
       expect(t.takeException(), isNull);

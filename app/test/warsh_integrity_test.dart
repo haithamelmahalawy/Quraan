@@ -1,3 +1,5 @@
+import 'package:flutter/gestures.dart';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -657,6 +659,8 @@ void main() {
           findsNothing,
         );
         await t.tap(number);
+        // A second tap awaited first.
+        await t.pump(kDoubleTapTimeout);
         expect(t.takeException(), isNull);
       }
       expect(taps, 2);

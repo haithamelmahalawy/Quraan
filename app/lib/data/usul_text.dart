@@ -235,7 +235,8 @@ String usulReadingText(
     // sakt (al/شيء) stays a single word, even if another hamza follows.
     final following = reading.word + 1 < ayah.words.length ? ayah : nextAyah;
     final nextWord = following == ayah ? reading.word + 1 : 0;
-    final boundary = RegExp(r'ۜ(?:[اى][ً-ٰٟۖ-ۭ]*)?$').hasMatch(target);
+    // Its pause mark after the sakt (وَأَبۡصَٰرِهِمۡۜۚ إِنَّ) too.
+    final boundary = RegExp(r'ۜ[اى]?[ً-ٰٟۖ-ۭ]*$').hasMatch(target);
     if (boundary &&
         following != null &&
         RegExp(r'^[ءأإؤئآ]').hasMatch(following.words[nextWord])) {
