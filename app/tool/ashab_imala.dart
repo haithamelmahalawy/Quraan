@@ -43,7 +43,7 @@ int _imala(
     // A word with no alif to lean, the book's number amiss (لَّهُمۡ، سِتَّةِ):
     // none, but the openings' letters and al-Kisa'i's feminine ha.
     final fawatih = RegExp('[ٓ]').hasMatch(word.t) && word.w == 0;
-    final ha = _kisai.contains(id) && RegExp(r'ة[ً-ْۖ-ۛ]*$').hasMatch(word.t);
+    final ha = _kisai.contains(id) && RegExp(r'ة[ً-ٟۖ-ۛ]*$').hasMatch(word.t);
     if (!fawatih && !ha && !RegExp('[اىٰ]').hasMatch(word.t.substring(1))) {
       continue;
     }
@@ -54,6 +54,8 @@ int _imala(
       // al-Kisa'i's feminine ha (غِشَٰوَةٞ): when stopping, whatever the book.
       final kisaiHa =
           _kisai.contains(id) && RegExp(r'ة[ً-ٟۖ-ۛ]*$').hasMatch(word.t);
+      // Told below by the letter before it, the book aside.
+      if (kisaiHa) continue;
       // The taqlil as the book words the reading (التوراة: «وقللها» for
       // Hamza), not its flag, set where any reader of the group reduces it
       // (Warsh with al-Duri's imala, أَبۡصَٰرِهِمۡ).
@@ -128,15 +130,18 @@ int _imala(
       n++;
     }
   }
-  // هاء التأنيث وقفًا للكسائي: يميلها وما قبلها حيث وقعت، إلا بعد الألف
-  // (ٱلصَّلَوٰةَ، حَيَوٰةٞ)، وهو المقدّم للراويين في الأداء.
+  // هاء التأنيث وقفًا للكسائي، بالمذهبين معًا (المستخدم، 2026-11-12):
+  // الإجمالي يميلها بعد كل حرف إلا الألف، والتفصيلي بعد «فجثت زينب لذود
+  // شمس»، وبعد «أكهر» إن كان قبله كسر أو ياء ساكنة أو ساكن قبله كسر، ولا
+  // يميلها بعد «حق ضغط عص خظ»، والألف لا تمال. فما اتفقا عليه قولًا واحدًا، وما أماله
+  // الإجمالي وحده بخلف عنه، ولا إمالة بعد الألف.
   if (_kisai.contains(id)) {
     for (final word in index.values) {
       if (done.contains('${_key(word.s, word.a, word.w)}:true')) continue;
-      final m = RegExp(r'(.)[ً-ْٰ]*ة[ً-ْۖ-ۛ]*$').firstMatch(word.t);
-      if (m == null || const {'ا', 'ٰ', 'و'}.contains(m[1])) continue;
-      if (word.t.contains(RegExp('[اٰ][ً-ْ]*ة'))) continue;
+      final how = _kisaiHa(word.t);
+      if (how == null) continue;
       done.add('${_key(word.s, word.a, word.w)}:true');
+      final khulf = how == _KisaiHa.khulf;
       put([
         word.s,
         word.a,
@@ -144,12 +149,44 @@ int _imala(
         1,
         '',
         'u',
-        'بإمالة هاء التأنيث وما قبلها وقفًا',
+        khulf
+            ? 'بإمالة هاء التأنيث وما قبلها وقفًا بخلف عنه'
+            : 'بإمالة هاء التأنيث وما قبلها وقفًا قولًا واحدًا',
         'imala_ha',
-        {'source': ashabSource, 'stopOnly': true},
+        {
+          'source': ashabSource,
+          'stopOnly': true,
+          if (khulf) 'ways': const ['الإمالة', 'الفتح'],
+          if (khulf) 'ownWays': true,
+        },
       ]);
       n++;
     }
   }
   return n;
+}
+
+enum _KisaiHa { one, khulf }
+
+/// How al-Kisa'i reads the feminine ha of [word] in the stop, by the letter
+/// before it; null when there is none or it is an alif (ٱلصَّلَوٰةِ، حَيَوٰةٞ).
+_KisaiHa? _kisaiHa(String word) {
+  final cs = _letters(word);
+  final k = cs.lastIndexWhere((c) => c.base == 'ة');
+  if (k < 1) return null;
+  final p = cs[k - 1];
+  if (p.base == 'ا' || p.base == 'ى' || p.marks.contains('ٰ')) return null;
+  if ('فجثتزينبلذودشمس'.contains(p.base)) return _KisaiHa.one;
+  if ('حقضغطعصخظ'.contains(p.base)) return _KisaiHa.khulf;
+  // أكهر: its hamza on any seat, a kaf, a ha or a ra.
+  bool kasr(int i) => i >= 0 && _vowelOf(cs[i]) == 'i';
+  bool quiet(int i) =>
+      i >= 0 &&
+      (RegExp('[ْۡ]').hasMatch(cs[i].marks) ||
+          _vowelOf(cs[i]) == '' && 'يى'.contains(cs[i].base));
+  final b = k - 2;
+  final ya = b >= 0 && cs[b].base == 'ي' && quiet(b);
+  return kasr(b) || ya || quiet(b) && kasr(b - 1)
+      ? _KisaiHa.one
+      : _KisaiHa.khulf;
 }

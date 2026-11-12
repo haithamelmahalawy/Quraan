@@ -62,7 +62,7 @@ void main() {
     // al-Kisa'i's feminine ha when stopping (غِشَٰوَةٞ).
     expect(
       at('duri_kisai', 2, 7, 8).map((v) => v[6]),
-      contains('بإمالة هاء التأنيث وما قبلها وقفًا'),
+      contains('بإمالة هاء التأنيث وما قبلها وقفًا قولًا واحدًا'),
     );
     // Hamza's stop on «يؤمنون»; none for al-Kisa'i.
     expect(
@@ -134,4 +134,27 @@ void main() {
     // أسألكم of the root, not a question''s hamza.
     expect(waqfHamzaKindAt('أَسۡـَٔلُكُمۡ', 2), 'الهمز المتحرك بعد ساكن صحيح');
   });
+  test(
+    'al-Kisa\'i\'s feminine ha by the letter before it, the two schools',
+    () {
+      String? how(int s, int a, int w) => at(
+        'duri_kisai',
+        s,
+        a,
+        w,
+      ).where((v) => v[7] == 'imala_ha').map((v) => '${v[6]}').firstOrNull;
+      const one = 'بإمالة هاء التأنيث وما قبلها وقفًا قولًا واحدًا';
+      const khulf = 'بإمالة هاء التأنيث وما قبلها وقفًا بخلف عنه';
+      expect(how(2, 31, 7), one); // ٱلۡمَلَٰٓئِكَةِ: a kasra before the kaf
+      expect(how(2, 148, 1), one); // وِجۡهَةٌ: a quiet letter after a kasra
+      expect(how(2, 25, 30), khulf); // مُّطَهَّرَةٞ: a fatha before the ra
+      expect(how(2, 195, 8), khulf); // ٱلتَّهۡلُكَةِ
+      expect(how(2, 26, 8), khulf); // بَعُوضَةٗ: after a «حق ضغاط عص خظا»
+      expect(how(2, 3, 4), isNull); // ٱلصَّلَوٰةَ: after an alif
+      // رَحۡمَتَ, its ta stopped on as a ha: as a feminine ha.
+      expect(how(2, 218, 11), one);
+      expect(how(2, 35, 14), khulf); // ٱلشَّجَرَةَ
+      expect(how(36, 80, 4), isNull); // ٱلشَّجَرِ: no ha
+    },
+  );
 }

@@ -553,6 +553,106 @@ Map<String, int> buildAshabUsul(
     );
   }
 
+  // ---- الوقف بالهاء على تاء التأنيث المبسوطة للكسائي (رَحۡمَتَ، نِعۡمَتَ):
+  // صفوف البزي ورويس حيث يقرأ الكلمة مفردة، إلا «يا أبت»؛ و«مرضات، اللات،
+  // ذات بهجة، ولات، هيهات» له وحده. ثم تمال هاؤها كالمربوطة (المستخدم،
+  // 2026-11-12).
+  if (_kisai.contains(id)) {
+    final told = {
+      for (final v in rows)
+        if (v[7] == 'rasm_stop') _key(v[0], v[1], v[2]),
+    };
+    final stops = <String, String>{};
+    for (final src in const ['bazzi', 'ruways']) {
+      for (final list in sources.verified[src]!.values) {
+        for (final v in list) {
+          if (v.length < 9 || v[7] != 'rasm_stop') continue;
+          if (!'${v[6]}'.contains('تاء التأنيث')) continue;
+          final key = _key(v[0], v[1], v[2]);
+          final word = index[key];
+          if (word == null || _bare(word.t).contains('يأبت')) continue;
+          // His farsh read in the plural (كَلِمَٰتُ): no feminine ha.
+          final own = textAt[key];
+          if (own != null && _bare(own).contains('ات')) continue;
+          if (told.add(key)) {
+            copy([
+              ...v.take(8),
+              {...(v[8] as Map), 'farshFrom': src},
+            ]);
+          }
+          stops[key] = '${(v[8] as Map)['stopText'] ?? word.t}';
+        }
+      }
+    }
+    for (final word in index.values) {
+      final key = _key(word.s, word.a, word.w);
+      final bare = _bare(word.t);
+      final next = index[_key(word.s, word.a, word.w + 1)];
+      final his =
+          RegExp(r'^(و?مرضات|ا?للت|ولات|هيهات)$').hasMatch(bare) ||
+          bare == 'ذات' && next != null && _bare(next.t).startsWith('بهج');
+      if (!his || !told.add(key)) continue;
+      rows.add([
+        word.s,
+        word.a,
+        word.w,
+        1,
+        '',
+        'u',
+        'بالوقف بالهاء',
+        'rasm_stop',
+        {
+          'source': ashabSource,
+          'stopOnly': true,
+          'stopText': word.t.replaceFirst(RegExp(r'ت[ً-ٟۖ-ۛ]*$'), 'هۡ'),
+        },
+      ]);
+      stops[key] = word.t;
+    }
+    // Its ha as a feminine ha: imala by the letter before it.
+    final imala = {
+      for (final v in rows)
+        if (v[7] == 'imala_ha') _key(v[0], v[1], v[2]),
+    };
+    for (final MapEntry(:key, :value) in stops.entries) {
+      if (imala.contains(key)) continue;
+      // The word as he stops on it (ثَمَرَهۡ), its ha a feminine one.
+      final how = _kisaiHa(
+        value
+            .replaceFirst(RegExp(r'ت(?=[ً-ٟۖ-ۛ]*$)'), 'ة')
+            .replaceFirst(RegExp(r'هۡ$'), 'ة'),
+      );
+      if (how == null) continue;
+      final w = index[key]!;
+      final khulf = how == _KisaiHa.khulf;
+      // The book's imala of an alif his singular has not (ثَمَرَهۡ).
+      rows.removeWhere(
+        (v) =>
+            _key(v[0], v[1], v[2]) == key &&
+            v[7] == '' &&
+            '${v[6]}'.startsWith('بإمالة الألف'),
+      );
+      rows.add([
+        w.s,
+        w.a,
+        w.w,
+        1,
+        '',
+        'u',
+        khulf
+            ? 'بإمالة هاء التأنيث وما قبلها وقفًا بخلف عنه'
+            : 'بإمالة هاء التأنيث وما قبلها وقفًا قولًا واحدًا',
+        'imala_ha',
+        {
+          'source': ashabSource,
+          'stopOnly': true,
+          if (khulf) 'ways': const ['الإمالة', 'الفتح'],
+          if (khulf) 'ownWays': true,
+        },
+      ]);
+    }
+  }
+
   // ---- هاء الكناية: «فِيهِ مُهَانًا» بلا صلة، كشعبة وكل من خالف حفصًا.
   for (final v in sources.shubah) {
     if (v[0] == 25 && v[1] == 69 && v[2] == 6) copy(v);
