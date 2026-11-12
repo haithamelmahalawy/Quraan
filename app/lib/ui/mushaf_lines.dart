@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../data/arabic.dart';
 import '../data/quran_repository.dart';
@@ -41,7 +42,13 @@ class MushafLines extends StatelessWidget {
     this.wordMarker,
     this.wordGap,
     this.height,
+    this.onTapNearest,
   });
+
+  /// A tap on a line that falls on no word (the gap of a justified line,
+  /// an ayah's ornament, a letter drawn past its word's box): told for the
+  /// nearest word of the line, so no tap of a small screen is lost.
+  final void Function(Ayah ayah, int word)? onTapNearest;
 
   final List<MushafLine> lines;
   final bool centered;
@@ -146,24 +153,34 @@ class MushafLines extends StatelessWidget {
     final kashida = centered
         ? const <int, int>{}
         : _kashida(words, fontSize, width);
-    return Row(
+    // The words drawn, in the order of the row's children.
+    final shown = <(Ayah, int)>[];
+    final children = <Widget>[];
+    for (final (i, (ayah, w)) in words.indexed) {
+      final item = _item(ayah, w, fontSize, kashida[i] ?? 0);
+      if (item == null) continue;
+      shown.add((ayah, w));
+      children.add(
+        Padding(
+          padding: centered
+              ? EdgeInsets.symmetric(horizontal: fontSize * 0.12)
+              : EdgeInsets.only(
+                  right: (wordGap?.call(ayah, w) ?? 0) * fontSize,
+                ),
+          child: item,
+        ),
+      );
+    }
+    final row = Row(
       textDirection: TextDirection.rtl,
       mainAxisAlignment: centered
           ? MainAxisAlignment.center
           : MainAxisAlignment.spaceBetween,
-      children: [
-        for (final (i, (ayah, w)) in words.indexed)
-          if (_item(ayah, w, fontSize, kashida[i] ?? 0) case final item?)
-            Padding(
-              padding: centered
-                  ? EdgeInsets.symmetric(horizontal: fontSize * 0.12)
-                  : EdgeInsets.only(
-                      right: (wordGap?.call(ayah, w) ?? 0) * fontSize,
-                    ),
-              child: item,
-            ),
-      ],
+      children: children,
     );
+    final tap = onTapNearest;
+    if (tap == null || shown.isEmpty) return row;
+    return _NearestTap(words: shown, onTap: tap, child: row);
   }
 
   /// How many kashidas each word of a justified line takes (by its index in
@@ -332,6 +349,61 @@ class MushafLines extends StatelessWidget {
     fontSize: size,
     height: 1.0,
     color: MushafColors.ink,
+  );
+}
+
+/// A line's taps that reach none of its words, given to the nearest one:
+/// the words' own taps, deeper, win the ones on them.
+class _NearestTap extends StatefulWidget {
+  const _NearestTap({
+    required this.words,
+    required this.onTap,
+    required this.child,
+  });
+
+  /// The line's words, in the order of its row's children.
+  final List<(Ayah, int)> words;
+  final void Function(Ayah ayah, int word) onTap;
+  final Widget child;
+
+  @override
+  State<_NearestTap> createState() => _NearestTapState();
+}
+
+class _NearestTapState extends State<_NearestTap> {
+  final _row = GlobalKey();
+
+  void _tapped(TapUpDetails d) {
+    final flex = _row.currentContext?.findRenderObject();
+    if (flex is! RenderFlex) return;
+    final x = flex.globalToLocal(d.globalPosition).dx;
+    var i = 0, best = -1;
+    var nearest = double.infinity;
+    flex.visitChildren((child) {
+      final box = child as RenderBox;
+      final left = (box.parentData! as FlexParentData).offset.dx;
+      final right = left + box.size.width;
+      final away = x < left
+          ? left - x
+          : x > right
+          ? x - right
+          : 0.0;
+      if (away < nearest) {
+        nearest = away;
+        best = i;
+      }
+      i++;
+    });
+    if (best < 0 || best >= widget.words.length) return;
+    final (ayah, word) = widget.words[best];
+    widget.onTap(ayah, word);
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.translucent,
+    onTapUp: _tapped,
+    child: KeyedSubtree(key: _row, child: widget.child),
   );
 }
 

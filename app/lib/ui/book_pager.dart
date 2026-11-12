@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -66,6 +67,7 @@ class BookPagerState extends State<BookPager>
 
   @override
   void dispose() {
+    _refresh?.cancel();
     _settle.dispose();
     _dropSheet();
     super.dispose();
@@ -80,11 +82,36 @@ class BookPagerState extends State<BookPager>
   @override
   void didUpdateWidget(BookPager oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.revision == null ||
-        widget.revision != oldWidget.revision ||
-        widget.itemCount != oldWidget.itemCount) {
+    if (widget.revision == null || widget.itemCount != oldWidget.itemCount) {
       _built.clear();
+      _stale.clear();
+    } else if (widget.revision != oldWidget.revision) {
+      // The page in sight at once; its neighbours a moment later, one a
+      // frame: the three at once were a second's freeze on a weak phone
+      // with every riwaya chosen.
+      _built.remove(_index);
+      _stale
+        ..addAll(_built.keys)
+        ..remove(_index);
+      _refreshLater();
     }
+  }
+
+  /// Neighbours still drawn as before the last change, built again soon.
+  final _stale = <int>{};
+  Timer? _refresh;
+
+  void _refreshLater() {
+    _refresh?.cancel();
+    _refresh = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted || _stale.isEmpty) return;
+      // Not while a sheet turns: after it.
+      if (_progress != 0) return _refreshLater();
+      final i = _stale.first;
+      _stale.remove(i);
+      setState(() => _built.remove(i));
+      if (_stale.isNotEmpty) _refreshLater();
+    });
   }
 
   /// A picture of page [i] as displayed (it must be the current page or a
@@ -242,6 +269,9 @@ class BookPagerState extends State<BookPager>
             );
 
         _built.removeWhere((i, _) => (i - _index).abs() > 1);
+        _stale.removeWhere((i) => (i - _index).abs() > 1);
+        // A neighbour turned to before it was built again: now.
+        if (_stale.remove(_index)) _built.remove(_index);
         final prev = _index > 0 ? _index - 1 : null;
         final next = _index < widget.itemCount - 1 ? _index + 1 : null;
         final sheet = _sheet;

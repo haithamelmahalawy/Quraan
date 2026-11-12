@@ -84,53 +84,60 @@ void main() {
   ScrollController controller(WidgetTester t) =>
       t.widget<SingleChildScrollView>(central()).controller!;
 
-  testWidgets('the lamp lights the differences or puts them out, beside «الرواة»', (
-    t,
-  ) async {
-    final settings = ReaderSettings.memory(selected: {'warsh'})
-      ..page = 3
-      ..qcfFont = false
-      ..compareHafs = true
-      ..displayed = 'warsh';
-    await show(t, const Size(432, 800), settings: settings, reader: true);
-    final lamp = find.byKey(const ValueKey('glow-lamp'));
-    final glowing = find.byWidgetPredicate(
-      (w) => w.runtimeType.toString() == '_Alerting',
-    );
-    final rays = find.byKey(const ValueKey('glow-rays'));
-    final similar = find.byKey(const ValueKey('mutashabihat-toggle'));
-    expect(lamp.hitTestable(), findsOneWidget);
-    expect(similar.hitTestable(), findsOneWidget);
-    // In the top bar, beside «الرواة», at its left.
-    final at = t.getRect(lamp.hitTestable());
-    final riwayat = t.getRect(
-      find.byKey(const ValueKey('riwayat-panel-toggle')).hitTestable(),
-    );
-    expect(at.right, lessThan(riwayat.left));
-    expect(riwayat.left - at.right, lessThan(12));
-    expect((at.center.dy - riwayat.center.dy).abs(), lessThan(2));
-    expect(t.getRect(similar.hitTestable()).right, lessThan(at.left));
-    expect(glowing, findsNothing);
-    expect(rays, findsNothing);
-    // Out: nothing moves, so nothing is drawn again and again.
-    await t.pump(const Duration(seconds: 1));
-    expect(t.binding.hasScheduledFrame, isFalse);
-    await t.tap(lamp);
-    await t.pump();
-    expect(settings.diffAlert, DiffAlert.glow);
-    expect(glowing, findsWidgets);
-    expect(rays, findsOneWidget);
-    await t.tap(lamp);
-    await t.pump();
-    expect(settings.diffAlert, isNull);
-    expect(glowing, findsNothing);
-    expect(rays, findsNothing);
-    await t.tap(similar);
-    await t.pump();
-    expect(settings.showMutashabihat, isFalse);
-    await t.pumpWidget(const SizedBox());
-    await t.pumpAndSettle();
-  });
+  testWidgets(
+    'the lamp lights the differences or puts them out, beside «الرواة»',
+    (t) async {
+      final settings = ReaderSettings.memory(selected: {'warsh'})
+        ..page = 3
+        ..qcfFont = false
+        ..compareHafs = true
+        ..displayed = 'warsh';
+      await show(t, const Size(432, 800), settings: settings, reader: true);
+      final lamp = find.byKey(const ValueKey('glow-lamp'));
+      final glowing = find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_Alerting',
+      );
+      final rays = find.byKey(const ValueKey('glow-rays'));
+      final similar = find.byKey(const ValueKey('mutashabihat-toggle'));
+      expect(lamp.hitTestable(), findsOneWidget);
+      expect(similar.hitTestable(), findsOneWidget);
+      // In the top bar, beside «الرواة», at its left.
+      final at = t.getRect(lamp.hitTestable());
+      final riwayat = t.getRect(
+        find.byKey(const ValueKey('riwayat-panel-toggle')).hitTestable(),
+      );
+      expect(at.right, lessThan(riwayat.left));
+      expect(riwayat.left - at.right, lessThan(12));
+      expect((at.center.dy - riwayat.center.dy).abs(), lessThan(2));
+      expect(t.getRect(similar.hitTestable()).right, lessThan(at.left));
+      expect(glowing, findsNothing);
+      expect(rays, findsNothing);
+      // Out: nothing moves, so nothing is drawn again and again.
+      await t.pump(const Duration(seconds: 1));
+      expect(t.binding.hasScheduledFrame, isFalse);
+      await t.tap(lamp);
+      await t.pump();
+      expect(settings.diffAlert, DiffAlert.glow);
+      expect(glowing, findsWidgets);
+      expect(rays, findsOneWidget);
+      // Lit, nothing moves either: the rays drawn still (their flicker kept
+      // a weak phone drawing the whole screen without a touch).
+      await t.pump(const Duration(seconds: 2));
+      expect(t.binding.hasScheduledFrame, isFalse);
+      await t.tap(lamp);
+      await t.pump();
+      expect(settings.diffAlert, isNull);
+      // The neighbours put out a moment after the page in sight.
+      await t.pump(const Duration(seconds: 1));
+      expect(glowing, findsNothing);
+      expect(rays, findsNothing);
+      await t.tap(similar);
+      await t.pump();
+      expect(settings.showMutashabihat, isFalse);
+      await t.pumpWidget(const SizedBox());
+      await t.pumpAndSettle();
+    },
+  );
 
   testWidgets('two quick taps on the page: full screen, two more: back', (
     t,
@@ -139,11 +146,22 @@ void main() {
     bool full() => t
         .widgetList<MushafPage>(find.byType(MushafPage))
         .every((p) => !p.showHamesh);
+    var clock = const Duration(seconds: 1);
     Future<void> twice() async {
-      final at = t.getCenter(find.byType(MushafPage).last);
-      await t.tapAt(at);
-      await t.pump(const Duration(milliseconds: 80));
-      await t.tapAt(at);
+      // On the frame, beside the lines: a tap on the lines opens a word.
+      final lines = t.getRect(find.byType(MushafLines).last);
+      final at = Offset(lines.left - 6, lines.center.dy);
+      // Two taps with their times, 150ms apart.
+      clock += const Duration(seconds: 5);
+      for (final time in [clock, clock + const Duration(milliseconds: 150)]) {
+        final g = await t.createGesture();
+        await g.down(at, timeStamp: time);
+        await g.up(timeStamp: time + const Duration(milliseconds: 50));
+        await t.pump(const Duration(milliseconds: 80));
+      }
+      await t.pumpAndSettle();
+      // The neighbours drawn again a moment after the page in sight.
+      await t.pump(const Duration(seconds: 1));
       await t.pumpAndSettle();
     }
 
@@ -209,9 +227,11 @@ void main() {
       ..compareHafs = true
       ..displayed = 'warsh';
     await show(t, const Size(432, 800), settings: settings, reader: true);
-    // Lit, its rays never settle: pumped by the clock.
+    // Lit, pumped by the clock.
     settings.diffAlert = DiffAlert.glow;
     await t.pump();
+    // The neighbours lit a moment after the page in sight.
+    await t.pump(const Duration(seconds: 1));
     final glowing = find.byWidgetPredicate(
       (w) => w.runtimeType.toString() == '_Alerting',
     );

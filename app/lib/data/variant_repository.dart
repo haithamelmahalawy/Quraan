@@ -55,6 +55,14 @@ class VariantRepository {
         _loading.putIfAbsent(id, () => _load(id)),
   ]);
 
+  /// [riwayaIds] loaded one after another, not all at once: a weak phone
+  /// kept busy by eighteen at a time froze for seconds.
+  Future<void> ensureLoadedInTurn(Iterable<String> riwayaIds) async {
+    for (final id in riwayaIds) {
+      await ensureLoaded([id]);
+    }
+  }
+
   Future<void> _load(String id) async {
     final raw = await _bundle.loadString('$_dir$id.json');
     if (id == 'warsh') {

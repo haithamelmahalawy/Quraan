@@ -67,12 +67,24 @@ class VariantSheet extends StatelessWidget {
             r.id,
     ];
     return FutureBuilder(
-      future: variants.ensureLoaded([...settings.selected, ...others]),
+      // The riwayat chosen first (on the page, so loaded already): their
+      // witnesses at once; the others after them, one at a time, their
+      // section alone waiting (all of them awaited first was seconds on a
+      // weak phone before any witness was shown).
+      future: variants
+          .ensureLoaded(settings.selected)
+          .then((_) => variants.ensureLoadedInTurn(others)),
       builder: (context, snapshot) {
         final theme = Theme.of(context);
-        final ready =
+        final ready = settings.selected.every(variants.isLoaded);
+        final othersReady =
             snapshot.connectionState == ConnectionState.done ||
-            [...settings.selected, ...others].every(variants.isLoaded);
+            others.every(variants.isLoaded);
+        final loaded = [
+          ...settings.selected,
+          for (final id in others)
+            if (variants.isLoaded(id)) id,
+        ];
         final comparedIds = {
           ...settings.selected,
           if (settings.compareHafs) hafsId,
@@ -90,12 +102,7 @@ class VariantSheet extends StatelessWidget {
         // The Hafs span covered by any reading of this word.
         var from = word, to = word + 1;
         if (ready) {
-          for (final v in variants.at(
-            [...settings.selected, ...others],
-            ayah.surah,
-            ayah.number,
-            word,
-          )) {
+          for (final v in variants.at(loaded, ayah.surah, ayah.number, word)) {
             if (v.word < from) from = v.word;
             if (v.word + v.count > to) to = v.word + v.count;
           }
@@ -176,7 +183,18 @@ class VariantSheet extends StatelessWidget {
               ],
               if (others.isNotEmpty) ...[
                 _header(context, 'بقية الروايات المتوفرة'),
-                for (final id in others) _tile(context, id, from, to),
+                if (othersReady)
+                  for (final id in others) _tile(context, id, from, to)
+                else
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
               ],
             ],
           ],

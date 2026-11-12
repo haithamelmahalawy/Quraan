@@ -22,26 +22,48 @@ class QcfFonts extends ChangeNotifier {
   static const version = 'v1';
 
   final _ready = <int>{};
-  final _pending = <int, Future<void>>{};
+  final _pending = <int>{};
   Directory? _dir;
 
   bool isReady(int page) => _ready.contains(page);
 
-  /// Loads the fonts of [pages] (from disk, or downloads them); notifies
-  /// listeners as each one becomes ready. Errors (offline) are ignored: the
-  /// page keeps the Hafs font and is tried again next time.
-  Future<void> ensure(Iterable<int> pages) => Future.wait([
-    for (final p in pages)
-      if (p >= 1 && p <= 604 && !_ready.contains(p))
-        _pending.putIfAbsent(
+  /// Loads the fonts of [pages] (from disk, or downloads them), all
+  /// registered together and told once: registering a font lays out every
+  /// text of the app again, a long frame on a weak phone, so it is done
+  /// once a batch, not once a page. Errors (offline) are ignored: the page
+  /// keeps the Hafs font and is tried again next time.
+  Future<void> ensure(Iterable<int> pages) async {
+    final todo = [
+      for (final p in pages.toSet())
+        if (p >= 1 && p <= 604 && !_ready.contains(p) && !_pending.contains(p))
           p,
-          () => _load(p).whenComplete(() {
-            _pending.remove(p);
-          }),
-        ),
-  ]);
+    ];
+    if (todo.isEmpty) return;
+    _pending.addAll(todo);
+    try {
+      final bytes = await Future.wait(todo.map(_bytes));
+      final loaded = <int>[];
+      await Future.wait([
+        for (final (i, b) in bytes.indexed)
+          if (b != null)
+            (FontLoader(family(todo[i]))..addFont(Future.value(b)))
+                .load()
+                .then((_) => loaded.add(todo[i]))
+                .catchError(
+                  (Object e) => debugPrint('QCF font p${todo[i]}: $e'),
+                ),
+      ]);
+      if (loaded.isEmpty) return;
+      _ready.addAll(loaded);
+      notifyListeners();
+    } finally {
+      _pending.removeAll(todo);
+    }
+  }
 
-  Future<void> _load(int page) async {
+  /// A page's font, read from the device or downloaded once; null when it
+  /// cannot be had (offline).
+  Future<ByteData?> _bytes(int page) async {
     try {
       _dir ??= Directory(
         '${(await getApplicationSupportDirectory()).path}/qcf_$version',
@@ -55,18 +77,14 @@ class QcfFonts extends ChangeNotifier {
               ),
             )
             .timeout(const Duration(seconds: 30));
-        if (response.statusCode != 200) return;
+        if (response.statusCode != 200) return null;
         await file.parent.create(recursive: true);
         await file.writeAsBytes(response.bodyBytes);
       }
-      final bytes = await file.readAsBytes();
-      await (FontLoader(
-        family(page),
-      )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
-      _ready.add(page);
-      notifyListeners();
+      return ByteData.sublistView(await file.readAsBytes());
     } catch (e) {
       debugPrint('QCF font p$page: $e');
+      return null;
     }
   }
 }

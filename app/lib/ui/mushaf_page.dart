@@ -210,6 +210,9 @@ class _MushafPageState extends State<MushafPage>
   int? _split;
   String? _splitFor;
 
+  /// The notes measured to fit beside each page, by its signature.
+  static final _splits = <String, int>{};
+
   /// Pinch zoom of the page.
   final _zoom = TransformationController();
   bool _zoomed = false;
@@ -492,6 +495,7 @@ class _MushafPageState extends State<MushafPage>
                   centered: widget.quran.isCentered(widget.page),
                   quran: widget.quran,
                   wordBuilder: _word,
+                  onTapNearest: widget.onWordTap,
                   display: _display,
                   marker: _marker,
                   wordMarker: _nativeNumbering ? _wordMarker : null,
@@ -746,6 +750,7 @@ class _MushafPageState extends State<MushafPage>
       centered: widget.quran.isCentered(widget.page),
       quran: widget.quran,
       wordBuilder: _word,
+      onTapNearest: widget.onWordTap,
       display: _display,
       marker: _marker,
       wordMarker: _nativeNumbering ? _wordMarker : null,
@@ -796,6 +801,7 @@ class _MushafPageState extends State<MushafPage>
                   centered: widget.quran.isCentered(widget.page),
                   quran: widget.quran,
                   wordBuilder: _word,
+                  onTapNearest: widget.onWordTap,
                   display: _display,
                   marker: _marker,
                   wordMarker: _nativeNumbering ? _wordMarker : null,
@@ -1011,7 +1017,9 @@ class _MushafPageState extends State<MushafPage>
         '${e.ayah.number}:${e.word}:${e.readings.length}',
     ].join('|');
     if (signature != _splitFor) {
-      _split = null;
+      // As measured before for this page and these readings: no second
+      // build to measure it again.
+      _split = _splits[signature];
       _splitFor = signature;
     }
     final split = _split ?? entries.length;
@@ -1058,6 +1066,7 @@ class _MushafPageState extends State<MushafPage>
       centered: widget.quran.isCentered(widget.page),
       quran: widget.quran,
       wordBuilder: _word,
+      onTapNearest: widget.onWordTap,
       display: _display,
       marker: _marker,
       wordMarker: _nativeNumbering ? _wordMarker : null,
@@ -1214,6 +1223,8 @@ class _MushafPageState extends State<MushafPage>
     if (signature != _splitFor || _split != null && fit >= _split!) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && signature == _splitFor && _split != fit) {
+        if (_splits.length > 300) _splits.remove(_splits.keys.first);
+        _splits[signature] = fit;
         setState(() => _split = fit);
       }
     });

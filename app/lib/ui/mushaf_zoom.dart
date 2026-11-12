@@ -98,7 +98,49 @@ class _MushafZoomState extends State<MushafZoom> {
     }
   }
 
+  /// The tap in progress (one finger, not moved) and the last one ended:
+  /// two quick taps are told from the pointers, so a word's own tap is
+  /// never held back to wait for a second one (a double-tap recognizer
+  /// held every tap of a word, and a second tap of the impatient was taken
+  /// for two, turning full screen on instead of showing the witnesses).
+  (int, Offset, Duration)? _tap;
+  (Offset, Duration)? _lastTap;
+
+  void _tapDown(PointerDownEvent event) {
+    _tap = _points.isEmpty
+        ? (event.pointer, event.localPosition, event.timeStamp)
+        : null;
+  }
+
+  void _tapMove(PointerMoveEvent event) {
+    final tap = _tap;
+    if (tap != null &&
+        tap.$1 == event.pointer &&
+        (event.localPosition - tap.$2).distance > kTouchSlop) {
+      _tap = null;
+    }
+  }
+
+  void _tapUp(PointerUpEvent event) {
+    final tap = _tap;
+    _tap = null;
+    if (tap == null || tap.$1 != event.pointer) return;
+    if (event.timeStamp - tap.$3 > kLongPressTimeout) return;
+    // A pointer without its time (a test's, at zero) is no double tap's.
+    if (event.timeStamp == Duration.zero) return;
+    final last = _lastTap;
+    if (last != null &&
+        event.timeStamp - last.$2 <= kDoubleTapTimeout &&
+        (event.localPosition - last.$1).distance <= kDoubleTapSlop) {
+      _lastTap = null;
+      widget.onDoubleTap?.call();
+    } else {
+      _lastTap = (event.localPosition, event.timeStamp);
+    }
+  }
+
   void _move(PointerMoveEvent event) {
+    _tapMove(event);
     final previous = _points[event.pointer];
     if (previous == null) return;
     _points[event.pointer] = event.localPosition;
@@ -138,10 +180,19 @@ class _MushafZoomState extends State<MushafZoom> {
       return ClipRect(
         child: Listener(
           behavior: HitTestBehavior.opaque,
-          onPointerDown: _down,
+          onPointerDown: (event) {
+            _tapDown(event);
+            _down(event);
+          },
           onPointerMove: _move,
-          onPointerUp: _up,
-          onPointerCancel: _up,
+          onPointerUp: (event) {
+            _tapUp(event);
+            _up(event);
+          },
+          onPointerCancel: (event) {
+            _tap = null;
+            _up(event);
+          },
           onPointerSignal: (event) {
             if (event is! PointerScrollEvent) return;
             GestureBinding.instance.pointerSignalResolver.register(event, (_) {
@@ -168,21 +219,6 @@ class _MushafZoomState extends State<MushafZoom> {
                       () => _recognizer = _PinchPriorityGestureRecognizer(),
                       (_) {},
                     ),
-                // Two quick taps: the page enlarged, or back.
-                if (widget.onDoubleTap != null)
-                  DoubleTapGestureRecognizer:
-                      GestureRecognizerFactoryWithHandlers<
-                        DoubleTapGestureRecognizer
-                      >(
-                        () => DoubleTapGestureRecognizer(
-                          supportedDevices: {
-                            PointerDeviceKind.touch,
-                            PointerDeviceKind.mouse,
-                            PointerDeviceKind.stylus,
-                          },
-                        ),
-                        (r) => r..onDoubleTap = widget.onDoubleTap,
-                      ),
                 if (_scale > 1.001 && !_pinching)
                   PanGestureRecognizer:
                       GestureRecognizerFactoryWithHandlers<

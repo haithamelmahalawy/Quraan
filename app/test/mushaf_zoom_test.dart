@@ -229,10 +229,18 @@ void main() {
   ) async {
     await show(t);
     final at = t.getTopLeft(find.byType(MushafZoom)) + const Offset(100, 120);
+    var clock = const Duration(seconds: 1);
+    Future<void> tapAt(Duration time) async {
+      final g = await t.createGesture();
+      await g.down(at, timeStamp: time);
+      await g.up(timeStamp: time + const Duration(milliseconds: 50));
+      await t.pump();
+    }
+
     Future<void> twice() async {
-      await t.tapAt(at);
-      await t.pump(const Duration(milliseconds: 80));
-      await t.tapAt(at);
+      clock += const Duration(seconds: 5);
+      await tapAt(clock);
+      await tapAt(clock + const Duration(milliseconds: 150));
       await t.pumpAndSettle();
     }
 
@@ -240,8 +248,27 @@ void main() {
     expect(doubles, 1);
     // The place tapped is not zoomed in on: the panel's enlarging is used.
     expect(controller.value, Matrix4.identity());
-    expect(taps, 0);
     await twice();
     expect(doubles, 2);
+    // Two taps apart are no double tap.
+
+    await tapAt(const Duration(seconds: 100));
+    await tapAt(const Duration(seconds: 101));
+    expect(doubles, 2);
+    await tapAt(const Duration(seconds: 101, milliseconds: 150));
+    expect(doubles, 3);
   });
+
+  testWidgets(
+    'a word answers its tap at once, not after the wait of a double tap',
+    (t) async {
+      await show(t);
+      final at = t.getTopLeft(find.byType(MushafZoom)) + const Offset(100, 120);
+      await t.tapAt(at);
+      // No wait for a second tap: the word's tap is told on lifting.
+      await t.pump();
+      expect(taps, 1);
+      expect(doubles, 0);
+    },
+  );
 }

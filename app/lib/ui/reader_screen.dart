@@ -241,7 +241,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// icon; with [fly] (the icon tapped), show where it lies in the open
   /// mushaf too. Turning pages shows only the icon.
   void _showSide({bool fly = false}) {
-    if (_twoPages) return;
+    if (_twoPages || !showMushafSide) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final pager = _pager.currentState;
@@ -385,18 +385,52 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   void _onFonts() {
-    // The page fonts draw the pages only when chosen.
-    if (widget.settings.qcfFont && _quran.edition == MushafEdition.madani) {
-      _pagesRevision++;
+    // The page fonts draw the pages only when chosen, and a page is drawn
+    // again only when its own font is ready: the fonts loaded ahead after
+    // each turn (two pages on) built the pages near again, the longest
+    // frame of a turn on a weak phone.
+    if (!widget.settings.qcfFont || _quran.edition != MushafEdition.madani) {
+      return;
     }
+    final near = _fontsNearNow();
+    if (near.length == _fontsNear.length && near.containsAll(_fontsNear)) {
+      return;
+    }
+    _fontsNear = near;
+    _pagesRevision++;
     if (mounted) setState(() {});
+  }
+
+  /// The pages near (the pager's built ones) whose page font is ready.
+  Set<int> _fontsNear = {};
+  Set<int> _fontsNearNow() => _fontsNearOf(_page);
+
+  /// The pages the pager builds around [page] (the page and its
+  /// neighbours, or their spreads) whose page font is ready; the fonts
+  /// loaded further ahead do not touch them.
+  Set<int> _fontsNearOf(int page) {
+    final i = _indexOf(page);
+    return {
+      for (var j = i - 1; j <= i + 1; j++)
+        for (final p in [_pageAt(j), if (_twoPages) _pageAt(j) + 1])
+          if (QcfFonts.instance.isReady(p)) p,
+    };
   }
 
   /// The printed-mushaf fonts of the pages around [page].
   void _loadFonts(int page) {
-    if (widget.settings.qcfFont && _quran.edition == MushafEdition.madani) {
-      QcfFonts.instance.ensure([page, page + 1, page - 1, page + 2, page - 2]);
+    if (!widget.settings.qcfFont || _quran.edition != MushafEdition.madani) {
+      return;
     }
+    // Ahead in batches: only when a page near has none yet, the next dozen
+    // pages at once (each registering lays out every text again).
+    final fonts = QcfFonts.instance;
+    if ([for (var p = page - 2; p <= page + 3; p++) p]
+        .where((p) => p >= 1 && p <= 604)
+        .every(fonts.isReady)) {
+      return;
+    }
+    fonts.ensure([for (var p = page - 4; p <= page + 12; p++) p]);
   }
 
   /// Loads newly selected riwayat before the pages are redrawn with them.
@@ -546,6 +580,8 @@ class _ReaderScreenState extends State<ReaderScreen>
       onPageChanged: (i) {
         final number = _pageAt(i);
         if (_middles[number] case final x?) _headerMiddle.value = x;
+        // The fonts ready by the pages now near, as they are built.
+        _fontsNear = _fontsNearOf(number);
         setState(() {
           _page = number;
           _zoomed = false;
@@ -880,9 +916,14 @@ class _ReaderScreenState extends State<ReaderScreen>
     ],
   );
 
+  /// The small icon of the side of the mushaf the page lies on: off for
+  /// now (the user, 2026-11-12), its two pictures after every turn a cost
+  /// to weak phones. True brings it back.
+  static const showMushafSide = true;
+
   /// The small icon of the side of the mushaf the page lies on.
   Widget _side({required double width, required bool keyed, double? height}) =>
-      _twoPages || _turning
+      _twoPages || _turning || !showMushafSide
       ? const SizedBox()
       : Tooltip(
           message: _quran.isRightPage(_page)
@@ -1206,8 +1247,10 @@ class _GlowLampState extends State<_GlowLamp>
 
   double get _size => widget.small ? 18 : 30;
 
-  /// The rays: flickering only while the lamp is lit, so nothing moves
-  /// (nor is drawn again) when it is out.
+  /// The rays: drawn still while the lamp is lit, not flickering: their
+  /// flicker drew the whole screen again (the glow's shadows with it) some
+  /// 26 times a second, the weak phone kept busy without a touch (the
+  /// user, 2026-11-12).
   late final _rays = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),
@@ -1220,12 +1263,8 @@ class _GlowLampState extends State<_GlowLamp>
   }
 
   void _syncRays(bool lit) {
-    if (!lit) {
-      if (_rays.isAnimating) _rays.stop();
-      _rays.value = 0;
-    } else if (!_rays.isAnimating) {
-      _rays.repeat(reverse: true);
-    }
+    if (_rays.isAnimating) _rays.stop();
+    _rays.value = lit ? 1 : 0;
   }
 
   @override
