@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/lin_hamz.dart';
 import '../data/usul_guide.dart';
+import '../data/waqf_hamza.dart';
 import '../models/quran.dart';
 import 'reading_colors.dart';
 import 'theme.dart';
@@ -38,6 +39,15 @@ List<(String, Color)> usulKindsOf(Variant v) {
 
 /// The usul a reading applies, by its description: the key's wording.
 List<String> usulOf(Variant v) {
+  // «الوقف على الهمز» by its kinds, Hamza's and Hisham's alike.
+  if (v.rule == 'hisham_waqf') {
+    final kind = v.usulKind.isNotEmpty
+        ? v.usulKind
+        : v.riwayaId == 'hisham'
+        ? waqfHamzaKindOfFinal(v.usulText)
+        : null;
+    if (kind != null) return ['الوقف على الهمز ($kind)'];
+  }
   final typed = ReadingColors.labelForRule(v.rule);
   if (typed != null) return [typed];
   final d = v.description;

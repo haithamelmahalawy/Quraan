@@ -16,6 +16,8 @@ String usulGuideLabel(String label) => label.startsWith('مد اللين الم�
     ? 'الهمز المفرد'
     : label.startsWith('الإشمام (')
     ? 'الإشمام'
+    : label.startsWith('الوقف على الهمز (')
+    ? 'الوقف على الهمز'
     : label;
 
 /// The riwayat already verified, whose usul share one set of chapters: the

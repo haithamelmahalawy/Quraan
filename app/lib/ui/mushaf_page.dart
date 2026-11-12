@@ -10,6 +10,7 @@ import '../data/mutashabihat_repository.dart';
 import '../data/quran_repository.dart';
 import '../data/variant_repository.dart';
 import '../data/usul_guide.dart';
+import '../data/waqf_hamza.dart';
 import '../data/usul_text.dart';
 import '../data/mim_silah.dart';
 import '../data/reading_comparison.dart';
@@ -4074,6 +4075,15 @@ class _UsulBox extends StatelessWidget {
 
   Widget _chapter(String chapter, List<_UsulGroup> of, {required bool first}) {
     final labels = {for (final g in of) g.label}.toList();
+    // The kinds of «الوقف على الهمز» in the guide's order.
+    if (chapter == 'الوقف على الهمز') {
+      int rank(String l) {
+        final at = waqfHamzaKinds.indexWhere((k) => l.endsWith('($k)'));
+        return at < 0 ? waqfHamzaKinds.length : at;
+      }
+
+      labels.sort((a, b) => rank(a).compareTo(rank(b)));
+    }
     final alone = labels.length == 1 && labels.single == chapter;
     return Padding(
       padding: const EdgeInsets.only(bottom: 3),
@@ -4217,6 +4227,39 @@ class _UsulBox extends StatelessWidget {
       return (i.ayah.surah * 1000 + i.ayah.number) * 1000 + i.word;
     }
 
+    // Hamza's stop on the article: Khalaf's and Khallad's one row, the naql,
+    // and Khalaf's other face, the sakt, beside it (the user, 2026-11-12).
+    if (of.first.label == 'الوقف على الهمز (الوقف على لام التعريف)') {
+      String places(List<_UsulItem> items) =>
+          (items
+                  .map((i) => '${i.ayah.surah}:${i.ayah.number}:${i.word}')
+                  .toList()
+                ..sort())
+              .join(',');
+      for (final khalaf in [...rows]) {
+        if (khalaf.$3.length != 1 || khalaf.$3.single != 'khalaf_hamzah') {
+          continue;
+        }
+        final khallad = rows
+            .where(
+              (r) =>
+                  r.$3.length == 1 &&
+                  r.$3.single == 'khallad' &&
+                  places(r.$2) == places(khalaf.$2),
+            )
+            .firstOrNull;
+        if (khallad == null) continue;
+        final at = rows.indexOf(khalaf);
+        rows
+          ..[at] = (
+            khallad.$1,
+            khalaf.$2,
+            const ['khalaf_hamzah', 'khallad'],
+            'النقل، ولخلف وجه آخر بالسكت',
+          )
+          ..remove(khallad);
+      }
+    }
     rows.sort((a, b) {
       final place = at(a).compareTo(at(b));
       return place != 0

@@ -40,8 +40,19 @@ int _waqfMiddle(String id, List<_Word> words, void Function(List row) put) {
     String? kind;
     for (var k = 1; k < cs.length; k++) {
       if (!_isHamza(cs[k])) continue;
-      // The final hamza (a silent alif after it aside): Hisham's rows.
-      if (cs.sublist(k + 1).every((x) => x.base == 'ا')) continue;
+      // The final hamza (a silent alif after it aside): Hisham's rows; but
+      // «شَيۡـًٔا», which his rows do not tell: the naql or the merging (the
+      // guide, p3: «والنقل في ﴿شَيْءٍ﴾ و﴿شَيْئًا﴾»).
+      if (cs.sublist(k + 1).every((x) => x.base == 'ا')) {
+        if (RegExp('شَيۡ').hasMatch(w.t) && RegExp('[ًٗ]').hasMatch(w.t)) {
+          faces.add(const [
+            'نقل حركتها إلى الساكن قبلها',
+            'إبدالها من جنس ما قبلها وإدغامه فيه',
+          ]);
+          kind ??= waqfHamzaKindAt(w.t, k);
+        }
+        continue;
+      }
       final f = _middleFaces(w.t, cs, k, khallad);
       if (f.isEmpty) continue;
       faces.add(f);
@@ -91,8 +102,10 @@ List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
           // لِلۡإِيمَٰنِ: the article's alif dropped after the lam (لَلۡأَخِرَةُ too).
           cs[k - 2].base == 'ل' && _vowelOf(cs[k - 2]) != '') &&
       _vowelOf(before) == '') {
-    // The guide (ص3، ص6): «ولخلاد في الوقف النقل في لام التعريف».
-    return khallad ? const ['النقل'] : const ['السكت، وهو المقدّم', 'النقل'];
+    // The guide (ص3، ص6): «ولخلاد في الوقف النقل في لام التعريف»; Khalaf
+    // the naql and the sakt, neither first (the user, 2026-11-12), told with
+    // Khallad's in one row: «النقل، ولخلف وجه آخر بالسكت».
+    return khallad ? const ['النقل'] : const ['النقل', 'السكت'];
   }
   // A quiet hamza: the letter of the vowel before it.
   if (vowel == '' && c.base != 'آ') {
@@ -122,29 +135,27 @@ List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
     return ['إبدالها $letter ساكنة'];
   }
   // After a prefix (وَأَوۡحَىٰ، فَأَوَىٰ، بِأَيِّكُمُ، سَأُوْرِيكُمۡ، كَأَنَّهُمۡ،
-  // ءَأَنتُمۡ، هَٰٓأَنتُمۡ، يَٰٓـَٔادَمُ): Khalaf's first the tahqiq, Khallad's
-  // the easing. Not «سَأَلَ», its sin of the root.
+  // ءَأَنتُمۡ، هَٰٓأَنتُمۡ، يَٰٓـَٔادَمُ): the tahqiq or the easing, alike for
+  // both narrators and neither first (the user, 2026-11-12, over the guide's
+  // Khalaf the tahqiq first, Khallad the easing). Not «سَأَلَ», its sin of
+  // the root.
   if (waqfHamzaPrefixedAt(word, k)) {
     final pv = _vowelOf(before);
     // After the alif of «ها» or «يا» (هَٰٓأَنتُمۡ، يَٰٓـَٔادَمُ): the easing with
-    // the madd or the qasr, the two told as one face when Khallad's first.
+    // the madd or the qasr.
     if (before.marks.contains('ٰ')) {
-      return khallad
-          ? ['تسهيلها بين بين مع المد أو القصر، وهو المقدّم', 'التحقيق']
-          : [
-              'التحقيق، وهو المقدّم',
-              'تسهيلها بين بين مع المد',
-              'تسهيلها بين بين مع القصر',
-            ];
+      return const [
+        'التحقيق',
+        'تسهيلها بين بين مع المد',
+        'تسهيلها بين بين مع القصر',
+      ];
     }
     final ease = vowel == 'a' && pv == 'u'
         ? 'إبدالها واوًا مفتوحة'
         : vowel == 'a' && pv == 'i'
         ? 'إبدالها ياءً مفتوحة'
         : 'تسهيلها بين بين';
-    return khallad
-        ? ['$ease، وهو المقدّم', 'التحقيق']
-        : ['التحقيق، وهو المقدّم', ease];
+    return ['التحقيق', ease];
   }
   // After an alif: eased with the madd or the qasr.
   if (before.base == 'ا' || before.marks.contains('ٰ')) {

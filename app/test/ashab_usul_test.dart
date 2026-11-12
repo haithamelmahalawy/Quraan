@@ -91,13 +91,20 @@ void main() {
     expect(waqf('khallad', 2, 11, 6, 'الوقف على لام التعريف')['ways'], [
       'النقل',
     ]);
-    expect(
-      waqf('khalaf_hamzah', 2, 25, 11, 'الوقف على لام التعريف')['ways'],
-      contains('السكت، وهو المقدّم'),
-    );
+    expect(waqf('khalaf_hamzah', 2, 25, 11, 'الوقف على لام التعريف')['ways'], [
+      'النقل',
+      'السكت',
+    ]);
     expect(waqf('khallad', 2, 31, 7, 'الهمز المتوسط بعد ألف'), isNotEmpty);
     expect(waqf('khallad', 2, 31, 10, 'الهمز المتوسط بحرف زائد'), isNotEmpty);
     expect(waqf('khallad', 2, 31, 9, 'الهمز المتحرك بعد متحرك'), isNotEmpty);
+    // «شيء» and «شَيۡـًٔا»: one faces for both narrators, neither first.
+    for (final id in const ['khalaf_hamzah', 'khallad']) {
+      expect(waqf(id, 2, 48, 7, 'الوقف على «شيء» و«شيئًا»')['ways'], [
+        'نقل حركتها إلى الساكن قبلها',
+        'إبدالها من جنس ما قبلها وإدغامه فيه',
+      ]);
+    }
     // زَكَرِيَّا، تُرۡجِي: Hisham''s hamza, not Hamza''s.
     expect(
       at('khallad', 3, 37, 8).where((v) => v[7] == 'hisham_waqf'),

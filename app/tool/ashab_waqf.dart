@@ -20,9 +20,7 @@ int _waqfFinal(
         ? _rasmFaces(word.t, '${v[6]}')
         : const <String>[];
     final hisWays = ((v[8] as Map)['ways'] as List).cast<String>();
-    final ordered = word == null
-        ? hisWays
-        : _hamzaOrder(id == 'khallad', word.t, hisWays);
+    final ordered = word == null ? hisWays : _hamzaOrder(word.t, hisWays);
     final meta = Map<String, Object?>.from(v[8] as Map);
     final kind = word == null ? null : waqfHamzaKindOfFinal(word.t);
     if (kind != null) meta['kind'] = kind;
@@ -105,7 +103,7 @@ List<String> _rasmFaces(String word, String qiyasi) {
 /// The final hamza after a waw or ya of the root, or the lin of «شيء»: the
 /// naql and the merging both, the naql first for Khalaf and the merging for
 /// Khallad (the guide). Hisham's rows tell «سوء» with the merging alone.
-List<String> _hamzaOrder(bool khallad, String word, List<String> ways) {
+List<String> _hamzaOrder(String word, List<String> ways) {
   final bare = _letters(word)
       .map((x) => _isHamza(x) && x.base != 'ٱ' ? 'ء' : x.base)
       .join()
@@ -133,9 +131,9 @@ List<String> _hamzaOrder(bool khallad, String word, List<String> ways) {
   }
   if (merged.isEmpty) return ways;
   String first(String w) => '$w، وهو المقدّم';
-  // «شيء»: Khalaf's naql first (the guide, p3); a waw or ya of the root
-  // (السوء، المسيء): the merging first for both (the user, 2026-11-12).
-  return khallad || !shay
-      ? [first(merged.first), ...merged.skip(1), ...moved]
-      : [first(moved.first), ...moved.skip(1), ...merged];
+  // «شيء»: the naql then the merging, alike for both and neither first (the
+  // user, 2026-11-12); a waw or ya of the root (السوء، المسيء): the merging
+  // first for both.
+  if (shay) return [...moved, ...merged];
+  return [first(merged.first), ...merged.skip(1), ...moved];
 }
