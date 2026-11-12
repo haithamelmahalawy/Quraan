@@ -1657,6 +1657,10 @@ class _MushafPageState extends State<MushafPage>
               v.word == w &&
               v.isImala &&
               !v.isStoppingTaqlil &&
+              // Nor a stop's own imala (مُوسَى ٱلۡكِتَٰبَ، the feminine ha):
+              // its letter coloured, no sign (the user, 2026-11-12).
+              !v.stopOnly &&
+              v.rule != 'imala_ha' &&
               !v.fathPreferred,
         )
         .firstOrNull;

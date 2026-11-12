@@ -152,7 +152,8 @@ const qiraat = <Qiraa>[
   Qiraa(
     id: 'khalaf',
     nameAr: 'خلف العاشر',
-    shortAr: 'خلف',
+    // Told so in the hamesh, apart from Khalaf 'an Hamza.
+    shortAr: 'خلف العاشر',
     nameEn: 'Khalaf al-Ashir',
     baseColor: Color(0xFF827717),
     riwayat: [

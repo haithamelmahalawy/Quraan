@@ -100,6 +100,12 @@ int _imala(
         n++;
         continue;
       }
+      // The alif before a final ra leans only with the ra's kasra (ٱلنَّارِ،
+      // بِقِنطَارٖ), not its fatha or damma (ٱلنَّارُ، ٱلۡأَبۡرَارَ) (the user,
+      // 2026-11-12).
+      if (RegExp('ار[ًٌَُٗٞ][ۖ-ۛ]*\$').hasMatch(word.t.replaceAll('ّ', ''))) {
+        continue;
+      }
       final ha =
           kisaiHa || stop && RegExp(r'[ة][ًٌٍَُِۖ-ۛ]*$').hasMatch(word.t);
       var how = taqlil

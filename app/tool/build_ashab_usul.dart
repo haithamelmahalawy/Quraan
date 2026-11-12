@@ -784,6 +784,17 @@ Map<String, int> buildAshabUsul(
       });
   // An alif added to Hafs's rasm is the dagger one.
   applyDaggerAlif(quran, data['variants'] as List);
+  // «هُزُوٗا» with its zay quiet and its hamza (Hamza, Khalaf al-'Ashir):
+  // written as al-Kisa'i's «هُزُؤٗاۖ», its hamza on Hafs's waw, its zay quiet
+  // (the user, 2026-11-12).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] == 'u' || v[3] != 1) continue;
+    final hafs = index[_key(v[0], v[1], v[2])]?.t ?? '';
+    if (!RegExp('زُو').hasMatch(hafs) || !'${v[6]}'.contains('إسكان الزاي')) {
+      continue;
+    }
+    v[4] = hafs.replaceFirst('زُو', 'زۡؤ');
+  }
   return counts;
 }
 

@@ -222,7 +222,11 @@ String usulReadingText(
     if (actual != null && actual != v) {
       text = _silah(text, actual.shownDescription);
     }
-    if (v.isStoppingTaqlil) return text.replaceAll(RegExp('[۪ٜ]'), '');
+    // A stop's own imala, and the feminine ha's, without the sign.
+    if (v.isStoppingTaqlil ||
+        v.isImala && (v.stopOnly || v.rule == 'imala_ha')) {
+      return text.replaceAll(RegExp('[۪ٜ]'), '');
+    }
     return v.isImala && !v.fathPreferred ? withImalaSign(text, v.text) : text;
   }
 
