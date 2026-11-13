@@ -350,6 +350,35 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('turning the ring chooses no riwaya the finger lands on', (
+    t,
+  ) async {
+    final settings = ReaderSettings.memory();
+    await pump(t, settings);
+    await turnTo(t, nafi);
+    // Dragged from a riwaya's box: the ring turns, the box stays as it was.
+    await t.timedDrag(
+      check('warsh'),
+      const Offset(135, 0),
+      const Duration(milliseconds: 600),
+    );
+    await t.pump();
+    expect(settings.selected, isEmpty);
+    // Flicked, then touched while it still turns: it stops, choosing none.
+    await t.fling(ring, const Offset(160, 0), 1500);
+    await t.pump(const Duration(milliseconds: 40));
+    final turning = check(nafi.riwayat.first.id);
+    final box = turning.evaluate().isEmpty ? ring : turning;
+    await t.tap(box, warnIfMissed: false);
+    await t.pumpAndSettle();
+    expect(settings.selected, isEmpty);
+    // At rest, a tap chooses.
+    await turnTo(t, nafi);
+    await t.tap(check('warsh'));
+    await t.pump();
+    expect(settings.selected, {'warsh'});
+  });
+
   testWidgets('one riwaya of the two shows the qari half ticked', (t) async {
     final settings = ReaderSettings.memory();
     await pump(t, settings);

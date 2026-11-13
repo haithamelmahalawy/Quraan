@@ -740,8 +740,10 @@ class _MushafPageState extends State<MushafPage>
               ? (anyNotes && !widget.quran.isRightPage(widget.page) ? rail : 0)
               : (hasUsul ? rail : 0)),
     );
-    const outer = 4.0, header = 22.0;
-    const contentTop = outer + header + OrnamentFrame.inset;
+    // Turned: little room above and below the frame, the text the larger
+    // (the user, 2026-11-13).
+    const outer = 4.0, header = 20.0, top = 1.0;
+    const contentTop = top + header + OrnamentFrame.inset;
     final textWidth =
         pageWidth - 2 * outer - 2 * OrnamentFrame.sideInset(sides);
     final spans = lines.fold(0, (n, l) => n + l.span);
@@ -763,23 +765,28 @@ class _MushafPageState extends State<MushafPage>
       size.height * 1.65 -
           contentTop -
           OrnamentFrame.inset -
-          _PageFrame.numberHeight -
-          outer,
+          _PageFrame.compactNumberHeight -
+          top,
     );
     final lineHeight = textHeight / spans;
-    final pageHeight =
-        textHeight +
-        contentTop +
-        OrnamentFrame.inset +
-        _PageFrame.numberHeight +
-        outer;
+    // The frame fixed, its upper and lower bands always in sight with their
+    // riwayat, the lines scrolled between them, never under them (the user,
+    // 2026-11-13).
+    final window = math.max(
+      1.0,
+      size.height -
+          contentTop -
+          OrnamentFrame.inset -
+          _PageFrame.compactNumberHeight -
+          top,
+    );
     final first = ayahs.first;
     final print = SizedBox(
       key: const ValueKey('mushaf-print'),
       width: pageWidth,
-      height: pageHeight,
+      height: size.height,
       child: Padding(
-        padding: const EdgeInsets.all(outer),
+        padding: const EdgeInsets.fromLTRB(outer, top, outer, top),
         child: Column(
           children: [
             SizedBox(
@@ -795,18 +802,29 @@ class _MushafPageState extends State<MushafPage>
                 squares: _riwayaStrip(),
                 page: widget.page,
                 sides: sides,
+                compact: true,
                 onNumberTap: widget.onPageNumberTap,
-                child: MushafLines(
-                  lines: lines,
-                  centered: widget.quran.isCentered(widget.page),
-                  quran: widget.quran,
-                  wordBuilder: _word,
-                  onTapNearest: widget.onWordTap,
-                  display: _display,
-                  marker: _marker,
-                  wordMarker: _nativeNumbering ? _wordMarker : null,
-                  wordGap: _wordGap,
-                  height: textHeight,
+                child: Scrollbar(
+                  controller: scroll,
+                  child: SingleChildScrollView(
+                    key: const ValueKey('landscape-page-scroll'),
+                    controller: scroll,
+                    physics: _zoomed
+                        ? const NeverScrollableScrollPhysics()
+                        : null,
+                    child: MushafLines(
+                      lines: lines,
+                      centered: widget.quran.isCentered(widget.page),
+                      quran: widget.quran,
+                      wordBuilder: _word,
+                      onTapNearest: widget.onWordTap,
+                      display: _display,
+                      marker: _marker,
+                      wordMarker: _nativeNumbering ? _wordMarker : null,
+                      wordGap: _wordGap,
+                      height: textHeight,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -823,11 +841,9 @@ class _MushafPageState extends State<MushafPage>
           final visible = <(Ayah, int)>[];
           var span = 0;
           for (final line in lines) {
-            final top = contentTop + span * lineHeight;
+            final top = span * lineHeight;
             final bottom = top + line.span * lineHeight;
-            if (line is TextLine &&
-                bottom > offset &&
-                top < offset + size.height) {
+            if (line is TextLine && bottom > offset && top < offset + window) {
               visible.addAll(line.words);
             }
             span += line.span;
@@ -860,12 +876,7 @@ class _MushafPageState extends State<MushafPage>
             rail: anyNotes ? rail : 0,
             height: size.height,
             zoomed: _zoomed,
-            page: SingleChildScrollView(
-              key: const ValueKey('landscape-page-scroll'),
-              controller: scroll,
-              physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
-              child: print,
-            ),
+            page: print,
           );
         },
       );
@@ -880,11 +891,9 @@ class _MushafPageState extends State<MushafPage>
           final visible = <(Ayah, int)>[];
           var span = 0;
           for (final l in lines) {
-            final top = contentTop + span * lineHeight;
+            final top = span * lineHeight;
             final bottom = top + l.span * lineHeight;
-            if (l is TextLine &&
-                bottom > offset &&
-                top < offset + size.height) {
+            if (l is TextLine && bottom > offset && top < offset + window) {
               visible.addAll(l.words);
             }
             span += l.span;
@@ -963,17 +972,7 @@ class _MushafPageState extends State<MushafPage>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (hasFarsh) margin(true),
-        Expanded(
-          child: Scrollbar(
-            controller: scroll,
-            child: SingleChildScrollView(
-              key: const ValueKey('landscape-page-scroll'),
-              controller: scroll,
-              physics: _zoomed ? const NeverScrollableScrollPhysics() : null,
-              child: print,
-            ),
-          ),
-        ),
+        Expanded(child: print),
         if (hasUsul) margin(false),
       ],
     );
@@ -2439,9 +2438,9 @@ class _MushafPageState extends State<MushafPage>
           ].where((v) => v.word == i).toList();
     // The pair's first word told on itself (أَوۡلِيَآءُ أُوْلَٰٓئِكَ): the word
     // before it is not of the pair.
-    final next = at(
-      w + 1,
-    ).where((v) => pair(v) && v.rule != 'tasheel_pair_first').toList();
+    final next = at(w + 1)
+        .where((v) => pair(v) && v.rule != 'tasheel_pair_first')
+        .toList();
     final before = at(w - 1)
         .where((v) => v.rule == 'tasheel_pair_first')
         .toList();
@@ -3417,57 +3416,34 @@ class _PageFrame extends StatelessWidget {
     this.onNumberTap,
     this.sides = true,
     this.squares = const [],
+    this.compact = false,
   });
 
   final int page;
   final bool sides;
+
+  /// Turned: the number's line no taller than it must be, the text the
+  /// larger (the user, 2026-11-13).
+  final bool compact;
   final Widget child;
   final VoidCallback? onNumberTap;
 
-  /// Set on the frame's bands, each with its length: the riwayat chosen, to
-  /// go between. On the upper band first, from the right; those it has no
-  /// room for on the lower one, then down the right band and the left one.
-  /// Without the side bands (full screen), below the frame instead.
+  /// The riwayat chosen, each with its length, on the frame's upper band and
+  /// its lower one, in every view (the user, 2026-11-13): see [_splitRiwayat].
   final List<(_FrameSquare, double)> squares;
 
   /// A square across a band reaches the line inside it.
   static const squareDepth = OrnamentFrame.band + 3;
 
-  /// How far a raised square stands out of its band: down from the upper
-  /// and lower bands, out from the side ones, towards the margin.
+  /// How far a raised square stands out of its band, down into the page.
   static const squareLift = 7.0;
-
-  /// Below the frame, clear of the button that ends the full screen.
-  static const belowStart = 44.0;
-
-  /// Below the frame, clear of the lamp at its left.
-  static const belowEnd = 72.0;
-
-  /// The page's number between the squares below the frame.
-  static const numberRoom = 48.0;
-
-  /// The bands' squares, in turn: the upper band, the lower, then the right
-  /// and the left ones (or, in full screen, below the frame: right of the
-  /// number, then left of it), each as long as [rooms] allow.
-  List<List<_FrameSquare>> _deal(List<double> rooms) {
-    final bands = [for (final _ in rooms) <_FrameSquare>[]];
-    var band = 0;
-    var used = 0.0;
-    for (final (square, length) in squares) {
-      while (band < rooms.length && used + length > rooms[band]) {
-        band++;
-        used = 0;
-      }
-      if (band == rooms.length) break;
-      used += length;
-      bands[band].add(square);
-    }
-    return bands;
-  }
 
   /// Space outside the border, including a visible gap above the number.
   static const numberHeight = 30.0;
   static const numberGap = 6.0;
+
+  /// The number's line when [compact]: just clear of a raised square.
+  static const compactNumberHeight = 22.0;
 
   @override
   Widget build(BuildContext context) {
@@ -3480,29 +3456,7 @@ class _PageFrame extends StatelessWidget {
             builder: (context, box) {
               const corner = OrnamentFrame.band + 2;
               final across = box.maxWidth - 2 * corner;
-              final down = box.maxHeight - 2 * corner;
-              final bands = _deal([
-                across,
-                across,
-                if (sides) ...[down, down],
-              ]);
-              final rtl = Directionality.of(context) == TextDirection.rtl;
-              Widget line(String key, int band, Axis axis) => Flex(
-                key: ValueKey(key),
-                direction: axis,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final square in bands[band])
-                    square(axis, squareDepth, switch (band) {
-                      // The side bands' outwards, towards the margin.
-                      2 => rtl ? AxisDirection.right : AxisDirection.left,
-                      3 => rtl ? AxisDirection.left : AxisDirection.right,
-                      _ => AxisDirection.down,
-                    }),
-                ],
-              );
-              bool has(int band) =>
-                  band < bands.length && bands[band].isNotEmpty;
+              final (upper, lower) = _splitRiwayat(squares, across, across);
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -3511,29 +3465,25 @@ class _PageFrame extends StatelessWidget {
                     sides: sides,
                     child: child,
                   ),
-                  if (has(0))
-                    PositionedDirectional(
+                  if (upper.isNotEmpty)
+                    Positioned(
                       top: 0,
-                      start: corner,
-                      child: line('frame-riwayat', 0, Axis.horizontal),
+                      left: corner,
+                      right: corner,
+                      child: _RiwayatBar(
+                        key: const ValueKey('frame-riwayat'),
+                        squares: upper,
+                      ),
                     ),
-                  if (has(1))
-                    PositionedDirectional(
+                  if (lower.isNotEmpty)
+                    Positioned(
                       bottom: -squareLift,
-                      start: corner,
-                      child: line('frame-riwayat-lower', 1, Axis.horizontal),
-                    ),
-                  if (has(2))
-                    PositionedDirectional(
-                      top: corner,
-                      start: -squareLift,
-                      child: line('frame-riwayat-right', 2, Axis.vertical),
-                    ),
-                  if (has(3))
-                    PositionedDirectional(
-                      top: corner,
-                      end: -squareLift,
-                      child: line('frame-riwayat-left', 3, Axis.vertical),
+                      left: corner,
+                      right: corner,
+                      child: _RiwayatBar(
+                        key: const ValueKey('frame-riwayat-lower'),
+                        squares: lower,
+                      ),
                     ),
                 ],
               );
@@ -3541,55 +3491,15 @@ class _PageFrame extends StatelessWidget {
           ),
         ),
         SizedBox(
-          height: numberHeight,
-          child: Stack(
-            children: [
-              if (!sides && squares.isNotEmpty)
-                Positioned.fill(child: _squaresBelow()),
-              Positioned.fill(child: _number()),
-            ],
-          ),
+          height: compact ? compactNumberHeight : numberHeight,
+          child: _number(),
         ),
       ],
     );
   }
 
-  /// Full screen: the squares the bands above and below have no room for,
-  /// under the frame, touching it: from the right up to the page's number,
-  /// then on from its left.
-  Widget _squaresBelow() => LayoutBuilder(
-    builder: (context, box) {
-      const corner = OrnamentFrame.band + 2;
-      final across = box.maxWidth - 2 * corner;
-      final half = (box.maxWidth - numberRoom) / 2;
-      final bands = _deal([across, across, half - belowStart, half - belowEnd]);
-      return Stack(
-        key: const ValueKey('frame-riwayat-below'),
-        children: [
-          for (final (i, start) in [(2, belowStart), (3, half + numberRoom)])
-            if (bands[i].isNotEmpty)
-              PositionedDirectional(
-                top: 0,
-                start: start,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final square in bands[i])
-                      square(
-                        Axis.horizontal,
-                        OrnamentFrame.band,
-                        AxisDirection.down,
-                      ),
-                  ],
-                ),
-              ),
-        ],
-      );
-    },
-  );
-
   Widget _number() => Padding(
-    padding: const EdgeInsets.only(top: numberGap),
+    padding: EdgeInsets.only(top: compact ? squareLift : numberGap),
     child: Center(
       child: GestureDetector(
         onTap: onNumberTap,
@@ -3604,8 +3514,8 @@ class _PageFrame extends StatelessWidget {
               FontFeature.disable('rlig'),
               FontFeature.disable('calt'),
             ],
-            fontSize: 18,
-            height: 1.2,
+            fontSize: compact ? 13 : 18,
+            height: compact ? 1.1 : 1.2,
             color: MushafColors.ink,
           ),
         ),
@@ -3614,14 +3524,165 @@ class _PageFrame extends StatelessWidget {
   );
 }
 
-/// A riwaya's square on the frame, built along the band it is set on
-/// ([Axis.vertical] on a side band) and [depth] across it, raised towards
-/// [grow].
+/// The height of a band's row of riwayat, a raised square's lift with it.
+const _riwayatBar = _PageFrame.squareDepth + _PageFrame.squareLift;
+
+/// [squares] in the order of the Shatibiyya, dealt to the frame's upper band
+/// ([upper] long) and its lower one ([lower] long), from the right
+/// (the user, 2026-11-13): the upper filled first, then the lower; when both
+/// are full the lower keeps as many as it holds, the last ones, and the rest
+/// go up, the upper then scrolled. The lower never is.
+(List<_FrameSquare>, List<_FrameSquare>) _splitRiwayat(
+  List<(_FrameSquare, double)> squares,
+  double upper,
+  double lower,
+) {
+  var top = 0;
+  for (var used = 0.0; top < squares.length; top++) {
+    used += squares[top].$2;
+    if (used > upper) break;
+  }
+  // The longest run of the last ones the lower bar holds.
+  var from = squares.length;
+  for (var used = 0.0; from > top; from--) {
+    used += squares[from - 1].$2;
+    if (used > lower) break;
+  }
+  return (
+    [for (final s in squares.take(from)) s.$1],
+    [for (final s in squares.skip(from)) s.$1],
+  );
+}
+
+/// A riwaya's square, built along its bar ([Axis.horizontal]) and [depth]
+/// across it, raised towards [grow].
 typedef _FrameSquare = Widget Function(
   Axis axis,
   double depth,
   AxisDirection grow,
 );
+
+/// A band's row of the riwayat, from the right. Those beyond its width are
+/// scrolled to; an arrow at a side tells there are more that way, and a tap
+/// on it brings them.
+class _RiwayatBar extends StatefulWidget {
+  const _RiwayatBar({super.key, required this.squares});
+
+  final List<_FrameSquare> squares;
+
+  @override
+  State<_RiwayatBar> createState() => _RiwayatBarState();
+}
+
+class _RiwayatBarState extends State<_RiwayatBar> {
+  final _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_moved);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _moved() => setState(() {});
+
+  /// Towards the right ([right]) or the left by most of the bar.
+  void _page(bool right) {
+    final p = _scroll.position;
+    // From the right: the right is the start.
+    final to = p.pixels + (right ? -1 : 1) * p.viewportDimension * .7;
+    _scroll.animateTo(
+      to.clamp(p.minScrollExtent, p.maxScrollExtent),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = _scroll.hasClients && _scroll.position.hasContentDimensions
+        ? _scroll.position
+        : null;
+    // Measured once laid out: then the arrows.
+    if (p == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scroll.hasClients) setState(() {});
+      });
+    }
+    final moreRight = p != null && p.extentBefore > .5;
+    final moreLeft = p != null && p.extentAfter > .5;
+    Widget arrow(bool right) => Positioned(
+      top: 0,
+      bottom: 0,
+      right: right ? 0 : null,
+      left: right ? null : 0,
+      child: GestureDetector(
+        key: ValueKey('riwayat-more-${right ? 'right' : 'left'}'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _page(right),
+        child: Container(
+          width: 22,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: right ? Alignment.centerRight : Alignment.centerLeft,
+              end: right ? Alignment.centerLeft : Alignment.centerRight,
+              colors: [MushafColors.page, MushafColors.page.withAlpha(0)],
+              stops: const [.55, 1],
+            ),
+          ),
+          alignment: right ? Alignment.centerRight : Alignment.centerLeft,
+          child: Icon(
+            right ? Icons.chevron_right : Icons.chevron_left,
+            size: 20,
+            color: MushafColors.green,
+          ),
+        ),
+      ),
+    );
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: SizedBox(
+        height: _riwayatBar,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: SingleChildScrollView(
+                controller: _scroll,
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final square in widget.squares)
+                      square(
+                        Axis.horizontal,
+                        _PageFrame.squareDepth,
+                        AxisDirection.down,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            // Fixed whichever way the text runs.
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Stack(
+                children: [
+                  if (moreRight) arrow(true),
+                  if (moreLeft) arrow(false),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 /// The line above the frame, as printed: surah name on the right, juz on
 /// the left.
@@ -4888,9 +4949,7 @@ class _EntryView extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.only(bottom: 3),
     decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(color: MushafColors.gold, width: 1.4),
-      ),
+      border: Border(bottom: BorderSide(color: MushafColors.gold, width: 1.4)),
     ),
     child: note,
   );
@@ -5102,10 +5161,16 @@ class _EntryView extends StatelessWidget {
   static List<_Reading> _readings(List<Variant> all, String baseline) {
     // A reader's note of the word (the faces of beginning with ٱلۡأُولَىٰ)
     // told on his own line, not a line of its own.
-    final notes = [for (final v in all) if (v.rule == 'note') v];
+    final notes = [
+      for (final v in all)
+        if (v.rule == 'note') v,
+    ];
     final vs = notes.isEmpty
         ? all
-        : [for (final v in all) if (v.rule != 'note') v];
+        : [
+            for (final v in all)
+              if (v.rule != 'note') v,
+          ];
     final byRiwaya = <String, _Reading>{};
     final out = <_Reading>[];
     void add(String name, Color color, String font, Variant v) {
@@ -5116,8 +5181,7 @@ class _EntryView extends StatelessWidget {
       final bare = withoutHaSilah(text);
       // Two faces by khulf (al-Bazzi's لَأُقۡسِمُ) are not the one of another.
       bool sameFaces(_Reading g) =>
-          !(g.description.startsWith('بخلف') ||
-              _brief(v).startsWith('بخلف')) ||
+          !(g.description.startsWith('بخلف') || _brief(v).startsWith('بخلف')) ||
           g.description == _brief(v);
       final same =
           out.where((g) => g.key == key && sameFaces(g)).firstOrNull ??
@@ -5216,7 +5280,12 @@ class _EntryView extends StatelessWidget {
       if (group == null) {
         final q = qiraaOf(v.riwayaId);
         final apart = _Reading(
-          [('${riwayaById(v.riwayaId).nameAr} عن ${_genitive(q.shortAr)}', q.color)],
+          [
+            (
+              '${riwayaById(v.riwayaId).nameAr} عن ${_genitive(q.shortAr)}',
+              q.color,
+            ),
+          ],
           'Hafs',
           v.text,
           _brief(v),

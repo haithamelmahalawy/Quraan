@@ -61,23 +61,15 @@ class _RiwayatButton extends StatelessWidget {
           padding: small
               ? const EdgeInsets.symmetric(horizontal: 7, vertical: 2)
               : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'الرواة',
-                style: TextStyle(
-                  color: MushafColors.green,
-                  fontWeight: FontWeight.bold,
-                  fontSize: small ? 11 : null,
-                ),
-              ),
-              Icon(
-                on ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                size: small ? 15 : 20,
-                color: MushafColors.green,
-              ),
-            ],
+          // A button, no arrow: tapped, the panel down; again, up (the
+          // user, 2026-11-13). Gold while it is down.
+          child: Text(
+            'الرواة',
+            style: TextStyle(
+              color: MushafColors.green,
+              fontWeight: FontWeight.bold,
+              fontSize: small ? 11 : null,
+            ),
           ),
         ),
       ),
@@ -318,6 +310,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _blinks?.cancel();
     _blink.dispose();
     _settle?.cancel();
+    _pendingWord?.cancel();
     _readAhead?.cancel();
     _gestureLabelTimer?.cancel();
     _hint.dispose();
@@ -462,6 +455,34 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   /// Qiraat differences open the readings sheet (with a way on to the
   /// mutashabihat); a word that only belongs to a mutashabih opens those.
+  /// A word tapped: opened a moment later, unless a second tap makes the
+  /// two a double tap (full screen), anywhere on the page, the middle of
+  /// an ayah too (the user, 2026-11-13).
+  Timer? _pendingWord;
+
+  /// The tap that made a double one: its word is not opened.
+  bool _swallowWord = false;
+
+  static const _doubleTapWait = Duration(milliseconds: 250);
+
+  void _wordTapped(Ayah ayah, int word) {
+    if (_swallowWord) return;
+    _pendingWord?.cancel();
+    _pendingWord = Timer(_doubleTapWait, () {
+      _pendingWord = null;
+      if (mounted) _openWord(ayah, word);
+    });
+  }
+
+  void _doubleTapped() {
+    _pendingWord?.cancel();
+    _pendingWord = null;
+    // The second tap's own word, told after this in the same touch.
+    _swallowWord = true;
+    scheduleMicrotask(() => _swallowWord = false);
+    _setFullScreen(!_fullScreen);
+  }
+
   void _openWord(Ayah ayah, int word) {
     final places = widget.settings.showMutashabihat
         ? widget.mutashabihat.placesFor(ayah.surah, ayah.number, word)
@@ -545,7 +566,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       variants: widget.variants,
       mutashabihat: widget.mutashabihat,
       settings: widget.settings,
-      onWordTap: _openWord,
+      onWordTap: _wordTapped,
       onAyahTap: _openAyah,
       onAyahWordTap: (ayah, word) => _openAyah(ayah, word: word),
       showHamesh: hamesh,
@@ -553,7 +574,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       // Zoomed in on a word, the page still turns from its side.
       onEdgeTurn: (direction) => _pager.currentState?.turn(direction),
       // Two quick taps: «ملء الشاشة» of the top panel, on or off.
-      onDoubleTap: () => _setFullScreen(!_fullScreen),
+      onDoubleTap: _doubleTapped,
       // The riwayat chosen, on the frame: gone between without their panel.
       onShowRiwaya: (id) => widget.settings.displayed = id,
       onPageNumberTap: _pickPage,
@@ -960,13 +981,10 @@ class _ReaderScreenState extends State<ReaderScreen>
           band(_tools(small: true, side: false)),
           Padding(
             padding: const EdgeInsets.only(top: 2),
-            child: _side(
-              width: 24,
-              // Down to the frame: the handle's row and the page's header.
-              // In landscape, where the header leaves it room.
-              height: open || !_landscape ? null : _handleHeight + 22,
-              keyed: true,
-            ),
+            // As tall as the buttons, down to their lower edge: taller, in
+            // landscape, it came down over the bar of the riwayat above the
+            // page (the user, 2026-11-13).
+            child: _side(width: 24, height: _handleHeight - 2, keyed: true),
           ),
           const SizedBox(width: 10),
           band(handle),
@@ -1004,9 +1022,7 @@ class _ReaderScreenState extends State<ReaderScreen>
               width: 48,
               height: 24,
               child: Icon(
-                top == open
-                    ? Icons.keyboard_arrow_up
-                    : Icons.keyboard_arrow_down,
+                open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                 size: 22,
                 color: MushafColors.green,
               ),

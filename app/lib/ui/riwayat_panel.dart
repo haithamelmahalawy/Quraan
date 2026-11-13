@@ -200,6 +200,10 @@ class _RiwayatPanelState extends State<RiwayatPanel>
     widget.open?.value = _open;
   }
 
+  /// The ring dragged: its boxes take no tap until it rests (a finger
+  /// turning it, or stopping it, chose the riwaya it came down on).
+  bool _dragging = false;
+
   void _settle(double target) => _turn.animateTo(
     target,
     duration: const Duration(milliseconds: 280),
@@ -409,12 +413,26 @@ class _RiwayatPanelState extends State<RiwayatPanel>
       behavior: HitTestBehavior.opaque,
       // Under the finger, a qari at a time: dragged to the right, those at the
       // left come round to the front, as many as it goes.
+      // A finger down on the ring turning: it stops there, and comes to
+      // rest on the nearest qari unless dragged on.
+      onHorizontalDragDown: (_) {
+        if (_turn.isAnimating) _turn.stop();
+      },
+      onHorizontalDragCancel: () {
+        if (_turn.value != _turn.value.roundToDouble()) {
+          _settle(_turn.value.roundToDouble());
+        }
+      },
+      onHorizontalDragStart: (_) => setState(() => _dragging = true),
       onHorizontalDragUpdate: (d) => _turn.value += d.delta.dx / (_cell + 2),
       // Coming to rest on a qari, a flick carrying it on by as many as it is quick.
-      onHorizontalDragEnd: (d) => _settle(
-        (_turn.value + (d.primaryVelocity ?? 0) / (_cell + 2) * .18)
-            .roundToDouble(),
-      ),
+      onHorizontalDragEnd: (d) {
+        setState(() => _dragging = false);
+        _settle(
+          (_turn.value + (d.primaryVelocity ?? 0) / (_cell + 2) * .18)
+              .roundToDouble(),
+        );
+      },
       child: AnimatedBuilder(
         animation: _turn,
         builder: (context, _) {
@@ -424,64 +442,67 @@ class _RiwayatPanelState extends State<RiwayatPanel>
             for (var i = 0; i < n; i++)
               (i: i, d: ((i - _turn.value - middle + n / 2) % n) - n / 2),
           ]..sort((a, b) => b.d.abs().compareTo(a.d.abs()));
-          return ClipRect(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // The ring they stand on.
-                const Positioned.fill(child: CustomPaint(painter: _Stage())),
-                for (final (:i, :d) in places)
-                  () {
-                    final isFront = d.abs() <= _row / 2;
-                    // 1 next to the front row, 0 at the very back.
-                    final near = isFront || _row >= n
-                        ? 1.0
-                        : (1 - (d.abs() - _row / 2) / (n / 2 - _row / 2)).clamp(
-                            0.0,
-                            1.0,
-                          );
-                    // Along the front row, from its middle to its ends: they
-                    // curve back, as a part of the ring, and still answer.
-                    final along = _row < 2 ? 0.0 : d / (_row / 2);
-                    return Transform.translate(
-                      // The next qari at the left, as the text runs.
-                      offset: isFront
-                          ? Offset(-d * (_cell + 2), 12 - 14 * along * along)
-                          : Offset(-d.sign * reach * near, -44 + 8 * near),
-                      child: Opacity(
-                        opacity: isFront ? 1 : .35 + .6 * near,
-                        child: GestureDetector(
-                          key: ValueKey('qari-cell-${order[i].id}'),
-                          behavior: HitTestBehavior.opaque,
-                          onTap: isFront ? null : () => _bringToFront(i),
-                          child: isFront
-                              ? Transform(
-                                  alignment: Alignment.center,
-                                  transform: Matrix4.identity()
-                                    ..setEntry(3, 2, .0012)
-                                    ..rotateY(-along * .5)
-                                    ..scaleByDouble(
-                                      1 - .14 * along * along,
-                                      1 - .14 * along * along,
-                                      1,
-                                      1,
-                                    ),
-                                  child: _qari(order[i], front: true),
-                                )
-                              : Transform(
-                                  alignment: Alignment.center,
-                                  // In perspective, turned as the ring turns.
-                                  transform: Matrix4.identity()
-                                    ..setEntry(3, 2, .004)
-                                    ..rotateY(-d.sign * .6 * near)
-                                    ..rotateX(-.25 * (1 - near)),
-                                  child: _name(order[i], near),
-                                ),
+          // Turning, its boxes and switches take no tap: only one meant,
+          // the ring at rest, chooses a riwaya.
+          return AbsorbPointer(
+            absorbing: _dragging || _turn.isAnimating,
+            child: ClipRect(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // The ring they stand on.
+                  const Positioned.fill(child: CustomPaint(painter: _Stage())),
+                  for (final (:i, :d) in places)
+                    () {
+                      final isFront = d.abs() <= _row / 2;
+                      // 1 next to the front row, 0 at the very back.
+                      final near = isFront || _row >= n
+                          ? 1.0
+                          : (1 - (d.abs() - _row / 2) / (n / 2 - _row / 2))
+                                .clamp(0.0, 1.0);
+                      // Along the front row, from its middle to its ends: they
+                      // curve back, as a part of the ring, and still answer.
+                      final along = _row < 2 ? 0.0 : d / (_row / 2);
+                      return Transform.translate(
+                        // The next qari at the left, as the text runs.
+                        offset: isFront
+                            ? Offset(-d * (_cell + 2), 12 - 14 * along * along)
+                            : Offset(-d.sign * reach * near, -44 + 8 * near),
+                        child: Opacity(
+                          opacity: isFront ? 1 : .35 + .6 * near,
+                          child: GestureDetector(
+                            key: ValueKey('qari-cell-${order[i].id}'),
+                            behavior: HitTestBehavior.opaque,
+                            onTap: isFront ? null : () => _bringToFront(i),
+                            child: isFront
+                                ? Transform(
+                                    alignment: Alignment.center,
+                                    transform: Matrix4.identity()
+                                      ..setEntry(3, 2, .0012)
+                                      ..rotateY(-along * .5)
+                                      ..scaleByDouble(
+                                        1 - .14 * along * along,
+                                        1 - .14 * along * along,
+                                        1,
+                                        1,
+                                      ),
+                                    child: _qari(order[i], front: true),
+                                  )
+                                : Transform(
+                                    alignment: Alignment.center,
+                                    // In perspective, turned as the ring turns.
+                                    transform: Matrix4.identity()
+                                      ..setEntry(3, 2, .004)
+                                      ..rotateY(-d.sign * .6 * near)
+                                      ..rotateX(-.25 * (1 - near)),
+                                    child: _name(order[i], near),
+                                  ),
+                          ),
                         ),
-                      ),
-                    );
-                  }(),
-              ],
+                      );
+                    }(),
+                ],
+              ),
             ),
           );
         },
@@ -614,33 +635,25 @@ class _RiwayatPanelState extends State<RiwayatPanel>
     button: true,
     expanded: _open,
     label: _open ? 'إخفاء الرواة' : 'إظهار الرواة',
+    // A button, no arrow: tapped, the ring down; again, up (the user,
+    // 2026-11-13). Gold while it is down, light while up.
     child: Material(
-      color: MushafColors.goldLight,
+      color: _open ? MushafColors.gold : MushafColors.goldLight,
       elevation: 3,
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
         key: const ValueKey('riwayat-panel-toggle'),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
+        borderRadius: BorderRadius.circular(10),
         onTap: _toggle,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 1, 10, 3),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'الرواة',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: MushafColors.green,
-                ),
-              ),
-              const SizedBox(width: 5),
-              CustomPaint(
-                size: const Size(14, 9),
-                painter: _Chevron(MushafColors.green, pointsUp: _open),
-              ),
-            ],
+          padding: const EdgeInsets.fromLTRB(12, 2, 12, 3),
+          child: Text(
+            'الرواة',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: MushafColors.green,
+            ),
           ),
         ),
       ),
@@ -736,35 +749,4 @@ class _Stage extends CustomPainter {
 
   @override
   bool shouldRepaint(_Stage old) => false;
-}
-
-/// An arrow head, drawn: no font to be missing.
-class _Chevron extends CustomPainter {
-  const _Chevron(this.color, {required this.pointsUp});
-
-  final Color color;
-  final bool pointsUp;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final (near, far) = pointsUp
-        ? (size.height * .85, size.height * .15)
-        : (size.height * .15, size.height * .85);
-    canvas.drawPath(
-      Path()
-        ..moveTo(size.width * .1, near)
-        ..lineTo(size.width / 2, far)
-        ..lineTo(size.width * .9, near),
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.4
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_Chevron old) =>
-      color != old.color || pointsUp != old.pointsUp;
 }

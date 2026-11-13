@@ -175,6 +175,44 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets(
+    'two quick taps in the middle of an ayah: full screen, no sheet',
+    (t) async {
+      await show(t, const Size(412, 900), reader: true);
+      bool full() => t
+          .widgetList<MushafPage>(find.byType(MushafPage))
+          .every((p) => !p.showHamesh);
+      bool sheet() => find.byType(BottomSheet).evaluate().isNotEmpty;
+      // A word in the middle of the text.
+      final at = t.getCenter(find.byType(MushafLines).last);
+      Future<void> tap(Duration time) async {
+        final g = await t.createGesture();
+        await g.down(at, timeStamp: time);
+        await g.up(timeStamp: time + const Duration(milliseconds: 50));
+      }
+
+      await tap(const Duration(seconds: 10));
+      await t.pump(const Duration(milliseconds: 100));
+      await tap(const Duration(seconds: 10, milliseconds: 150));
+      await t.pump(const Duration(milliseconds: 500));
+      await t.pumpAndSettle();
+      // The neighbours drawn again a moment after the page in sight.
+      await t.pump(const Duration(seconds: 1));
+      await t.pumpAndSettle();
+      expect(full(), isTrue);
+      // Neither the witnesses nor the ayah's sheet opened.
+      expect(sheet(), isFalse);
+      // Once: a moment later, the word opens.
+      await tap(const Duration(seconds: 20));
+      await t.pump(const Duration(milliseconds: 100));
+      expect(sheet(), isFalse);
+      await t.pump(const Duration(milliseconds: 300));
+      await t.pump(const Duration(milliseconds: 500));
+      expect(sheet(), isTrue);
+      expect(t.takeException(), isNull);
+    },
+  );
+
   testWidgets('«الرواة» in the top bar lets the panel down and up', (t) async {
     final settings = ReaderSettings.memory(selected: {'warsh'})
       ..page = 3
@@ -383,16 +421,18 @@ void main() {
     expect(pageWords.map((w) => w.style.fontSize).toSet(), hasLength(1));
     expect(pageWords.map((w) => w.style.fontFamily).toSet(), {'Hafs'});
     expect(landscape, greaterThan(portrait * 1.15));
-    expect(
-      t.getSize(find.byKey(const ValueKey('mushaf-print'))).height,
-      greaterThan(432 * 1.6),
-    );
+    // The lines taller than the screen, scrolled within the frame.
+    expect(t.getSize(find.byType(MushafLines)).height, greaterThan(432 * 1.3));
     final print = t.widget<MushafLines>(find.byType(MushafLines));
     expect(print.lines, mushafs.of(MushafEdition.madani).lines(3));
     expect(controller(t).position.maxScrollExtent, greaterThan(200));
+    final frame = find.byKey(const ValueKey('mushaf-ornament-3'));
+    final before = t.getRect(frame);
     await t.drag(central(), const Offset(0, -230));
     await t.pumpAndSettle();
     expect(controller(t).offset, greaterThan(100));
+    // The frame stays, its bands always in sight (the user, 2026-11-13).
+    expect(t.getRect(frame), before);
     expect(t.takeException(), isNull);
   });
 
@@ -417,7 +457,7 @@ void main() {
     );
     expect(words.any((w) => w.text.toPlainText().contains('السطر')), isTrue);
     final target = t.getTopLeft(find.byKey(const ValueKey('word:2:10:0'))).dy;
-    controller(t).jumpTo(target - print.top);
+    controller(t).jumpTo(target - t.getRect(central()).top);
     await t.pumpAndSettle();
     expect(note, findsNothing);
     expect(find.byKey(const ValueKey('landscape-note:2:10:0')), findsOneWidget);

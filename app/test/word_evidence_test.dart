@@ -7,6 +7,7 @@ import 'package:qiraat_mushaf/data/manzumat.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
+import 'package:qiraat_mushaf/models/qiraat_catalog.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
 import 'package:qiraat_mushaf/ui/poem_verse.dart';
 import 'package:qiraat_mushaf/ui/reader_screen.dart';
@@ -328,4 +329,71 @@ void main() {
     expect(keys, ['frame-riwaya-warsh', 'frame-riwaya-ibn_wardan']);
     expect(t.takeException(), isNull);
   });
+
+  testWidgets(
+    'all the riwayat on the upper and lower bands of the frame, in order',
+    (t) async {
+      // The user, 2026-11-13: the upper band first, from the right, then the
+      // lower one, as many as it holds and no more; the rest on the upper
+      // band, scrolled, with an arrow towards them.
+      final all = [
+        for (final q in qiraat)
+          for (final r in q.riwayat)
+            if (r.id != hafsId) r.id,
+      ];
+      await showReader(t, selected: all.toSet());
+      List<String> inBar(String bar) => [
+        for (final e
+            in find
+                .descendant(
+                  of: find.byKey(ValueKey(bar)).hitTestable(),
+                  matching: find.byWidgetPredicate(
+                    (w) =>
+                        w.key is ValueKey<String> &&
+                        (w.key as ValueKey<String>).value.startsWith(
+                          'frame-riwaya-',
+                        ),
+                  ),
+                )
+                .evaluate())
+          (e.widget.key as ValueKey<String>).value.substring(13),
+      ];
+      final upper = inBar('frame-riwayat');
+      final lower = inBar('frame-riwayat-lower');
+      // None lost, in the order of the Shatibiyya from the upper band on.
+      expect([...upper, ...lower], all);
+      expect(lower, isNotEmpty);
+      // The lower band is never scrolled: all of it in sight.
+      final lowerBar = t.getRect(
+        find.byKey(const ValueKey('frame-riwayat-lower')).hitTestable(),
+      );
+      for (final id in lower) {
+        final r = t.getRect(
+          find.byKey(ValueKey('frame-riwaya-$id')).hitTestable(),
+        );
+        expect(r.left, greaterThanOrEqualTo(lowerBar.left - .5));
+        expect(r.right, lessThanOrEqualTo(lowerBar.right + .5));
+      }
+      // The upper one goes on to its left, an arrow there; none at its
+      // right, where it begins.
+      expect(
+        find.byKey(const ValueKey('riwayat-more-left')).hitTestable(),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('riwayat-more-right')).hitTestable(),
+        findsNothing,
+      );
+      await t.tap(
+        find.byKey(const ValueKey('riwayat-more-left')).hitTestable(),
+      );
+      await t.pumpAndSettle();
+      // Moved on: an arrow back to the right.
+      expect(
+        find.byKey(const ValueKey('riwayat-more-right')).hitTestable(),
+        findsOneWidget,
+      );
+      expect(t.takeException(), isNull);
+    },
+  );
 }
