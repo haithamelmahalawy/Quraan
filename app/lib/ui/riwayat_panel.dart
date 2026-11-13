@@ -635,8 +635,8 @@ class _RiwayatPanelState extends State<RiwayatPanel>
     button: true,
     expanded: _open,
     label: _open ? 'إخفاء الرواة' : 'إظهار الرواة',
-    // A button, no arrow: tapped, the ring down; again, up (the user,
-    // 2026-11-13). Gold while it is down, light while up.
+    // Tapped, the ring down; again, up. Gold while it is down, light while
+    // up; in full screen its name a little larger (the user, 2026-11-13).
     child: Material(
       color: _open ? MushafColors.gold : MushafColors.goldLight,
       elevation: 3,
@@ -646,15 +646,8 @@ class _RiwayatPanelState extends State<RiwayatPanel>
         borderRadius: BorderRadius.circular(10),
         onTap: _toggle,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 2, 12, 3),
-          child: Text(
-            'الرواة',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: MushafColors.green,
-            ),
-          ),
+          padding: const EdgeInsets.fromLTRB(9, 2, 9, 3),
+          child: riwayatLabel(open: _open, size: 13),
         ),
       ),
     ),
@@ -668,49 +661,68 @@ class _RiwayatPanelState extends State<RiwayatPanel>
       children: [
         if (_open) _panel(),
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, box) {
-              if (widget.open != null && !widget.tab) return widget.child;
-              Widget placed(double? at) => Stack(
-                children: [
-                  Positioned.fill(child: widget.child),
-                  // Over the middle of the page's header, between its surah and
-                  // its juz.
-                  Positioned(
-                    left: at ?? box.maxWidth / 2,
-                    top: 0,
-                    child: FractionalTranslation(
-                      translation: const Offset(-.5, 0),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _arrow(),
-                          if (widget.beside case final beside?) ...[
-                            const SizedBox(width: 4),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 1),
-                              child: beside,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+          child: Stack(
+            children: [
+              Positioned.fill(child: _page()),
+              // Open, a touch anywhere outside it, on the mushaf or its
+              // hamesh, folds it away, and does nothing else (the user,
+              // 2026-11-13).
+              if (_open)
+                Positioned.fill(
+                  child: GestureDetector(
+                    key: const ValueKey('riwayat-panel-outside'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _toggle,
                   ),
-                ],
-              );
-              final arrowAt = widget.arrowAt;
-              return arrowAt == null
-                  ? placed(null)
-                  : ValueListenableBuilder(
-                      valueListenable: arrowAt,
-                      builder: (context, at, _) => placed(at),
-                    );
-            },
+                ),
+            ],
           ),
         ),
       ],
     ),
+  );
+
+  /// The page below the panel, the button of the riwayat over its header
+  /// when it has no bar to stand in.
+  Widget _page() => LayoutBuilder(
+    builder: (context, box) {
+      if (widget.open != null && !widget.tab) return widget.child;
+      Widget placed(double? at) => Stack(
+        children: [
+          Positioned.fill(child: widget.child),
+          // Over the middle of the page's header, between its surah and
+          // its juz.
+          Positioned(
+            left: at ?? box.maxWidth / 2,
+            top: 0,
+            child: FractionalTranslation(
+              translation: const Offset(-.5, 0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _arrow(),
+                  if (widget.beside case final beside?) ...[
+                    const SizedBox(width: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: beside,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+      final arrowAt = widget.arrowAt;
+      return arrowAt == null
+          ? placed(null)
+          : ValueListenableBuilder(
+              valueListenable: arrowAt,
+              builder: (context, at, _) => placed(at),
+            );
+    },
   );
 }
 
@@ -750,3 +762,30 @@ class _Stage extends CustomPainter {
   @override
   bool shouldRepaint(_Stage old) => false;
 }
+
+/// The face of the button of the riwayat: an icon of the readers, their
+/// name, and an arrow down while they are hidden, up while they show (the
+/// user, 2026-11-13).
+Widget riwayatLabel({required bool open, required double size}) => Row(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    Icon(Icons.groups_rounded, size: size + 3, color: MushafColors.green),
+    SizedBox(width: size * .3),
+    Text(
+      'الرواة',
+      style: TextStyle(
+        fontSize: size,
+        fontWeight: FontWeight.bold,
+        color: MushafColors.green,
+      ),
+    ),
+    Icon(
+      open
+          ? Icons.keyboard_arrow_up_rounded
+          : Icons.keyboard_arrow_down_rounded,
+      key: ValueKey(open ? 'riwayat-arrow-up' : 'riwayat-arrow-down'),
+      size: size + 3,
+      color: MushafColors.green,
+    ),
+  ],
+);

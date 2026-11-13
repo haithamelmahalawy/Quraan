@@ -393,6 +393,33 @@ void main() {
         find.byKey(const ValueKey('riwayat-more-right')).hitTestable(),
         findsOneWidget,
       );
+      // Dragged back along the row, on a riwaya: the row slides back to its
+      // start, and the page is not turned (the user, 2026-11-13).
+      final settings = t
+          .widget<ReaderScreen>(find.byType(ReaderScreen))
+          .settings;
+      Finder shown() => find
+          .byKey(
+            ValueKey(
+              'frame-riwaya-${upper.firstWhere((id) => find.byKey(ValueKey('frame-riwaya-$id')).hitTestable().evaluate().isNotEmpty)}',
+            ),
+          )
+          .hitTestable();
+      await t.drag(shown(), const Offset(-400, 0));
+      await t.pumpAndSettle();
+      expect(settings.page, 3);
+      expect(
+        find.byKey(const ValueKey('riwayat-more-right')).hitTestable(),
+        findsNothing,
+      );
+      // Dragged on: it slides to show those beyond, the page still the same.
+      await t.drag(shown(), const Offset(150, 0));
+      await t.pumpAndSettle();
+      expect(settings.page, 3);
+      expect(
+        find.byKey(const ValueKey('riwayat-more-right')).hitTestable(),
+        findsOneWidget,
+      );
       expect(t.takeException(), isNull);
     },
   );

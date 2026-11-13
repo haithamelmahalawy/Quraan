@@ -383,8 +383,9 @@ const lamHamzaRise = -.10;
 const lamHamzaClip = .70;
 
 /// How far under the line the imala sign stands, in font sizes; under a jim.
-const imalaDrop = .30;
-const imalaUnderJim = .36;
+const imalaDrop = .20;
+const imalaUnderJim = .32;
+
 
 /// How low the dagger alif beside a ta stands, and its madd, in font sizes.
 const taDaggerDrop = .30;
@@ -666,7 +667,7 @@ class _QuranMarkPainter extends CustomPainter {
                           ? .22
                           // Close under the ba's dot (صَبّ۪ارٖ).
                           : source.startsWith('ب', at)
-                          ? .28
+                          ? .24
                           // Clear of the kasra of the letter before (فَنِع۪مَّا).
                           : source.startsWith('ع', at) &&
                                 RegExp('ِ[ً-ْ]*\$')
@@ -677,8 +678,9 @@ class _QuranMarkPainter extends CustomPainter {
                           : source.startsWith('ج', at)
                           ? imalaUnderJim
                           : source.startsWith('ي', at)
-                          ? .40
-                          // A little up from the line (the user, 2026-11-12).
+                          ? .34
+                          // Close under a letter with no dots below, a little
+                          // under one with them (the user, 2026-11-13).
                           : imalaDrop)
                     : kasra
                     // The hamza hangs lower under the waw's tail.

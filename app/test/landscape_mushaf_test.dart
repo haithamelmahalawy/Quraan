@@ -93,6 +93,12 @@ void main() {
         ..compareHafs = true
         ..displayed = 'warsh';
       await show(t, const Size(432, 800), settings: settings, reader: true);
+      // The top bar folded at first, the icon of a menu on its handle (the
+      // user, 2026-11-13): opened.
+      expect(find.byKey(const ValueKey('top-bar-menu-icon')), findsOneWidget);
+      await t.tap(find.byKey(const ValueKey('top-bar-toggle')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const ValueKey('top-bar-menu-icon')), findsNothing);
       final lamp = find.byKey(const ValueKey('glow-lamp'));
       final glowing = find.byWidgetPredicate(
         (w) => w.runtimeType.toString() == '_Alerting',
@@ -218,10 +224,31 @@ void main() {
       ..page = 3
       ..qcfFont = false;
     await show(t, const Size(432, 800), settings: settings, reader: true);
+    // The top bar folded at first, the icon of a menu on its handle (the
+    // user, 2026-11-13): opened.
+    expect(find.byKey(const ValueKey('top-bar-menu-icon')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('top-bar-toggle')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('top-bar-menu-icon')), findsNothing);
     final button = find.byKey(const ValueKey('riwayat-panel-toggle'));
     final panel = find.byKey(const ValueKey('riwayat-panel'));
     expect(button, findsOneWidget);
     expect(panel, findsNothing);
+    // Its icon, its name and an arrow down while the riwayat are hidden,
+    // up while they show (the user, 2026-11-13).
+    final down = find.descendant(
+      of: button,
+      matching: find.byKey(const ValueKey('riwayat-arrow-down')),
+    );
+    final up = find.descendant(
+      of: button,
+      matching: find.byKey(const ValueKey('riwayat-arrow-up')),
+    );
+    expect(down, findsOneWidget);
+    expect(
+      find.descendant(of: button, matching: find.byIcon(Icons.groups_rounded)),
+      findsOneWidget,
+    );
     // After «المدينة».
     expect(
       t.getRect(button).right,
@@ -231,6 +258,18 @@ void main() {
     await t.pumpAndSettle();
     expect(panel, findsOneWidget);
     expect(t.getRect(panel).top, greaterThan(t.getRect(button).bottom));
+    expect(up, findsOneWidget);
+    expect(down, findsNothing);
+    // A touch outside it, on the mushaf, folds it away, and opens nothing
+    // (the user, 2026-11-13); let down again.
+    await t.tapAt(t.getCenter(find.byType(MushafPage).last));
+    await t.pump(const Duration(milliseconds: 400));
+    await t.pumpAndSettle();
+    expect(panel, findsNothing);
+    expect(find.byType(BottomSheet), findsNothing);
+    await t.tap(button);
+    await t.pumpAndSettle();
+    expect(panel, findsOneWidget);
     await t.tap(button);
     await t.pumpAndSettle();
     expect(panel, findsNothing);
@@ -265,6 +304,12 @@ void main() {
       ..compareHafs = true
       ..displayed = 'warsh';
     await show(t, const Size(432, 800), settings: settings, reader: true);
+    // The top bar folded at first, the icon of a menu on its handle (the
+    // user, 2026-11-13): opened.
+    expect(find.byKey(const ValueKey('top-bar-menu-icon')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('top-bar-toggle')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('top-bar-menu-icon')), findsNothing);
     // Lit, pumped by the clock.
     settings.diffAlert = DiffAlert.glow;
     await t.pump();
@@ -456,8 +501,20 @@ void main() {
       find.descendant(of: note, matching: find.byType(RichText)),
     );
     expect(words.any((w) => w.text.toPlainText().contains('السطر')), isTrue);
+    // Its line cut by the frame, half of it above: no note for it (the
+    // user, 2026-11-13); whole again, its note back.
+    final word = t.getRect(find.byKey(const ValueKey('word:2:6:0')));
+    final window = t.getRect(central());
+    final at = controller(t).offset;
+    controller(t).jumpTo(at + word.center.dy - window.top);
+    await t.pumpAndSettle();
+    expect(note, findsNothing);
+    controller(t).jumpTo(at);
+    await t.pumpAndSettle();
+    expect(note, findsOneWidget);
     final target = t.getTopLeft(find.byKey(const ValueKey('word:2:10:0'))).dy;
-    controller(t).jumpTo(target - t.getRect(central()).top);
+    // Its line wholly in sight, a little below the frame.
+    controller(t).jumpTo(target - t.getRect(central()).top - 20);
     await t.pumpAndSettle();
     expect(note, findsNothing);
     expect(find.byKey(const ValueKey('landscape-note:2:10:0')), findsOneWidget);

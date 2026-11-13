@@ -19,6 +19,12 @@ const firstSakinDamm = {
   'ibn_dhakwan',
   'ibn_wardan',
   'ibn_jammaz',
+  // al-Kisa'i and Khalaf al-'Ashir, as Nafi', Ibn Kathir, Hisham and Abu
+  // Ja'far, in all the places (the user, 2026-11-14).
+  'abul_harith',
+  'duri_kisai',
+  'ishaq',
+  'idris',
 };
 
 /// The words of Hafs's text where the two quiescents meet: (surah, ayah,
@@ -81,7 +87,7 @@ void applyFirstSakin(String id, Map quran, List rows) {
     for (final (s, a, w, t) in firstSakinSites(quran)) '$s:$a:$w': t,
   };
   final damm = RegExp(
-    r'(^|و)ب?(ضم (النون|اللام|الدال|التاء|الواو)|ضم نون التنوين[^،؛]*|'
+    r'(^|و)ب?(ضم (النون|اللام|الدال|التاء|الواو)(?: وصلًا)?|ضم (?:نون )?التنوين[^،؛]*|'
     r'الضم في الوصل|بوجهين: بضم نون التنوين.*)',
   );
   bool tells(List v) =>
@@ -157,8 +163,9 @@ void applyFirstSakin(String id, Map quran, List rows) {
     final how = twoFaces
         ? 'بوجهين: ضم نون التنوين وصلاً لالتقاء الساكنين، وهو المقدّم؛ أو كسرها كحفص'
         : isTanween
-        ? 'بضم نون التنوين وصلاً لالتقاء الساكنين'
-        : 'بضم $letter لالتقاء الساكنين';
+        // One wording for all who read it so (the user, 2026-11-14).
+        ? 'بضم التنوين وصلًا لالتقاء الساكنين'
+        : 'بضم $letter وصلًا لالتقاء الساكنين';
     added.add([
       s,
       a,

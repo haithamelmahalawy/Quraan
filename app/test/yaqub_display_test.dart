@@ -417,27 +417,52 @@ void main() {
         }
         final positions = <int>[];
         var usul = false, farsh = false;
-        for (final rail in [isRight ? right : left, bottom]) {
-          final notes = find.descendant(
-            of: rail,
-            matching: find.byWidgetPredicate(
-              (w) =>
-                  w is KeyedSubtree &&
-                  w.key is ValueKey<String> &&
-                  ((w.key as ValueKey<String>).value.startsWith(
-                        'sequential-usul:',
-                      ) ||
-                      (w.key as ValueKey<String>).value.startsWith(
-                        'sequential-farsh:',
-                      )),
-            ),
-          );
-          for (final widget in t.widgetList<KeyedSubtree>(notes)) {
-            final key = (widget.key as ValueKey<String>).value;
-            usul |= key.startsWith('sequential-usul:');
-            farsh |= key.startsWith('sequential-farsh:');
-            positions.add(int.parse(key.split(':')[1]));
+        void collect() {
+          for (final rail in [isRight ? right : left, bottom]) {
+            final notes = find.descendant(
+              of: rail,
+              matching: find.byWidgetPredicate(
+                (w) =>
+                    w is KeyedSubtree &&
+                    w.key is ValueKey<String> &&
+                    ((w.key as ValueKey<String>).value.startsWith(
+                          'sequential-usul:',
+                        ) ||
+                        (w.key as ValueKey<String>).value.startsWith(
+                          'sequential-farsh:',
+                        )),
+              ),
+            );
+            for (final widget in t.widgetList<KeyedSubtree>(notes)) {
+              final key = (widget.key as ValueKey<String>).value;
+              usul |= key.startsWith('sequential-usul:');
+              farsh |= key.startsWith('sequential-farsh:');
+              positions.add(int.parse(key.split(':')[1]));
+            }
           }
+        }
+
+        collect();
+        // Turned, the notes of the lines wholly in sight alone: gathered
+        // down the page (the user, 2026-11-13).
+        if (landscape) {
+          final scroll = t
+              .widget<SingleChildScrollView>(
+                find.byKey(const ValueKey('landscape-page-scroll')),
+              )
+              .controller!;
+          for (
+            var at = 0.0;
+            at <= scroll.position.maxScrollExtent;
+            at += scroll.position.viewportDimension / 3
+          ) {
+            scroll.jumpTo(at);
+            await t.pump();
+            await t.pump();
+            collect();
+          }
+          scroll.jumpTo(0);
+          await t.pump();
         }
         expect(usul, isTrue);
         if (number == 4) expect(farsh, isTrue);

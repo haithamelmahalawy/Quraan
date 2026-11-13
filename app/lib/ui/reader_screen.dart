@@ -61,16 +61,10 @@ class _RiwayatButton extends StatelessWidget {
           padding: small
               ? const EdgeInsets.symmetric(horizontal: 7, vertical: 2)
               : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          // A button, no arrow: tapped, the panel down; again, up (the
-          // user, 2026-11-13). Gold while it is down.
-          child: Text(
-            'الرواة',
-            style: TextStyle(
-              color: MushafColors.green,
-              fontWeight: FontWeight.bold,
-              fontSize: small ? 11 : null,
-            ),
-          ),
+          // Tapped, the panel down; again, up. Gold while it is down; its
+          // icon, its name and an arrow down while the riwayat are hidden,
+          // up while they show (the user, 2026-11-13).
+          child: riwayatLabel(open: on, size: small ? 11 : 14),
         ),
       ),
     ),
@@ -187,7 +181,9 @@ class _ReaderScreenState extends State<ReaderScreen>
   Timer? _settle;
 
   bool _landscape = false;
-  bool _topBarOpen = true;
+
+  /// Folded away at first, in every view (the user, 2026-11-13).
+  bool _topBarOpen = false;
   bool _bottomBarOpen = false;
   bool get _twoPages => widget.settings.twoPages && !_landscape;
 
@@ -198,8 +194,8 @@ class _ReaderScreenState extends State<ReaderScreen>
         MediaQuery.orientationOf(context) == Orientation.landscape;
     if (landscape == _landscape) return;
     _landscape = landscape;
-    // Folded away in landscape, to give the page its height.
-    _topBarOpen = !landscape;
+    // Folded away at first, upright or turned (the user, 2026-11-13).
+    _topBarOpen = false;
     _bottomBarOpen = false;
     // Landscape reads a single enlarged page in sections. Keep the saved
     // spread preference for portrait and retain the current page number.
@@ -640,7 +636,8 @@ class _ReaderScreenState extends State<ReaderScreen>
       // screen, over the page's header, the lamp and the rest beside it.
       open: _riwayatOpen,
       tab: _fullScreen,
-      beside: _tools(small: true),
+      // Full screen: a little apart (the user, 2026-11-13).
+      beside: _tools(small: true, gap: 8),
       // «الجمع للقراءات العشر»: a screen of its own, at the page read.
       onJam: () => Navigator.of(context)
           .push(
@@ -826,11 +823,6 @@ class _ReaderScreenState extends State<ReaderScreen>
                         onTap: () => widget.settings.blinkToOpen =
                             !widget.settings.blinkToOpen,
                       ),
-                      RaisedIcon(
-                        icon: Icons.fullscreen_rounded,
-                        tooltip: 'ملء الشاشة',
-                        onTap: () => _setFullScreen(true),
-                      ),
                       if (_loading)
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 8),
@@ -911,14 +903,15 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// Beside «الرواة»: the lamp, the mutashabihat's button and the small icon
   /// of the side of the mushaf the page lies on; [small] on the page's
   /// header, clear of the frame.
-  Widget _tools({required bool small, bool side = true}) => Row(
+  Widget _tools({required bool small, bool side = true, double? gap}) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
       Padding(
-        padding: EdgeInsets.symmetric(horizontal: small ? 3 : 2),
+        padding: EdgeInsets.symmetric(horizontal: gap ?? (small ? 3 : 2)),
         child: _GlowLamp(
           settings: widget.settings,
           small: small,
+          gap: gap ?? 4,
           onTap: _toggleGlow,
           onLongPress: () => GlowUsulScreen.open(
             context,
@@ -1022,7 +1015,17 @@ class _ReaderScreenState extends State<ReaderScreen>
               width: 48,
               height: 24,
               child: Icon(
-                open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                // The top bar folded: the icon of a menu, to open it (the
+                // user, 2026-11-13); open, an arrow up to fold it. The bar
+                // below the other way about.
+                top
+                    ? (open ? Icons.keyboard_arrow_up : Icons.menu_rounded)
+                    : (open
+                          ? Icons.keyboard_arrow_down
+                          : Icons.keyboard_arrow_up),
+                key: ValueKey(
+                  top && !open ? 'top-bar-menu-icon' : 'bar-arrow-icon',
+                ),
                 size: 22,
                 color: MushafColors.green,
               ),
@@ -1242,10 +1245,14 @@ class _GlowLamp extends StatefulWidget {
     this.small = false,
     required this.onTap,
     required this.onLongPress,
+    this.gap = 4,
   });
 
   /// On the page's header: smaller, clear of the frame.
   final bool small;
+
+  /// Between the lamp and the mutashabihat's button.
+  final double gap;
 
   final ReaderSettings settings;
   final VoidCallback onTap;
@@ -1259,8 +1266,6 @@ class _GlowLamp extends StatefulWidget {
 
 class _GlowLampState extends State<_GlowLamp>
     with SingleTickerProviderStateMixin {
-  static const _gap = 4.0;
-
   double get _size => widget.small ? 18 : 30;
 
   /// The rays: drawn still while the lamp is lit, not flickering: their
@@ -1293,7 +1298,7 @@ class _GlowLampState extends State<_GlowLamp>
         mainAxisSize: MainAxisSize.min,
         children: [
           _lamp(lit),
-          const SizedBox(width: _gap),
+          SizedBox(width: widget.gap),
           _mutashabihat(),
         ],
       );

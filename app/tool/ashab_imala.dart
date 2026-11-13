@@ -167,6 +167,48 @@ int _imala(
       }
     }
   }
+  // «كَفَىٰ» where the book's section leaves it out (النساء ٤٥ مرتين، ٥٠،
+  // الإسراء ١٤): leaned as in its other places (the user, 2026-11-14).
+  for (final word in index.values) {
+    if (!RegExp(r'^[وف]?كفى$').hasMatch(_bare(word.t))) continue;
+    // Not where it is leaned at the stop alone (وَكَفَى ٱللَّهُ، الأحزاب ٢٥).
+    final key = _key(word.s, word.a, word.w);
+    if (done.contains('$key:true') || !done.add('$key:false')) continue;
+    put([
+      word.s,
+      word.a,
+      word.w,
+      1,
+      '',
+      'u',
+      'بإمالة الألف',
+      '',
+      {'source': ashabSource},
+    ]);
+    n++;
+  }
+  // al-Duri's «ٱلۡكَٰفِرِينَ» in all its places, the second of an ayah too,
+  // which the book's section names once (وَلَن يَجۡعَلَ ٱللَّهُ لِلۡكَٰفِرِينَ،
+  // النساء ١٤١) (the user, 2026-11-14).
+  if (id == 'duri_kisai') {
+    for (final word in index.values) {
+      if (!RegExp(r'^[وفبل]*(ال)?كفرين$').hasMatch(_bare(word.t))) continue;
+      final key = _key(word.s, word.a, word.w);
+      if (done.contains('$key:true') || !done.add('$key:false')) continue;
+      put([
+        word.s,
+        word.a,
+        word.w,
+        1,
+        '',
+        'u',
+        'بإمالة الألف',
+        '',
+        {'source': ashabSource},
+      ]);
+      n++;
+    }
+  }
   // هاء التأنيث وقفًا للكسائي، بالمذهبين معًا (المستخدم، 2026-11-12):
   // الإجمالي يميلها بعد كل حرف إلا الألف، والتفصيلي بعد «فجثت زينب لذود
   // شمس»، وبعد «أكهر» إن كان قبله كسر أو ياء ساكنة أو ساكن قبله كسر، ولا

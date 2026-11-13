@@ -1148,6 +1148,70 @@ class Manzumat {
     if (v.rule == 'hamza_mutatarrif') {
       return poem == Poem.durrah ? {33, 34} : {965, 966};
     }
+    // Khalaf al-'Ashir's, the Durrah's bayt of the word (the user,
+    // 2026-11-14): «يُظۡلَمُونَ» (النساء ٧٧) «وَلاَ يُظْلَمُوا أُدْ يَا»; «نِعِمَّا»
+    // (البقرة ٢٧١، النساء ٥٨) «وَاكْسِرْ فَصُرْهُنَّ طِبْ أَلَا / نِعِمَّا حُزَ اسْكِنْ أُدْ».
+    // Hamza's and al-Kisa'i's «فَتَثَبَّتُواْ» (النساء ٩٤ مرتين، الحجرات ٦):
+    // «... شَاعَ وَارْتَاحَ أَشْمُلَا / وَفِيهَا وَتَحْتَ الْفَتْحِ قُلْ فَتَثَبَّتُوا
+    // مِنَ الثَّبْتِ وَالْغَيْرُ الْبَيَانَ تَبَدَّلَا» (the user, 2026-11-14).
+    if (poem == Poem.shatibiyya &&
+        const {
+          'khalaf_hamzah',
+          'khallad',
+          'abul_harith',
+          'duri_kisai',
+        }.contains(v.riwayaId) &&
+        const {
+          '4:94:8',
+          '4:94:32',
+          '49:6:7',
+        }.contains('${v.surah}:${v.ayah}:${v.word}')) {
+      return {603, 604};
+    }
+    // The user's bayts (2026-11-14), al-Ashab's: the ha and mim of the plural
+    // before a quiescent, damma or kasra (وَقَتۡلِهُمُ ٱلۡأَنۢبِيَآءَ، وَأَخۡذِهُمُ
+    // ٱلرِّبَوٰاْ): «وَمِنْ دُونِ وَصْلٍ ضَمُّهَا قَبْلَ سَاكِنٍ ... / مَعَ الْكَسْرِ
+    // قَبْلَ الْهَا أَوِ الْيَاءِ سَاكِنًا ...»; «ٱلنَّبِيّ» and its bab, «وَجَمْعًا
+    // وَفَرْدًا فِي النَّبِيءِ ...», the Durrah's «... أَجِدْ بَابَ النُّبُوَّةِ
+    // وَالنَّبِيْ يِّ أَبْدِلْ لَهُ»; Hamza's «سَيُؤۡتِيهِمۡ» (النساء ١٦٢), «وَحَمْزَةٌ
+    // سَيُؤتِيهِمُ», the Durrah's «... عَنِ الْيَاءِ إِنْ تَسْكُنْ سِوَى الْفَرْدِ».
+    const shatibiyyaAshab = {
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+    };
+    final place = '${v.surah}:${v.ayah}:${v.word}';
+    final nabi = RegExp('نبي|نبو')
+        .hasMatch(v.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), ''));
+    if (poem == Poem.shatibiyya && shatibiyyaAshab.contains(v.riwayaId)) {
+      if (v.rule == 'ha_damir' && RegExp(r'هُمُ$').hasMatch(v.text)) {
+        return {113, 114};
+      }
+      if (!v.isUsul && nabi) return {458};
+      if (place == '4:162:23') return {611};
+    }
+    if (poem == Poem.durrah && const {'ishaq', 'idris'}.contains(v.riwayaId)) {
+      if (!v.isUsul && nabi) return {35};
+      if (place == '4:162:23') return {11, 12};
+    }
+    // Their «نُؤۡتِيهِمۡ» (النساء ١٥٢): «وَيَا سَوْفَ نُؤْتِيهِمْ عَزِيزٌ» (the user,
+    // 2026-11-14).
+    if (poem == Poem.shatibiyya &&
+        const {
+          'khalaf_hamzah',
+          'khallad',
+          'abul_harith',
+          'duri_kisai',
+        }.contains(v.riwayaId) &&
+        '${v.surah}:${v.ayah}:${v.word}' == '4:152:11') {
+      return {611};
+    }
+    if (poem == Poem.durrah && const {'ishaq', 'idris'}.contains(v.riwayaId)) {
+      final at = '${v.surah}:${v.ayah}:${v.word}';
+      if (at == '4:77:46') return {96};
+      if (at == '2:271:3' || at == '4:58:17') return {82, 83};
+    }
     // «تَحۡسَبَنَّ، يَحۡسَبَنَّ» told by a bayt of their own (the ya or the ta):
     // the bayt of the sin with it, Qalun and Ibn Kathir's kasra «وَيَحْسَبُ
     // كَسْرُ السِّينِ مُسْتَقبِلاً سَمَا», Abu Ja'far's fatha «كَيَحْسَبُ أُدْ».

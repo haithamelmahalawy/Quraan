@@ -522,7 +522,7 @@ void main() {
       expect(sakinin(id), 40, reason: id);
       expect(
         variants.at([id], 17, 20, 11).single.description,
-        'بضم نون التنوين وصلاً لالتقاء الساكنين',
+        'بضم التنوين وصلًا لالتقاء الساكنين',
         reason: id,
       );
       expect(

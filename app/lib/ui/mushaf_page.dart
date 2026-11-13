@@ -838,12 +838,16 @@ class _MushafPageState extends State<MushafPage>
         listenable: scroll,
         builder: (context, _) {
           final offset = scroll.hasClients ? scroll.offset : 0.0;
+          // Only the lines wholly in sight: one cut by the frame has no note
+          // beside it (the user, 2026-11-13).
           final visible = <(Ayah, int)>[];
           var span = 0;
           for (final line in lines) {
             final top = span * lineHeight;
             final bottom = top + line.span * lineHeight;
-            if (line is TextLine && bottom > offset && top < offset + window) {
+            if (line is TextLine &&
+                top >= offset - .5 &&
+                bottom <= offset + window + .5) {
               visible.addAll(line.words);
             }
             span += line.span;
@@ -888,12 +892,15 @@ class _MushafPageState extends State<MushafPage>
         listenable: scroll,
         builder: (context, _) {
           final offset = scroll.hasClients ? scroll.offset : 0.0;
+          // Only the lines wholly in sight (the user, 2026-11-13).
           final visible = <(Ayah, int)>[];
           var span = 0;
           for (final l in lines) {
             final top = span * lineHeight;
             final bottom = top + l.span * lineHeight;
-            if (l is TextLine && bottom > offset && top < offset + window) {
+            if (l is TextLine &&
+                top >= offset - .5 &&
+                bottom <= offset + window + .5) {
               visible.addAll(l.words);
             }
             span += l.span;
@@ -2309,7 +2316,11 @@ class _MushafPageState extends State<MushafPage>
         ? widget.quran.ayah(ayah.surah, ayah.number - 1)
         : null;
     final into = before != null && RegExp('^[ٱا]').hasMatch(text)
-        ? _waslDammColor(before, w > 0 ? w - 1 : before.words.length - 1)
+        ? _waslDammColor(
+            before,
+            w > 0 ? w - 1 : before.words.length - 1,
+            anyTanween: true,
+          )
         : null;
     if (own == null && into == null) return null;
     return [
@@ -2325,15 +2336,22 @@ class _MushafPageState extends State<MushafPage>
     ];
   }
 
-  Color? _waslDammColor(Ayah ayah, int w) {
+  /// [anyTanween]: the word after's alif coloured after a tanween of any
+  /// vowel; the word's own last letter only after a kasra, its others told
+  /// by its rule (مَحۡظُورًا).
+  Color? _waslDammColor(Ayah ayah, int w, {bool anyTanween = false}) {
     // The word after, the next ayah's first at the ayah's end.
     final next = w + 1 < ayah.words.length
         ? ayah.words[w + 1]
         : ayah.number < widget.quran.surah(ayah.surah).ayahCount
         ? widget.quran.ayah(ayah.surah, ayah.number + 1).words.first
         : '';
-    if (!next.startsWith('ٱ') ||
-        !RegExp(r'[ٍِ][ۖ-ۭ]*$').hasMatch(ayah.words[w])) {
+    // A kasra; for the word after, a tanween of any vowel too, its alif
+    // after it (فَتِيلًا ۝ ٱنظُرۡ، مَحۡظُورًا ۝ ٱنظُرۡ) (the user, 2026-11-14).
+    final end = anyTanween
+        ? RegExp(r'(ِ|[ًٌٍٖٗٞ][اى]?)[ۖ-ۭ]*$')
+        : RegExp(r'[ٍِ][ۖ-ۭ]*$');
+    if (!next.startsWith('ٱ') || !end.hasMatch(ayah.words[w])) {
       return null;
     }
     final s = widget.settings;
@@ -2444,6 +2462,23 @@ class _MushafPageState extends State<MushafPage>
     final before = at(w - 1)
         .where((v) => v.rule == 'tasheel_pair_first')
         .toList();
+    // «التقاء الساكنين»: the word after the meeting with it, the next ayah's
+    // first at the ayah's end (فَتِيلًا ۝ ٱنظُرۡ) (the user, 2026-11-14).
+    final prev = w > 0
+        ? ayah
+        : ayah.number > 1
+        ? widget.quran.ayah(ayah.surah, ayah.number - 1)
+        : null;
+    if (prev != null && ayah.words[w].startsWith('ٱ')) {
+      final p = w > 0 ? w - 1 : prev.words.length - 1;
+      final sakin = _readingsAt(
+        widget.variants,
+        widget.settings,
+        prev,
+        p,
+      ).shown.where((v) => v.word == p && v.rule == 'first_sakin').toList();
+      if (sakin.isNotEmpty && _glows(sakin)) return true;
+    }
     return next.isNotEmpty && _glows(next) ||
         before.isNotEmpty && _glows(before);
   }
@@ -3591,6 +3626,27 @@ class _RiwayatBarState extends State<_RiwayatBar> {
 
   void _moved() => setState(() {});
 
+  /// A drag along the row slides it, the page under it not turned (the user,
+  /// 2026-11-13): told sooner than the page's turn, on a riwaya only.
+  void _drag(double dx) {
+    if (!_scroll.hasClients) return;
+    final p = _scroll.position;
+    // From the right: a finger moving right brings those on the left.
+    _scroll.jumpTo((p.pixels + dx).clamp(p.minScrollExtent, p.maxScrollExtent));
+  }
+
+  void _fling(DragEndDetails end) {
+    if (!_scroll.hasClients) return;
+    final p = _scroll.position;
+    final v = end.velocity.pixelsPerSecond.dx;
+    if (v.abs() < 50) return;
+    _scroll.animateTo(
+      (p.pixels + v * .3).clamp(p.minScrollExtent, p.maxScrollExtent),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
   /// Towards the right ([right]) or the left by most of the bar.
   void _page(bool right) {
     final p = _scroll.position;
@@ -3654,16 +3710,37 @@ class _RiwayatBarState extends State<_RiwayatBar> {
               child: SingleChildScrollView(
                 controller: _scroll,
                 scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final square in widget.squares)
-                      square(
-                        Axis.horizontal,
-                        _PageFrame.squareDepth,
-                        AxisDirection.down,
-                      ),
-                  ],
+                // Slid by its own drag below.
+                physics: const NeverScrollableScrollPhysics(),
+                child: RawGestureDetector(
+                  behavior: HitTestBehavior.deferToChild,
+                  gestures: {
+                    HorizontalDragGestureRecognizer:
+                        GestureRecognizerFactoryWithHandlers<
+                          HorizontalDragGestureRecognizer
+                        >(
+                          HorizontalDragGestureRecognizer.new,
+                          (r) => r
+                            // Before the page's turn (10), after a tap's
+                            // tremble.
+                            ..gestureSettings = const DeviceGestureSettings(
+                              touchSlop: 4,
+                            )
+                            ..onUpdate = ((d) => _drag(d.delta.dx))
+                            ..onEnd = _fling,
+                        ),
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final square in widget.squares)
+                        square(
+                          Axis.horizontal,
+                          _PageFrame.squareDepth,
+                          AxisDirection.down,
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

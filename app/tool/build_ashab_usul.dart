@@ -12,6 +12,7 @@ import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/waqf_hamza.dart';
 
 import 'apply_dagger_alif.dart';
+import 'apply_first_sakin.dart';
 import 'build_data.dart' as bd show describe, currentRiwaya;
 
 part 'ashab_farsh.dart';
@@ -316,7 +317,9 @@ Map<String, int> buildAshabUsul(
         w.w,
         1,
         w.t.replaceFirst(RegExp('سۡـ[َٔ]{2}'), 'سَ'),
-        his[5],
+        // Of the usul, «النقل», as Ibn Kathir's, though the book tells it
+        // in its farsh (the user, 2026-11-14).
+        'u',
         his[6],
         his.length > 7 ? his[7] : '',
         {'source': ashabSource, 'farshFrom': 'bazzi'},
@@ -538,6 +541,16 @@ Map<String, int> buildAshabUsul(
   // Quranpedia شيء.
   if (book != null) {
     final f = _farsh(id, book, index, textAt, sources.verified, rows.add);
+    // «وَسۡـَٔلُواْ» the book tells in its farsh too: told once, in «النقل»
+    // of the usul, not again in the hamesh (the user, 2026-11-14).
+    bool naql(List v) => '${v[6]}'.startsWith('بنقل حركة الهمزة إلى السين');
+    final naqlAt = {
+      for (final v in rows)
+        if (v[5] == 'u' && naql(v)) _key(v[0], v[1], v[2]),
+    };
+    rows.removeWhere(
+      (v) => v[5] != 'u' && naql(v) && naqlAt.contains(_key(v[0], v[1], v[2])),
+    );
     counts['farsh copied'] = f.copied;
     counts['farsh worded'] = f.worded;
     counts['farsh quoted'] = f.quoted;
@@ -796,6 +809,18 @@ Map<String, int> buildAshabUsul(
     });
   // An alif added to Hafs's rasm is the dagger one.
   applyDaggerAlif(quran, data['variants'] as List);
+  // The small alif over a final ya where Hafs writes it (تَسَوَّىٰ، سَكۡرَىٰ،
+  // يَخۡفَىٰ), the book's quotation without it (the user, 2026-11-14).
+  final finalYa = RegExp(r'ى([ً-ٰٟۖ-ۭ]*)$');
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] == 'u' || v[3] != 1) continue;
+    final text = '${v[4]}';
+    final hafs = index[_key(v[0], v[1], v[2])]?.t ?? '';
+    final mine = finalYa.firstMatch(text), his = finalYa.firstMatch(hafs);
+    if (mine == null || his == null) continue;
+    if (!his[1]!.contains('ٰ') || mine[1]!.contains('ٰ')) continue;
+    v[4] = '${text.substring(0, mine.start)}ىٰ${mine[1]}';
+  }
   // «هُزُوٗا» with its zay quiet and its hamza (Hamza, Khalaf al-'Ashir):
   // written as al-Kisa'i's «هُزُؤٗاۖ», its hamza on Hafs's waw, its zay quiet
   // (the user, 2026-11-12).
@@ -808,6 +833,10 @@ Map<String, int> buildAshabUsul(
     v[4] = hafs.replaceFirst('زُو', 'زۡؤ');
   }
   _userFarsh(id, data['variants'] as List);
+  _saktOnFarsh(data['variants'] as List);
+  // «التقاء الساكنين» for al-Kisa'i and Khalaf al-'Ashir in all its places,
+  // not those the book names alone (the user, 2026-11-14).
+  applyFirstSakin(id, quran, data['variants'] as List);
   return counts;
 }
 
@@ -838,6 +867,78 @@ void _userFarsh(String id, List variants) {
       v[4] = 'تُمَٰٓسُّوهُنَّ';
       v[6] = 'بضم التاء وتشديد السين مع المد المشبع';
     }
+  }
+  // «تَسَوَّىٰ» النساء ٤٢: its ta opened and its waw leaned (the user,
+  // 2026-11-14); the book's quotation, its small alif left out, told a ya
+  // quiet and an alif gone.
+  if (at(4, 42, 7) case final v?) v[6] = 'بفتح التاء وبإمالة الواو';
+  // «فَتَثَبَّتُواْ» for «فَتَبَيَّنُواْ» (النساء ٩٤ مرتين، الحجرات ٦), Hamza's,
+  // al-Kisa'i's and Khalaf al-'Ashir's; the book tells it in al-Hujurat
+  // alone, and without its wording (the user, 2026-11-14). Hafs's word, its
+  // madd and stop sign kept, its letters changed.
+  if (kisai.contains(id) || hamza.contains(id) || khalaf.contains(id)) {
+    for (final (s, a, w, text) in const [
+      (4, 94, 8, 'فَتَثَبَّتُواْ'),
+      (4, 94, 32, 'فَتَثَبَّتُوٓاْۚ'),
+      (49, 6, 7, 'فَتَثَبَّتُوٓاْ'),
+    ]) {
+      put([
+        s,
+        a,
+        w,
+        1,
+        text,
+        'f',
+        'بفاء ثم تاء ثم ثاء ثم باء مفتوحة ثم تاء مضمومة ثم واو',
+        '',
+        {'source': ashabSource},
+      ]);
+    }
+  }
+  // «نُؤۡتِيهِمۡ» النساء ١٥٢ with the nun for Hamza too, as al-Kisa'i's: the
+  // ya is Hafs's alone, «وَيَا سَوْفَ نُؤْتِيهِمْ عَزِيزٌ»; the book's farsh left
+  // him out (2026-11-14).
+  if (hamza.contains(id)) {
+    put([
+      4,
+      152,
+      11,
+      1,
+      'نُؤۡتِيهِمۡ',
+      'f',
+      'بالنون',
+      '',
+      {'source': ashabSource, 'farshFrom': 'shubah'},
+    ]);
+  }
+  // «وَقَتۡلِهُمُ ٱلۡأَنۢبِيَآءَ» النساء ١٥٥: the book quotes the two words for
+  // the ha's damma, told on «وَقَتۡلِهُمُ» in the usul; «ٱلۡأَنۢبِيَآءَ» read as
+  // Hafs's, no farsh of its own («بالهمز والقصر» was the quotation's) (the
+  // user, 2026-11-14).
+  variants.removeWhere(
+    (v) => v[0] == 4 && v[1] == 155 && v[2] == 7 && v[5] == 'f',
+  );
+  // «يُظۡلَمُونَ» النساء ٧٧: by the ya alone, as Ibn Kathir's and Abu
+  // Ja'far's, not Rawh's «وترقيق اللام» (the user, 2026-11-14).
+  if (at(4, 77, 46) case final v?) {
+    v[6] = 'بالياء';
+    (v[8] as Map)['farshFrom'] = 'bazzi';
+  }
+  // «لَمَسۡتُمُ» النساء ٤٣ for al-Kisa'i too, as Khalaf al-'Ashir's, in
+  // letters and hamesh, as in المائدة ٦; the book names him not there (the
+  // user, 2026-11-14).
+  if (kisai.contains(id)) {
+    put([
+      4,
+      43,
+      32,
+      1,
+      'لَمَسۡتُمُ',
+      'f',
+      'بحذف الألف',
+      '',
+      {'source': ashabSource},
+    ]);
   }
   // «وَيَبۡصُطُ» البقرة ٢٤٥ with the sad, the small sin above it gone, as the
   // verified readers who read it so (Qalun, Shu'ba).
@@ -949,5 +1050,35 @@ void main() {
     );
     stdout.writeln('$id: $counts');
     f.writeAsStringSync(jsonEncode(data));
+  }
+}
+
+/// A sakt drawn on Hafs's word where the riwaya reads other letters
+/// (سَنُؤۡتِيهِمۡۜ for Hamza's «سَيُؤۡتِيهِمۡ»، هُزُوًۜا for «هُزۡؤًا»): drawn on
+/// the farsh's word instead, its sign where it stood, so the word shows as
+/// read (2026-11-14).
+void _saktOnFarsh(List variants) {
+  String letters(String s) =>
+      s.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), '').replaceAll('ٱ', 'ا');
+  final farsh = <String, String>{
+    for (final v in variants.cast<List>())
+      if (v[5] == 'f' && v[3] == 1)
+        if ('${v[4]}' case final t
+            when t.isNotEmpty && !t.contains(RegExp('[ ،]')))
+          _key(v[0], v[1], v[2]): t,
+  };
+  for (final v in variants.cast<List>()) {
+    final text = '${v[4]}';
+    if (v[5] != 'u' || v[3] != 1 || !text.contains('ۜ')) continue;
+    final own = farsh[_key(v[0], v[1], v[2])];
+    if (own == null || letters(own) == letters(text)) continue;
+    // What follows the sign in Hafs's word (the tanween's alif, a stop
+    // sign): the sign before the same in the farsh's word.
+    final after = text.substring(text.lastIndexOf('ۜ') + 1);
+    v[4] = after.isNotEmpty && own.endsWith(after)
+        ? '${own.substring(0, own.length - after.length)}ۜ$after'
+        : RegExp(r'[ۖ-ۛ]$').hasMatch(own)
+        ? '${own.substring(0, own.length - 1)}ۜ${own.substring(own.length - 1)}'
+        : '$ownۜ';
   }
 }

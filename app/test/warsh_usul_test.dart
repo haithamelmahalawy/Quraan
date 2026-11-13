@@ -633,7 +633,7 @@ void main() {
           .singleWhere((v) => v.rule == 'first_sakin');
       expect(
         v.description,
-        'بضم نون التنوين وصلاً لالتقاء الساكنين',
+        'بضم التنوين وصلًا لالتقاء الساكنين',
         reason: '$surah:$ayah',
       );
       expect(v.isUsul, isTrue, reason: '$surah:$ayah');
