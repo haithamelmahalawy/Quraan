@@ -612,4 +612,77 @@ void main() {
       }
     }
   });
+
+  // Khalaf al-'Ashir's «حَـِۧيَ» (الأنفال ٤٢) as the verified readers'; «ٱلۡتَقَى
+  // ٱلۡجَمۡعَانِ» (الأنفال ٤١) leaned at the stop (the user, 2026-11-14).
+  test("Khalaf's hayiya and al-Ashab's iltaqa at the stop", () {
+    List<List> rows(String id) => ((jsonDecode(
+              File('assets/data/qiraat/$id.json').readAsStringSync(),
+            ) as Map)['variants']
+            as List)
+        .cast<List>();
+    for (final id in const ['ishaq', 'idris']) {
+      expect(
+        rows(id)
+            .where((v) => v[0] == 8 && v[1] == 42 && v[2] == 28 && v[5] == 'f')
+            .single[4],
+        'حَـِۧيَ',
+        reason: id,
+      );
+    }
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      expect(
+        rows(id).where(
+          (v) =>
+              v[0] == 8 &&
+              v[1] == 41 &&
+              v[2] == 26 &&
+              v[6] == 'بإمالة الألف وقفًا',
+        ),
+        hasLength(1),
+        reason: id,
+      );
+    }
+  });
+
+  // The verb «يَحۡيَىٰ» (الأنفال ٤٢، طه ٧٤) leaned; al-Kisa'i's «ضُعۡفٗا» with
+  // nothing gone, and al-Rum's three with the damma (the user, 2026-11-14).
+  test("yahya leaned and al-Kisai's du'fan", () {
+    List<List> rows(String id) => ((jsonDecode(
+              File('assets/data/qiraat/$id.json').readAsStringSync(),
+            ) as Map)['variants']
+            as List)
+        .cast<List>();
+    for (final id in const ['khalaf_hamzah', 'ishaq', 'duri_kisai']) {
+      for (final k in const ['8:42:26', '20:74:12']) {
+        expect(
+          rows(id).where(
+            (v) => '${v[0]}:${v[1]}:${v[2]}' == k && v[6] == 'بإمالة الألف',
+          ),
+          hasLength(1),
+          reason: '$id $k',
+        );
+      }
+    }
+    for (final id in const ['abul_harith', 'duri_kisai']) {
+      final farsh = {
+        for (final v in rows(id))
+          if (v[5] == 'f') '${v[0]}:${v[1]}:${v[2]}': '${v[4]}|${v[6]}',
+      };
+      expect(
+        farsh['8:66:7'],
+        'ضُعۡفٗاۚ|بضم الضاد وإسكان العين وتنوين الفاء بالفتح',
+        reason: id,
+      );
+      expect(farsh['30:54:4'], 'ضُعۡفٖ|بضم الضاد', reason: id);
+      expect(farsh['30:54:16'], 'ضُعۡفٗا|بضم الضاد', reason: id);
+    }
+  });
 }

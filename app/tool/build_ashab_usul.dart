@@ -910,6 +910,49 @@ Map<String, int> buildAshabUsul(
     final next = index[_key(v[0], v[1], (v[2] as int) + 1)]?.t ?? '';
     if (RegExp('^[أإءآ]').hasMatch(next)) v[4] = '$textٓ';
   }
+  // «يَوۡمَ ٱلۡتَقَى ٱلۡجَمۡعَانِ» الأنفال ٤١, the book silent: leaned at the stop as
+  // in Al 'Imran (١٥٥، ١٦٦), its qaf coloured (the user, 2026-11-14).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      8,
+      41,
+      26,
+      1,
+      '',
+      'u',
+      'بإمالة الألف وقفًا',
+      '',
+      {'source': ashabSource, 'book': 'kharouf', 'stopOnly': true},
+    ];
+    // The verb «يَحۡيَىٰ» (الأنفال ٤٢، طه ٧٤) leaned as its others, the book
+    // silent on these two (2026-11-14).
+    final verbs = [
+      for (final (s, a, w) in const [(8, 42, 26), (20, 74, 12)])
+        [
+          s,
+          a,
+          w,
+          1,
+          '',
+          'u',
+          'بإمالة الألف',
+          '',
+          {'source': ashabSource, 'book': 'kharouf'},
+        ],
+    ];
+    for (final row in [row, ...verbs]) {
+      if (variants.cast<List>().any(
+        (r) => order(r) == order(row) && '${r[6]}'.startsWith('بإمالة الألف'),
+      )) {
+        continue;
+      }
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
   // The book's «وقفًا» on an alif with no quiescent after it (مُوسَىٰ ثَلَٰثِينَ،
   // مُوسَىٰ لِمِيقَٰتِنَا، بَلَىٰ وَلَٰكِن، صَلَّىٰ / وَلَٰكِن): leaned joined too, its sign
   // drawn; a tanween's alif (هُدٗى) and one before a quiescent stay the
@@ -1258,6 +1301,38 @@ void _userFarsh(String id, List variants) {
         v[6] = 'بتخفيف النون وكسرها $said';
       }
     }
+  }
+  // al-Kisa'i's «ضُعۡفٗا» الأنفال ٦٦, nothing gone (the user, 2026-11-14);
+  // in al-Rum (٥٤) his damma too, as the verified readers': Hamza's, Shu'ba's
+  // and Hafs's fath alone, «وَفِي الرُّومِ صِفْ عَنْ خُلْفِ فُصِّلَا».
+  if (kisai.contains(id)) {
+    if (at(8, 66, 7) case final v?) {
+      v[4] = 'ضُعۡفٗاۚ';
+      v[6] = 'بضم الضاد وإسكان العين وتنوين الفاء بالفتح';
+    }
+    for (final (w, text) in const [
+      (4, 'ضُعۡفٖ'),
+      (9, 'ضُعۡفٖ'),
+      (16, 'ضُعۡفٗا'),
+    ]) {
+      put([
+        30,
+        54,
+        w,
+        1,
+        text,
+        'f',
+        'بضم الضاد',
+        '',
+        {'source': ashabSource, 'farshFrom': 'qalun'},
+      ]);
+    }
+  }
+  // Khalaf al-'Ashir's «حَـِۧيَ» الأنفال ٤٢ written as the verified readers'
+  // (Nafi''s, al-Bazzi's, Shu'ba's, Ya'qub's): the small ya above the line
+  // between the ha and the ya (the user, 2026-11-14).
+  if (at(8, 42, 28) case final v? when khalaf.contains(id)) {
+    v[4] = 'حَـِۧيَ';
   }
   // «يَتَسَنَّه۠» البقرة ٢٥٩: the ha gone joined and kept at the stop, the
   // oval of «أنا» on it for its sukun, as Ya'qub's.

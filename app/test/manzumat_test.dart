@@ -6731,4 +6731,21 @@ void main() {
       expect(r.mention, {712}, reason: id);
     }
   });
+
+  // «حَـِۧيَ» (الأنفال ٤٢): the Durrah's 119 «حَيَّ أَظْهِرَنْ فَتًى حُزْ» (the user,
+  // 2026-11-14).
+  test("hayiya cites the Durrah's 119", () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['ishaq', 'ruways'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 8, 42, 28)
+          .where((v) => v.word == 28 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, 'حَيَّ', 8, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {119}, reason: id);
+    }
+  });
 }
