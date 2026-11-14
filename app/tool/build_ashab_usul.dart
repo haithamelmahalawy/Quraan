@@ -1143,6 +1143,47 @@ Map<String, int> buildAshabUsul(
     final seen = <int>{};
     variants.removeWhere((r) => leaned(r as List) && !seen.add(r[2] as int));
   }
+  // «ٱرۡكَب مَّعَنَا» هود ٤٢: al-Kisa'i's idgham in the usul, as Hafs's; Khalaf's
+  // and Khalaf al-'Ashir's izhar in the hamesh, «كَمَا ضاَعَ ... / وَفِي ارْكَبْ فَشَا
+  // أَلَا»; Khallad's two faces kept (the user, 2026-11-14).
+  {
+    final variants = data['variants'] as List;
+    bool here(List r) => r[0] == 11 && r[1] == 42 && r[2] == 13;
+    final row = switch (id) {
+      'abul_harith' || 'duri_kisai' => [
+        11,
+        42,
+        13,
+        2,
+        'ٱرۡكَب مَّعَنَا',
+        'u',
+        'بإدغام الباء في الميم',
+        'idgham_saghir',
+        {'source': ashabSource},
+      ],
+      'khalaf_hamzah' || 'ishaq' || 'idris' => [
+        11,
+        42,
+        13,
+        2,
+        'ٱرۡكَبۡ مَعَنَا',
+        'f',
+        'بالإظهار',
+        '',
+        {'source': ashabSource, 'hamesh': true},
+      ],
+      _ => null,
+    };
+    if (row != null) {
+      variants.removeWhere((r) => here(r as List));
+      final i = variants.cast<List>().indexWhere(
+        (r) =>
+            (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int) >
+            11042013,
+      );
+      variants.insert(i < 0 ? variants.length : i, row);
+    }
+  }
   // «تَتۡلُواْ» يونس ٣٠: Hafs's word, its ba a ta, its alif with the round
   // sukun kept (the user, 2026-11-14).
   for (final v in (data['variants'] as List).cast<List>()) {

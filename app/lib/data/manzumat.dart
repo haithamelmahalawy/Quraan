@@ -1253,6 +1253,11 @@ class Manzumat {
       if (qiraaOf(v.riwayaId).id == 'khalaf') return {106, 107};
     }
     if (poem == Poem.durrah && word == '10:103:1' && !v.isUsul) return {107};
+    // «ٱرۡكَب مَّعَنَا» (هود ٤٢): «وَفِي ارْكَبْ هُدَى بَرٍّ قَرِيبٍ بِخُلْفِهِمْ / كَمَا
+    // ضاَعَ جاَ ...» (284); the Durrah's «... وَفِي ارْكَبْ فَشَا أَلَا» (41); «يَٰبُنَيِّ»
+    // there, «... وَفَتْحُ يَا / بُنَيِّ هُنَا نَصٌّ ...» (757) (the user, 2026-11-14).
+    if (word == '11:42:13') return poem == Poem.durrah ? {41} : {284};
+    if (word == '11:42:12' && poem == Poem.shatibiyya) return {757};
     // «تَزِيغُ» (التوبة ١١٧): the Durrah's «... يَزِيـغُ أَنِّثْ فَشَا ...» (127)
     // (the user, 2026-11-14).
     if (poem == Poem.durrah &&

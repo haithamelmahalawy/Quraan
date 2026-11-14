@@ -6784,4 +6784,24 @@ void main() {
     expect(ref('ishaq', 8).mention, {106, 107});
     expect(ref('ruways', 1).mention, {107});
   });
+
+  // «ٱرۡكَب مَّعَنَا» (هود ٤٢): 284, the Durrah's 41; «يَٰبُنَيِّ» 757 (the user,
+  // 2026-11-14).
+  test('irkab ma\'ana cites 284 and the Durrah 41, ya bunayya 757', () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['duri_kisai', 'warsh', 'ishaq', 'qunbul', 'ibn_wardan'];
+    await variants.ensureLoaded(ids);
+    Reference ref(String id, int w) => manzumat.referenceOf(
+      variants.at([id], 11, 42, w).where((v) => v.word == w).first,
+      '',
+      11,
+      surahs,
+    );
+    expect(ref('duri_kisai', 13).mention, {284});
+    expect(ref('warsh', 13).mention, {284});
+    expect(ref('qunbul', 13).mention, {284});
+    expect(ref('ishaq', 13).mention, {41});
+    expect(ref('ibn_wardan', 13).mention, {41});
+    expect(ref('duri_kisai', 12).mention, {757});
+  });
 }
