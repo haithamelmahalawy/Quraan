@@ -1221,6 +1221,19 @@ class Manzumat {
         return {652};
       }
     }
+    // A quiescent sad before a dal its sound the zay's (يَصۡدِفُونَ، أَصۡدَقُ): «وَإِشْمَامُ
+    // صَادٍ سَاكِنٍ قَبْلَ دَالِهِ كَأَصْدَقُ زَايًا شَاعَ ...» (603); the Durrah's «...
+    // وَأَشْمِمْ بَابَ أَصْدَقُ طِبْ وَلَا» (95) (the user, 2026-11-14).
+    if (v.rule == 'ishmam_sad' && hafs.contains('صۡد')) {
+      return poem == Poem.durrah ? {95} : {603};
+    }
+    // «وَمِنۡهَا تُخۡرَجُونَ» (الأعراف ٢٥): «هُنَا تُخْرَجُوا سَمَّى حِمًى ...» (113)
+    // (the user, 2026-11-14).
+    if (poem == Poem.durrah &&
+        '${v.surah}:${v.ayah}:${v.word}' == '7:25:6' &&
+        !v.isUsul) {
+      return {113};
+    }
     // «وَأَنَّ هَٰذَا صِرَٰطِي» (الأنعام ١٥٣): Ya'qub's «وَأَنْ», «... وَخِفُّ وَأَنْ
     // حِفْظٌ», Khalaf's «وَإِنَّ» as his asl beside it (the user, 2026-11-14).
     if (poem == Poem.durrah &&

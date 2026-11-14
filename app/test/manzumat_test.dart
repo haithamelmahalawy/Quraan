@@ -6616,4 +6616,38 @@ void main() {
       expect(r.mention, {111}, reason: id);
     }
   });
+
+  // The ishmam of a quiescent sad before a dal (يَصۡدِفُونَ): the Shatibiyya's
+  // 603, the Durrah's 95 (the user, 2026-11-14).
+  test('the ishmam of the sad cites 603 and the Durrah 95', () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['khalaf_hamzah', 'duri_kisai', 'ishaq', 'ruways'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 6, 46, 22)
+          .where((v) => v.word == 22 && v.rule == 'ishmam_sad')
+          .single;
+      final r = manzumat.referenceOf(v, 'يَصۡدِفُونَ', 6, surahs);
+      final durrah = id == 'ishaq' || id == 'ruways';
+      expect(r.poem, durrah ? Poem.durrah : Poem.shatibiyya, reason: id);
+      expect(r.mention, durrah ? {95} : {603}, reason: id);
+    }
+  });
+
+  // «تُخۡرَجُونَ» (الأعراف ٢٥): the Durrah's 113 «هُنَا تُخْرَجُوا سَمَّى حِمًى»
+  // (the user, 2026-11-14).
+  test("the Durrah's 113 for tukhrajun", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ruways', 'ishaq']);
+    for (final id in ['ruways', 'ishaq']) {
+      final v = variants
+          .at([id], 7, 25, 6)
+          .where((v) => v.word == 6 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, 'تُخۡرَجُونَ', 7, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {113}, reason: id);
+    }
+  });
 }
