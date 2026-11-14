@@ -225,6 +225,10 @@ void main() {
             : isNull,
         reason: id,
       );
+      // «بَصۡطَةٗ» الأعراف ٦٩ with the sad for al-Kisa'i (the user, 2026-11-14).
+      if (kisai) {
+        expect(farsh(id, 7, 69)[21], 'بَصۡطَةٗۖ|بالصاد', reason: id);
+      }
       // «ولا يحسبن الذين يبخلون»: the verb alone, not the book's entry of
       // ١٧٨ («الذين كفروا») misplaced over three words.
       expect(farsh(id, 3, 180).keys.toSet(), {1}, reason: id);

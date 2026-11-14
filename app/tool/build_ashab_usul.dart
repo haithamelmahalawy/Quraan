@@ -1198,6 +1198,18 @@ void _userFarsh(String id, List variants) {
       '',
       {'source': ashabSource, 'farshFrom': 'shubah'},
     ]);
+    // «بَصۡطَةٗ» الأعراف ٦٩ so too (the user, 2026-11-14).
+    put([
+      7,
+      69,
+      21,
+      1,
+      'بَصۡطَةٗۖ',
+      'f',
+      'بالصاد',
+      '',
+      {'source': ashabSource, 'farshFrom': 'shubah'},
+    ]);
   }
   // «يَتَسَنَّه۠» البقرة ٢٥٩: the ha gone joined and kept at the stop, the
   // oval of «أنا» on it for its sukun, as Ya'qub's.
