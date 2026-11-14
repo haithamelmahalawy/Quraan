@@ -1084,6 +1084,28 @@ Map<String, int> buildAshabUsul(
   // «التقاء الساكنين» for al-Kisa'i and Khalaf al-'Ashir in all its places,
   // not those the book names alone (the user, 2026-11-14).
   applyFirstSakin(id, quran, data['variants'] as List);
+  // A farsh word ending in a madd letter before a hamza (يَهۡدِيٓ إِلَّآ، يُخَافَآ
+  // أَلَّا، يُؤۡتِهَآ أَجۡرَهَا): the separated madd over it, as al-Ashab read it
+  // long (the user, 2026-11-14).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] != 'f' || v[3] != 1) continue;
+    final text = '${v[4]}';
+    final m = RegExp(r'(ِي|ُو|َا)([ۖ-ۜ]*)$').firstMatch(text);
+    if (m == null) continue;
+    final next = index[_key(v[0], v[1], (v[2] as int) + 1)]?.t ?? '';
+    if (!RegExp('^[أإءآ]').hasMatch(next)) continue;
+    v[4] = '${text.substring(0, m.start)}${m[1]}ٓ${m[2]}';
+    // «والقصر» of the readers it was copied from, who read it short.
+    v[6] = '${v[6]}'.replaceFirst(RegExp(r'،? ?و?القصر$'), '').trim();
+  }
+  // «تَتۡلُواْ» يونس ٣٠: Hafs's word, its ba a ta, its alif with the round
+  // sukun kept (the user, 2026-11-14).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 10 && v[1] == 30 && v[2] == 1 && v[5] == 'f') {
+      v[4] = (index[_key(10, 30, 1)]?.t ?? '').replaceFirst('بۡ', 'تۡ');
+      v[6] = 'بالتاء بدل الباء';
+    }
+  }
   // Hamza's and Khalaf al-'Ashir's «جَآءَ» leaned with its waw or fa too
   // (وَجَآءَ ٱلۡمُعَذِّرُونَ، فَجَآءُوهُم), as Ibn Dhakwan's; the copy above took the
   // bare word alone (the user, 2026-11-14).

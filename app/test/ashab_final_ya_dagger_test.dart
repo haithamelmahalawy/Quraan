@@ -720,4 +720,31 @@ void main() {
       }
     }
   });
+
+  // «تَتۡلُواْ» (يونس ٣٠) with Hafs's alif and its round sukun; a farsh word
+  // ending in a madd letter before a hamza with the madd (يَهۡدِيٓ إِلَّآ) (the
+  // user, 2026-11-14).
+  test('tatlu with its alif, yahdi with the madd', () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      final farsh = {
+        for (final v
+            in ((jsonDecode(
+                      File('assets/data/qiraat/$id.json').readAsStringSync(),
+                    ) as Map)['variants']
+                    as List)
+                .cast<List>())
+          if (v[5] == 'f') '${v[0]}:${v[1]}:${v[2]}': '${v[4]}|${v[6]}',
+      };
+      expect(farsh['10:30:1'], 'تَتۡلُواْ|بالتاء بدل الباء', reason: id);
+      expect(farsh['10:35:21'], startsWith('يَهۡدِيٓ|'), reason: id);
+      expect(farsh['33:31:7'], endsWith('هَآ|بالياء'), reason: id);
+    }
+  });
 }
