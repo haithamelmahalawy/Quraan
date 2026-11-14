@@ -1090,7 +1090,7 @@ Map<String, int> buildAshabUsul(
   for (final v in (data['variants'] as List).cast<List>()) {
     if (v[5] != 'f' || v[3] != 1) continue;
     final text = '${v[4]}';
-    final m = RegExp(r'(ِي|ُو|َا)([ۖ-ۜ]*)$').firstMatch(text);
+    final m = RegExp(r'(ِي|ُو|َا|َىٰ)([ۖ-ۜ]*)$').firstMatch(text);
     if (m == null) continue;
     final next = index[_key(v[0], v[1], (v[2] as int) + 1)]?.t ?? '';
     if (!RegExp('^[أإءآ]').hasMatch(next)) continue;
@@ -1251,6 +1251,45 @@ Map<String, int> buildAshabUsul(
         );
         variants.insert(at < 0 ? variants.length : at, row);
       }
+    }
+  }
+  // «يُوحَىٰٓ إِلَيۡهِمۡ» (يوسف ١٠٩، النحل ٤٣، الأنبياء ٧) told as read, as all
+  // who read it with the ya (the user, 2026-11-14).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] == 'f' &&
+        const {
+          '12:109:6',
+          '16:43:6',
+          '21:7:5',
+        }.contains('${v[0]}:${v[1]}:${v[2]}') &&
+        '${v[4]}'.startsWith('يُوح')) {
+      v[6] = 'بضم الياء وإسكان الواو وفتح الحاء وألف مقصورة على الياء';
+    }
+  }
+  // Its alif leaned, as al-Ashab's «يُوحَىٰٓ» elsewhere.
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final (s, a, w) in const [(12, 109, 6), (16, 43, 6), (21, 7, 5)]) {
+      final row = [
+        s,
+        a,
+        w,
+        1,
+        '',
+        'u',
+        'بإمالة الألف',
+        '',
+        {'source': ashabSource},
+      ];
+      if (variants.cast<List>().any(
+        (r) => order(r) == order(row) && '${r[6]}'.startsWith('بإمالة'),
+      )) {
+        continue;
+      }
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
     }
   }
   // «تَتۡلُواْ» يونس ٣٠: Hafs's word, its ba a ta, its alif with the round

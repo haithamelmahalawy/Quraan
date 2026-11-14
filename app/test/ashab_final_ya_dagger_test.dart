@@ -882,4 +882,38 @@ void main() {
       }
     }
   });
+
+  // «يُوحَىٰٓ إِلَيۡهِمۡ» (يوسف ١٠٩، النحل ٤٣، الأنبياء ٧): told as read, its madd
+  // and its imala (the user, 2026-11-14).
+  test('yuha ilayhim told, its madd and its imala', () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      final rows = ((jsonDecode(
+                File('assets/data/qiraat/$id.json').readAsStringSync(),
+              ) as Map)['variants']
+              as List)
+          .cast<List>();
+      for (final k in const ['12:109:6', '16:43:6', '21:7:5']) {
+        final here = rows.where((v) => '${v[0]}:${v[1]}:${v[2]}' == k);
+        final farsh = here.where((v) => v[5] == 'f').single;
+        expect(farsh[4], endsWith('ىٰٓ'), reason: '$id $k');
+        expect(
+          farsh[6],
+          'بضم الياء وإسكان الواو وفتح الحاء وألف مقصورة على الياء',
+          reason: '$id $k',
+        );
+        expect(
+          here.where((v) => v[6] == 'بإمالة الألف'),
+          hasLength(1),
+          reason: '$id $k',
+        );
+      }
+    }
+  });
 }
