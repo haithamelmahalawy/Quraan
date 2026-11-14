@@ -1221,6 +1221,13 @@ class Manzumat {
         return {652};
       }
     }
+    // «وَأَنَّ هَٰذَا صِرَٰطِي» (الأنعام ١٥٣): Ya'qub's «وَأَنْ», «... وَخِفُّ وَأَنْ
+    // حِفْظٌ», Khalaf's «وَإِنَّ» as his asl beside it (the user, 2026-11-14).
+    if (poem == Poem.durrah &&
+        '${v.surah}:${v.ayah}:${v.word}' == '6:153:0' &&
+        !v.isUsul) {
+      return {111};
+    }
     // «يَقۡضِ» (الأنعام ٥٧): «... وَيَقْضِ بِضَمِّ سَاكِنٍ مَعَ ضَمِّ الْكَسْرِ شَدِّدْ
     // وَأَهْمِلَا / نَعَمْ دُونَ إِلْبَاسٍ ...», not the zawaid's 421 that the book
     // quotes (the user, 2026-11-14).

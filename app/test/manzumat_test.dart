@@ -6600,4 +6600,20 @@ void main() {
       isEmpty,
     );
   });
+
+  // «وَأَنَّ هَٰذَا صِرَٰطِي» (الأنعام ١٥٣): the Durrah's 111 «... وَخِفُّ وَأَنْ
+  // حِفْظٌ» (the user, 2026-11-14).
+  test("the Durrah's 111 for wa-an hadha sirati", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ruways', 'rawh', 'ishaq', 'idris']);
+    for (final id in ['ruways', 'rawh', 'ishaq', 'idris']) {
+      final v = variants
+          .at([id], 6, 153, 0)
+          .where((v) => v.word == 0 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, 'وَأَنَّ', 6, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {111}, reason: id);
+    }
+  });
 }
