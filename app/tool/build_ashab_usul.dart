@@ -1486,6 +1486,34 @@ Map<String, int> buildAshabUsul(
       variants.insert(at < 0 ? variants.length : at, row);
     }
   }
+  // «عِوَجَاۜ قَيِّمٗا» (الكهف ١-٢): no sakt for any but Hafs, its small sin
+  // gone, both words in the asl of «ترك السكت» (the user, 2026-11-15).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final (a, w, text) in const [(1, 10, 'عِوَجٗا'), (2, 0, 'قَيِّمٗا')]) {
+      final row = [
+        18,
+        a,
+        w,
+        1,
+        text,
+        'u',
+        'بالوصل دون سكت وإخفاء التنوين',
+        'no_sakt',
+        {'source': ashabSource},
+      ];
+      variants.removeWhere(
+        (r) =>
+            order(r as List) == order(row) &&
+            r.length > 7 &&
+            r[7] == 'no_sakt',
+      );
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
   // Hamza's and Khalaf al-'Ashir's «يَتَوَفَّىٰهُمُ» (النحل ٢٨، ٣٢): Hafs's word
   // with the ya for the ta, its dagger alif kept, leaned; and their and
   // al-Kisa'i's «يَأۡتِيَهُمُ» (النحل ٣٣) with the ya, its own opened (the user,

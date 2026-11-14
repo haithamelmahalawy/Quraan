@@ -1095,7 +1095,9 @@ void main() {
         );
         expect(where(id, 42, 20, 14).single[7], 'ibdal_single');
         expect(where(id, 15, 48, 7), isEmpty);
-        expect(where(id, 18, 2, 0), isEmpty);
+        // No farsh there; «قَيِّمٗا» in the asl of «ترك السكت» alone (the user,
+        // 2026-11-15).
+        expect([for (final v in where(id, 18, 2, 0)) v[7]], ['no_sakt']);
         expect(
           where(id, 67, 27, 3).single[4],
           where('qalun', 67, 27, 3).single[4],
