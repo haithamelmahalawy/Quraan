@@ -1098,6 +1098,38 @@ Map<String, int> buildAshabUsul(
     // «والقصر» of the readers it was copied from, who read it short.
     v[6] = '${v[6]}'.replaceFirst(RegExp(r'،? ?و?القصر$'), '').trim();
   }
+  // «سَحَّٰرٍ» (الأعراف ١١٢، يونس ٧٩) told as read (the user, 2026-11-14).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] == 'f' && v[6] == 'بزيادة الحاء وحذف الحاء') {
+      v[6] = 'بتشديد الحاء ونقل الألف بعد الحاء';
+    }
+  }
+  // Khalaf al-'Ashir's «مُوسَىٰ» (يونس ٧٥، ٧٧) leaned as Hamza's (2026-11-14).
+  if (_khalafAshir.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final (s, a, w) in const [(10, 75, 4), (10, 77, 1)]) {
+      final row = [
+        s,
+        a,
+        w,
+        1,
+        '',
+        'u',
+        'بإمالة الألف',
+        '',
+        {'source': ashabSource, 'book': 'kharouf'},
+      ];
+      if (variants.cast<List>().any(
+        (r) => order(r) == order(row) && '${r[6]}'.startsWith('بإمالة الألف'),
+      )) {
+        continue;
+      }
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
   // «تَتۡلُواْ» يونس ٣٠: Hafs's word, its ba a ta, its alif with the round
   // sukun kept (the user, 2026-11-14).
   for (final v in (data['variants'] as List).cast<List>()) {

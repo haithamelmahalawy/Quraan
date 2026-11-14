@@ -747,4 +747,41 @@ void main() {
       expect(farsh['33:31:7'], endsWith('هَآ|بالياء'), reason: id);
     }
   });
+
+  // «سَحَّٰرٍ» told as read; Khalaf al-'Ashir's «مُوسَىٰ» (يونس ٧٥، ٧٧) leaned
+  // (the user, 2026-11-14).
+  test("sahhar's description and Khalaf's Musa", () {
+    List<List> rows(String id) => ((jsonDecode(
+              File('assets/data/qiraat/$id.json').readAsStringSync(),
+            ) as Map)['variants']
+            as List)
+        .cast<List>();
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      for (final k in const ['7:112:2', '10:79:4']) {
+        expect(
+          rows(id)
+              .where((v) => '${v[0]}:${v[1]}:${v[2]}' == k && v[5] == 'f')
+              .single[6],
+          'بتشديد الحاء ونقل الألف بعد الحاء',
+          reason: '$id $k',
+        );
+      }
+      for (final k in const ['10:75:4', '10:77:1']) {
+        expect(
+          rows(id).where(
+            (v) => '${v[0]}:${v[1]}:${v[2]}' == k && v[6] == 'بإمالة الألف',
+          ),
+          hasLength(1),
+          reason: '$id $k',
+        );
+      }
+    }
+  });
 }
