@@ -566,11 +566,11 @@ void main() {
       'abul_harith',
       'duri_kisai',
     ]) {
-      final rows = ((jsonDecode(
-                File('assets/data/qiraat/$id.json').readAsStringSync(),
-              ) as Map)['variants']
-              as List)
-          .cast<List>();
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
       List<String> at(String k) => [
         for (final v in rows)
           if ('${v[0]}:${v[1]}:${v[2]}' == k &&
@@ -598,11 +598,11 @@ void main() {
       'abul_harith',
       'duri_kisai',
     ]) {
-      final rows = ((jsonDecode(
-                File('assets/data/qiraat/$id.json').readAsStringSync(),
-              ) as Map)['variants']
-              as List)
-          .cast<List>();
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
       for (final w in const [2, 9]) {
         final v = rows
             .where((v) => v[0] == 8 && v[1] == 17 && v[2] == w && v[5] == 'f')
@@ -616,11 +616,11 @@ void main() {
   // Khalaf al-'Ashir's «حَـِۧيَ» (الأنفال ٤٢) as the verified readers'; «ٱلۡتَقَى
   // ٱلۡجَمۡعَانِ» (الأنفال ٤١) leaned at the stop (the user, 2026-11-14).
   test("Khalaf's hayiya and al-Ashab's iltaqa at the stop", () {
-    List<List> rows(String id) => ((jsonDecode(
-              File('assets/data/qiraat/$id.json').readAsStringSync(),
-            ) as Map)['variants']
-            as List)
-        .cast<List>();
+    List<List> rows(String id) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>();
     for (final id in const ['ishaq', 'idris']) {
       expect(
         rows(id)
@@ -655,11 +655,11 @@ void main() {
   // The verb «يَحۡيَىٰ» (الأنفال ٤٢، طه ٧٤) leaned; al-Kisa'i's «ضُعۡفٗا» with
   // nothing gone, and al-Rum's three with the damma (the user, 2026-11-14).
   test("yahya leaned and al-Kisai's du'fan", () {
-    List<List> rows(String id) => ((jsonDecode(
-              File('assets/data/qiraat/$id.json').readAsStringSync(),
-            ) as Map)['variants']
-            as List)
-        .cast<List>();
+    List<List> rows(String id) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>();
     for (final id in const ['khalaf_hamzah', 'ishaq', 'duri_kisai']) {
       for (final k in const ['8:42:26', '20:74:12']) {
         expect(
@@ -689,11 +689,11 @@ void main() {
   // «مَعِي عَدُوًّا» (التوبة ٨٣): no farsh, the ya of idafa bare; «وَجَآءَ» leaned
   // with its waw for Hamza and Khalaf al-'Ashir (the user, 2026-11-14).
   test("ma'iya 'aduwwan and wa-ja'a", () {
-    List<List> rows(String id) => ((jsonDecode(
-              File('assets/data/qiraat/$id.json').readAsStringSync(),
-            ) as Map)['variants']
-            as List)
-        .cast<List>();
+    List<List> rows(String id) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>();
     for (final id in const [
       'khalaf_hamzah',
       'khallad',
@@ -751,11 +751,11 @@ void main() {
   // «سَحَّٰرٍ» told as read; Khalaf al-'Ashir's «مُوسَىٰ» (يونس ٧٥، ٧٧) leaned
   // (the user, 2026-11-14).
   test("sahhar's description and Khalaf's Musa", () {
-    List<List> rows(String id) => ((jsonDecode(
-              File('assets/data/qiraat/$id.json').readAsStringSync(),
-            ) as Map)['variants']
-            as List)
-        .cast<List>();
+    List<List> rows(String id) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>();
     for (final id in const [
       'khalaf_hamzah',
       'khallad',
@@ -796,11 +796,11 @@ void main() {
       'abul_harith',
       'duri_kisai',
     ]) {
-      final rows = ((jsonDecode(
-                File('assets/data/qiraat/$id.json').readAsStringSync(),
-              ) as Map)['variants']
-              as List)
-          .cast<List>();
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
       expect(
         rows
             .where((v) => v[0] == 11 && v[1] == 25 && v[2] == 5 && v[5] == 'f')
@@ -823,11 +823,11 @@ void main() {
   // (the user, 2026-11-14).
   test("al-Kisai's ghayabat at the stop", () {
     for (final id in const ['abul_harith', 'duri_kisai']) {
-      final rows = ((jsonDecode(
-                File('assets/data/qiraat/$id.json').readAsStringSync(),
-              ) as Map)['variants']
-              as List)
-          .cast<List>();
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
       for (final k in const ['12:10:8', '12:15:23']) {
         expect(
           {
@@ -845,11 +845,11 @@ void main() {
   // moving letter its ra and hamza leaned (فَلَمَّا رَءَا قَمِيصَهُۥ) (the user,
   // 2026-11-14).
   test("al-dhib and ra'a qamisahu", () {
-    List<List> rows(String id) => ((jsonDecode(
-              File('assets/data/qiraat/$id.json').readAsStringSync(),
-            ) as Map)['variants']
-            as List)
-        .cast<List>();
+    List<List> rows(String id) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>();
     for (final id in const ['abul_harith', 'duri_kisai', 'ishaq', 'idris']) {
       for (final k in const ['12:13:9', '12:14:3', '12:17:10']) {
         expect(
@@ -894,11 +894,11 @@ void main() {
       'abul_harith',
       'duri_kisai',
     ]) {
-      final rows = ((jsonDecode(
-                File('assets/data/qiraat/$id.json').readAsStringSync(),
-              ) as Map)['variants']
-              as List)
-          .cast<List>();
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
       for (final k in const ['12:109:6', '16:43:6', '21:7:5']) {
         final here = rows.where((v) => '${v[0]}:${v[1]}:${v[2]}' == k);
         final farsh = here.where((v) => v[5] == 'f').single;
@@ -914,6 +914,61 @@ void main() {
           reason: '$id $k',
         );
       }
+    }
+  });
+
+  // النحل ٢٨، ٣٢، ٣٣، ٦٣ (the user, 2026-11-15): Hamza's and Khalaf
+  // al-'Ashir's «يَتَوَفَّىٰهُمُ» with the ya, the dagger alif and leaned; theirs
+  // and al-Kisa'i's «يَأۡتِيَهُمُ» with the ya, opened; al-Kisa'i's «فَهۡوَ» as
+  // «وَهۡوَ».
+  test('yatawaffahum, ya\'tiyahum and fahwa in al-Nahl', () {
+    List<List> rows(String id) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>();
+    List? at(String id, int a, int w) =>
+        rows(id)
+            .where((v) => v[0] == 16 && v[1] == a && v[2] == w && v[5] == 'f')
+            .firstOrNull;
+    final quran =
+        jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
+    String hafsWord(int a, int w) =>
+        ((quran['ayahs'] as List).firstWhere((x) => x[0] == 16 && x[1] == a)[4]
+                as String)
+            .split(' ')[w];
+    for (final id in ['khalaf_hamzah', 'khallad', 'ishaq', 'idris']) {
+      for (final a in [28, 32]) {
+        final v = at(id, a, 1)!;
+        final hafs = hafsWord(a, 1);
+        expect(
+          (v[4] as String).replaceAll('۪', ''),
+          'ي${hafs.substring(1)}',
+          reason: '$id $a',
+        );
+        expect(v[4], contains('۪'), reason: '$id $a');
+        expect(v[6], 'بالياء بدل التاء مع الإمالة', reason: '$id $a');
+      }
+    }
+    for (final id in [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'duri_kisai',
+      'abul_harith',
+    ]) {
+      final v = at(id, 33, 4)!;
+      expect(v[4], 'يَأۡتِيَهُمُ', reason: id);
+      expect(v[6], 'بالياء', reason: id);
+    }
+    for (final id in [
+      'duri_kisai',
+      'abul_harith',
+      'ibn_wardan',
+      'ibn_jammaz',
+    ]) {
+      expect(at(id, 63, 11)![6], 'بإسكان الهاء', reason: id);
     }
   });
 }

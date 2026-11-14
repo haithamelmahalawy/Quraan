@@ -1359,6 +1359,26 @@ Map<String, int> buildAshabUsul(
       }
     }
   }
+  // Hamza's and Khalaf al-'Ashir's «يَتَوَفَّىٰهُمُ» (النحل ٢٨، ٣٢): Hafs's word
+  // with the ya for the ta, its dagger alif kept, leaned; and their and
+  // al-Kisa'i's «يَأۡتِيَهُمُ» (النحل ٣٣) with the ya, its own opened (the user,
+  // 2026-11-15).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] != 'f' || v[0] != 16) continue;
+    final key = _key(v[0] as int, v[1] as int, v[2] as int);
+    final hafs = index[key]?.t;
+    if (hafs == null) continue;
+    if ((v[1] == 28 || v[1] == 32) &&
+        v[2] == 1 &&
+        (_hamza.contains(id) || _khalafAshir.contains(id))) {
+      v[4] = withImalaSign('ي${hafs.substring(1)}');
+      v[6] = 'بالياء بدل التاء مع الإمالة';
+    }
+    if (v[1] == 33 && v[2] == 4) {
+      v[4] = 'ي${hafs.substring(1)}';
+      v[6] = 'بالياء';
+    }
+  }
   // al-Kisa'i's and Khalaf al-'Ashir's «تَحۡسِبَنَّ» (إبراهيم ٤٧), as Nafi''s: «وَيَحْسَبُ
   // كَسْرُ السِّينِ مُسْتَقبِلاً سَمَا / رِضَاهُ» (the user, 2026-11-14).
   if (_kisai.contains(id) || _khalafAshir.contains(id)) {
