@@ -1299,6 +1299,39 @@ Map<String, int> buildAshabUsul(
       v[4] = 'فَنُـۨجِي';
     }
   }
+  // al-Kisa'i's repeated question (الرعد ٥): «أَءِذَا» asked, its hamzas whole,
+  // «إِنَّا» told with one; its two ways beside both, as Qalun's (the user,
+  // 2026-11-14).
+  if (_kisai.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    const ways = [
+      'الاستفهام في «أءذا» مع التحقيق',
+      'الإخبار في «إنا» بالتحقيق',
+    ];
+    for (final (w, text, said, context) in const [
+      (4, 'أَءِذَا', 'بالاستفهام مع التحقيق', 'أَءِذَا'),
+      (7, 'إِنَّا', 'بالإخبار بهمزة واحدة مكسورة', 'أَءِنَّا'),
+    ]) {
+      final row = [
+        13,
+        5,
+        w,
+        1,
+        text,
+        'h',
+        said,
+        'tasheel_word',
+        {'source': ashabSource, 'context': context, 'ways': ways},
+      ];
+      variants.removeWhere(
+        (r) => order(r as List) == order(row) && r[7] == 'tasheel_word',
+      );
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
   // «تَتۡلُواْ» يونس ٣٠: Hafs's word, its ba a ta, its alif with the round
   // sukun kept (the user, 2026-11-14).
   for (final v in (data['variants'] as List).cast<List>()) {

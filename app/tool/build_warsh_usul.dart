@@ -637,6 +637,40 @@ Map<String, int> correctWarshUsul(
   applyIdghamDhal('warsh', quran, variants);
   applyHamzaZaida('warsh', quran, variants);
   applyDaggerAlif(quran, variants);
+  // The repeated question of al-Ra'd 5 told in the usul with its two ways,
+  // as Qalun's: «أءذا» eased, «إنا» told with one hamza; not in the hamesh
+  // (the user, 2026-11-14).
+  {
+    const ways = [
+      'تسهيل الهمزة الثانية بلا إدخال في «أءذا»',
+      'الإخبار بهمزة واحدة مكسورة في «إنا»',
+    ];
+    for (final v in variants.cast<List>()) {
+      if (v[0] != 13 || v[1] != 5) continue;
+      if (v[2] == 4 && v.length > 7 && v[7] == 'tasheel_word') {
+        (v[8] as Map)['ways'] = ways;
+      }
+      if (v[2] == 7 && v[5] == 'f') {
+        v[5] = 'h';
+        v[6] = 'بالإخبار بهمزة واحدة مكسورة';
+        while (v.length < 9) {
+          v.add(v.length == 7 ? '' : <String, Object>{});
+        }
+        v[7] = 'tasheel_word';
+        v[8] = {'context': 'أَءِنَّا', 'ways': ways};
+      }
+    }
+    // Once, a run over its own output adding the ikhbar again.
+    var kept = false;
+    variants.removeWhere((r) {
+      final v = r as List;
+      if (v[0] != 13 || v[1] != 5 || v[2] != 7) return false;
+      if (v.length <= 7 || v[7] != 'tasheel_word') return false;
+      if (kept) return true;
+      kept = true;
+      return false;
+    });
+  }
   variants.sort((a, b) {
     for (var i = 0; i < 3; i++) {
       final c = (a[i] as int).compareTo(b[i] as int);

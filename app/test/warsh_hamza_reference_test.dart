@@ -268,18 +268,17 @@ void main() {
         expect(v.isImala, isFalse);
         expect(ReadingColors.of(v), ReadingColors.hamza);
       }
-      // In the repeated interrogation Warsh reads إنا by ikhbar.
+      // In the repeated interrogation Warsh reads إنا by ikhbar: told in the
+      // usul with its two ways, as Qalun's, not in the hamesh (the user,
+      // 2026-11-14).
+      final ikhbar = repository
+          .at(['warsh'], 13, 5, 7)
+          .singleWhere((v) => v.rule == 'tasheel_word');
+      expect(ikhbar.description, 'بالإخبار بهمزة واحدة مكسورة');
+      expect(ikhbar.usulWays, hasLength(2));
       expect(
-        repository
-            .at(['warsh'], 13, 5, 7)
-            .where((v) => v.rule == 'tasheel_word'),
+        repository.at(['warsh'], 13, 5, 7).where((v) => v.inHamesh),
         isEmpty,
-      );
-      expect(
-        repository
-            .at(['warsh'], 13, 5, 7)
-            .any((v) => v.inHamesh && v.description == 'بالإخبار بهمزة واحدة'),
-        isTrue,
       );
     },
   );

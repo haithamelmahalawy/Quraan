@@ -7,6 +7,7 @@ import '../models/quran.dart';
 import 'arabic.dart';
 import 'kharouf.dart';
 import 'book_readings.dart';
+import 'usul_guide.dart' show repeatedIstifham;
 
 /// Loads the per-riwaya difference files from `assets/data/qiraat/` and
 /// answers "which selected riwayat read this Hafs word differently?".
@@ -472,8 +473,12 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
     // and al-Ashab's files have its farsh written in (al-Ashab's by
     // tool/build_ashab_usul.dart): the book's notes (stopping on the hamza,
     // ishmam, two hamzas) are their usul, not farsh.
+    // Nor the repeated question (أَءِذَا كُنَّا تُرَٰبًا أَءِنَّا): told in the usul,
+    // each reader's way at each word, not as a farsh across the phrase (the
+    // user, 2026-11-14).
     if (!found &&
         p[6] == 'farsh' &&
+        !repeatedIstifham.contains('$surah:$ayah:$word') &&
         !const {
           'hisham',
           'ibn_dhakwan',
