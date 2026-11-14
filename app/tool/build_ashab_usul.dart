@@ -1130,6 +1130,19 @@ Map<String, int> buildAshabUsul(
       variants.insert(at < 0 ? variants.length : at, row);
     }
   }
+  // «مَا نَرَىٰكَ ... وَمَا نَرَىٰكَ ... وَمَا نَرَىٰ» هود ٢٧: the book's imala a
+  // word early, on «مَا»; on «نَرَىٰ» each, once (the user, 2026-11-14).
+  {
+    final variants = data['variants'] as List;
+    bool leaned(List r) =>
+        r[0] == 11 && r[1] == 27 && r[5] == 'u' && r[6] == 'بإمالة الألف';
+    for (final v in variants.cast<List>()) {
+      if (leaned(v) && const {6, 11, 20}.contains(v[2]))
+        v[2] = (v[2] as int) + 1;
+    }
+    final seen = <int>{};
+    variants.removeWhere((r) => leaned(r as List) && !seen.add(r[2] as int));
+  }
   // «تَتۡلُواْ» يونس ٣٠: Hafs's word, its ba a ta, its alif with the round
   // sukun kept (the user, 2026-11-14).
   for (final v in (data['variants'] as List).cast<List>()) {
@@ -1489,6 +1502,19 @@ void _userFarsh(String id, List variants) {
   if (at(8, 42, 28) case final v? when khalaf.contains(id)) {
     v[4] = 'حَـِۧيَ';
   }
+  // «أَنِّي لَكُمۡ نَذِيرٞ» هود ٢٥ for al-Ashab, as the verified readers': Nafi',
+  // Ibn 'Amir and 'Asim alone break it (the user, 2026-11-14).
+  put([
+    11,
+    25,
+    5,
+    1,
+    'أَنِّي',
+    'f',
+    'بفتح الهمزة',
+    '',
+    {'source': ashabSource, 'farshFrom': 'bazzi'},
+  ]);
   // «نُنَجِّ ٱلۡمُؤۡمِنِينَ» يونس ١٠٣, Hamza's and Khalaf al-'Ashir's, as the
   // verified readers': Hafs and al-Kisa'i alone light (the user, 2026-11-14).
   if (hamza.contains(id) || khalaf.contains(id)) {

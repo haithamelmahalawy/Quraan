@@ -784,4 +784,38 @@ void main() {
       }
     }
   });
+
+  // «أَنِّي لَكُمۡ» (هود ٢٥); «نَرَىٰكَ ... نَرَىٰكَ ... نَرَىٰ» (هود ٢٧) leaned, not
+  // «مَا» before each (the user, 2026-11-14).
+  test("anni lakum and nara's imala on its own word", () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      final rows = ((jsonDecode(
+                File('assets/data/qiraat/$id.json').readAsStringSync(),
+              ) as Map)['variants']
+              as List)
+          .cast<List>();
+      expect(
+        rows
+            .where((v) => v[0] == 11 && v[1] == 25 && v[2] == 5 && v[5] == 'f')
+            .single[4],
+        'أَنِّي',
+        reason: id,
+      );
+      expect(
+        [
+          for (final v in rows)
+            if (v[0] == 11 && v[1] == 27 && v[6] == 'بإمالة الألف') v[2],
+        ],
+        [7, 12, 21],
+        reason: id,
+      );
+    }
+  });
 }
