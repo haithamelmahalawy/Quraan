@@ -98,9 +98,21 @@ void main() {
       final at = variants.at(['warsh'], s, a, w);
       expect(at.any((v) => v.rule == 'tasheel_word'), isTrue, reason: '$s:$a');
       expect(at.any((v) => v.rule == 'kharouf'), isFalse, reason: '$s:$a');
-      expect(at.singleWhere((v) => v.rule == 'tasheel_word').usulWays, [
-        'تحقيق الأولى وتسهيل الثانية بلا إدخال',
-      ], reason: '$s:$a');
+      final ways = at.singleWhere((v) => v.rule == 'tasheel_word').usulWays;
+      // The repeated question's two ways at both words, as Qalun's (the
+      // user, 2026-11-14).
+      if ((s, a, w) == (27, 67, 7) || (s, a, w) == (56, 47, 2)) {
+        expect(ways, hasLength(2), reason: '$s:$a');
+        expect(
+          ways.where((w) => w.startsWith('تسهيل الهمزة الثانية بلا إدخال')),
+          hasLength(1),
+          reason: '$s:$a',
+        );
+      } else {
+        expect(ways, [
+          'تحقيق الأولى وتسهيل الثانية بلا إدخال',
+        ], reason: '$s:$a');
+      }
     }
   });
 

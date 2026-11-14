@@ -214,9 +214,9 @@ void main() {
     expect(lin.keys, isNot(contains('مد الفرق')));
     expect(lin.keys, isNot(contains('همزة هأنتم')));
     expect(usulGuideLabel('الهمزتان من كلمة (مد الفرق)'), 'الهمزتان من كلمة');
-    // 19 + 2 + 36 + 34 words, and the 10 of مد الفرق; «إِنَّا» of al-Ra'd 5,
-    // its ikhbar told there (2026-11-14).
-    expect(lin['الهمزتان من كلمة'], hasLength(102));
+    // 19 + 2 + 36 + 34 words, and the 10 of مد الفرق; the ikhbar of the
+    // repeated question's ten places told there (2026-11-14).
+    expect(lin['الهمزتان من كلمة'], hasLength(111));
     expect(usulGuideLabel('الهمز المفرد (الهمز المتحرك)'), 'الهمز المفرد');
     // هأنتم 4, the ibdal of the single hamza 986, مِنسَاتَهُۥ; the 80 of
     // «ٱلنَّبِيٓءُ» and its bab, the 12 of «هُزُؤًا، كُفُؤًا» and the 3 of
@@ -272,8 +272,8 @@ void main() {
         .where((v) => twoHamzasKind(v) == prefix)
         .length;
     expect(count('المفتوحة والمكسورة'), 21);
-    // Al-Ra'd 5's «إِنَّا» with its «أَءِذَا» (2026-11-14).
-    expect(count('الاستفهام المكرر'), 12);
+    // Both words of the repeated question in its ten places (2026-11-14).
+    expect(count('الاستفهام المكرر'), 21);
     expect(count('المفتوحة والمضمومة'), 4);
     expect(count('المفتوحتان'), 21);
     expect(count('أرأيت'), 34);

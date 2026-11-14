@@ -13,6 +13,7 @@ import 'package:qiraat_mushaf/data/waqf_hamza.dart';
 
 import 'apply_dagger_alif.dart';
 import 'apply_first_sakin.dart';
+import 'repeated_istifham.dart';
 import 'build_data.dart' as bd show describe, currentRiwaya;
 
 part 'ashab_farsh.dart';
@@ -1137,8 +1138,9 @@ Map<String, int> buildAshabUsul(
     bool leaned(List r) =>
         r[0] == 11 && r[1] == 27 && r[5] == 'u' && r[6] == 'بإمالة الألف';
     for (final v in variants.cast<List>()) {
-      if (leaned(v) && const {6, 11, 20}.contains(v[2]))
+      if (leaned(v) && const {6, 11, 20}.contains(v[2])) {
         v[2] = (v[2] as int) + 1;
+      }
     }
     final seen = <int>{};
     variants.removeWhere((r) => leaned(r as List) && !seen.add(r[2] as int));
@@ -1299,37 +1301,51 @@ Map<String, int> buildAshabUsul(
       v[4] = 'فَنُـۨجِي';
     }
   }
-  // al-Kisa'i's repeated question (الرعد ٥): «أَءِذَا» asked, its hamzas whole,
-  // «إِنَّا» told with one; its two ways beside both, as Qalun's (the user,
-  // 2026-11-14).
+  // al-Kisa'i's repeated question: the first asked, its hamzas whole, the
+  // second told with one; its two ways beside both, as Qalun's (the user,
+  // 2026-11-14). An-Naml's «إِنَّنَا» his farsh, left to the hamesh.
   if (_kisai.contains(id)) {
     final variants = data['variants'] as List;
     int order(List r) =>
         (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
-    const ways = [
-      'الاستفهام في «أءذا» مع التحقيق',
-      'الإخبار في «إنا» بالتحقيق',
-    ];
-    for (final (w, text, said, context) in const [
-      (4, 'أَءِذَا', 'بالاستفهام مع التحقيق', 'أَءِذَا'),
-      (7, 'إِنَّا', 'بالإخبار بهمزة واحدة مكسورة', 'أَءِنَّا'),
-    ]) {
-      final row = [
-        13,
-        5,
-        w,
-        1,
-        text,
-        'h',
-        said,
-        'tasheel_word',
-        {'source': ashabSource, 'context': context, 'ways': ways},
+    for (final (s, a1, w1, a2, w2, n1, n2, firstAsked)
+        in repeatedIstifhamPairs) {
+      if (!firstAsked) continue;
+      final ways = [
+        'الاستفهام في «$n1» مع التحقيق',
+        'الإخبار في «$n2» بالتحقيق',
       ];
-      variants.removeWhere(
-        (r) => order(r as List) == order(row) && r[7] == 'tasheel_word',
-      );
-      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
-      variants.insert(at < 0 ? variants.length : at, row);
+      final asked = index[_key(s, a1, w1)]!.t;
+      final told = index[_key(s, a2, w2)]!.t;
+      for (final (a, w, text, said, context) in [
+        (a1, w1, asked, 'بالاستفهام مع التحقيق', asked),
+        (
+          a2,
+          w2,
+          told.replaceFirst(RegExp('^أَ[ءئ]ِ'), 'إِ'),
+          'بالإخبار بهمزة واحدة مكسورة',
+          told,
+        ),
+      ]) {
+        final row = [
+          s,
+          a,
+          w,
+          1,
+          text,
+          'h',
+          said,
+          'tasheel_word',
+          {'source': ashabSource, 'context': context, 'ways': ways},
+        ];
+        variants.removeWhere(
+          (r) => order(r as List) == order(row) && r[7] == 'tasheel_word',
+        );
+        final at = variants.cast<List>().indexWhere(
+          (r) => order(r) > order(row),
+        );
+        variants.insert(at < 0 ? variants.length : at, row);
+      }
     }
   }
   // Hamza's and al-Kisa'i's «لِّعِبَادِي ٱلَّذِينَ» (إبراهيم ٣١), its ya quiet:
@@ -1374,6 +1390,39 @@ Map<String, int> buildAshabUsul(
         (r as List).length > 7 &&
         r[7] == 'idgham_saghir',
   );
+  // «مُوسَىٰ» leaned in every place (رؤوس آي طه the book left out): joined too,
+  // or at the stop alone before a quiescent (the user, 2026-11-14).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final leaned = {
+      for (final v in variants.cast<List>())
+        if ('${v[6]}'.contains('إمالة')) _key(v[0], v[1], v[2]),
+    };
+    for (final word in words) {
+      if (!RegExp(r'^[وفبل]?(ي)?موسى$').hasMatch(_bare(word.t))) continue;
+      if (leaned.contains(_key(word.s, word.a, word.w))) continue;
+      final next =
+          index[_key(word.s, word.a, word.w + 1)]?.t ??
+          index[_key(word.s, word.a + 1, 0)]?.t ??
+          '';
+      final stop = next.startsWith('ٱ');
+      final row = [
+        word.s,
+        word.a,
+        word.w,
+        1,
+        '',
+        'u',
+        stop ? 'بإمالة الألف وقفًا' : 'بإمالة الألف',
+        '',
+        {'source': ashabSource, 'book': 'kharouf', if (stop) 'stopOnly': true},
+      ];
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
   // «تَتۡلُواْ» يونس ٣٠: Hafs's word, its ba a ta, its alif with the round
   // sukun kept (the user, 2026-11-14).
   for (final v in (data['variants'] as List).cast<List>()) {
