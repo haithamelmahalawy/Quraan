@@ -729,13 +729,18 @@ class _MushafPageState extends State<MushafPage>
     final hasFarsh = sequential ? anyNotes : entries.isNotEmpty;
     final both = hasUsul && hasFarsh;
     final rail = (size.width * (both ? 0.19 : 0.30)).clamp(96.0, 280.0);
-    final pageWidth =
-        size.width -
-        (sequential
-            ? (anyNotes ? rail : 0)
-            : (hasUsul ? rail : 0) + (hasFarsh ? rail : 0));
+    final used = sequential
+        ? (anyNotes ? rail : 0.0)
+        : (hasUsul ? rail : 0.0) + (hasFarsh ? rail : 0.0);
+    // No hamesh or usul beside it: the page no wider than beside one, in the
+    // middle, so its lines stay as large and as many show (the user,
+    // 2026-11-14).
+    final oneRail = (size.width * 0.30).clamp(96.0, 280.0);
+    final pageWidth = size.width - math.max(used, oneRail);
+    final aside = (size.width - used - pageWidth) / 2;
     _reportHeaderMiddle(
-      pageWidth / 2 +
+      aside +
+          pageWidth / 2 +
           (sequential
               ? (anyNotes && !widget.quran.isRightPage(widget.page) ? rail : 0)
               : (hasUsul ? rail : 0)),
@@ -880,7 +885,7 @@ class _MushafPageState extends State<MushafPage>
             rail: anyNotes ? rail : 0,
             height: size.height,
             zoomed: _zoomed,
-            page: print,
+            page: Center(child: print),
           );
         },
       );
@@ -979,7 +984,7 @@ class _MushafPageState extends State<MushafPage>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (hasFarsh) margin(true),
-        Expanded(child: print),
+        Expanded(child: Center(child: print)),
         if (hasUsul) margin(false),
       ],
     );

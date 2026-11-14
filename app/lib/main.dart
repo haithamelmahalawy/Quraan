@@ -93,15 +93,22 @@ class _QiraatAppState extends State<QiraatApp> {
         navigatorKey: _navigator,
         title: 'مصحف القراءات العشر',
         debugShowCheckedModeBanner: false,
-        theme: buildTheme(MushafPalette.light),
+        theme: buildTheme(
+          MushafStyle.named(widget.settings.mushafStyle)
+              .on(MushafPalette.light),
+        ),
         darkTheme: buildTheme(MushafPalette.dark),
         themeMode: widget.settings.themeMode,
-        // The mushaf colours follow the theme; the tree is rebuilt when it
-        // changes so every page, frame and sheet repaints with them.
+        // The mushaf colours follow the theme and the look picked; the tree
+        // is rebuilt when they change so every page, frame and sheet
+        // repaints with them.
         builder: (context, child) {
           final brightness = Theme.of(context).brightness;
-          MushafColors.use(brightness);
+          final style = MushafStyle.named(widget.settings.mushafStyle);
+          MushafColors.use(brightness, style);
           return KeyedSubtree(
+            // By the brightness alone: a new look repaints the reader through
+            // its settings, its screens kept.
             key: ValueKey(brightness),
             child: RecitationPlayerHost(
               player: _player,

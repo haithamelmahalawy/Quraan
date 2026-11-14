@@ -198,6 +198,7 @@ class Manzumat {
             _durrahBesideShatibiyya.containsKey(_at(reading)) &&
                 qiraaOf(reading.riwayaId).id == 'abu_jafar' ||
             _yaqubShatibiyya(reading) != null ||
+            _khalafFatathabbatu(reading) ||
             (_idghamDhal(reading, hafs) ||
                     // Not «كُفُؤًا» (الإخلاص ٤), told in the Durrah:
                     // «وَكُفْؤًا سُكُونُ الْفَاءِ حِصْنٌ».
@@ -1160,6 +1161,8 @@ class Manzumat {
           'khallad',
           'abul_harith',
           'duri_kisai',
+          'ishaq',
+          'idris',
         }.contains(v.riwayaId) &&
         const {
           '4:94:8',
@@ -2916,3 +2919,14 @@ const _yahsibannaDurrah = <String, Set<int>>{
   '8:59:1': {119},
   '24:57:1': {171},
 };
+
+/// Khalaf al-'Ashir's «فَتَثَبَّتُواْ» (النساء ٩٤ مرتين، الحجرات ٦), the
+/// Durrah silent: the Shatibiyya's bayts of Hamza's and al-Kisa'i's (the
+/// user, 2026-11-14).
+bool _khalafFatathabbatu(Variant v) =>
+    const {'ishaq', 'idris'}.contains(v.riwayaId) &&
+    const {
+      '4:94:8',
+      '4:94:32',
+      '49:6:7',
+    }.contains('${v.surah}:${v.ayah}:${v.word}');

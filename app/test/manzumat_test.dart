@@ -6260,6 +6260,9 @@ void main() {
       'khallad',
       'abul_harith',
       'duri_kisai',
+      // Khalaf al-'Ashir's too, the Durrah silent (the user, 2026-11-14).
+      'ishaq',
+      'idris',
     ]) {
       for (final (s, a, w) in const [(4, 94, 8), (4, 94, 32), (49, 6, 7)]) {
         final r = manzumat.referenceOf(

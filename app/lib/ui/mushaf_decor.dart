@@ -4,16 +4,25 @@ import 'package:flutter/material.dart';
 
 import 'theme.dart';
 
-/// Madinah-mushaf style page border: a band of rose rosettes between rose
-/// and gold rules, with rosette corners, as in the printed mushaf.
+/// Madinah-mushaf style page border: a band of motifs between rules, with
+/// motif corners, as in the printed mushaf; its motif and colours of the
+/// look picked ([MushafStyle]) (the user, 2026-11-14).
 class OrnamentFrame extends StatelessWidget {
-  const OrnamentFrame({super.key, required this.child, this.sides = true});
+  const OrnamentFrame({
+    super.key,
+    required this.child,
+    this.sides = true,
+    this.style,
+  });
 
   final Widget child;
 
   /// The bands at the right and left too; without them (full screen) the
   /// text has the whole width, between the bands above and below.
   final bool sides;
+
+  /// The look drawn; the one in use when null (a preview gives its own).
+  final MushafStyle? style;
 
   /// Distance from the right or left edge to the content.
   static double sideInset(bool sides) => sides ? inset : 6;
@@ -26,8 +35,21 @@ class OrnamentFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final own = style;
+    final look = own ?? MushafColors.style;
+    // A preview of another look: its own page and frame, in the light.
+    final apart = own != null && !MushafColors.isDark;
     return CustomPaint(
-      painter: _FramePainter(sides),
+      painter: _FramePainter(
+        sides,
+        look,
+        apart ? look.page : MushafColors.page,
+        apart
+            ? look.frameOn(MushafPalette.light)
+            : look.frameOn(
+                MushafColors.isDark ? MushafPalette.dark : MushafPalette.light,
+              ),
+      ),
       child: Padding(
         padding: EdgeInsets.symmetric(
           vertical: inset,
@@ -53,10 +75,152 @@ void _rosette(Canvas canvas, Offset c, double r, Color petal, Color heart) {
   canvas.drawCircle(c, r * 0.3, Paint()..color = heart);
 }
 
+/// One motif of [shape] at [c], [r] its half size, in [main] around a
+/// [heart].
+void frameMotif(
+  Canvas canvas,
+  FrameMotif shape,
+  Offset c,
+  double r,
+  Color main,
+  Color heart,
+) {
+  final fill = Paint()..color = main;
+  void turned(double angle, void Function() draw) {
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(angle);
+    draw();
+    canvas.restore();
+  }
+
+  switch (shape) {
+    case FrameMotif.rosette:
+      _rosette(canvas, c, r, main, heart);
+    case FrameMotif.star:
+      // The eight-pointed star: two squares, one turned.
+      for (final angle in [0.0, math.pi / 4]) {
+        turned(
+          angle,
+          () => canvas.drawRect(
+            Rect.fromCenter(
+              center: Offset.zero,
+              width: r * 1.3,
+              height: r * 1.3,
+            ),
+            fill,
+          ),
+        );
+      }
+      canvas.drawCircle(c, r * 0.28, Paint()..color = heart);
+    case FrameMotif.diamond:
+      canvas.drawPath(
+        Path()
+          ..moveTo(c.dx, c.dy - r)
+          ..lineTo(c.dx + r * 0.75, c.dy)
+          ..lineTo(c.dx, c.dy + r)
+          ..lineTo(c.dx - r * 0.75, c.dy)
+          ..close(),
+        fill,
+      );
+      canvas.drawCircle(c, r * 0.22, Paint()..color = heart);
+    case FrameMotif.ring:
+      canvas.drawCircle(
+        c,
+        r * 0.72,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = r * 0.34
+          ..color = main,
+      );
+      canvas.drawCircle(c, r * 0.22, Paint()..color = heart);
+    case FrameMotif.flower:
+      // Six petals around a heart.
+      for (var k = 0; k < 6; k++) {
+        final a = k * math.pi / 3;
+        canvas.drawCircle(
+          c + Offset(math.cos(a), math.sin(a)) * r * 0.52,
+          r * 0.34,
+          fill,
+        );
+      }
+      canvas.drawCircle(c, r * 0.3, Paint()..color = heart);
+    case FrameMotif.dots:
+      canvas.drawCircle(c, r * 0.38, fill);
+      for (final dx in [-r * 0.85, r * 0.85]) {
+        canvas.drawCircle(c + Offset(dx, 0), r * 0.16, fill);
+      }
+    case FrameMotif.leaf:
+      // Two leaves, back to back, and a bud between them.
+      for (final angle in [math.pi / 4, -math.pi * 3 / 4]) {
+        turned(
+          angle,
+          () => canvas.drawOval(
+            Rect.fromLTWH(r * 0.05, -r * 0.28, r * 0.95, r * 0.56),
+            fill,
+          ),
+        );
+      }
+      canvas.drawCircle(c, r * 0.24, Paint()..color = heart);
+    case FrameMotif.square:
+      turned(
+        math.pi / 4,
+        () => canvas.drawRect(
+          Rect.fromCenter(center: Offset.zero, width: r * 1.2, height: r * 1.2),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = r * 0.26
+            ..color = main,
+        ),
+      );
+      canvas.drawRect(
+        Rect.fromCenter(center: c, width: r * 0.5, height: r * 0.5),
+        Paint()..color = heart,
+      );
+    case FrameMotif.chevron:
+      final stroke = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * 0.3
+        ..strokeCap = StrokeCap.round
+        ..color = main;
+      for (final dy in [-r * 0.32, r * 0.32]) {
+        canvas.drawPath(
+          Path()
+            ..moveTo(c.dx - r * 0.75, c.dy + dy - r * 0.3)
+            ..lineTo(c.dx, c.dy + dy + r * 0.3)
+            ..lineTo(c.dx + r * 0.75, c.dy + dy - r * 0.3),
+          stroke,
+        );
+      }
+    case FrameMotif.knot:
+      // Two rings interlaced.
+      final stroke = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * 0.22
+        ..color = main;
+      for (final dx in [-r * 0.32, r * 0.32]) {
+        canvas.drawCircle(c + Offset(dx, 0), r * 0.55, stroke);
+      }
+      canvas.drawCircle(c, r * 0.18, Paint()..color = heart);
+  }
+}
+
 class _FramePainter extends CustomPainter {
-  _FramePainter(this.sides);
+  _FramePainter(this.sides, this.style, this.page, this.colors);
 
   final bool sides;
+  final MushafStyle style;
+  final Color page;
+  final ({Color band, Color motif, Color accent}) colors;
+
+  void _at(Canvas canvas, Offset c, double r) => frameMotif(
+    canvas,
+    style.motifShape,
+    c,
+    r,
+    colors.motif.withAlpha(style.motifShape == FrameMotif.rosette ? 200 : 235),
+    colors.accent,
+  );
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -65,25 +229,19 @@ class _FramePainter extends CustomPainter {
     final inner = sides
         ? outer.deflate(band)
         : Rect.fromLTRB(0, band, size.width, size.height - band);
-    final rose = MushafColors.rose, gold = MushafColors.gold;
+    final motif = colors.motif, gold = colors.accent;
 
-    canvas.drawRect(outer, Paint()..color = MushafColors.roseLight);
-    canvas.drawRect(inner, Paint()..color = MushafColors.page);
+    canvas.drawRect(outer, Paint()..color = colors.band);
+    canvas.drawRect(inner, Paint()..color = page);
     if (!sides) return _bandsOnly(canvas, size, inner);
 
-    // Rosettes along each side, small gold dots between them.
+    // Motifs along each side, small dots between them.
     void along(Offset from, Offset to) {
       final length = (to - from).distance;
       final count = math.max(1, (length / (band * 1.25)).floor());
       final step = (to - from) / count.toDouble();
       for (var i = 0; i < count; i++) {
-        _rosette(
-          canvas,
-          from + step * (i + 0.5),
-          band * 0.42,
-          rose.withAlpha(200),
-          gold,
-        );
+        _at(canvas, from + step * (i + 0.5), band * 0.42);
         if (i > 0) {
           canvas.drawCircle(
             from + step * i.toDouble(),
@@ -115,17 +273,17 @@ class _FramePainter extends CustomPainter {
     ]) {
       canvas.drawRect(
         Rect.fromCenter(center: c, width: band, height: band),
-        Paint()..color = rose,
+        Paint()..color = motif,
       );
-      _rosette(canvas, c, band * 0.4, MushafColors.roseLight, gold);
+      frameMotif(canvas, style.motifShape, c, band * 0.4, colors.band, gold);
     }
 
-    // Rules: rose outside; gold then rose inside.
+    // Rules: the motif's colour outside; gold then the motif's inside.
     final line = Paint()..style = PaintingStyle.stroke;
     canvas.drawRect(
       outer.deflate(0.6),
       line
-        ..color = rose
+        ..color = motif
         ..strokeWidth = 1.2,
     );
     canvas.drawRect(
@@ -137,7 +295,7 @@ class _FramePainter extends CustomPainter {
     canvas.drawRect(
       inner.deflate(2.5),
       line
-        ..color = rose
+        ..color = motif
         ..strokeWidth = 0.8,
     );
   }
@@ -149,18 +307,12 @@ class _FramePainter extends CustomPainter {
     final step = size.width / count;
     for (final y in [h, size.height - h]) {
       for (var i = 0; i < count; i++) {
-        _rosette(
-          canvas,
-          Offset(step * (i + 0.5), y),
-          band * 0.42,
-          MushafColors.rose.withAlpha(200),
-          MushafColors.gold,
-        );
+        _at(canvas, Offset(step * (i + 0.5), y), band * 0.42);
         if (i > 0) {
           canvas.drawCircle(
             Offset(step * i, y),
             1.3,
-            Paint()..color = MushafColors.gold,
+            Paint()..color = colors.accent,
           );
         }
       }
@@ -168,14 +320,18 @@ class _FramePainter extends CustomPainter {
     final line = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.4
-      ..color = MushafColors.gold;
+      ..color = colors.accent;
     for (final y in [inner.top, inner.bottom]) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
     }
   }
 
   @override
-  bool shouldRepaint(_FramePainter old) => old.sides != sides;
+  bool shouldRepaint(_FramePainter old) =>
+      old.sides != sides ||
+      old.style != style ||
+      old.page != page ||
+      old.colors != colors;
 }
 
 /// Surah title banner as printed: a rose lattice panel with rosettes and a
@@ -200,7 +356,7 @@ class SurahBanner extends StatelessWidget {
       margin: EdgeInsets.symmetric(vertical: height == null ? 2 : 6),
       height: height,
       child: CustomPaint(
-        painter: _BannerPainter(),
+        painter: _BannerPainter(MushafColors.frameColors),
         child: Center(
           child: Text(
             title,
@@ -209,7 +365,7 @@ class SurahBanner extends StatelessWidget {
               fontFamily: 'Hafs',
               fontSize: fontSize,
               height: 1.1,
-              color: MushafColors.rose,
+              color: MushafColors.frameColors.motif,
             ),
           ),
         ),
@@ -219,13 +375,18 @@ class SurahBanner extends StatelessWidget {
 }
 
 class _BannerPainter extends CustomPainter {
+  _BannerPainter(this.frame);
+
+  /// The frame's colours, of the look in use.
+  final ({Color band, Color motif, Color accent}) frame;
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final rose = MushafColors.rose, gold = MushafColors.gold;
+    final rose = frame.motif, gold = frame.accent;
 
     // Panel with a fine diagonal lattice.
-    canvas.drawRect(rect, Paint()..color = MushafColors.roseLight);
+    canvas.drawRect(rect, Paint()..color = frame.band);
     canvas.save();
     canvas.clipRect(rect);
     final lattice = Paint()
@@ -300,5 +461,5 @@ class _BannerPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BannerPainter old) => false;
+  bool shouldRepaint(_BannerPainter old) => old.frame != frame;
 }

@@ -16,13 +16,12 @@ void main() {
           '${x[0]}:${x[1]}:$i': w,
     };
     final finalYa = RegExp(r'ى([ً-ٰٟۖ-ۭ]*)$');
-    for (final id in const [
-      'khalaf_hamzah',
-      'khallad',
-      'abul_harith',
-      'duri_kisai',
-      'ishaq',
-      'idris',
+    // Every riwaya's, not al-Ashab's alone (Hisham's «وَأَوْصَىٰ», Abu Ja'far's
+    // «أُسَٰرَىٰ» without the madd, Warsh's «ٱهۡتَدَىٰ») (the user, 2026-11-14).
+    for (final id in [
+      for (final f in Directory('assets/data/qiraat').listSync())
+        if (f.path.endsWith('.json'))
+          f.uri.pathSegments.last.replaceFirst('.json', ''),
     ]) {
       final rows =
           (jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
@@ -218,6 +217,30 @@ void main() {
         reason: id,
       );
       expect(at(7, (v) => v[5] == 'f'), isFalse, reason: id);
+    }
+  });
+
+  // Hamza's «إِلَيۡهُمۡ» النساء ٦: no farsh of the book's broken quotation, the
+  // ha's damma in the usul (the user, 2026-11-14); Abu Ja'far's «أُسَٰرَىٰ»
+  // without the madd, as he reads it short.
+  test('Hamza has no broken farsh on ilayhim; Abu Jafar no madd', () {
+    List<List> rows(String id) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>();
+    for (final id in const ['khalaf_hamzah', 'khallad']) {
+      for (final w in const [11, 30]) {
+        final at = rows(id).where((v) => v[0] == 4 && v[1] == 6 && v[2] == w);
+        expect(at.where((v) => v[5] == 'f'), isEmpty, reason: '$id $w');
+        expect(at.any((v) => v[7] == 'ha_damir'), isTrue, reason: '$id $w');
+      }
+    }
+    for (final id in const ['ibn_wardan', 'ibn_jammaz']) {
+      final text = rows(id)
+          .where((v) => v[0] == 8 && v[1] == 70 && v[2] == 7)
+          .single[4];
+      expect(text, 'ٱلۡأُسَٰرَىٰ', reason: id);
     }
   });
 }

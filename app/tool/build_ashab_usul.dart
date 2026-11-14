@@ -918,6 +918,12 @@ void _userFarsh(String id, List variants) {
   variants.removeWhere(
     (v) => v[0] == 4 && v[1] == 155 && v[2] == 7 && v[5] == 'f',
   );
+  // Hamza's «إِلَيۡهُمۡ» النساء ٦ (twice): the book's «إليهُم معاً» quoted with
+  // «عليهُم» as a farsh of its own, its text broken; the ha's damma is told
+  // in the usul (the user, 2026-11-14).
+  variants.removeWhere(
+    (v) => v[0] == 4 && v[1] == 6 && v[5] == 'f' && '${v[4]}'.contains('،'),
+  );
   // «يُظۡلَمُونَ» النساء ٧٧: by the ya alone, as Ibn Kathir's and Abu
   // Ja'far's, not Rawh's «وترقيق اللام» (the user, 2026-11-14).
   if (at(4, 77, 46) case final v?) {

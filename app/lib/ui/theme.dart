@@ -69,13 +69,366 @@ class MushafPalette {
   );
 }
 
+/// The motif along the frame's band.
+enum FrameMotif {
+  rosette,
+  star,
+  diamond,
+  ring,
+  flower,
+  dots,
+  leaf,
+  square,
+  chevron,
+  knot,
+}
+
+/// Whom a look of the mushaf suits, its name among them.
+enum MushafAudience {
+  all('الكل'),
+  girls('للبنات'),
+  kids('للأطفال'),
+  men('للرجال');
+
+  const MushafAudience(this.nameAr);
+
+  final String nameAr;
+}
+
+/// A look of the mushaf the reader picks (the user, 2026-11-14): its frame,
+/// the motif along it, and the page and the screen around it. The reading
+/// colours stay the same in all, their meaning with them.
+enum MushafStyle {
+  madinah(
+    'المدينة',
+    FrameMotif.rosette,
+    paper: Color(0xFFFBF6E6),
+    page: Color(0xFFFFFCF3),
+    band: Color(0xFFF6DADF),
+    motif: Color(0xFFB5475B),
+    accent: Color(0xFFC9A54E),
+  ),
+  emerald(
+    'زمرّدي',
+    FrameMotif.star,
+    paper: Color(0xFFF1F4EC),
+    page: Color(0xFFFBFCF5),
+    band: Color(0xFFD9E8DC),
+    motif: Color(0xFF2E6B53),
+    accent: Color(0xFFB8963E),
+  ),
+  lapis(
+    'لازوردي',
+    FrameMotif.diamond,
+    paper: Color(0xFFF0F3F7),
+    page: Color(0xFFFCFCF9),
+    band: Color(0xFFDCE5F0),
+    motif: Color(0xFF2D4E7A),
+    accent: Color(0xFFC2A15A),
+  ),
+  antique(
+    'عتيق',
+    FrameMotif.ring,
+    paper: Color(0xFFEFE5D1),
+    page: Color(0xFFF8F0DE),
+    band: Color(0xFFE4D2B3),
+    motif: Color(0xFF7A4E2D),
+    accent: Color(0xFFA8843F),
+  ),
+  violet(
+    'بنفسجي هادئ',
+    FrameMotif.flower,
+    paper: Color(0xFFF5F1F6),
+    page: Color(0xFFFDFBFC),
+    band: Color(0xFFE9DEEE),
+    motif: Color(0xFF6E4A7E),
+    accent: Color(0xFFBFA05A),
+  ),
+  calm(
+    'هادئ',
+    FrameMotif.dots,
+    paper: Color(0xFFEEF1EE),
+    page: Color(0xFFFAFBF8),
+    band: Color(0xFFE3E9E4),
+    motif: Color(0xFF5F7369),
+    accent: Color(0xFF9DAA9F),
+  ),
+  turquoise(
+    'فيروزي',
+    FrameMotif.knot,
+    paper: Color(0xFFEEF5F4),
+    page: Color(0xFFFBFDFC),
+    band: Color(0xFFD4EBE8),
+    motif: Color(0xFF1F7A78),
+    accent: Color(0xFFC6A55A),
+  ),
+  burgundy(
+    'عنّابي',
+    FrameMotif.leaf,
+    paper: Color(0xFFF6F0EE),
+    page: Color(0xFFFEFBF8),
+    band: Color(0xFFEFDCDD),
+    motif: Color(0xFF7B2D3B),
+    accent: Color(0xFFC29A4E),
+  ),
+  olive(
+    'زيتوني',
+    FrameMotif.square,
+    paper: Color(0xFFF2F2E8),
+    page: Color(0xFFFCFCF4),
+    band: Color(0xFFE5E8D0),
+    motif: Color(0xFF5E6B2E),
+    accent: Color(0xFFB59A4A),
+  ),
+  sand(
+    'رملي',
+    FrameMotif.chevron,
+    paper: Color(0xFFF6EFE3),
+    page: Color(0xFFFDF8EE),
+    band: Color(0xFFF0E1C8),
+    motif: Color(0xFFA0703A),
+    accent: Color(0xFF8C6A3E),
+  ),
+  ink(
+    'حِبري',
+    FrameMotif.star,
+    paper: Color(0xFFEFF1F5),
+    page: Color(0xFFFBFBFA),
+    band: Color(0xFFDEE2EA),
+    motif: Color(0xFF2B3A55),
+    accent: Color(0xFFB89A5C),
+  ),
+  // The page lighter than the screen and the hamesh around it, its frame
+  // deep, its motifs gold; the page and the hamesh light enough for their
+  // words to read clearly (the user, 2026-11-14).
+  pinkBook(
+    'وردي',
+    FrameMotif.flower,
+    paper: Color(0xFFF6DCE5),
+    page: Color(0xFFFFF8FA),
+    band: Color(0xFFC2416F),
+    motif: Color(0xFFFBE3EC),
+    accent: Color(0xFFF2C46B),
+  ),
+  royal(
+    'ملكي',
+    FrameMotif.star,
+    paper: Color(0xFFDCE3EE),
+    page: Color(0xFFFFFDF6),
+    band: Color(0xFF1F2F4F),
+    motif: Color(0xFFD9B865),
+    accent: Color(0xFFE8CF8A),
+  ),
+  emeraldDeep(
+    'زمرّد غامق',
+    FrameMotif.rosette,
+    paper: Color(0xFFDDEBE3),
+    page: Color(0xFFFDFCF4),
+    band: Color(0xFF0F4D3A),
+    motif: Color(0xFFD6B45E),
+    accent: Color(0xFFE6CD86),
+  ),
+  burgundyDeep(
+    'عنّابي ملكي',
+    FrameMotif.leaf,
+    paper: Color(0xFFF0E1DF),
+    page: Color(0xFFFFFAF4),
+    band: Color(0xFF5A1A2A),
+    motif: Color(0xFFD7B266),
+    accent: Color(0xFFE9CE8C),
+  ),
+  walnut(
+    'بني ذهبي',
+    FrameMotif.ring,
+    paper: Color(0xFFEBE0CE),
+    page: Color(0xFFFCF6E8),
+    band: Color(0xFF3E2A1C),
+    motif: Color(0xFFD4AE5E),
+    accent: Color(0xFFE6C987),
+  ),
+  tile(
+    'كاشي فيروزي',
+    FrameMotif.diamond,
+    paper: Color(0xFFD6EEEC),
+    page: Color(0xFFFFFFFB),
+    band: Color(0xFF0E6E6E),
+    motif: Color(0xFFF4F1E4),
+    accent: Color(0xFFE2C275),
+  ),
+  // For girls, for children and for men (the user, 2026-11-14). The
+  // children's: cheerful colours alone, the page white and the motifs the
+  // mushaf's own, nothing to lessen its reverence.
+  lilac(
+    'ليلكي',
+    FrameMotif.flower,
+    audience: MushafAudience.girls,
+    paper: Color(0xFFF2E7F5),
+    page: Color(0xFFFFFBFF),
+    band: Color(0xFFA56CB3),
+    motif: Color(0xFFFCEFFF),
+    accent: Color(0xFFE9C77A),
+  ),
+  peach(
+    'خوخي',
+    FrameMotif.rosette,
+    audience: MushafAudience.girls,
+    paper: Color(0xFFFBE8DF),
+    page: Color(0xFFFFFAF6),
+    band: Color(0xFFE38D78),
+    motif: Color(0xFFFFF1EA),
+    accent: Color(0xFFD8AE58),
+  ),
+  blossom(
+    'زهري',
+    FrameMotif.leaf,
+    audience: MushafAudience.girls,
+    paper: Color(0xFFFCE6ED),
+    page: Color(0xFFFFF9FB),
+    band: Color(0xFFF4BFD0),
+    motif: Color(0xFFB0476E),
+    accent: Color(0xFFC9A04E),
+  ),
+  kidsSky(
+    'سماء صافية',
+    FrameMotif.star,
+    audience: MushafAudience.kids,
+    paper: Color(0xFFDDF0FB),
+    page: Color(0xFFFFFFFF),
+    band: Color(0xFF4A9FD8),
+    motif: Color(0xFFFFFFFF),
+    accent: Color(0xFFF5C542),
+  ),
+  kidsGarden(
+    'بستان',
+    FrameMotif.flower,
+    audience: MushafAudience.kids,
+    paper: Color(0xFFE3F4DF),
+    page: Color(0xFFFFFFFF),
+    band: Color(0xFF58AD67),
+    motif: Color(0xFFFFF7D6),
+    accent: Color(0xFFF2B84B),
+  ),
+  kidsSun(
+    'مشمس',
+    FrameMotif.rosette,
+    audience: MushafAudience.kids,
+    paper: Color(0xFFFFF2D4),
+    page: Color(0xFFFFFFFF),
+    band: Color(0xFFF0A63A),
+    motif: Color(0xFFFFFFFF),
+    accent: Color(0xFF4A9FD8),
+  ),
+  charcoal(
+    'فحمي',
+    FrameMotif.star,
+    audience: MushafAudience.men,
+    paper: Color(0xFFE3E5E8),
+    page: Color(0xFFFCFCFA),
+    band: Color(0xFF353B43),
+    motif: Color(0xFFC9A86A),
+    accent: Color(0xFF9AA3AD),
+  ),
+  desert(
+    'صحراوي',
+    FrameMotif.square,
+    audience: MushafAudience.men,
+    paper: Color(0xFFECE2D0),
+    page: Color(0xFFFCF7EC),
+    band: Color(0xFF6B5A44),
+    motif: Color(0xFFE2CDA4),
+    accent: Color(0xFFC7A96E),
+  ),
+  forest(
+    'غابة',
+    FrameMotif.knot,
+    audience: MushafAudience.men,
+    paper: Color(0xFFE0E8E1),
+    page: Color(0xFFFBFCF7),
+    band: Color(0xFF2E4A3A),
+    motif: Color(0xFFC8B27A),
+    accent: Color(0xFFA9BFAE),
+  );
+
+  const MushafStyle(
+    this.nameAr,
+    this.motifShape, {
+    this.audience = MushafAudience.all,
+    required this.paper,
+    required this.page,
+    required this.band,
+    required this.motif,
+    required this.accent,
+  });
+
+  final String nameAr;
+  final FrameMotif motifShape;
+
+  /// Whom it suits: all, or girls, children or men.
+  final MushafAudience audience;
+
+  /// The look saved by [name]; Madinah's when none is.
+  static MushafStyle named(String name) =>
+      values.asNameMap()[name] ?? MushafStyle.madinah;
+
+  /// The screen around the page and the page itself, in the light.
+  final Color paper;
+  final Color page;
+
+  /// The frame: its band, the motif along it, and its rules and dots.
+  final Color band;
+  final Color motif;
+  final Color accent;
+
+  /// The frame's colours on [p]: in the dark, the band sunk into the page
+  /// and the motif lightened.
+  ({Color band, Color motif, Color accent}) frameOn(MushafPalette p) =>
+      p.brightness == Brightness.dark
+      ? (
+          band: Color.lerp(motif, p.page, 0.8)!,
+          motif: Color.lerp(motif, const Color(0xFFFFFFFF), 0.32)!,
+          accent: Color.lerp(accent, p.page, 0.1)!,
+        )
+      : (band: band, motif: motif, accent: accent);
+
+  /// [p] with this look's screen and page, in the light.
+  MushafPalette on(MushafPalette p) => p.brightness == Brightness.dark
+      ? p
+      : MushafPalette(
+          brightness: p.brightness,
+          paper: paper,
+          page: page,
+          ink: p.ink,
+          frame: p.frame,
+          green: p.green,
+          gold: p.gold,
+          goldLight: p.goldLight,
+          rose: p.rose,
+          roseLight: p.roseLight,
+          multi: p.multi,
+        );
+}
+
 /// The palette in use; set from the app theme (see [MushafColors.use]).
 abstract final class MushafColors {
   static MushafPalette _p = MushafPalette.light;
+  static MushafStyle _style = MushafStyle.madinah;
 
-  static void use(Brightness brightness) => _p = brightness == Brightness.dark
-      ? MushafPalette.dark
-      : MushafPalette.light;
+  static void use(
+    Brightness brightness, [
+    MushafStyle style = MushafStyle.madinah,
+  ]) {
+    _style = style;
+    _p = style.on(
+      brightness == Brightness.dark ? MushafPalette.dark : MushafPalette.light,
+    );
+  }
+
+  /// The look of the mushaf in use.
+  static MushafStyle get style => _style;
+
+  /// The frame's colours, of the look in use.
+  static ({Color band, Color motif, Color accent}) get frameColors =>
+      _style.frameOn(_p);
 
   static bool get isDark => _p.brightness == Brightness.dark;
   static Color get paper => _p.paper;

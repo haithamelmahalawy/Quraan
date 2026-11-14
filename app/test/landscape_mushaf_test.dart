@@ -803,6 +803,62 @@ void main() {
       matchesGoldenFile('goldens/landscape_warsh_middle.png'),
     );
   });
+
+  // «شكل المصحف»: its ring over the page, the page in sight below it; a look
+  // touched put on at once, the ring left open to try another (the user,
+  // 2026-11-14).
+  testWidgets('the ring of the looks over the page puts one on at once', (
+    t,
+  ) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..page = 3
+      ..qcfFont = false;
+    await show(t, const Size(432, 800), settings: settings, reader: true);
+    await t.tap(find.byKey(const ValueKey('top-bar-toggle')));
+    await t.pumpAndSettle();
+    final button = find.byKey(const ValueKey('mushaf-style-button'));
+    await t.ensureVisible(button);
+    await t.pumpAndSettle();
+    await t.tap(button);
+    await t.pump(const Duration(milliseconds: 400));
+    final ring = find.byKey(const ValueKey('mushaf-style-ring'));
+    expect(ring, findsOneWidget);
+    // The page below it, in sight.
+    final page = t.getRect(find.byType(MushafPage).last);
+    expect(page.top, greaterThanOrEqualTo(t.getRect(ring).bottom - 1));
+    expect(page.height, greaterThan(400));
+    await t.tap(find.byKey(const ValueKey('mushaf-style-emerald')));
+    await t.pump(const Duration(milliseconds: 400));
+    expect(settings.mushafStyle, 'emerald');
+    expect(ring, findsOneWidget);
+    // Closed by its button again.
+    await t.tap(button);
+    await t.pump(const Duration(milliseconds: 400));
+    expect(ring, findsNothing);
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
+
+  // No hamesh or usul beside it: the page as wide as beside one, in the
+  // middle, its lines as large as then and as many in sight (the user,
+  // 2026-11-14).
+  testWidgets('a page with no notes keeps the width it has beside one', (
+    t,
+  ) async {
+    await show(
+      t,
+      const Size(800, 432),
+      repository: VariantRepository(const {}),
+      settings: ReaderSettings.memory(selected: const {}),
+    );
+    expect(find.byKey(const ValueKey('landscape-farsh-margin')), findsNothing);
+    expect(find.byKey(const ValueKey('landscape-usul-margin')), findsNothing);
+    final print = t.getRect(find.byKey(const ValueKey('mushaf-print')));
+    expect(print.width, closeTo(800 - 240, 1));
+    expect(print.left, closeTo(800 - print.right, 1));
+    expect(t.takeException(), isNull);
+  });
 }
 
 class _StudyVariants extends VariantRepository {

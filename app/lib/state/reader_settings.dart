@@ -122,6 +122,11 @@ class ReaderSettings extends ChangeNotifier {
     return null;
   }
 
+  /// The look of the mushaf picked, by its name (see `MushafStyle`): its
+  /// frame and colours (the user, 2026-11-14); Madinah's at first.
+  String get mushafStyle => _get('mushafStyle') as String? ?? 'madinah';
+  set mushafStyle(String name) => _set('mushafStyle', name);
+
   /// Shows the mushaf in [riwaya] (a selected riwaya), or Hafs (null).
   set displayed(String? riwaya) => _set('base', riwaya ?? 'hafs');
 

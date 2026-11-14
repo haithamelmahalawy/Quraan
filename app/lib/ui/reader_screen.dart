@@ -26,6 +26,7 @@ import 'mushaf_page.dart';
 import 'page_side_hint.dart';
 import 'mutashabihat_sheet.dart';
 import 'raised.dart';
+import 'mushaf_style_sheet.dart';
 import 'riwayat_panel.dart';
 import 'search_screen.dart';
 import 'surah_index.dart';
@@ -185,6 +186,10 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// Folded away at first, in every view (the user, 2026-11-13).
   bool _topBarOpen = false;
   bool _bottomBarOpen = false;
+
+  /// The ring of the looks of the mushaf open over the page (the user,
+  /// 2026-11-14).
+  bool _stylesOpen = false;
   bool get _twoPages => widget.settings.twoPages && !_landscape;
 
   @override
@@ -823,6 +828,15 @@ class _ReaderScreenState extends State<ReaderScreen>
                         onTap: () => widget.settings.blinkToOpen =
                             !widget.settings.blinkToOpen,
                       ),
+                      // «شكل المصحف»: its frames and colours on a ring (the
+                      // user, 2026-11-14).
+                      RaisedIcon(
+                        key: const ValueKey('mushaf-style-button'),
+                        icon: Icons.palette_outlined,
+                        tooltip: 'شكل المصحف',
+                        color: _stylesOpen ? MushafColors.gold : null,
+                        onTap: () => setState(() => _stylesOpen = !_stylesOpen),
+                      ),
                       if (_loading)
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 8),
@@ -874,6 +888,9 @@ class _ReaderScreenState extends State<ReaderScreen>
                     _barHandle(top: true)
                   else
                     const SizedBox(height: _handleHeight),
+                  // Over the page, the page in sight below it: a look
+                  // touched is seen on it at once.
+                  if (_stylesOpen) MushafStyleRing(settings: widget.settings),
                   Expanded(child: pages),
                   if (_landscape) ...[
                     _barHandle(top: false),
@@ -1003,6 +1020,8 @@ class _ReaderScreenState extends State<ReaderScreen>
           onTap: () => setState(() {
             if (top) {
               _topBarOpen = !open;
+              // The ring of the looks folded away with the bar it opens from.
+              if (open) _stylesOpen = false;
               // The riwayat folded away with the bar they open from.
               if (open) _riwayatOpen.value = false;
             } else {
