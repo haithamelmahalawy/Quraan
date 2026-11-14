@@ -1243,6 +1243,13 @@ class Manzumat {
         !v.isUsul) {
       return poem == Poem.durrah ? {81} : {514, 515};
     }
+    // «طَيۡفٞ» (الأعراف ٢٠١): «وَقُلْ طَائِفٌ طَيْفٌ رِضىً حَقُّهُ» (712) (the
+    // user, 2026-11-14).
+    if (poem == Poem.shatibiyya &&
+        '${v.surah}:${v.ayah}:${v.word}' == '7:201:5' &&
+        !v.isUsul) {
+      return {712};
+    }
     // «ٱبۡنَ أُمِّ» (الأعراف ١٥٠) and «يَبۡنَؤُمِّ» (طه ٩٤): «وَمِيمَ ابْنَ أُمَّ اكْسِرْ
     // مَعًا كُفْؤَ صُحْبَةٍ» (701) (the user, 2026-11-14).
     if (poem == Poem.shatibiyya &&

@@ -6714,4 +6714,21 @@ void main() {
       }
     }
   });
+
+  // «طَيۡفٞ» (الأعراف ٢٠١): «وَقُلْ طَائِفٌ طَيْفٌ رِضىً حَقُّهُ» (712) (the user,
+  // 2026-11-14).
+  test('tayf cites 712', () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['duri_kisai', 'abul_harith', 'bazzi'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 7, 201, 5)
+          .where((v) => v.word == 5 && !v.isUsul)
+          .single;
+      expect(v.text, 'طَيۡفٞ', reason: id);
+      final r = manzumat.referenceOf(v, 'طَٰٓئِفٞ', 7, surahs);
+      expect(r.mention, {712}, reason: id);
+    }
+  });
 }

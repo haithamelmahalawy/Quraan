@@ -1238,6 +1238,12 @@ void _userFarsh(String id, List variants) {
       {'source': ashabSource, 'farshFrom': 'shubah'},
     ]);
   }
+  // al-Kisa'i's «طَيۡفٞ» الأعراف ٢٠١ as Ibn Kathir's, verified (the user,
+  // 2026-11-14).
+  if (at(7, 201, 5) case final v? when kisai.contains(id)) {
+    v[4] = 'طَيۡفٞ';
+    v[6] = 'بالياء وحذف الهمزة';
+  }
   // «يَتَسَنَّه۠» البقرة ٢٥٩: the ha gone joined and kept at the stop, the
   // oval of «أنا» on it for its sukun, as Ya'qub's.
   if (kisai.contains(id) || hamza.contains(id) || khalaf.contains(id)) {
