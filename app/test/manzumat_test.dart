@@ -6838,4 +6838,31 @@ void main() {
       expect(r.mention, {137}, reason: id);
     }
   });
+
+  // «يُغَشِّي» (الأعراف ٥٤، الرعد ٣): 687, the Durrah's 113-114 (the user,
+  // 2026-11-14); no reader's name glued into a bayt's text.
+  test("yughashshi cites 687 and the Durrah's 113-114", () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['duri_kisai', 'ishaq', 'ruways'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      for (final (s, a, w) in [(7, 54, 14), (13, 3, 15)]) {
+        final v = variants
+            .at([id], s, a, w)
+            .where((v) => v.word == w && !v.isUsul)
+            .single;
+        final r = manzumat.referenceOf(v, 'يُغۡشِي', s, surahs);
+        expect(
+          r.mention,
+          id == 'duri_kisai' ? {687} : {113, 114},
+          reason: '$id $s',
+        );
+      }
+    }
+    for (final p in Poem.values) {
+      for (final b in manzumat.verses(p)) {
+        expect('${b.sadr} ${b.ajz}', isNot(matches(RegExp(r'\Sيعقوب'))));
+      }
+    }
+  });
 }

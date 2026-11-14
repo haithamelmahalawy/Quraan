@@ -1253,6 +1253,12 @@ class Manzumat {
       if (qiraaOf(v.riwayaId).id == 'khalaf') return {106, 107};
     }
     if (poem == Poem.durrah && word == '10:103:1' && !v.isUsul) return {107};
+    // «يُغَشِّي ٱلَّيۡلَ» (الأعراف ٥٤، الرعد ٣): «وَيُغْشِي بِهاَ وَالرَّعْدِ ثَقَّلَ
+    // صُحْبَةٌ» (687); the Durrah's «... حَلَا / يُغَشِّيْ لَهُ ...» (113، 114) (the
+    // user, 2026-11-14).
+    if ({'7:54:14', '13:3:15'}.contains(word) && !v.isUsul) {
+      return poem == Poem.durrah ? {113, 114} : {687};
+    }
     // «فَنُـۨجِي مَن نَّشَآءُ» (يوسف ١١٠): the Durrah's «... الْخِفُّ نُجِّيَ حَامِدٌ»
     // (137) (the user, 2026-11-14).
     if (poem == Poem.durrah && word == '12:110:10' && !v.isUsul) return {137};
