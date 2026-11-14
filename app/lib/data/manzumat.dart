@@ -1253,6 +1253,9 @@ class Manzumat {
       if (qiraaOf(v.riwayaId).id == 'khalaf') return {106, 107};
     }
     if (poem == Poem.durrah && word == '10:103:1' && !v.isUsul) return {107};
+    // «فَنُـۨجِي مَن نَّشَآءُ» (يوسف ١١٠): the Durrah's «... الْخِفُّ نُجِّيَ حَامِدٌ»
+    // (137) (the user, 2026-11-14).
+    if (poem == Poem.durrah && word == '12:110:10' && !v.isUsul) return {137};
     // «يَرۡجِعُ ٱلۡأَمۡرُ» (هود ١٢٣): the Durrah's «... وَيُرْجَعُ كَيْفَ جَا / إِذَا
     // كَانَ لِلأُخْرَى فَسَمِّ حُلًى حَلَا // وَالامْرُ اتْلُ ...» (63، 64) (the user,
     // 2026-11-14).

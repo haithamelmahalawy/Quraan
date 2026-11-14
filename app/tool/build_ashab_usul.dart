@@ -1292,6 +1292,13 @@ Map<String, int> buildAshabUsul(
       variants.insert(at < 0 ? variants.length : at, row);
     }
   }
+  // «فَنُـۨجِي» يوسف ١١٠ written as the verified readers': the small raised nun
+  // between the nun and the jim (the user, 2026-11-14).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 12 && v[1] == 110 && v[2] == 10 && v[5] == 'f') {
+      v[4] = 'فَنُـۨجِي';
+    }
+  }
   // «تَتۡلُواْ» يونس ٣٠: Hafs's word, its ba a ta, its alif with the round
   // sukun kept (the user, 2026-11-14).
   for (final v in (data['variants'] as List).cast<List>()) {

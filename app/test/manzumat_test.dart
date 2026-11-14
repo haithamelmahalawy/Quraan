@@ -6820,4 +6820,22 @@ void main() {
       expect(r.mention, {63, 64}, reason: id);
     }
   });
+
+  // «فَنُـۨجِي» (يوسف ١١٠): the Durrah's 137 «الْخِفُّ نُجِّيَ حَامِدٌ» (the user,
+  // 2026-11-14).
+  test("fa-nunji cites the Durrah's 137", () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['ishaq', 'ibn_wardan'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 12, 110, 10)
+          .where((v) => v.word == 10 && !v.isUsul)
+          .single;
+      expect(v.text, 'فَنُـۨجِي', reason: id);
+      final r = manzumat.referenceOf(v, 'فَنُجِّيَ', 12, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {137}, reason: id);
+    }
+  });
 }
