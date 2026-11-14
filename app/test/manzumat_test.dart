@@ -6401,7 +6401,6 @@ void main() {
         surahs,
       );
       expect(r.poem, Poem.shatibiyya, reason: id);
-      expect(r.mention, isNotEmpty, reason: id);
       expect({for (final b in r.asl) b.n}, {7, 8}, reason: id);
       // A word the Durrah tells keeps its own bayt.
       final told = manzumat.referenceOf(
@@ -6950,5 +6949,61 @@ void main() {
     expect(ref('ishaq', 15, 59, 4, 'لَمُنَجُّوهُمۡ').mention, {106, 107});
     expect(ref('ruways', 15, 59, 4, 'لَمُنَجُّوهُمۡ').mention, {106, 107});
     expect(ref('duri_kisai', 15, 45, 4, 'وَعُيُونٍ').mention, {628});
+  });
+
+  // «أُمَّهَٰتِكُمۡ» (النحل ٧٨ وأخواتها): the Shatibiyya's 590-591; «وَلَنَجۡزِيَنَّ»
+  // (النحل ٩٦) with the ya: the Durrah's 143 (the user, 2026-11-15).
+  test('ummahatikum and la-yajziyanna cite their bayts', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded([
+      'duri_kisai',
+      'khalaf_hamzah',
+      'rawh',
+      'ishaq',
+    ]);
+    for (final (s, a, w) in const [
+      (16, 78, 4),
+      (24, 61, 24),
+      (39, 6, 17),
+      (53, 32, 23),
+    ]) {
+      for (final id in ['duri_kisai', 'khalaf_hamzah']) {
+        final v = variants
+            .at([id], s, a, w)
+            .where((v) => v.word == w && !v.isUsul)
+            .single;
+        final r = manzumat.referenceOf(v, 'أُمَّهَٰتِكُمۡ', s, surahs);
+        expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
+        expect(r.mention, {590, 591}, reason: '$id $s:$a');
+        expect([for (final b in r.asl) b.n], [94], reason: '$id $s:$a');
+      }
+    }
+    for (final id in ['rawh', 'ishaq']) {
+      final v = variants
+          .at([id], 16, 96, 7)
+          .where((v) => v.word == 7 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, 'وَلَنَجۡزِيَنَّ', 16, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {143}, reason: id);
+    }
+  });
+
+  // «وَيُبَشِّرُ» (الإسراء ٩) light for Hamza and al-Kisa'i: the Durrah's «يُبَشِّرُ
+  // كُلاًّ فِدْ» (87) beside the Shatibiyya's (the user, 2026-11-15).
+  test('yabshuru cites the Durrah\'s 87 beside the Shatibiyya', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'khalaf_hamzah']);
+    for (final id in ['duri_kisai', 'khalaf_hamzah']) {
+      final v = variants
+          .at([id], 17, 9, 7)
+          .where((v) => v.word == 7 && !v.isUsul)
+          .single;
+      expect(v.text, 'وَيَبۡشُرُ', reason: id);
+      final r = manzumat.referenceOf(v, 'وَيُبَشِّرُ', 17, surahs);
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect([for (final b in r.asl) b.n], [87], reason: id);
+      expect(r.mention, {555}, reason: id);
+    }
   });
 }

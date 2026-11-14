@@ -467,7 +467,7 @@ void main() {
                 .cast<List>();
         final wasl = {
           for (final v in rows)
-            if (v[6] == 'بإمالة الراء وصلًا')
+            if (v[6] == 'بإمالة الراء فقط وصلًا')
               '${v[0]}:${v[1]}:${v[2]}': '${v[4]}',
         };
         if (id.contains('kisai') || id == 'abul_harith') {
@@ -969,6 +969,128 @@ void main() {
       'ibn_jammaz',
     ]) {
       expect(at(id, 63, 11)![6], 'بإسكان الهاء', reason: id);
+    }
+  });
+
+  // النحل ٧٨-٨٠ (the user, 2026-11-15).
+  test('ummahatikum, taraw, biyutan and ash\'ariha in al-Nahl', () {
+    final quran =
+        jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
+    String hafs(int s, int a, int w) =>
+        ((quran['ayahs'] as List).firstWhere((x) => x[0] == s && x[1] == a)[4]
+                as String)
+            .split(' ')[w];
+    List<List> rows(String id) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>();
+    List? at(String id, int s, int a, int w, String kind) =>
+        rows(id)
+            .where((v) => v[0] == s && v[1] == a && v[2] == w && v[5] == kind)
+            .firstOrNull;
+    for (final (s, a, w) in const [
+      (16, 78, 4),
+      (24, 61, 24),
+      (39, 6, 17),
+      (53, 32, 23),
+    ]) {
+      for (final id in ['duri_kisai', 'abul_harith']) {
+        final v = at(id, s, a, w, 'f')!;
+        expect(
+          '${v[4]}',
+          'إِ${hafs(s, a, w).substring(2)}',
+          reason: '$id $s:$a',
+        );
+        expect(v[6], 'بكسر الهمزة وفتح الميم المشددة', reason: id);
+      }
+      for (final id in ['khalaf_hamzah', 'khallad']) {
+        final v = at(id, s, a, w, 'f')!;
+        expect('${v[4]}'.startsWith('إِ'), isTrue, reason: '$id $s:$a');
+        expect('${v[4]}'.substring(2, 3), 'م', reason: '$id $s:$a');
+        expect(
+          '${v[4]}'.substring(3, 5).split('')..sort(),
+          (['ِ', 'ّ'])..sort(),
+          reason: '$id $s:$a',
+        );
+        expect(v[6], 'بكسر الهمزة وكسر الميم المشددة', reason: id);
+      }
+      for (final id in ['ishaq', 'idris']) {
+        expect(at(id, s, a, w, 'f'), isNull, reason: '$id $s:$a');
+      }
+    }
+    for (final id in [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'hisham',
+      'ibn_dhakwan',
+      'rawh',
+      'ruways',
+    ]) {
+      final v = at(id, 16, 79, 1, 'f')!;
+      expect(v[4], 'تَرَوۡاْ', reason: id);
+      expect('${v[6]}', isNot(contains('همزة')), reason: id);
+      expect('${v[6]}', startsWith('بالتاء وإسكان الواو'), reason: id);
+    }
+    for (final id in [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'duri_kisai',
+      'abul_harith',
+      'shubah',
+      'hisham',
+    ]) {
+      final v = at(id, 16, 80, 11, 'f')!;
+      expect(v[4], 'بِيُوتٗا', reason: id);
+      expect(v[6], 'بكسر الباء', reason: id);
+    }
+    expect(at('duri_kisai', 16, 80, 20, 'u')![6], 'بإمالة الألف');
+    expect(at('abul_harith', 16, 80, 20, 'u'), isNull);
+  });
+
+  // الإسراء ٧، ٩، ٢٣ (the user, 2026-11-15).
+  test('li-nasu\'a, yabshuru and yablughanni in al-Isra', () {
+    List? at(String id, int a, int w) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>()
+            .where((v) => v[0] == 17 && v[1] == a && v[2] == w && v[5] == 'f')
+            .firstOrNull;
+    for (final id in ['duri_kisai', 'abul_harith']) {
+      expect(at(id, 7, 11)![4], 'لِنَسُوٓءَ', reason: id);
+      expect(at(id, 7, 11)![6], 'بالنون وبهمزة مفتوحة بعد المد المتصل');
+    }
+    for (final id in [
+      'duri_kisai',
+      'abul_harith',
+      'khalaf_hamzah',
+      'khallad',
+    ]) {
+      expect(at(id, 9, 7)![4], 'وَيَبۡشُرُ', reason: id);
+      expect(
+        at(id, 9, 7)![6],
+        'بفتح الياء وإسكان الباء وتخفيف الشين وضم الشين',
+        reason: id,
+      );
+    }
+    for (final id in [
+      'duri_kisai',
+      'abul_harith',
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+    ]) {
+      expect(
+        at(id, 23, 9)![6],
+        'بإثبات الألف والمد المشبع وكسر النون مع التشديد',
+        reason: id,
+      );
     }
   });
 }

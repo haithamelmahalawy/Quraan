@@ -1029,7 +1029,7 @@ Map<String, int> buildAshabUsul(
         1,
         word.t.replaceFirst('رَ', 'رَ۪'),
         'u',
-        'بإمالة الراء وصلًا',
+        'بإمالة الراء فقط وصلًا',
         '',
         {'source': ashabSource},
       ];
@@ -1037,7 +1037,7 @@ Map<String, int> buildAshabUsul(
         (r) =>
             r[5] == 'u' &&
             order(r) == order(row) &&
-            r[6] == 'بإمالة الراء وصلًا',
+            (r[6] == 'بإمالة الراء وصلًا' || r[6] == 'بإمالة الراء فقط وصلًا'),
       );
       final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
       variants.insert(at < 0 ? variants.length : at, row);
@@ -1357,6 +1357,103 @@ Map<String, int> buildAshabUsul(
         v[4] = 'لِّعِبَادِي';
         v[6] = 'بإسكان ياء الإضافة';
       }
+    }
+  }
+  // النحل ٧٨-٨٠ (the user, 2026-11-15). «أُمَّهَٰتِكُمۡ» joined after a kasra
+  // (النحل ٧٨، النور ٦١، الزمر ٦، النجم ٣٢): al-Kisa'i's hamza broken, Hamza's
+  // hamza and mim; Khalaf al-'Ashir as Hafs. «تَرَوۡاْ» with the ta, no more
+  // than that; «بِيُوتٗا» (٨٠) with the ba broken as «بِيُوتِكُمۡ» before it;
+  // al-Duri's «وَأَشۡعَارِهَآ» leaned as «وَأَوۡبَارِهَا».
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    void put(List row) {
+      variants.removeWhere(
+        (r) => order(r as List) == order(row) && r[5] == row[5],
+      );
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+
+    if (_hamza.contains(id) || _kisai.contains(id)) {
+      for (final (s, a) in const [(16, 78), (24, 61), (39, 6), (53, 32)]) {
+        final word = words.firstWhere(
+          (w) => w.s == s && w.a == a && _bare(w.t).startsWith('أمهت'),
+        );
+        final rest = word.t.substring(2);
+        put([
+          s,
+          a,
+          word.w,
+          1,
+          _hamza.contains(id)
+              ? 'إِ${rest.replaceFirst(RegExp('^م[ًٌٍَُِّْ]+'), 'مِّ')}'
+              : 'إِ$rest',
+          'f',
+          _hamza.contains(id)
+              ? 'بكسر الهمزة وكسر الميم المشددة'
+              : 'بكسر الهمزة وفتح الميم المشددة',
+          '',
+          {'source': ashabSource},
+        ]);
+      }
+    }
+    for (final v in variants.cast<List>()) {
+      if (v[0] == 16 && v[1] == 79 && v[2] == 1 && v[5] == 'f') {
+        v[4] = 'ت${index[_key(16, 79, 1)]!.t.substring(1)}';
+        v[6] = '${v[6]}'.replaceFirst(' وبعدها همزة مكسورة', '');
+      }
+    }
+    final buyut = index[_key(16, 80, 11)]!.t;
+    put([
+      16,
+      80,
+      11,
+      1,
+      'بِ${buyut.substring(2)}',
+      'f',
+      'بكسر الباء',
+      '',
+      {'source': ashabSource, 'farshFrom': 'shubah'},
+    ]);
+    if (id == 'duri_kisai') {
+      put([
+        16,
+        80,
+        20,
+        1,
+        '',
+        'u',
+        'بإمالة الألف',
+        '',
+        {'source': ashabSource, 'book': 'kharouf'},
+      ]);
+    }
+  }
+  // al-Kisa'i's «لِنَسُوٓءَ» (الإسراء ٧): the madd over the waw, the nun opened
+  // (the user, 2026-11-15).
+  if (_kisai.contains(id)) {
+    for (final v in (data['variants'] as List).cast<List>()) {
+      if (v[0] == 17 && v[1] == 7 && v[2] == 11 && v[5] == 'f') {
+        v[4] = 'لِنَسُوٓءَ';
+        v[6] = 'بالنون وبهمزة مفتوحة بعد المد المتصل';
+      }
+    }
+  }
+  // Hamza's and al-Kisa'i's «وَيَبۡشُرُ» (الإسراء ٩): its ya opened and worded
+  // as in its sisters (the user, 2026-11-15).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 17 && v[1] == 9 && v[2] == 7 && v[5] == 'f') {
+      v[4] = 'وَيَبۡشُرُ';
+      v[6] = 'بفتح الياء وإسكان الباء وتخفيف الشين وضم الشين';
+    }
+  }
+  // «يَبۡلُغَٰٓنِّ» (الإسراء ٢٣): «كَفَى يَبْلُغَنَّ امْدُدْهُ وَاكْسِرْ شَمَرْدَلَا»
+  // (the user, 2026-11-15).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 17 && v[1] == 23 && v[2] == 9 && v[5] == 'f') {
+      v[6] = 'بإثبات الألف والمد المشبع وكسر النون مع التشديد';
     }
   }
   // Hamza's and Khalaf al-'Ashir's «يَتَوَفَّىٰهُمُ» (النحل ٢٨، ٣٢): Hafs's word
