@@ -1489,6 +1489,21 @@ void _userFarsh(String id, List variants) {
   if (at(8, 42, 28) case final v? when khalaf.contains(id)) {
     v[4] = 'حَـِۧيَ';
   }
+  // «نُنَجِّ ٱلۡمُؤۡمِنِينَ» يونس ١٠٣, Hamza's and Khalaf al-'Ashir's, as the
+  // verified readers': Hafs and al-Kisa'i alone light (the user, 2026-11-14).
+  if (hamza.contains(id) || khalaf.contains(id)) {
+    put([
+      10,
+      103,
+      8,
+      1,
+      'نُنَجِّ',
+      'f',
+      'بفتح النون وتشديد الجيم',
+      '',
+      {'source': ashabSource, 'farshFrom': 'qalun'},
+    ]);
+  }
   // «يَتَسَنَّه۠» البقرة ٢٥٩: the ha gone joined and kept at the stop, the
   // oval of «أنا» on it for its sukun, as Ya'qub's.
   if (kisai.contains(id) || hamza.contains(id) || khalaf.contains(id)) {

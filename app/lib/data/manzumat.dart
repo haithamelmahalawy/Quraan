@@ -1243,6 +1243,16 @@ class Manzumat {
         !v.isUsul) {
       return poem == Poem.durrah ? {81} : {514, 515};
     }
+    // «نُنَجِّ ٱلۡمُؤۡمِنِينَ» (يونس ١٠٣): «... الْخِفُّ نُنْجِ رِضىً عَلَا» (753); the
+    // Durrah's «... يُنْجِي فَثَقِّلَا / بِثَانٍ أَتَى وَالْخِفَّ فِي الْكُلِّ حُزْ» (106،
+    // 107), Ya'qub's «نُنجِي رُسُلَنَا» by the second's (the user, 2026-11-14).
+    final word = '${v.surah}:${v.ayah}:${v.word}';
+    if (word == '10:103:8' && !v.isUsul) {
+      if (poem == Poem.shatibiyya) return {753, 754};
+      // Khalaf al-'Ashir's by the Durrah's two; Abu Ja'far's by Nafi''s.
+      if (qiraaOf(v.riwayaId).id == 'khalaf') return {106, 107};
+    }
+    if (poem == Poem.durrah && word == '10:103:1' && !v.isUsul) return {107};
     // «تَزِيغُ» (التوبة ١١٧): the Durrah's «... يَزِيـغُ أَنِّثْ فَشَا ...» (127)
     // (the user, 2026-11-14).
     if (poem == Poem.durrah &&

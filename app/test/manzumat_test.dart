@@ -6765,4 +6765,23 @@ void main() {
       expect(r.mention, {127}, reason: id);
     }
   });
+
+  // «نُنَجِّ» (يونس ١٠٣): 753; the Durrah's 106-107 (the user, 2026-11-14).
+  test('nunajji cites 753 and the Durrah 106-107', () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['khallad', 'ishaq', 'ruways'];
+    await variants.ensureLoaded(ids);
+    Reference ref(String id, int w) => manzumat.referenceOf(
+      variants
+          .at([id], 10, 103, w)
+          .where((v) => v.word == w && !v.isUsul)
+          .single,
+      'نُنجِ',
+      10,
+      surahs,
+    );
+    expect(ref('khallad', 8).mention, {753, 754});
+    expect(ref('ishaq', 8).mention, {106, 107});
+    expect(ref('ruways', 1).mention, {107});
+  });
 }
