@@ -175,18 +175,6 @@ class _RiwayatPanelState extends State<RiwayatPanel>
     _keepOneShown();
   }
 
-  /// The mushaf shown in [id], which is chosen with it. One at a time: another
-  /// takes its place, and the one shown stays until then.
-  void _show(String id) {
-    if (id == hafsId) {
-      s.compareHafs = true;
-      s.displayed = null;
-      return;
-    }
-    s.setSelected({...s.selected, id});
-    s.displayed = id;
-  }
-
   /// The ring opens with the qari of the riwaya shown in front.
   void _toggle() {
     if (!_open) {
@@ -203,6 +191,9 @@ class _RiwayatPanelState extends State<RiwayatPanel>
   /// The ring dragged: its boxes take no tap until it rests (a finger
   /// turning it, or stopping it, chose the riwaya it came down on).
   bool _dragging = false;
+
+  /// Where a finger came down outside the open panel: moved on, a scroll.
+  Offset? _downAt;
 
   void _settle(double target) => _turn.animateTo(
     target,
@@ -322,27 +313,17 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                       ),
                     ),
                   ),
-                  Tooltip(
-                    message: 'عرض المصحف برواية ${r.nameAr}',
-                    // On or off: the mushaf shown in this riwaya.
-                    child: SizedBox(
-                      height: 20,
-                      child: FittedBox(
-                        child: Switch(
-                          key: ValueKey('riwaya-show-${r.id}'),
-                          value: r.id == hafsId
-                              ? s.displayed == null
-                              : s.displayed == r.id,
-                          activeThumbColor: Colors.white,
-                          activeTrackColor: MushafColors.green,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                          onChanged: (_) =>
-                              _keepingInPlace(q, () => _show(r.id)),
-                        ),
-                      ),
+                  // The riwaya shown chosen on the frame's circle, not here
+                  // (the user, 2026-11-14): only marked.
+                  if (r.id == hafsId
+                      ? s.displayed == null && _chosen(r.id)
+                      : s.displayed == r.id)
+                    Icon(
+                      Icons.radio_button_checked,
+                      key: ValueKey('riwaya-shown-${r.id}'),
+                      size: 14,
+                      color: MushafColors.green,
                     ),
-                  ),
                 ],
               ),
         ],
@@ -525,7 +506,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
               children: [
                 Expanded(
                   child: Text(
-                    '  اسحب لتحريك القراء • المربع الأيسر لعرض المصحف',
+                    '  اسحب لتحريك القراء • الرواية المعروضة في دائرة أعلى الإطار',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -598,12 +579,13 @@ class _RiwayatPanelState extends State<RiwayatPanel>
                       );
                     },
                   ),
-                if (s.selected.isNotEmpty || s.compareHafs)
+                if (s.selected.isNotEmpty || !s.compareHafs)
                   InkWell(
                     key: const ValueKey('riwayat-clear'),
+                    // Hafs kept, as at the start (the user, 2026-11-14).
                     onTap: () {
                       s.setSelected({});
-                      s.compareHafs = false;
+                      s.compareHafs = true;
                       s.displayed = null;
                     },
                     child: Padding(
@@ -661,22 +643,7 @@ class _RiwayatPanelState extends State<RiwayatPanel>
       children: [
         if (_open) _panel(),
         Expanded(
-          child: Stack(
-            children: [
-              Positioned.fill(child: _page()),
-              // Open, a touch anywhere outside it, on the mushaf or its
-              // hamesh, folds it away, and does nothing else (the user,
-              // 2026-11-13).
-              if (_open)
-                Positioned.fill(
-                  child: GestureDetector(
-                    key: const ValueKey('riwayat-panel-outside'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _toggle,
-                  ),
-                ),
-            ],
-          ),
+          child: Stack(children: [Positioned.fill(child: _page())]),
         ),
       ],
     ),
@@ -686,10 +653,44 @@ class _RiwayatPanelState extends State<RiwayatPanel>
   /// when it has no bar to stand in.
   Widget _page() => LayoutBuilder(
     builder: (context, box) {
-      if (widget.open != null && !widget.tab) return widget.child;
+      // Open, a touch anywhere outside it, on the mushaf or its hamesh, folds
+      // it away (the user, 2026-11-13); the finger goes on to the page, a
+      // scroll down to the hamesh or the usul carried on at once (the user,
+      // 2026-11-14). Under the arrow: tapped, it folds it away by itself.
+      // A tap folds it away and nothing else, its own tap first in the
+      // arena; a finger moving folds it away too, the page's scroll going on.
+      final outside = Positioned.fill(
+        child: Listener(
+          key: const ValueKey('riwayat-panel-outside'),
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (e) => _downAt = e.position,
+          onPointerMove: (e) {
+            final from = _downAt;
+            if (_open && from != null && (e.position - from).distance > 8) {
+              _downAt = null;
+              _toggle();
+            }
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              if (_open) _toggle();
+            },
+          ),
+        ),
+      );
+      if (widget.open != null && !widget.tab) {
+        return Stack(
+          children: [
+            Positioned.fill(child: widget.child),
+            if (_open) outside,
+          ],
+        );
+      }
       Widget placed(double? at) => Stack(
         children: [
           Positioned.fill(child: widget.child),
+          if (_open) outside,
           // Over the middle of the page's header, between its surah and
           // its juz.
           Positioned(

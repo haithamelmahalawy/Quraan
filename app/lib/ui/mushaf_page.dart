@@ -571,7 +571,7 @@ class _MushafPageState extends State<MushafPage>
   /// qari's colour and the order of the readers, Hafs among them when he is
   /// chosen: one touched shows the page in it, without opening the riwayat.
   /// Each is built along the band it is set on, with its length along it.
-  List<(_FrameSquare, double)> _riwayaStrip() {
+  List<_FrameRiwaya> _riwayaStrip() {
     final show = widget.onShowRiwaya;
     final s = widget.settings;
     if (show == null || s.selected.isEmpty) return const [];
@@ -702,7 +702,12 @@ class _MushafPageState extends State<MushafPage>
 
     return [
       for (final id in ids)
-        (square(id), widthOf(id == null ? 'حفص' : riwayaById(id).nameAr)),
+        (
+          square: square(id),
+          width: widthOf(id == null ? 'حفص' : riwayaById(id).nameAr),
+          shown: s.displayed == id,
+          select: () => show(id),
+        ),
     ];
   }
 
@@ -3503,9 +3508,10 @@ class _PageFrame extends StatelessWidget {
   final Widget child;
   final VoidCallback? onNumberTap;
 
-  /// The riwayat chosen, each with its length, on the frame's upper band and
-  /// its lower one, in every view (the user, 2026-11-13): see [_splitRiwayat].
-  final List<(_FrameSquare, double)> squares;
+  /// The riwayat chosen, all on the frame's upper band, on a wheel turned by
+  /// the finger: the one in its circle is the one shown (the user,
+  /// 2026-11-14).
+  final List<_FrameRiwaya> squares;
 
   /// A square across a band reaches the line inside it.
   static const squareDepth = OrnamentFrame.band + 3;
@@ -3530,8 +3536,6 @@ class _PageFrame extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, box) {
               const corner = OrnamentFrame.band + 2;
-              final across = box.maxWidth - 2 * corner;
-              final (upper, lower) = _splitRiwayat(squares, across, across);
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -3541,24 +3545,14 @@ class _PageFrame extends StatelessWidget {
                     opening: opening,
                     child: child,
                   ),
-                  if (upper.isNotEmpty)
+                  if (squares.isNotEmpty)
                     Positioned(
                       top: 0,
                       left: corner,
                       right: corner,
-                      child: _RiwayatBar(
+                      child: _RiwayatWheel(
                         key: const ValueKey('frame-riwayat'),
-                        squares: upper,
-                      ),
-                    ),
-                  if (lower.isNotEmpty)
-                    Positioned(
-                      bottom: -squareLift,
-                      left: corner,
-                      right: corner,
-                      child: _RiwayatBar(
-                        key: const ValueKey('frame-riwayat-lower'),
-                        squares: lower,
+                        riwayat: squares,
                       ),
                     ),
                 ],
@@ -3603,32 +3597,14 @@ class _PageFrame extends StatelessWidget {
 /// The height of a band's row of riwayat, a raised square's lift with it.
 const _riwayatBar = _PageFrame.squareDepth + _PageFrame.squareLift;
 
-/// [squares] in the order of the Shatibiyya, dealt to the frame's upper band
-/// ([upper] long) and its lower one ([lower] long), from the right
-/// (the user, 2026-11-13): the upper filled first, then the lower; when both
-/// are full the lower keeps as many as it holds, the last ones, and the rest
-/// go up, the upper then scrolled. The lower never is.
-(List<_FrameSquare>, List<_FrameSquare>) _splitRiwayat(
-  List<(_FrameSquare, double)> squares,
-  double upper,
-  double lower,
-) {
-  var top = 0;
-  for (var used = 0.0; top < squares.length; top++) {
-    used += squares[top].$2;
-    if (used > upper) break;
-  }
-  // The longest run of the last ones the lower bar holds.
-  var from = squares.length;
-  for (var used = 0.0; from > top; from--) {
-    used += squares[from - 1].$2;
-    if (used > lower) break;
-  }
-  return (
-    [for (final s in squares.take(from)) s.$1],
-    [for (final s in squares.skip(from)) s.$1],
-  );
-}
+/// A riwaya on the frame's wheel: its square, its length along the band,
+/// whether the page shows it, and what shows it.
+typedef _FrameRiwaya = ({
+  _FrameSquare square,
+  double width,
+  bool shown,
+  VoidCallback select,
+});
 
 /// A riwaya's square, built along its bar ([Axis.horizontal]) and [depth]
 /// across it, raised towards [grow].
@@ -3638,164 +3614,223 @@ typedef _FrameSquare = Widget Function(
   AxisDirection grow,
 );
 
-/// A band's row of the riwayat, from the right. Those beyond its width are
-/// scrolled to; an arrow at a side tells there are more that way, and a tap
-/// on it brings them.
-class _RiwayatBar extends StatefulWidget {
-  const _RiwayatBar({super.key, required this.squares});
+/// All the riwayat chosen on the frame's upper band, on a wheel: a circle in
+/// its middle, and the riwaya that comes to rest in it is the one the page
+/// shows (the user, 2026-11-14). Dragged, they turn round and round, the last
+/// coming in again after the first; a riwaya tapped is brought into it. With
+/// two, the other stands beside it and turns to the other side.
+class _RiwayatWheel extends StatefulWidget {
+  const _RiwayatWheel({super.key, required this.riwayat});
 
-  final List<_FrameSquare> squares;
+  final List<_FrameRiwaya> riwayat;
 
   @override
-  State<_RiwayatBar> createState() => _RiwayatBarState();
+  State<_RiwayatWheel> createState() => _RiwayatWheelState();
 }
 
-class _RiwayatBarState extends State<_RiwayatBar> {
-  final _scroll = ScrollController();
+class _RiwayatWheelState extends State<_RiwayatWheel>
+    with SingleTickerProviderStateMixin {
+  /// Which riwaya is in the circle, between one and the next as it turns.
+  late final _turn = AnimationController.unbounded(vsync: this);
+  bool _dragging = false;
+
+  int get _count => widget.riwayat.length;
+
+  int get _shown => math.max(0, widget.riwayat.indexWhere((r) => r.shown));
+
+  /// Each riwaya's place along the band: as wide as the longest name.
+  double get _slot =>
+      widget.riwayat.map((r) => r.width).fold(0.0, math.max) + 4;
 
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_moved);
+    _turn.value = _shown.toDouble();
+  }
+
+  @override
+  void didUpdateWidget(_RiwayatWheel old) {
+    super.didUpdateWidget(old);
+    // Shown from elsewhere (the riwayat chosen anew): turned to it, the
+    // nearer way round.
+    if (_dragging || _turn.isAnimating || _count == 0) return;
+    if (_nearest(_turn.value) == _shown) return;
+    _settle(_turn.value + _way(_turn.value, _shown), choose: false);
   }
 
   @override
   void dispose() {
-    _scroll.dispose();
+    _turn.dispose();
     super.dispose();
   }
 
-  void _moved() => setState(() {});
+  /// The riwaya at [at] round the wheel.
+  int _nearest(double at) => at.round() % _count;
 
-  /// A drag along the row slides it, the page under it not turned (the user,
-  /// 2026-11-13): told sooner than the page's turn, on a riwaya only.
-  void _drag(double dx) {
-    if (!_scroll.hasClients) return;
-    final p = _scroll.position;
-    // From the right: a finger moving right brings those on the left.
-    _scroll.jumpTo((p.pixels + dx).clamp(p.minScrollExtent, p.maxScrollExtent));
+  /// From [at] to riwaya [i], the shorter way round.
+  double _way(double at, int i) {
+    var by = (i - at) % _count;
+    if (by > _count / 2) by -= _count;
+    return by;
   }
 
-  void _fling(DragEndDetails end) {
-    if (!_scroll.hasClients) return;
-    final p = _scroll.position;
-    final v = end.velocity.pixelsPerSecond.dx;
-    if (v.abs() < 50) return;
-    _scroll.animateTo(
-      (p.pixels + v * .3).clamp(p.minScrollExtent, p.maxScrollExtent),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
-  }
-
-  /// Towards the right ([right]) or the left by most of the bar.
-  void _page(bool right) {
-    final p = _scroll.position;
-    // From the right: the right is the start.
-    final to = p.pixels + (right ? -1 : 1) * p.viewportDimension * .7;
-    _scroll.animateTo(
-      to.clamp(p.minScrollExtent, p.maxScrollExtent),
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
-    );
+  void _settle(double target, {bool choose = true}) {
+    _turn
+        .animateTo(
+          target,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOut,
+        )
+        .whenComplete(() {
+          if (!mounted || !choose || _count == 0) return;
+          final i = _nearest(_turn.value);
+          if (i != _shown) widget.riwayat[i].select();
+        });
   }
 
   @override
   Widget build(BuildContext context) {
-    final p = _scroll.hasClients && _scroll.position.hasContentDimensions
-        ? _scroll.position
-        : null;
-    // Measured once laid out: then the arrows.
-    if (p == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _scroll.hasClients) setState(() {});
-      });
-    }
-    final moreRight = p != null && p.extentBefore > .5;
-    final moreLeft = p != null && p.extentAfter > .5;
-    Widget arrow(bool right) => Positioned(
-      top: 0,
-      bottom: 0,
-      right: right ? 0 : null,
-      left: right ? null : 0,
-      child: GestureDetector(
-        key: ValueKey('riwayat-more-${right ? 'right' : 'left'}'),
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _page(right),
-        child: Container(
-          width: 22,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: right ? Alignment.centerRight : Alignment.centerLeft,
-              end: right ? Alignment.centerLeft : Alignment.centerRight,
-              colors: [MushafColors.page, MushafColors.page.withAlpha(0)],
-              stops: const [.55, 1],
-            ),
-          ),
-          alignment: right ? Alignment.centerRight : Alignment.centerLeft,
-          child: Icon(
-            right ? Icons.chevron_right : Icons.chevron_left,
-            size: 20,
-            color: MushafColors.green,
-          ),
-        ),
-      ),
-    );
+    final slot = _slot;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: SizedBox(
         height: _riwayatBar,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: SingleChildScrollView(
-                controller: _scroll,
-                scrollDirection: Axis.horizontal,
-                // Slid by its own drag below.
-                physics: const NeverScrollableScrollPhysics(),
-                child: RawGestureDetector(
-                  behavior: HitTestBehavior.deferToChild,
-                  gestures: {
-                    HorizontalDragGestureRecognizer:
-                        GestureRecognizerFactoryWithHandlers<
-                          HorizontalDragGestureRecognizer
-                        >(
-                          HorizontalDragGestureRecognizer.new,
-                          (r) => r
-                            // Before the page's turn (10), after a tap's
-                            // tremble.
-                            ..gestureSettings = const DeviceGestureSettings(
-                              touchSlop: 4,
-                            )
-                            ..onUpdate = ((d) => _drag(d.delta.dx))
-                            ..onEnd = _fling,
-                        ),
-                  },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final middle = box.maxWidth / 2;
+            return RawGestureDetector(
+              behavior: HitTestBehavior.opaque,
+              gestures: {
+                HorizontalDragGestureRecognizer:
+                    GestureRecognizerFactoryWithHandlers<
+                      HorizontalDragGestureRecognizer
+                    >(HorizontalDragGestureRecognizer.new, (r) {
+                      // Before the page's turn (10), after a tap's tremble.
+                      r.gestureSettings = const DeviceGestureSettings(
+                        touchSlop: 4,
+                      );
+                      r.onDown = (_) {
+                        if (_turn.isAnimating) _turn.stop();
+                      };
+                      r.onStart = (_) => setState(() => _dragging = true);
+                      // They follow the finger: to the right, those on the left in.
+                      r.onUpdate = (d) {
+                        _turn.value += d.delta.dx / slot;
+                      };
+                      r.onEnd = (d) {
+                        setState(() => _dragging = false);
+                        _settle(
+                          (_turn.value + (d.primaryVelocity ?? 0) / slot * .15)
+                              .roundToDouble(),
+                        );
+                      };
+                      r.onCancel = () {
+                        setState(() => _dragging = false);
+                        _settle(_turn.value.roundToDouble());
+                      };
+                    }),
+              },
+              child: AnimatedBuilder(
+                animation: _turn,
+                builder: (context, _) {
+                  // Each one's place from the circle, the nearer way round;
+                  // the farthest drawn first.
+                  final places = [
+                    for (var i = 0; i < _count; i++)
+                      (i: i, d: _way(_turn.value, i)),
+                  ]..sort((a, b) => b.d.abs().compareTo(a.d.abs()));
+                  return Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      for (final square in widget.squares)
-                        square(
-                          Axis.horizontal,
-                          _PageFrame.squareDepth,
-                          AxisDirection.down,
+                      // The riwayat kept within the band, the arrow above it.
+                      Positioned.fill(
+                        child: ClipRect(
+                          child: Stack(
+                            children: [
+                              for (final (:i, :d) in places)
+                                if ((d * slot).abs() < middle + slot)
+                                  Positioned(
+                                    key: ValueKey('frame-wheel-$i'),
+                                    top: 0,
+                                    bottom: 0,
+                                    // The next to the left, as the text runs.
+                                    left: middle - d * slot - slot / 2,
+                                    width: slot,
+                                    child: Opacity(
+                                      // Clear all round, to be seen and turned (the user,
+                                      // 2026-11-14).
+                                      opacity: 1,
+                                      child: Transform.scale(
+                                        scale: 1 - .03 * math.min(d.abs(), 2),
+                                        alignment: Alignment.topCenter,
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          // Tapped, turned into the circle.
+                                          onTap: () => _settle(
+                                            _turn.value + _way(_turn.value, i),
+                                          ),
+                                          child: IgnorePointer(
+                                            child: Center(
+                                              child: widget.riwayat[i].square(
+                                                Axis.horizontal,
+                                                _PageFrame.squareDepth,
+                                                AxisDirection.down,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                            ],
+                          ),
                         ),
+                      ),
+                      // The circle the riwaya shown stands in.
+                      Positioned(
+                        top: 0,
+                        height: _PageFrame.squareDepth,
+                        left: middle - slot / 2 - 1,
+                        width: slot + 2,
+                        child: IgnorePointer(
+                          child: Container(
+                            key: const ValueKey('frame-riwayat-circle'),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(_riwayatBar),
+                              border: Border.all(
+                                color: MushafColors.gold,
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: MushafColors.gold.withAlpha(110),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      // An arrow over the circle: the riwaya shown (the
+                      // user, 2026-11-14).
+                      Positioned(
+                        top: -11,
+                        left: middle - 9,
+                        width: 18,
+                        height: 12,
+                        child: const IgnorePointer(
+                          child: CustomPaint(
+                            key: ValueKey('frame-riwayat-arrow'),
+                            painter: _ShownArrow(),
+                          ),
+                        ),
+                      ),
                     ],
-                  ),
-                ),
+                  );
+                },
               ),
-            ),
-            // Fixed whichever way the text runs.
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: Stack(
-                children: [
-                  if (moreRight) arrow(true),
-                  if (moreLeft) arrow(false),
-                ],
-              ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -4767,8 +4802,7 @@ class _UsulBox extends StatelessWidget {
         // The first of two sakins: what it is read with, joined.
         for (final d in {
           for (final v in i.readings)
-            if (v.rule == 'first_sakin')
-              firstSakinNote(v.description),
+            if (v.rule == 'first_sakin') firstSakinNote(v.description),
         })
           Text(
             ' ($d)',
@@ -5485,4 +5519,30 @@ class _Dots extends StatelessWidget {
 int _hamzaLetter(String word) {
   final i = lettersOf(word).indexWhere((l) => RegExp('[ءأإآؤئ]').hasMatch(l));
   return i < 0 ? 0 : i;
+}
+
+/// The arrow over the wheel's circle, pointing down at the riwaya shown.
+class _ShownArrow extends CustomPainter {
+  const _ShownArrow();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawShadow(path, Colors.black, 2, false);
+    canvas.drawPath(path, Paint()..color = MushafColors.gold);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Color.lerp(MushafColors.gold, Colors.black, .35)!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ShownArrow old) => false;
 }

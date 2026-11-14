@@ -268,6 +268,50 @@ void main() {
     },
   );
 
+  /// The wheel of the page in sight (its neighbours built beside it).
+  Finder wheelOf() => find.byKey(const ValueKey('frame-riwayat')).hitTestable();
+
+  Finder inWheel(Key key) =>
+      find.descendant(of: wheelOf(), matching: find.byKey(key));
+
+  /// The riwayat on the frame's wheel, from right to left as they stand.
+  List<String> onWheel(WidgetTester t) {
+    final found = find
+        .descendant(
+          of: wheelOf(),
+          matching: find.byWidgetPredicate(
+            (w) =>
+                w.key is ValueKey<String> &&
+                (w.key as ValueKey<String>).value.startsWith('frame-riwaya-'),
+          ),
+        )
+        .evaluate()
+        .toList();
+    final keyed = [
+      for (final e in found)
+        (
+          id: (e.widget.key as ValueKey<String>).value.substring(13),
+          x: t.getCenter(find.byElementPredicate((x) => x == e)).dx,
+        ),
+    ]..sort((a, b) => b.x.compareTo(a.x));
+    return [for (final k in keyed) k.id];
+  }
+
+  /// The riwaya in the wheel's circle.
+  String inCircle(WidgetTester t) {
+    final circle = t.getCenter(inWheel(const ValueKey('frame-riwayat-circle')));
+    final ids = onWheel(t);
+    return ids.firstWhere(
+      (id) =>
+          (t.getCenter(inWheel(ValueKey('frame-riwaya-$id'))).dx - circle.dx)
+              .abs() <
+          2,
+    );
+  }
+
+  // The riwayat chosen on a wheel on the frame's upper band, in the order of
+  // the Shatibiyya; the one in its circle is the one shown, and one tapped is
+  // turned into it and shown (the user, 2026-11-14).
   testWidgets(
     'the riwayat chosen on the frame, Hafs among them, one touched shown',
     (t) async {
@@ -276,151 +320,65 @@ void main() {
         selected: const {'ibn_wardan', 'warsh'},
         compareHafs: true,
       );
-      final strip = find.byKey(const ValueKey('frame-riwayat')).hitTestable();
-      expect(strip, findsOneWidget);
-      // In the order of the Shatibiyya: Warsh, Hafs, then Ibn Wardan.
-      final keys = [
-        for (final e
-            in find
-                .descendant(of: strip, matching: find.byType(GestureDetector))
-                .evaluate())
-          (e.widget.key as ValueKey<String>).value,
-      ];
-      expect(keys, [
-        'frame-riwaya-warsh',
-        'frame-riwaya-hafs',
-        'frame-riwaya-ibn_wardan',
-      ]);
-      await t.tap(
-        find.byKey(const ValueKey('frame-riwaya-ibn_wardan')).hitTestable(),
-      );
-      // A second tap awaited first.
-      await t.pump(kDoubleTapTimeout);
-      await t.pumpAndSettle();
       final settings = t
           .widget<ReaderScreen>(find.byType(ReaderScreen))
           .settings;
-      expect(settings.displayed, 'ibn_wardan');
-      // Pressed back into the band, the others raised out of it.
-      Size face(String id) =>
-          t.getSize(find.byKey(ValueKey('frame-riwaya-$id')).hitTestable());
-      expect(face('ibn_wardan').height, lessThan(face('warsh').height));
-      await t.tap(
-        find.byKey(const ValueKey('frame-riwaya-hafs')).hitTestable(),
+      expect(inWheel(const ValueKey('frame-riwayat-arrow')), findsOneWidget);
+      // Warsh shown, in the circle; Hafs, then Ibn Wardan, after him round
+      // the wheel, as the Shatibiyya orders them.
+      expect(inCircle(t), settings.displayed ?? 'hafs');
+      final ids = onWheel(t);
+      final from = ids.indexOf('warsh');
+      expect(
+        [for (var i = 0; i < 3; i++) ids[(from + i) % 3]],
+        ['warsh', 'hafs', 'ibn_wardan'],
       );
-      // A second tap awaited first.
-      await t.pump(kDoubleTapTimeout);
+      await t.tap(inWheel(const ValueKey('frame-wheel-2')));
+      await t.pumpAndSettle();
+      expect(settings.displayed, 'ibn_wardan');
+      expect(inCircle(t), 'ibn_wardan');
+      await t.tap(inWheel(const ValueKey('frame-wheel-1')));
       await t.pumpAndSettle();
       expect(settings.displayed, isNull);
+      expect(inCircle(t), 'hafs');
       expect(t.takeException(), isNull);
     },
   );
 
   testWidgets('Hafs not chosen above: not on the frame', (t) async {
     await showReader(t, selected: const {'ibn_wardan', 'warsh'});
-    final strip = find.byKey(const ValueKey('frame-riwayat')).hitTestable();
-    final keys = [
-      for (final e
-          in find
-              .descendant(of: strip, matching: find.byType(GestureDetector))
-              .evaluate())
-        (e.widget.key as ValueKey<String>).value,
-    ];
-    expect(keys, ['frame-riwaya-warsh', 'frame-riwaya-ibn_wardan']);
+    expect(onWheel(t).toSet(), {'warsh', 'ibn_wardan'});
     expect(t.takeException(), isNull);
   });
 
-  testWidgets(
-    'all the riwayat on the upper and lower bands of the frame, in order',
-    (t) async {
-      // The user, 2026-11-13: the upper band first, from the right, then the
-      // lower one, as many as it holds and no more; the rest on the upper
-      // band, scrolled, with an arrow towards them.
-      final all = [
-        for (final q in qiraat)
-          for (final r in q.riwayat)
-            if (r.id != hafsId) r.id,
-      ];
-      await showReader(t, selected: all.toSet());
-      List<String> inBar(String bar) => [
-        for (final e
-            in find
-                .descendant(
-                  of: find.byKey(ValueKey(bar)).hitTestable(),
-                  matching: find.byWidgetPredicate(
-                    (w) =>
-                        w.key is ValueKey<String> &&
-                        (w.key as ValueKey<String>).value.startsWith(
-                          'frame-riwaya-',
-                        ),
-                  ),
-                )
-                .evaluate())
-          (e.widget.key as ValueKey<String>).value.substring(13),
-      ];
-      final upper = inBar('frame-riwayat');
-      final lower = inBar('frame-riwayat-lower');
-      // None lost, in the order of the Shatibiyya from the upper band on.
-      expect([...upper, ...lower], all);
-      expect(lower, isNotEmpty);
-      // The lower band is never scrolled: all of it in sight.
-      final lowerBar = t.getRect(
-        find.byKey(const ValueKey('frame-riwayat-lower')).hitTestable(),
-      );
-      for (final id in lower) {
-        final r = t.getRect(
-          find.byKey(ValueKey('frame-riwaya-$id')).hitTestable(),
-        );
-        expect(r.left, greaterThanOrEqualTo(lowerBar.left - .5));
-        expect(r.right, lessThanOrEqualTo(lowerBar.right + .5));
-      }
-      // The upper one goes on to its left, an arrow there; none at its
-      // right, where it begins.
-      expect(
-        find.byKey(const ValueKey('riwayat-more-left')).hitTestable(),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('riwayat-more-right')).hitTestable(),
-        findsNothing,
-      );
-      await t.tap(
-        find.byKey(const ValueKey('riwayat-more-left')).hitTestable(),
-      );
-      await t.pumpAndSettle();
-      // Moved on: an arrow back to the right.
-      expect(
-        find.byKey(const ValueKey('riwayat-more-right')).hitTestable(),
-        findsOneWidget,
-      );
-      // Dragged back along the row, on a riwaya: the row slides back to its
-      // start, and the page is not turned (the user, 2026-11-13).
-      final settings = t
-          .widget<ReaderScreen>(find.byType(ReaderScreen))
-          .settings;
-      Finder shown() => find
-          .byKey(
-            ValueKey(
-              'frame-riwaya-${upper.firstWhere((id) => find.byKey(ValueKey('frame-riwaya-$id')).hitTestable().evaluate().isNotEmpty)}',
-            ),
-          )
-          .hitTestable();
-      await t.drag(shown(), const Offset(-400, 0));
-      await t.pumpAndSettle();
-      expect(settings.page, 3);
-      expect(
-        find.byKey(const ValueKey('riwayat-more-right')).hitTestable(),
-        findsNothing,
-      );
-      // Dragged on: it slides to show those beyond, the page still the same.
-      await t.drag(shown(), const Offset(150, 0));
-      await t.pumpAndSettle();
-      expect(settings.page, 3);
-      expect(
-        find.byKey(const ValueKey('riwayat-more-right')).hitTestable(),
-        findsOneWidget,
-      );
-      expect(t.takeException(), isNull);
-    },
-  );
+  // All of them on the upper band's wheel, none on the lower; dragged, the
+  // next comes into the circle and is shown, the page not turned (the user,
+  // 2026-11-14).
+  testWidgets('all the riwayat on the frame\'s wheel, turned by a drag', (
+    t,
+  ) async {
+    final all = [
+      for (final q in qiraat)
+        for (final r in q.riwayat)
+          if (r.id != hafsId) r.id,
+    ];
+    await showReader(t, selected: all.toSet());
+    final settings = t.widget<ReaderScreen>(find.byType(ReaderScreen)).settings;
+    expect(find.byKey(const ValueKey('frame-riwayat-lower')), findsNothing);
+    final before = inCircle(t);
+    final wheel = wheelOf();
+    final circle = t.getCenter(inWheel(const ValueKey('frame-riwayat-circle')));
+    // The one to its left, a slot along, dragged into the circle.
+    final next = onWheel(t)[onWheel(t).indexOf(before) + 1];
+    final dx =
+        circle.dx - t.getCenter(inWheel(ValueKey('frame-riwaya-$next'))).dx;
+    await t.dragFrom(t.getCenter(wheel), Offset(dx, 0));
+    await t.pumpAndSettle();
+    expect(settings.page, 3);
+    expect(inCircle(t), next);
+    expect(settings.displayed, next);
+    // In the order of the Shatibiyya: the next after the one shown.
+    expect(all.indexOf(next), all.indexOf(before) + 1);
+    expect(t.takeException(), isNull);
+  });
 }

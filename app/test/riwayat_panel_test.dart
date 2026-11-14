@@ -13,7 +13,6 @@ void main() {
   final nafi = of('warsh');
   Finder qari(Qiraa q) => find.byKey(ValueKey('qari-check-${q.id}'));
   Finder check(String id) => find.byKey(ValueKey('riwaya-check-$id'));
-  Finder show(String id) => find.byKey(ValueKey('riwaya-show-$id'));
   Finder inFront(Qiraa q) => find.byKey(ValueKey('riwayat-front-${q.id}'));
   final toggle = find.byKey(const ValueKey('riwayat-panel-toggle'));
   final panel = find.byKey(const ValueKey('riwayat-panel'));
@@ -393,25 +392,18 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('one riwaya shown only: another takes its place', (t) async {
-    final settings = ReaderSettings.memory();
+  // The riwaya shown is chosen on the frame's wheel, not here: the panel only
+  // marks it, without a switch (the user, 2026-11-14).
+  testWidgets('the panel marks the riwaya shown, no switch to show it', (
+    t,
+  ) async {
+    final settings = ReaderSettings.memory(selected: {'warsh', 'qalun'})
+      ..displayed = 'warsh';
     await pump(t, settings);
     await turnTo(t, nafi);
-    await t.tap(show('warsh'));
-    await t.pumpAndSettle();
-    expect(settings.displayed, 'warsh');
-    expect(settings.selected, {'warsh'});
-    expect(t.widget<Switch>(show('warsh')).value, isTrue);
-    await t.tap(show('qalun'));
-    await t.pumpAndSettle();
-    expect(settings.displayed, 'qalun');
-    expect(settings.selected, {'qalun', 'warsh'});
-    expect(t.widget<Switch>(show('warsh')).value, isFalse);
-    expect(t.widget<Switch>(show('qalun')).value, isTrue);
-    // Tapped again it stays: something is always shown.
-    await t.tap(show('qalun'));
-    await t.pumpAndSettle();
-    expect(settings.displayed, 'qalun');
+    expect(find.byType(Switch), findsNothing);
+    expect(find.byKey(const ValueKey('riwaya-shown-warsh')), findsOneWidget);
+    expect(find.byKey(const ValueKey('riwaya-shown-qalun')), findsNothing);
     expect(t.takeException(), isNull);
   });
 
@@ -428,19 +420,6 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('Hafs shown stays among the riwayat compared', (t) async {
-    final settings = ReaderSettings.memory(selected: {'warsh'})
-      ..displayed = 'warsh';
-    await pump(t, settings);
-    await turnTo(t, of(hafsId));
-    await t.tap(show(hafsId));
-    await t.pumpAndSettle();
-    expect(settings.displayed, isNull);
-    expect(settings.compareHafs, isTrue);
-    expect(settings.selected, {'warsh'});
-    expect(t.takeException(), isNull);
-  });
-
   testWidgets('clearing all leaves Hafs alone', (t) async {
     final settings = ReaderSettings.memory(selected: {'warsh', 'qalun'})
       ..displayed = 'warsh';
@@ -449,7 +428,44 @@ void main() {
     await t.pumpAndSettle();
     expect(settings.selected, isEmpty);
     expect(settings.displayed, isNull);
-    expect(settings.compareHafs, isFalse);
+    expect(settings.compareHafs, isTrue);
     expect(t.takeException(), isNull);
+  });
+
+  // Open, a finger dragged on the page folds it away and scrolls the page on
+  // at once, no tap first (the user, 2026-11-14).
+  testWidgets('a scroll on the page folds the panel and scrolls on', (t) async {
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    t.view.physicalSize = const Size(400, 900);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: RiwayatPanel(
+              settings: ReaderSettings.memory(),
+              variants: VariantRepository({'warsh'}),
+              child: ListView(
+                controller: scroll,
+                children: [
+                  for (var i = 0; i < 60; i++)
+                    SizedBox(height: 40, child: Text('$i')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.tap(toggle);
+    await t.pumpAndSettle();
+    expect(panel, findsOneWidget);
+    await t.drag(find.byType(ListView), const Offset(0, -300));
+    await t.pumpAndSettle();
+    expect(panel, findsNothing);
+    expect(scroll.offset, greaterThan(100));
   });
 }

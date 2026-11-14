@@ -132,7 +132,9 @@ class ReaderSettings extends ChangeNotifier {
 
   /// Hafs among the riwayat compared with the one the mushaf shows: where
   /// that riwaya differs from Hafs, the hamesh gives Hafs's reading.
-  bool get compareHafs => _get('compareHafs') as bool? ?? false;
+  /// Chosen by default in the app, among the riwayat at the top, until the
+  /// reader takes him off (the user, 2026-11-14); tests' settings without it.
+  bool get compareHafs => _get('compareHafs') as bool? ?? _prefs != null;
   set compareHafs(bool on) => _set('compareHafs', on);
 
   /// «تنبيه الاختلافات»: how the words that differ from Hafs (farsh or
