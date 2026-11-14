@@ -1456,6 +1456,36 @@ Map<String, int> buildAshabUsul(
       v[6] = 'بإثبات الألف والمد المشبع وكسر النون مع التشديد';
     }
   }
+  // «وَنَـَٔا» (الإسراء ٨٣، فصلت ٥١): Hamza, al-Kisa'i and Khalaf al-'Ashir
+  // lean the nun and the hamza together, not the hamza alone (the user,
+  // 2026-11-15).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final (s, a) in const [(17, 83), (41, 51)]) {
+      final hafs = index[_key(s, a, 5)]!.t;
+      final row = [
+        s,
+        a,
+        5,
+        1,
+        hafs.replaceFirst('نَ', 'نَ$imalaSign').replaceFirst('ٔ', 'ٔ$imalaSign'),
+        'u',
+        'بإمالة النون والهمزة',
+        '',
+        {'source': ashabSource},
+      ];
+      variants.removeWhere(
+        (r) =>
+            order(r as List) == order(row) &&
+            r[5] == 'u' &&
+            '${r[6]}'.startsWith('بإمالة'),
+      );
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
   // Hamza's and Khalaf al-'Ashir's «يَتَوَفَّىٰهُمُ» (النحل ٢٨، ٣٢): Hafs's word
   // with the ya for the ta, its dagger alif kept, leaned; and their and
   // al-Kisa'i's «يَأۡتِيَهُمُ» (النحل ٣٣) with the ya, its own opened (the user,

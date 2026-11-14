@@ -1319,6 +1319,13 @@ class Manzumat {
     // اِذْ» (143), Abu Ja'far's nun, Ya'qub and Khalaf as their asl (the user,
     // 2026-11-15).
     if (poem == Poem.durrah && word == '16:96:7' && !v.isUsul) return {143};
+    // «وَنَـَٔا» (الإسراء ٨٣، فصلت ٥١) leaned: «نَأَى شَرْعُ يُمْنٍ بِاخْتِلاَفٍ وَشُعْبَةٌ
+    // في الاِسْرَا وَهُمْ وَالنُّونُ ضَوْءُ سَنًا تَلَا» (312) (the user, 2026-11-15).
+    if (poem == Poem.shatibiyya &&
+        v.isImala &&
+        const {'17:83:5', '41:51:5'}.contains(word)) {
+      return {312};
+    }
     // «يُبَشِّرُ» light in Al 'Imran, al-Isra and al-Kahf: «... مَعَ الْكَهْفِ
     // وَالإِسْرَاءِ يَبْشُرُ كَمْ سَمَا نَعَمْ ...» (555) (the user, 2026-11-15).
     if (poem == Poem.shatibiyya &&

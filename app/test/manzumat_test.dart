@@ -7006,4 +7006,51 @@ void main() {
       expect(r.mention, {555}, reason: id);
     }
   });
+
+  // «وَنَـَٔا» (الإسراء ٨٣، فصلت ٥١) its nun and hamza leaned (the user,
+  // 2026-11-15).
+  test('wa-na\'a leaned, nun and hamza, cites its bayt', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'khalaf_hamzah', 'ishaq']);
+    for (final id in ['duri_kisai', 'khalaf_hamzah', 'ishaq']) {
+      for (final (s, a) in const [(17, 83), (41, 51)]) {
+        final v = variants
+            .at([id], s, a, 5)
+            .where((v) => v.word == 5 && v.description.contains('النون'))
+            .single;
+        expect(v.isUsul, isTrue, reason: id);
+        expect(v.isImala, isTrue, reason: id);
+        final r = manzumat.referenceOf(v, 'وَنَـَٔا', s, surahs);
+        expect(r.poem, Poem.shatibiyya, reason: '$id $s');
+        expect(r.mention, {312}, reason: '$id $s');
+        expect(
+          [for (final b in r.asl) b.n],
+          id == 'ishaq' ? [7, 8] : isEmpty,
+          reason: '$id $s',
+        );
+      }
+    }
+  });
+
+  // Ibn Dhakwan's «وَنَآءَ» (الإسراء ٨٣، فصلت ٥١) drawn and told as Abu
+  // Ja'far's, citing «نَآى أَخِّرْ مَعاً هَمْزَهُ مَلَا» (the user, 2026-11-15).
+  test('Ibn Dhakwan\'s wa-na\'a as Abu Ja\'far\'s, citing 826', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ibn_dhakwan', 'ibn_wardan']);
+    for (final (s, a) in const [(17, 83), (41, 51)]) {
+      final mine = variants
+          .at(['ibn_dhakwan'], s, a, 5)
+          .where((v) => v.word == 5 && !v.isUsul)
+          .single;
+      final his = variants
+          .at(['ibn_wardan'], s, a, 5)
+          .where((v) => v.word == 5 && !v.isUsul)
+          .single;
+      expect(mine.text, his.text, reason: '$s');
+      expect(mine.description, his.description, reason: '$s');
+      final r = manzumat.referenceOf(mine, 'وَنَـَٔا', s, surahs);
+      expect(r.poem, Poem.shatibiyya, reason: '$s');
+      expect(r.mention, {826}, reason: '$s');
+    }
+  });
 }
