@@ -553,4 +553,37 @@ void main() {
       );
     }
   });
+
+  // «مُوسَىٰ ثَلَٰثِينَ، مُوسَىٰ لِمِيقَٰتِنَا»: no quiescent after the alif, leaned
+  // joined too; «هُدٗى» and «ٱلۡأَعۡلَى / ٱلَّذِي» at the stop alone (the user,
+  // 2026-11-14).
+  test('an alif before a moving letter is leaned joined too', () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      final rows = ((jsonDecode(
+                File('assets/data/qiraat/$id.json').readAsStringSync(),
+              ) as Map)['variants']
+              as List)
+          .cast<List>();
+      List<String> at(String k) => [
+        for (final v in rows)
+          if ('${v[0]}:${v[1]}:${v[2]}' == k &&
+              '${v[6]}'.startsWith('بإمالة الألف'))
+            '${v[6]}',
+      ];
+      for (final k in ['7:142:1', '7:143:2', '2:260:12', '75:31:3']) {
+        expect(at(k), ['بإمالة الألف'], reason: '$id $k');
+      }
+      for (final k in ['87:1:3', '6:71:27']) {
+        expect(at(k), ['بإمالة الألف وقفًا'], reason: '$id $k');
+      }
+      expect(at('6:157:8'), ['بإمالة الألف'], reason: id);
+    }
+  });
 }

@@ -910,6 +910,33 @@ Map<String, int> buildAshabUsul(
     final next = index[_key(v[0], v[1], (v[2] as int) + 1)]?.t ?? '';
     if (RegExp('^[أإءآ]').hasMatch(next)) v[4] = '$textٓ';
   }
+  // The book's «وقفًا» on an alif with no quiescent after it (مُوسَىٰ ثَلَٰثِينَ،
+  // مُوسَىٰ لِمِيقَٰتِنَا، بَلَىٰ وَلَٰكِن، صَلَّىٰ / وَلَٰكِن): leaned joined too, its sign
+  // drawn; a tanween's alif (هُدٗى) and one before a quiescent stay the
+  // stop's (the user, 2026-11-14).
+  final plainLeaned = {
+    for (final v in (data['variants'] as List).cast<List>())
+      if (v[5] == 'u' && v[6] == 'بإمالة الألف' && '${v[4]}'.isEmpty)
+        _key(v[0], v[1], v[2]),
+  };
+  for (final v in (data['variants'] as List).cast<List>().toList()) {
+    if (v[5] != 'u' || v[6] != 'بإمالة الألف وقفًا' || '${v[4]}'.isNotEmpty) {
+      continue;
+    }
+    final word = index[_key(v[0], v[1], v[2])]?.t ?? '';
+    if (word.isEmpty || RegExp('[ًٌٍۭٗ٘ٙۢ]').hasMatch(word)) continue;
+    final next =
+        index[_key(v[0], v[1], (v[2] as int) + 1)]?.t ??
+        index[_key(v[0], (v[1] as int) + 1, 0)]?.t;
+    if (next == null || next.startsWith('ٱ')) continue;
+    // Told leaned in both already (أَهۡدَىٰ مِنۡهُمۡ): the stop's row goes.
+    if (plainLeaned.contains(_key(v[0], v[1], v[2]))) {
+      (data['variants'] as List).remove(v);
+      continue;
+    }
+    v[6] = 'بإمالة الألف';
+    v[8] = {...(v[8] as Map)}..remove('stopOnly');
+  }
   // A word told leaned both in all states and at the stop alone: before a
   // quiescent (إِلَى ٱلۡهُدَى ٱئۡتِنَا) its alif gone in joining, leaned at the stop
   // alone (the user, 2026-11-14); else (أَهۡدَىٰ مِنۡهُمۡ) leaned in both.

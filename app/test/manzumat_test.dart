@@ -6694,4 +6694,24 @@ void main() {
       expect(ref(id, 7, 81, 0, 'إِنَّكُمۡ').mention, {691}, reason: id);
     }
   });
+
+  // «ٱبۡنَ أُمِّ، يَبۡنَؤُمِّ»: «وَمِيمَ ابْنَ أُمَّ اكْسِرْ مَعًا كُفْؤَ صُحْبَةٍ» (701)
+  // (the user, 2026-11-14).
+  test('ibna umma cites 701', () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['duri_kisai', 'khallad', 'shubah', 'ishaq'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      for (final (s, a, w) in [(7, 150, 24), (20, 94, 1)]) {
+        final v = variants
+            .at([id], s, a, w)
+            .where((v) => v.word == w && !v.isUsul)
+            .single;
+        final r = manzumat.referenceOf(v, 'أُمَّ', s, surahs);
+        expect(r.poem, Poem.shatibiyya, reason: '$id $s');
+        expect(r.mention, {701}, reason: '$id $s');
+        if (id == 'ishaq') expect(r.asl.map((b) => b.n), [7, 8]);
+      }
+    }
+  });
 }
