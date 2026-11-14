@@ -586,4 +586,30 @@ void main() {
       expect(at('6:157:8'), ['بإمالة الألف'], reason: id);
     }
   });
+
+  // «وَلَٰكِنِ ٱللَّهُ» (الأنفال ١٧): the dagger alif kept, the nun light and
+  // broken (the user, 2026-11-14).
+  test('wa-lakini allahu keeps its dagger alif', () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      final rows = ((jsonDecode(
+                File('assets/data/qiraat/$id.json').readAsStringSync(),
+              ) as Map)['variants']
+              as List)
+          .cast<List>();
+      for (final w in const [2, 9]) {
+        final v = rows
+            .where((v) => v[0] == 8 && v[1] == 17 && v[2] == w && v[5] == 'f')
+            .single;
+        expect(v[4], 'وَلَٰكِنِ ٱللَّهُ', reason: '$id $w');
+        expect(v[6], 'بتخفيف النون وكسرها وضم الهاء', reason: '$id $w');
+      }
+    }
+  });
 }

@@ -1244,6 +1244,21 @@ void _userFarsh(String id, List variants) {
     v[4] = 'طَيۡفٞ';
     v[6] = 'بالياء وحذف الهمزة';
   }
+  // «وَلَٰكِنِ ٱللَّهُ» (الأنفال ١٧ مرتين) and its like, the nun light: Hafs's
+  // dagger alif after the lam kept, nothing gone (the user, 2026-11-14).
+  if (kisai.contains(id) || hamza.contains(id) || khalaf.contains(id)) {
+    for (final (s, a, w, text, said) in const [
+      (2, 102, 10, 'وَلَٰكِنِ ٱلشَّيَٰطِينُ', 'وضم نون «الشياطين»'),
+      (8, 17, 2, 'وَلَٰكِنِ ٱللَّهُ', 'وضم الهاء'),
+      (8, 17, 9, 'وَلَٰكِنِ ٱللَّهُ', 'وضم الهاء'),
+      (10, 44, 6, 'وَلَٰكِنِ ٱلنَّاسُ', 'وضم السين'),
+    ]) {
+      if (at(s, a, w) case final v?) {
+        v[4] = text;
+        v[6] = 'بتخفيف النون وكسرها $said';
+      }
+    }
+  }
   // «يَتَسَنَّه۠» البقرة ٢٥٩: the ha gone joined and kept at the stop, the
   // oval of «أنا» on it for its sukun, as Ya'qub's.
   if (kisai.contains(id) || hamza.contains(id) || khalaf.contains(id)) {
