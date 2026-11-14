@@ -92,9 +92,11 @@ class _MushafStyleRingState extends State<MushafStyleRing>
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onHorizontalDragDown: (_) => _turn.stop(),
-      onHorizontalDragUpdate: (d) => _turn.value -= d.delta.dx / _cell,
+      // Under the finger: dragged to the right, those at the left come to
+      // the front, as the qurra's (it ran the other way).
+      onHorizontalDragUpdate: (d) => _turn.value += d.delta.dx / _cell,
       onHorizontalDragEnd: (d) => _settle(
-        (_turn.value - (d.primaryVelocity ?? 0) / _cell * .18).roundToDouble(),
+        (_turn.value + (d.primaryVelocity ?? 0) / _cell * .18).roundToDouble(),
       ),
       child: AnimatedBuilder(
         animation: _turn,

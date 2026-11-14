@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'hafs_font_marks.dart';
@@ -204,9 +206,9 @@ enum MushafStyle {
   pinkBook(
     'وردي',
     FrameMotif.flower,
-    paper: Color(0xFFF6DCE5),
-    page: Color(0xFFFFF8FA),
-    band: Color(0xFFC2416F),
+    paper: Color(0xFFF3E0E6),
+    page: Color(0xFFFFFAF8),
+    band: Color(0xFFA9566F),
     motif: Color(0xFFFBE3EC),
     accent: Color(0xFFF2C46B),
   ),
@@ -249,8 +251,8 @@ enum MushafStyle {
   tile(
     'كاشي فيروزي',
     FrameMotif.diamond,
-    paper: Color(0xFFD6EEEC),
-    page: Color(0xFFFFFFFB),
+    paper: Color(0xFFDCEDEB),
+    page: Color(0xFFFFFEF8),
     band: Color(0xFF0E6E6E),
     motif: Color(0xFFF4F1E4),
     accent: Color(0xFFE2C275),
@@ -262,9 +264,9 @@ enum MushafStyle {
     'ليلكي',
     FrameMotif.flower,
     audience: MushafAudience.girls,
-    paper: Color(0xFFF2E7F5),
-    page: Color(0xFFFFFBFF),
-    band: Color(0xFFA56CB3),
+    paper: Color(0xFFF0E9F2),
+    page: Color(0xFFFFFCFA),
+    band: Color(0xFF9A7FA6),
     motif: Color(0xFFFCEFFF),
     accent: Color(0xFFE9C77A),
   ),
@@ -272,9 +274,9 @@ enum MushafStyle {
     'خوخي',
     FrameMotif.rosette,
     audience: MushafAudience.girls,
-    paper: Color(0xFFFBE8DF),
-    page: Color(0xFFFFFAF6),
-    band: Color(0xFFE38D78),
+    paper: Color(0xFFF5E9E2),
+    page: Color(0xFFFFFBF7),
+    band: Color(0xFFCF9C88),
     motif: Color(0xFFFFF1EA),
     accent: Color(0xFFD8AE58),
   ),
@@ -292,9 +294,9 @@ enum MushafStyle {
     'سماء صافية',
     FrameMotif.star,
     audience: MushafAudience.kids,
-    paper: Color(0xFFDDF0FB),
-    page: Color(0xFFFFFFFF),
-    band: Color(0xFF4A9FD8),
+    paper: Color(0xFFE3EFF6),
+    page: Color(0xFFFFFEF9),
+    band: Color(0xFF6FA4C8),
     motif: Color(0xFFFFFFFF),
     accent: Color(0xFFF5C542),
   ),
@@ -302,9 +304,9 @@ enum MushafStyle {
     'بستان',
     FrameMotif.flower,
     audience: MushafAudience.kids,
-    paper: Color(0xFFE3F4DF),
-    page: Color(0xFFFFFFFF),
-    band: Color(0xFF58AD67),
+    paper: Color(0xFFE6F0E2),
+    page: Color(0xFFFFFEF8),
+    band: Color(0xFF79A97F),
     motif: Color(0xFFFFF7D6),
     accent: Color(0xFFF2B84B),
   ),
@@ -312,9 +314,9 @@ enum MushafStyle {
     'مشمس',
     FrameMotif.rosette,
     audience: MushafAudience.kids,
-    paper: Color(0xFFFFF2D4),
-    page: Color(0xFFFFFFFF),
-    band: Color(0xFFF0A63A),
+    paper: Color(0xFFF8EFDC),
+    page: Color(0xFFFFFDF6),
+    band: Color(0xFFD2AD72),
     motif: Color(0xFFFFFFFF),
     accent: Color(0xFF4A9FD8),
   ),
@@ -429,6 +431,28 @@ abstract final class MushafColors {
   /// The frame's colours, of the look in use.
   static ({Color band, Color motif, Color accent}) get frameColors =>
       _style.frameOn(_p);
+
+  /// Words in the frame's colours on the page (a surah's name in its
+  /// banner): the darker of them on a light page, the lighter on a dark
+  /// one, so that they read (a deep frame's gold motif was lost on white,
+  /// the user, 2026-11-14).
+  static Color get frameInk {
+    final f = frameColors;
+    final motifDarker = f.motif.computeLuminance() < f.band.computeLuminance();
+    final own = isDark == motifDarker ? f.band : f.motif;
+    // Drawn towards the ink till it reads easily on the page (a soft blue
+    // frame's name was faint).
+    double contrast(Color c) {
+      final a = c.computeLuminance(), b = _p.page.computeLuminance();
+      return (math.max(a, b) + .05) / (math.min(a, b) + .05);
+    }
+
+    for (var t = 0.0; t <= 1; t += .1) {
+      final c = Color.lerp(own, _p.ink, t)!;
+      if (contrast(c) >= 4.5) return c;
+    }
+    return _p.ink;
+  }
 
   static bool get isDark => _p.brightness == Brightness.dark;
   static Color get paper => _p.paper;

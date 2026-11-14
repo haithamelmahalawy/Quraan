@@ -27,6 +27,7 @@ import 'page_side_hint.dart';
 import 'mutashabihat_sheet.dart';
 import 'raised.dart';
 import 'mushaf_style_sheet.dart';
+import 'page_navigator.dart';
 import 'riwayat_panel.dart';
 import 'search_screen.dart';
 import 'surah_index.dart';
@@ -475,6 +476,47 @@ class _ReaderScreenState extends State<ReaderScreen>
     });
   }
 
+  /// «السور والصفحات»: the two wheels over the page, shown by a touch where
+  /// no word is, put away by another anywhere (the user, 2026-11-14).
+  bool _navigatorOpen = false;
+
+  /// A touch on the page where no word is: the wheels shown a moment later,
+  /// unless a second makes it a double tap (full screen); put away at once.
+  void _emptyTapped() {
+    // The second of a double tap: full screen, no wheels.
+    if (_swallowWord) return;
+    _pendingWord?.cancel();
+    if (_navigatorOpen) {
+      _pendingWord = null;
+      setState(() => _navigatorOpen = false);
+      return;
+    }
+    _pendingWord = Timer(_doubleTapWait, () {
+      _pendingWord = null;
+      if (mounted) setState(() => _navigatorOpen = true);
+    });
+  }
+
+  /// The wheels over the page, and all around them a touch putting them
+  /// away.
+  List<Widget> _navigator() => [
+    if (_navigatorOpen) ...[
+      Positioned.fill(
+        child: GestureDetector(
+          key: const ValueKey('page-navigator-outside'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _navigatorOpen = false),
+        ),
+      ),
+      Positioned(
+        left: 16,
+        right: 16,
+        bottom: MediaQuery.paddingOf(context).bottom + 56,
+        child: PageNavigator(quran: _quran, page: _page, onGo: _goToPage),
+      ),
+    ],
+  ];
+
   void _doubleTapped() {
     _pendingWord?.cancel();
     _pendingWord = null;
@@ -670,7 +712,13 @@ class _ReaderScreenState extends State<ReaderScreen>
             ),
           )
           .then(_backFromJam),
-      child: _withHint(book),
+      // A touch where no word is (a word's own tap is taken first).
+      child: GestureDetector(
+        key: const ValueKey('page-empty-tap'),
+        behavior: HitTestBehavior.translucent,
+        onTap: _emptyTapped,
+        child: _withHint(book),
+      ),
     );
 
     if (_fullScreen) {
@@ -704,6 +752,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                 ),
               ),
             ),
+            ..._navigator(),
           ],
         ),
       );
@@ -911,6 +960,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                 right: 0,
                 child: _barHandle(top: true),
               ),
+            ..._navigator(),
           ],
         ),
       ),

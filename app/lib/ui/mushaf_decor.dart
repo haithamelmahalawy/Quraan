@@ -13,7 +13,13 @@ class OrnamentFrame extends StatelessWidget {
     required this.child,
     this.sides = true,
     this.style,
+    this.opening = false,
   });
+
+  /// The opening pages (al-Fatiha, the first of al-Baqara): the text in a
+  /// window within an illuminated border, as the printed mushafs open,
+  /// drawn after the look (the user, 2026-11-14).
+  final bool opening;
 
   final Widget child;
 
@@ -25,7 +31,14 @@ class OrnamentFrame extends StatelessWidget {
   final MushafStyle? style;
 
   /// Distance from the right or left edge to the content.
-  static double sideInset(bool sides) => sides ? inset : 6;
+  static double sideInset(bool sides, [bool opening = false]) =>
+      !sides ? 6 : (opening ? openingSide : inset);
+
+  /// Distance from the top or bottom to the content.
+  static double insetOf(bool opening) => opening ? openingTop : inset;
+
+  /// The opening pages' room for their illuminated border.
+  static const openingTop = 46.0, openingSide = 40.0;
 
   /// Width of the patterned band.
   static const band = 14.0;
@@ -42,6 +55,7 @@ class OrnamentFrame extends StatelessWidget {
     return CustomPaint(
       painter: _FramePainter(
         sides,
+        opening,
         look,
         apart ? look.page : MushafColors.page,
         apart
@@ -52,8 +66,8 @@ class OrnamentFrame extends StatelessWidget {
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(
-          vertical: inset,
-          horizontal: sideInset(sides),
+          vertical: insetOf(opening),
+          horizontal: sideInset(sides, opening),
         ),
         child: child,
       ),
@@ -206,9 +220,10 @@ void frameMotif(
 }
 
 class _FramePainter extends CustomPainter {
-  _FramePainter(this.sides, this.style, this.page, this.colors);
+  _FramePainter(this.sides, this.opening, this.style, this.page, this.colors);
 
   final bool sides;
+  final bool opening;
   final MushafStyle style;
   final Color page;
   final ({Color band, Color motif, Color accent}) colors;
@@ -298,6 +313,148 @@ class _FramePainter extends CustomPainter {
         ..color = motif
         ..strokeWidth = 0.8,
     );
+    if (opening) _openingField(canvas, inner);
+  }
+
+  /// The opening pages: between the frame and the text, a field of the
+  /// look's motif in its band's colour, and the text in a window of the
+  /// page's colour, its shape the look's own; a crest above and below it, a
+  /// medallion in each corner (the user, 2026-11-14).
+  void _openingField(Canvas canvas, Rect inner) {
+    final field = inner.deflate(3);
+    canvas.drawRect(field, Paint()..color = colors.band);
+    // The lattice: the motif, small, staggered.
+    canvas.save();
+    canvas.clipRect(field);
+    const step = 13.0;
+    var row = 0;
+    for (var y = field.top + step / 2; y < field.bottom; y += step, row++) {
+      for (
+        var x = field.left + (row.isOdd ? step : step / 2);
+        x < field.right;
+        x += step
+      ) {
+        frameMotif(
+          canvas,
+          style.motifShape,
+          Offset(x, y),
+          5.4,
+          colors.motif.withAlpha(215),
+          colors.accent,
+        );
+      }
+    }
+    canvas.restore();
+    // The window: as far in as the text, less a margin.
+    final window = Rect.fromLTRB(
+      inner.left - OrnamentFrame.band + OrnamentFrame.openingSide - 9,
+      inner.top - OrnamentFrame.band + OrnamentFrame.openingTop - 9,
+      inner.right + OrnamentFrame.band - OrnamentFrame.openingSide + 9,
+      inner.bottom + OrnamentFrame.band - OrnamentFrame.openingTop + 9,
+    );
+    final shape = switch (style.index % 3) {
+      // Rounded, a half-circle swelling above and below.
+      0 =>
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(window, const Radius.circular(16)))
+          ..addOval(Rect.fromCircle(center: window.topCenter, radius: 22))
+          ..addOval(Rect.fromCircle(center: window.bottomCenter, radius: 22)),
+      // An arch above, pointed, the foot rounded.
+      1 =>
+        Path()
+          ..moveTo(window.left, window.top + 26)
+          ..quadraticBezierTo(
+            window.left,
+            window.top,
+            window.center.dx - 34,
+            window.top,
+          )
+          ..quadraticBezierTo(
+            window.center.dx - 6,
+            window.top,
+            window.center.dx,
+            window.top - 16,
+          )
+          ..quadraticBezierTo(
+            window.center.dx + 6,
+            window.top,
+            window.center.dx + 34,
+            window.top,
+          )
+          ..quadraticBezierTo(
+            window.right,
+            window.top,
+            window.right,
+            window.top + 26,
+          )
+          ..lineTo(window.right, window.bottom - 14)
+          ..quadraticBezierTo(
+            window.right,
+            window.bottom,
+            window.right - 14,
+            window.bottom,
+          )
+          ..lineTo(window.left + 14, window.bottom)
+          ..quadraticBezierTo(
+            window.left,
+            window.bottom,
+            window.left,
+            window.bottom - 14,
+          )
+          ..close(),
+      // Broad rounded corners, a swelling at each side.
+      _ =>
+        Path()
+          ..addRRect(
+            RRect.fromRectAndRadius(
+              window,
+              Radius.circular(math.min(window.width, window.height) * .16),
+            ),
+          )
+          ..addOval(Rect.fromCircle(center: window.centerLeft, radius: 18))
+          ..addOval(Rect.fromCircle(center: window.centerRight, radius: 18)),
+    };
+    canvas.drawPath(shape, Paint()..color = page);
+    canvas.drawPath(
+      shape,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..color = colors.accent,
+    );
+    canvas.drawPath(
+      shape,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = colors.motif,
+    );
+    // The crests, on the window above and below.
+    for (final c in [
+      Offset(window.center.dx, window.top - 2),
+      Offset(window.center.dx, window.bottom + 2),
+    ]) {
+      canvas.drawCircle(c, 11, Paint()..color = colors.band);
+      canvas.drawCircle(
+        c,
+        11,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = colors.accent,
+      );
+      frameMotif(canvas, style.motifShape, c, 8, colors.motif, colors.accent);
+    }
+    // The corners' medallions.
+    for (final c in [
+      field.topLeft + const Offset(15, 15),
+      field.topRight + const Offset(-15, 15),
+      field.bottomLeft + const Offset(15, -15),
+      field.bottomRight + const Offset(-15, -15),
+    ]) {
+      canvas.drawCircle(c, 12, Paint()..color = colors.accent);
+      frameMotif(canvas, style.motifShape, c, 10, colors.band, colors.motif);
+    }
   }
 
   /// Full screen: the bands above and below the text only.
@@ -329,6 +486,7 @@ class _FramePainter extends CustomPainter {
   @override
   bool shouldRepaint(_FramePainter old) =>
       old.sides != sides ||
+      old.opening != opening ||
       old.style != style ||
       old.page != page ||
       old.colors != colors;
@@ -365,7 +523,7 @@ class SurahBanner extends StatelessWidget {
               fontFamily: 'Hafs',
               fontSize: fontSize,
               height: 1.1,
-              color: MushafColors.frameColors.motif,
+              color: MushafColors.frameInk,
             ),
           ),
         ),

@@ -7,6 +7,7 @@ import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/models/quran.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
 import 'package:qiraat_mushaf/ui/book_pager.dart';
+import 'package:qiraat_mushaf/ui/mushaf_decor.dart';
 import 'package:qiraat_mushaf/ui/mushaf_lines.dart';
 import 'package:qiraat_mushaf/ui/mushaf_page.dart';
 import 'package:qiraat_mushaf/ui/mushaf_zoom.dart';
@@ -838,6 +839,102 @@ void main() {
     expect(t.takeException(), isNull);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();
+  });
+
+  // «السور والصفحات»: a touch where no word is shows two wheels, a surah's
+  // and a page's, each following the other and the mushaf going there at
+  // once; a touch anywhere puts them away; a double tap is full screen, not
+  // the wheels (the user, 2026-11-14).
+  testWidgets('a touch where no word is shows the wheels of surahs and pages', (
+    t,
+  ) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..page = 3
+      ..qcfFont = false;
+    await show(t, const Size(432, 800), settings: settings, reader: true);
+    final navigator = find.byKey(const ValueKey('page-navigator'));
+    // On the frame's side band, beside the lines: no word there.
+    final band = t.getRect(find.byKey(const ValueKey('mushaf-ornament-3')));
+    final empty = Offset(band.left + 6, band.center.dy);
+    Future<void> tapAt(Offset at, Duration time) async {
+      final g = await t.createGesture();
+      await g.down(at, timeStamp: time);
+      await g.up(timeStamp: time + const Duration(milliseconds: 40));
+      await t.pump();
+    }
+
+    await tapAt(empty, const Duration(seconds: 10));
+    expect(navigator, findsNothing, reason: 'Not before a double tap could');
+    await t.pump(const Duration(milliseconds: 300));
+    expect(navigator, findsOneWidget);
+    FixedExtentScrollController wheel(String key) =>
+        t.widget<ListWheelScrollView>(find.byKey(ValueKey(key))).controller!
+            as FixedExtentScrollController;
+    // A surah turned to: its first page, the mushaf there, the page's wheel
+    // with it.
+    final quran = mushafs.of(MushafEdition.madani);
+    wheel('surah-wheel').jumpToItem(2);
+    await t.pump(const Duration(milliseconds: 600));
+    await t.pump(const Duration(seconds: 1));
+    expect(settings.page, quran.surah(3).startPage);
+    expect(
+      wheel('page-wheel').selectedItem,
+      quran.surah(3).startPage - quran.firstPage,
+    );
+    // A page turned to: its surah's wheel with it.
+    final page = quran.surah(4).startPage + 2;
+    wheel('page-wheel').jumpToItem(page - quran.firstPage);
+    await t.pump(const Duration(milliseconds: 600));
+    await t.pump(const Duration(seconds: 1));
+    expect(settings.page, page);
+    expect(wheel('surah-wheel').selectedItem, 3);
+    // Put away by a touch elsewhere.
+    await t.tapAt(const Offset(20, 300));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(navigator, findsNothing);
+    // A double tap: full screen, the wheels not shown.
+    final now = t.getRect(find.byKey(ValueKey('mushaf-ornament-$page')));
+    final spot = Offset(now.left + 6, now.center.dy);
+    await tapAt(spot, const Duration(seconds: 30));
+    await tapAt(spot, const Duration(seconds: 30, milliseconds: 150));
+    await t.pump(const Duration(milliseconds: 600));
+    expect(navigator, findsNothing);
+    expect(find.byKey(const ValueKey('exit-full-screen')), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
+
+  // The opening pages (al-Fatiha, the first of al-Baqara): the text in a
+  // window within an illuminated border; the others as they were (the user,
+  // 2026-11-14). A surah's name in its banner read on the page in every look.
+  testWidgets('the two opening pages alone have the illuminated border', (
+    t,
+  ) async {
+    for (final (number, opening) in const [(1, true), (2, true), (3, false)]) {
+      await show(
+        t,
+        const Size(432, 800),
+        number: number,
+        settings: ReaderSettings.memory(selected: const {}),
+      );
+      final frame = t.widget<OrnamentFrame>(
+        find.byKey(ValueKey('mushaf-ornament-$number')),
+      );
+      expect(frame.opening, opening, reason: '$number');
+      expect(t.takeException(), isNull);
+    }
+    for (final look in MushafStyle.values) {
+      MushafColors.use(Brightness.light, look);
+      final ink = MushafColors.frameInk.computeLuminance();
+      final page = MushafColors.page.computeLuminance();
+      expect(
+        (page + .05) / (ink + .05),
+        greaterThanOrEqualTo(4.5),
+        reason: look.name,
+      );
+    }
+    MushafColors.use(Brightness.light);
   });
 
   // No hamesh or usul beside it: the page as wide as beside one, in the

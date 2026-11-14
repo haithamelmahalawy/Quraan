@@ -203,6 +203,10 @@ class HameshEntry {
 
 class _MushafPageState extends State<MushafPage>
     with SingleTickerProviderStateMixin {
+  /// The opening pages (al-Fatiha, the first of al-Baqara): the text in a
+  /// window within an illuminated border (the user, 2026-11-14).
+  bool get _opening => widget.page - widget.quran.firstPage < 2;
+
   final _recognizers = <TapGestureRecognizer>[];
 
   /// How many hamesh notes fit beside the page (the rest go below it),
@@ -305,6 +309,7 @@ class _MushafPageState extends State<MushafPage>
                 child: _PageFrame(
                   squares: _riwayaStrip(),
                   page: widget.page,
+                  opening: _opening,
                   onNumberTap: widget.onPageNumberTap,
                   child: _flowingText(ayahs, narrow),
                 ),
@@ -457,7 +462,10 @@ class _MushafPageState extends State<MushafPage>
     );
     final textHeight = math.max(
       1.0,
-      size.height - 30 - 2 * OrnamentFrame.inset - _PageFrame.numberHeight,
+      size.height -
+          30 -
+          2 * OrnamentFrame.insetOf(_opening) -
+          _PageFrame.numberHeight,
     );
     return _SequentialMarginPage(
       key: ValueKey(_sequentialSignature(size)),
@@ -466,7 +474,7 @@ class _MushafPageState extends State<MushafPage>
         notes,
         lines,
         textHeight / lines.fold(0, (n, l) => n + l.span),
-        26 + OrnamentFrame.inset,
+        26 + OrnamentFrame.insetOf(_opening),
       ),
       right: widget.quran.isRightPage(widget.page),
       rail: rail,
@@ -488,6 +496,7 @@ class _MushafPageState extends State<MushafPage>
               child: _PageFrame(
                 squares: _riwayaStrip(),
                 page: widget.page,
+                opening: _opening,
                 sides: true,
                 onNumberTap: widget.onPageNumberTap,
                 child: MushafLines(
@@ -748,9 +757,9 @@ class _MushafPageState extends State<MushafPage>
     // Turned: little room above and below the frame, the text the larger
     // (the user, 2026-11-13).
     const outer = 4.0, header = 20.0, top = 1.0;
-    const contentTop = top + header + OrnamentFrame.inset;
+    final contentTop = top + header + OrnamentFrame.insetOf(_opening);
     final textWidth =
-        pageWidth - 2 * outer - 2 * OrnamentFrame.sideInset(sides);
+        pageWidth - 2 * outer - 2 * OrnamentFrame.sideInset(sides, _opening);
     final spans = lines.fold(0, (n, l) => n + l.span);
     final natural = MushafLines(
       lines: lines,
@@ -769,7 +778,7 @@ class _MushafPageState extends State<MushafPage>
       natural.fontSize * 1.8 * spans,
       size.height * 1.65 -
           contentTop -
-          OrnamentFrame.inset -
+          OrnamentFrame.insetOf(_opening) -
           _PageFrame.compactNumberHeight -
           top,
     );
@@ -781,7 +790,7 @@ class _MushafPageState extends State<MushafPage>
       1.0,
       size.height -
           contentTop -
-          OrnamentFrame.inset -
+          OrnamentFrame.insetOf(_opening) -
           _PageFrame.compactNumberHeight -
           top,
     );
@@ -806,6 +815,7 @@ class _MushafPageState extends State<MushafPage>
               child: _PageFrame(
                 squares: _riwayaStrip(),
                 page: widget.page,
+                opening: _opening,
                 sides: sides,
                 compact: true,
                 onNumberTap: widget.onPageNumberTap,
@@ -1042,7 +1052,7 @@ class _MushafPageState extends State<MushafPage>
         (size.height -
             2 * outer -
             header -
-            2 * OrnamentFrame.inset -
+            2 * OrnamentFrame.insetOf(_opening) -
             _PageFrame.numberHeight) /
         spanCount;
     // Less than two printed lines, without a second
@@ -1065,12 +1075,12 @@ class _MushafPageState extends State<MushafPage>
     _reportHeaderMiddle(leftWidth + pageWidth / 2);
     // Full screen: no bands at the sides, the text has the whole width.
     final textWidth =
-        pageWidth - 2 * outer - 2 * OrnamentFrame.sideInset(sides);
+        pageWidth - 2 * outer - 2 * OrnamentFrame.sideInset(sides, _opening);
     final textHeight =
         pageHeight -
         2 * outer -
         header -
-        2 * OrnamentFrame.inset -
+        2 * OrnamentFrame.insetOf(_opening) -
         _PageFrame.numberHeight;
     final mushafLines = MushafLines(
       lines: lines,
@@ -1106,6 +1116,7 @@ class _MushafPageState extends State<MushafPage>
             child: _PageFrame(
               squares: _riwayaStrip(),
               page: widget.page,
+              opening: _opening,
               sides: sides,
               onNumberTap: widget.onPageNumberTap,
               child: mushafLines,
@@ -1156,7 +1167,7 @@ class _MushafPageState extends State<MushafPage>
       }
       at += line.span;
     }
-    final top = outer + header + OrnamentFrame.inset;
+    final top = outer + header + OrnamentFrame.insetOf(_opening);
     final shown = entries.sublist(0, split);
     final tops = [
       for (final e in shown)
@@ -3452,6 +3463,7 @@ String arabicDigits(int n) => n
 class _PageFrame extends StatelessWidget {
   const _PageFrame({
     required this.page,
+    this.opening = false,
     required this.child,
     this.onNumberTap,
     this.sides = true,
@@ -3461,6 +3473,9 @@ class _PageFrame extends StatelessWidget {
 
   final int page;
   final bool sides;
+
+  /// An opening page: its frame illuminated, the text in a window.
+  final bool opening;
 
   /// Turned: the number's line no taller than it must be, the text the
   /// larger (the user, 2026-11-13).
@@ -3503,6 +3518,7 @@ class _PageFrame extends StatelessWidget {
                   OrnamentFrame(
                     key: ValueKey('mushaf-ornament-$page'),
                     sides: sides,
+                    opening: opening,
                     child: child,
                   ),
                   if (upper.isNotEmpty)
