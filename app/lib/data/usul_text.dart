@@ -121,16 +121,11 @@ bool showYaqubMimExample(Variant reading, String hafs) {
 String withoutSeparatedMaddSign(String text) =>
     text.replaceFirst(RegExp(r'ٓ(?=[ً-ٰٟۖ-ۭ]*(?:ا[ْ۟۠][ً-ٰٟۖ-ۭ]*)?$)'), '');
 
-/// The wording beside «ٱلتقاء الساكنين»: «بضم نون التنوين وصلًا», «بضم النون
-/// وصلًا», as the row tells it, without the chapter's name.
-String firstSakinNote(String description) {
-  final told = description
-      .replaceFirst(' لالتقاء الساكنين', '')
-      .replaceFirst(RegExp(r'\s*وصلاً$'), '')
-      .replaceFirst(RegExp(r'\s*وصلًا$'), '')
-      .trim();
-  return '$told وصلًا';
-}
+/// The wording beside «ٱلتقاء الساكنين»: «بضم التنوين وصلًا» or «بالضم وصلًا».
+String firstSakinNote(String description) =>
+    // A tanween's «بضم التنوين وصلًا», else «بالضم وصلًا» (أَنِ ٱعۡبُدُواْ), the
+    // letter told by the word (the user, 2026-11-14).
+    description.contains('التنوين') ? 'بضم التنوين وصلًا' : 'بالضم وصلًا';
 
 /// Ha of tanbih and ya of nida joined in the rasm to a hamza (هَٰٓؤُلَآءِ،
 /// هَٰٓأَنتُمۡ، يَٰٓأَيُّهَا، يَٰٓـَٔادَمُ) carry a separated madd within one word.

@@ -939,6 +939,76 @@ Map<String, int> buildAshabUsul(
           : stopOnly(v) && '${v[6]}' == 'بإمالة الألف وقفًا';
     });
   }
+  // «رَءَا» before a quiescent (رَءَا ٱلشَّمۡسَ، وَرَءَا ٱلۡمُجۡرِمُونَ، تَرَٰٓءَا ٱلۡجَمۡعَانِ):
+  // Hamza and Khalaf al-'Ashir lean its ra in joining, its sign drawn; at the
+  // stop the ra and the hamza, as al-Kisa'i, who leans it at the stop alone
+  // (the user, 2026-11-14).
+  if (_hamza.contains(id) || _khalafAshir.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final word in words) {
+      if (!RegExp(r'^[وف]?ت?رءا$').hasMatch(_bare(word.t))) continue;
+      final next = index[_key(word.s, word.a, word.w + 1)]?.t ?? '';
+      if (!next.startsWith('ٱ')) continue;
+      final row = [
+        word.s,
+        word.a,
+        word.w,
+        1,
+        word.t.replaceFirst('رَ', 'رَ۪'),
+        'u',
+        'بإمالة الراء وصلًا',
+        '',
+        {'source': ashabSource},
+      ];
+      variants.removeWhere(
+        (r) =>
+            r[5] == 'u' &&
+            order(r) == order(row) &&
+            r[6] == 'بإمالة الراء وصلًا',
+      );
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
+  // The ha of silence in the usul, as Ya'qub's (يَتَسَنَّه۠، ٱقۡتَدِه۠: «وَاقْتَدِهْ
+  // حَذْفُ هَائِهِ شِفَاءً»), not the hamesh; Hamza's «مَالِيَه۠، سُلۡطَٰنِيَه۠، هِيَه۠»
+  // too: «وَيَخْفَى شِفَاءً مَالِيَهْ مَاهِيَهْ فَصِلْ / وَسُلْطَانِيَهْ مِنْ دُونِ هَاءٍ
+  // فَتُوصلَا» (the user, 2026-11-14).
+  {
+    final variants = data['variants'] as List;
+    const ways = ['حذف هاء السكت وصلاً', 'إثبات هاء السكت وقفًا'];
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final v in variants.cast<List>()) {
+      if (v[5] != 'f' || v[6] != 'بحذف الهاء وصلًا وإثباتها وقفًا') continue;
+      v[5] = 'u';
+      v[6] = 'بحذف هاء السكت وصلاً وإثباتها وقفًا';
+      v[7] = 'ha_sakt';
+      v[8] = {...(v[8] as Map), 'ways': ways};
+    }
+    if (_hamza.contains(id)) {
+      for (final (s, a, w) in const [(69, 28, 3), (69, 29, 2), (101, 10, 3)]) {
+        final row = [
+          s,
+          a,
+          w,
+          1,
+          index[_key(s, a, w)]!.t.replaceAll('ۜ', '').replaceFirst('هۡ', 'ه۠'),
+          'u',
+          'بحذف هاء السكت وصلاً وإثباتها وقفًا',
+          'ha_sakt',
+          {'source': ashabSource, 'ways': ways},
+        ];
+        variants.removeWhere((r) => r[7] == 'ha_sakt' && order(r) == order(row));
+        final at = variants.cast<List>().indexWhere(
+          (r) => order(r) > order(row),
+        );
+        variants.insert(at < 0 ? variants.length : at, row);
+      }
+    }
+  }
   // «التقاء الساكنين» for al-Kisa'i and Khalaf al-'Ashir in all its places,
   // not those the book names alone (the user, 2026-11-14).
   applyFirstSakin(id, quran, data['variants'] as List);
@@ -1195,6 +1265,14 @@ void _userFarsh(String id, List variants) {
   if (at(3, 154, 8) case final v?) {
     v[4] = 'تَغۡشَىٰ';
     v[6] = 'بالتاء';
+  }
+  // «وَٱلَّيۡسَعَ» (الأنعام ٨٦، ص ٤٨), Hamza's, al-Kisa'i's and Khalaf
+  // al-'Ashir's: its lam doubled, its ya quiet (the user, 2026-11-14).
+  for (final (s, a, w) in const [(6, 86, 1), (38, 48, 2)]) {
+    if (at(s, a, w) case final v?) {
+      v[4] = 'وَٱلَّيۡسَعَ';
+      v[6] = 'بتشديد اللام وإسكان الياء';
+    }
   }
   // «قَالَ ٱعۡلَمۡ»: the hamza of the imperative, a hamzat al-wasl.
   if (at(2, 259, 60) case final v?) {

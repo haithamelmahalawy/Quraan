@@ -6573,4 +6573,31 @@ void main() {
         .single;
     expect(manzumat.referenceOf(hamza, 'يَقُصُّ', 6, surahs).mention, {642, 643});
   });
+
+  // The ha of silence in the usul as Ya'qub's, each with its bayt: 522، 652،
+  // Hamza's 1079; the Durrah's 48-49 (the user, 2026-11-14).
+  test('the ha of silence cites its bayt', () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['khalaf_hamzah', 'duri_kisai', 'ishaq', 'ruways'];
+    await variants.ensureLoaded(ids);
+    Reference ref(String id, int s, int a, int w) => manzumat.referenceOf(
+      variants
+          .at([id], s, a, w)
+          .where((v) => v.word == w && v.rule == 'ha_sakt')
+          .single,
+      '',
+      s,
+      surahs,
+    );
+    expect(ref('khalaf_hamzah', 2, 259, 41).mention, {522});
+    expect(ref('duri_kisai', 6, 90, 5).mention, {652});
+    expect(ref('khalaf_hamzah', 69, 29, 2).mention, {1079});
+    expect(ref('ishaq', 6, 90, 5).mention, {49});
+    expect(ref('ruways', 101, 10, 3).mention, {48, 49});
+    // Khalaf al-'Ashir keeps it in «مَالِيَهۡ» (Durrah 49 «وَأَثْبِتْ فُزْ»).
+    expect(
+      variants.at(['ishaq'], 69, 28, 3).where((v) => v.rule == 'ha_sakt'),
+      isEmpty,
+    );
+  });
 }

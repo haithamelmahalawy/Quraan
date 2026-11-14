@@ -78,9 +78,9 @@ void main() {
   test('the first of two sakins tells its letter, joined', () {
     expect(
       firstSakinNote('بضم نون التنوين وصلاً لالتقاء الساكنين'),
-      'بضم نون التنوين وصلًا',
+      'بضم التنوين وصلًا',
     );
-    expect(firstSakinNote('بضم النون لالتقاء الساكنين'), 'بضم النون وصلًا');
+    expect(firstSakinNote('بضم النون لالتقاء الساكنين'), 'بالضم وصلًا');
   });
 
   test('a word with a farsh is cited for its farsh alone', () {

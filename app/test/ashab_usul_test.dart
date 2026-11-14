@@ -204,10 +204,15 @@ void main() {
           reason: '$id $s:$a',
         );
       }
-      // The oval of «أنا» on the ha, gone joined.
+      // The oval of «أنا» on the ha, gone joined: told in the usul, as
+      // Ya'qub's (the user, 2026-11-14).
       expect(
-        farsh(id, 2, 259)[41],
-        'يَتَسَنَّه۠ۖ|بحذف الهاء وصلًا وإثباتها وقفًا',
+        [
+          for (final v in (load(id)['variants'] as List).cast<List>())
+            if (v[0] == 2 && v[1] == 259 && v[2] == 41 && v[7] == 'ha_sakt')
+              '${v[4]}|${v[6]}',
+        ],
+        ['يَتَسَنَّه۠ۖ|بحذف هاء السكت وصلاً وإثباتها وقفًا'],
         reason: id,
       );
       final kisai = id == 'abul_harith' || id == 'duri_kisai';
@@ -251,9 +256,15 @@ void main() {
       }
       // Hafs's ta's tooth without its dots, the dagger alif on it.
       expect(farsh(id, 3, 39)[0], 'فَنَادَىٰهُ|بالألف', reason: id);
+      // In the usul now, as Ya'qub's (the user, 2026-11-14).
+      expect(farsh(id, 6, 90)[5], isNull, reason: id);
       expect(
-        farsh(id, 6, 90)[5],
-        'ٱقۡتَدِه۠ۗ|بحذف الهاء وصلًا وإثباتها وقفًا',
+        [
+          for (final v in (load(id)['variants'] as List).cast<List>())
+            if (v[0] == 6 && v[1] == 90 && v[2] == 5 && v[7] == 'ha_sakt')
+              '${v[4]}|${v[6]}',
+        ],
+        ['ٱقۡتَدِه۠ۗ|بحذف هاء السكت وصلاً وإثباتها وقفًا'],
         reason: id,
       );
       expect(

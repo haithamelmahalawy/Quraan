@@ -421,11 +421,11 @@ void main() {
       'ishaq',
       'idris',
     ]) {
-      final rows = ((jsonDecode(
-                File('assets/data/qiraat/$id.json').readAsStringSync(),
-              ) as Map)['variants']
-              as List)
-          .cast<List>();
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
       List<String> at(String k) => [
         for (final v in rows)
           if ('${v[0]}:${v[1]}:${v[2]}' == k && '${v[6]}'.contains('إمالة'))
@@ -434,6 +434,123 @@ void main() {
       expect(at('6:71:27'), ['بإمالة الألف وقفًا'], reason: id);
       expect(at('28:44:7'), ['بإمالة الألف وقفًا'], reason: id);
       expect(at('6:157:8'), ['بإمالة الألف'], reason: id);
+    }
+  });
+
+  // «رَءَا» before a quiescent: Hamza and Khalaf al-'Ashir lean its ra in
+  // joining, al-Kisa'i not; at the stop all the ra and the hamza (the user,
+  // 2026-11-14).
+  test(
+    "ra'a before a quiescent: its ra leaned in joining by Hamza and Khalaf",
+    () {
+      const places = [
+        '6:77:1',
+        '6:78:1',
+        '16:85:1',
+        '16:86:1',
+        '18:53:0',
+        '26:61:1',
+        '33:22:1',
+      ];
+      for (final id in const [
+        'khalaf_hamzah',
+        'khallad',
+        'ishaq',
+        'idris',
+        'abul_harith',
+        'duri_kisai',
+      ]) {
+        final rows =
+            ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                        as Map)['variants']
+                    as List)
+                .cast<List>();
+        final wasl = {
+          for (final v in rows)
+            if (v[6] == 'بإمالة الراء وصلًا')
+              '${v[0]}:${v[1]}:${v[2]}': '${v[4]}',
+        };
+        if (id.contains('kisai') || id == 'abul_harith') {
+          expect(wasl, isEmpty, reason: id);
+        } else {
+          expect(wasl.keys, places, reason: id);
+          expect(wasl['6:78:1'], 'رَ۪ءَا', reason: id);
+        }
+        expect(
+          rows.any(
+            (v) =>
+                '${v[0]}:${v[1]}:${v[2]}' == '6:78:1' &&
+                v[6] == 'بإمالة الراء والهمزة وقفًا',
+          ),
+          isTrue,
+          reason: id,
+        );
+      }
+    },
+  );
+
+  // «وَٱلَّيۡسَعَ» (الأنعام ٨٦، ص ٤٨): its lam doubled, its ya quiet (the user,
+  // 2026-11-14).
+  test("al-laysa' with the lam doubled and the ya quiet", () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
+      for (final k in const ['6:86:1', '38:48:2']) {
+        final v = rows
+            .where((v) => '${v[0]}:${v[1]}:${v[2]}' == k && v[5] == 'f')
+            .single;
+        expect(v[4], 'وَٱلَّيۡسَعَ', reason: '$id $k');
+        expect(v[6], 'بتشديد اللام وإسكان الياء', reason: '$id $k');
+      }
+    }
+  });
+
+  // The ha of silence in the usul, as Ya'qub's (the user, 2026-11-14).
+  test('the ha of silence of al-Ashab told in the usul as Ya\'qub\'s', () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
+      final ha = {
+        for (final v in rows)
+          if (v[7] == 'ha_sakt') '${v[0]}:${v[1]}:${v[2]}': v,
+      };
+      final hamza = id == 'khalaf_hamzah' || id == 'khallad';
+      expect(ha.keys, [
+        '2:259:41',
+        '6:90:5',
+        if (hamza) ...['69:28:3', '69:29:2', '101:10:3'],
+      ], reason: id);
+      for (final v in ha.values) {
+        expect(v[5], 'u', reason: id);
+        expect(v[6], 'بحذف هاء السكت وصلاً وإثباتها وقفًا', reason: id);
+      }
+      expect(
+        rows.where(
+          (v) => v[5] == 'f' && '${v[6]}'.contains('الهاء وصلًا وإثباتها'),
+        ),
+        isEmpty,
+        reason: id,
+      );
     }
   });
 }

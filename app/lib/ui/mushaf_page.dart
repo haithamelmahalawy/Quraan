@@ -3082,7 +3082,11 @@ List<_UsulGroup> _usulNotes(
           v.riwayaId == hafsId ||
           isRoutineMadd(v) ||
           !showYaqubMimExample(v, ayah.words[w]) ||
-          !_showYaIdafa(v, ayah, variants, s) ||
+          // A ya read unlike Hafs told for all who read it, the shown
+          // riwaya's fellows with it (وَجۡهِي: حمزة والكسائي وخلف العاشر, the
+          // user, 2026-11-14).
+          !(_showYaIdafa(v, ayah, variants, s) ||
+              showYaqubYaIdafaExample(v, ayah.words[w])) ||
           v.rule == 'naql_source' ||
           v.rule == 'hamza_source') {
         continue;
@@ -4704,7 +4708,10 @@ class _UsulBox extends StatelessWidget {
 
   Widget _item(_UsulGroup g, _UsulItem i, {bool named = true}) => InkWell(
     key: ValueKey(
-      'usul-reference:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.riwayat.join(',')}',
+      'usul-reference:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.riwayat.join(',')}'
+      // A word told twice, in joining and at the stop (Hamza's «رَ۪ءَا
+      // ٱلۡقَمَرَ» and «ر۪ء۪ا» at the stop).
+      '${i.readings.any((v) => !v.stopOnly && v.description.endsWith('وصلًا')) ? ':wasl' : ''}',
     ),
     onTap: () => onTap(i),
     child: Wrap(
@@ -4758,7 +4765,7 @@ class _UsulBox extends StatelessWidget {
         // The first of two sakins: what it is read with, joined.
         for (final d in {
           for (final v in i.readings)
-            if (v.rule == 'first_sakin' && _ashabSilah.contains(v.riwayaId))
+            if (v.rule == 'first_sakin')
               firstSakinNote(v.description),
         })
           Text(
