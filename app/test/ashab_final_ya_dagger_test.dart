@@ -840,4 +840,46 @@ void main() {
       }
     }
   });
+
+  // «ٱلذِّيبُ» with a ya for al-Kisa'i and Khalaf al-'Ashir; «رَءَا» before a
+  // moving letter its ra and hamza leaned (فَلَمَّا رَءَا قَمِيصَهُۥ) (the user,
+  // 2026-11-14).
+  test("al-dhib and ra'a qamisahu", () {
+    List<List> rows(String id) => ((jsonDecode(
+              File('assets/data/qiraat/$id.json').readAsStringSync(),
+            ) as Map)['variants']
+            as List)
+        .cast<List>();
+    for (final id in const ['abul_harith', 'duri_kisai', 'ishaq', 'idris']) {
+      for (final k in const ['12:13:9', '12:14:3', '12:17:10']) {
+        expect(
+          rows(id)
+              .where((v) => '${v[0]}:${v[1]}:${v[2]}' == k && v[5] == 'h')
+              .single[7],
+          'ibdal_single',
+          reason: '$id $k',
+        );
+      }
+    }
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      for (final k in const ['12:28:1', '11:70:1', '27:40:15']) {
+        expect(
+          rows(id).where(
+            (v) =>
+                '${v[0]}:${v[1]}:${v[2]}' == k &&
+                v[6] == 'بإمالة الراء والهمزة',
+          ),
+          hasLength(1),
+          reason: '$id $k',
+        );
+      }
+    }
+  });
 }

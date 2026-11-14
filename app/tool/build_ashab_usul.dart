@@ -1184,6 +1184,31 @@ Map<String, int> buildAshabUsul(
       variants.insert(i < 0 ? variants.length : i, row);
     }
   }
+  // al-Kisa'i's and Khalaf al-'Ashir's «ٱلذِّيبُ» (يوسف ١٣، ١٤، ١٧): its hamza a
+  // ya, as Warsh's and Abu Ja'far's, in the usul (the user, 2026-11-14).
+  if (_kisai.contains(id) || _khalafAshir.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final (s, a, w) in const [(12, 13, 9), (12, 14, 3), (12, 17, 10)]) {
+      final row = [
+        s,
+        a,
+        w,
+        1,
+        index[_key(s, a, w)]!.t.replaceFirst('ئۡ', 'ي'),
+        'h',
+        'بإبدال الهمزة ياءً',
+        'ibdal_single',
+        {'source': ashabSource, 'farshFrom': 'warsh'},
+      ];
+      variants.removeWhere(
+        (r) => order(r as List) == order(row) && r[5] == 'h',
+      );
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
   // al-Kisa'i's «غَيَٰبَتِ» (يوسف ١٠، ١٥): stopped on with the ha as the rasm's
   // open ta, «غَيَٰبَهۡ», and leaned there, its ba of «فجثت زينب»
   // (the user, 2026-11-14).
@@ -1234,6 +1259,51 @@ Map<String, int> buildAshabUsul(
     if (v[0] == 10 && v[1] == 30 && v[2] == 1 && v[5] == 'f') {
       v[4] = (index[_key(10, 30, 1)]?.t ?? '').replaceFirst('بۡ', 'تۡ');
       v[6] = 'بالتاء بدل الباء';
+    }
+  }
+  // «رَءَا» before a moving letter (فَلَمَّا رَءَا قَمِيصَهُۥ، رَءَاهُ مُسۡتَقِرًّا): its ra
+  // and hamza leaned, «وَحَرْفَيْ رَأَى كُلاًّ أَمِلْ مُزْنَ صُحْبَةٍ», as Ibn
+  // Dhakwan's, not its alif alone (the user, 2026-11-14).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final told = {
+      for (final v in variants.cast<List>())
+        if ('${v[6]}'.contains('إمالة الراء')) _key(v[0], v[1], v[2]),
+    };
+    for (final list in sources.verified['ibn_dhakwan']!.values) {
+      for (final v in list) {
+        if (v[5] != 'u' || !'${v[6]}'.startsWith('بإمالة الراء والهمزة')) {
+          continue;
+        }
+        if (v.length > 8 && (v[8] as Map)['stopOnly'] == true) continue;
+        final key = _key(v[0], v[1], v[2]);
+        if (told.contains(key)) continue;
+        final row = [
+          v[0],
+          v[1],
+          v[2],
+          1,
+          withImalaSign(index[key]?.t ?? '${v[4]}', '${v[4]}'),
+          'u',
+          'بإمالة الراء والهمزة',
+          '',
+          {'source': ashabSource, 'farshFrom': 'ibn_dhakwan'},
+        ];
+        variants.removeWhere(
+          (r) =>
+              order(r as List) == order(row) &&
+              r[5] == 'u' &&
+              '${r[4]}'.isEmpty &&
+              '${r[6]}'.startsWith('بإمالة الألف'),
+        );
+        final at = variants.cast<List>().indexWhere(
+          (r) => order(r) > order(row),
+        );
+        variants.insert(at < 0 ? variants.length : at, row);
+        told.add(key);
+      }
     }
   }
   // Hamza's and Khalaf al-'Ashir's «جَآءَ» leaned with its waw or fa too
