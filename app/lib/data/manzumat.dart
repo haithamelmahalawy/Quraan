@@ -315,9 +315,14 @@ class Manzumat {
         if (cited.contains(b.n)) b.n,
     };
     final abuJafar = qiraaOf(reading.riwayaId).id == 'abu_jafar';
+    // Khalaf al-'Ashir's as Abu Ja'far's: the Durrah silent, his asl's bayt in
+    // the Shatibiyya, Hamza's, with the Durrah's two (the user, 2026-11-14).
+    final khalaf = qiraaOf(reading.riwayaId).id == 'khalaf';
     final beside = _durrahBesideShatibiyya[_at(reading)];
-    final asl = !abuJafar
+    final asl = !abuJafar && !khalaf
         ? const <Bayt>[]
+        : khalaf
+        ? durrahAsl
         : beside != null
         ? [
             for (final b in verses(Poem.durrah))
@@ -328,12 +333,20 @@ class Manzumat {
     // Qalun's reading of it, after the Durrah's two.
     final silent =
         mention.isEmpty ||
-        _durrahSilentOnAbuJafar.contains(
-          '${reading.surah}:${reading.ayah}:${reading.word}',
-        );
-    if (abuJafar && poem == Poem.durrah && silent && asl.isNotEmpty) {
+        abuJafar &&
+            _durrahSilentOnAbuJafar.contains(
+              '${reading.surah}:${reading.ayah}:${reading.word}',
+            ) ||
+        khalaf &&
+            _durrahSilentOnKhalaf.contains(
+              '${reading.surah}:${reading.ayah}:${reading.word}',
+            );
+    if ((abuJafar || khalaf) &&
+        poem == Poem.durrah &&
+        silent &&
+        asl.isNotEmpty) {
       final nafi = _referenceOf(
-        _asQalun(reading),
+        khalaf ? _as(reading, 'khalaf_hamzah') : _asQalun(reading),
         hafs,
         surah,
         surahNames,
@@ -353,7 +366,7 @@ class Manzumat {
     }
     // Abu Ja'far's, no bayt of the Durrah nor of the Shatibiyya found for it:
     // the Durrah's two alone.
-    if (abuJafar && mention.isEmpty && asl.isNotEmpty) {
+    if ((abuJafar || khalaf) && mention.isEmpty && asl.isNotEmpty) {
       return (
         poem: Poem.durrah,
         chapter: asl.first.chapter,
@@ -389,6 +402,10 @@ class Manzumat {
     '69:12:4',
   };
 
+  // Khalaf al-'Ashir's, the book's quote from another chapter (Durrah 56, the
+  // zawaid, for «يَقۡضِ» الأنعام ٥٧): his asl's bayt and the Durrah's two (the
+  // user, 2026-11-14).
+  static const _durrahSilentOnKhalaf = {'6:57:17'};
   static const _durrahSilentOnAbuJafar = {
     '12:110:10',
     '27:51:5',
@@ -409,8 +426,11 @@ class Manzumat {
   static String _at(Variant v) => '${v.surah}:${v.ayah}:${v.word}';
 
   /// [v] as Qalun's: Abu Ja'far's reading where the Durrah leaves him to Nafi'.
-  static Variant _asQalun(Variant v) => Variant(
-    riwayaId: 'qalun',
+  static Variant _asQalun(Variant v) => _as(v, 'qalun');
+
+  /// [v] as [id]'s: read as the riwaya of the Shatibiyya it follows.
+  static Variant _as(Variant v, String id) => Variant(
+    riwayaId: id,
     surah: v.surah,
     ayah: v.ayah,
     word: v.word,
@@ -1148,6 +1168,58 @@ class Manzumat {
     // اللاَّءِ هَا أَنْتُمْ وَحَقِّقْهُمَا حَلَا».
     if (v.rule == 'hamza_mutatarrif') {
       return poem == Poem.durrah ? {33, 34} : {965, 966};
+    }
+    // «التقاء الساكنين», all its places (فَمَنِ ٱضۡطُرَّ، قُلِ ٱدۡعُواْ،
+    // مَحۡظُورًا ٱنظُرۡ), for every riwaya that reads it so: «وَضَمُّكَ أَولَى
+    // السَّاكِنَيْنِ لِثَالِثٍ ...»; the Durrah's «... وَأَوَّلَ السَّاكِنَيْنِ اضْمُمْ فَتىً وَبِقُلْ حَلَا
+    // / بِكَسْرٍ ...» (the user, 2026-11-14).
+    // «هُزُوٗا» and «كُفُوًا» in all their places: «... وَهُزْؤاً وَكُفْؤاً في
+    // السَّوَاكِنِ فُصِّلَا / وَضُمَّ لِبَاقِيهِمْ وَحَمْزَةُ وَقْفُهُ بِوَاوٍ وَحَفْصٌ وَاقِفاً
+    // ثُمَّ مُوصِلَا» (the user, 2026-11-14).
+    if (poem == Poem.shatibiyya &&
+        RegExp(r'^[وفبل]?(هز|كف)[وؤء]ا?$')
+            .hasMatch(hafs.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), ''))) {
+      return {460, 461};
+    }
+    // «وَهۡوَ، فَهۡيَ، لَهۡوَ» its ha quiet, all the mushaf: «وَهَا هُوَ بَعْدَ الْوَاوِ
+    // وَالْفَا وَلاَمِهَا وَهَا هِيَ أَسْكِنْ رَاضِياً ...»; the Durrah's «... هُوْ وَهِيْ
+    // يُمِلَّ هْوَ ثُمَّ هْوَ اسْكِنًا أُدْ وَحُمِّلَا / فَحَرِّكْ ...» (the user,
+    // 2026-11-14).
+    // Abu Ja'far's «يُكۡذِبُونَكَ» (الأنعام ٣٣), as his asl: «فَتَحْنَا وَتَحْتُ
+    // اشْدُدْ أَلاَ طِبْ وَالانْبِيَا مَعَ اقْتَرَبَتْ حُزْ إِذْ وَيُكْذِبُ أُصِّلَا» (the user,
+    // 2026-11-14).
+    if (poem == Poem.durrah &&
+        qiraaOf(v.riwayaId).id == 'abu_jafar' &&
+        '${v.surah}:${v.ayah}:${v.word}' == '6:33:8') {
+      return {105};
+    }
+    // «يَقۡضِ» (الأنعام ٥٧): «... وَيَقْضِ بِضَمِّ سَاكِنٍ مَعَ ضَمِّ الْكَسْرِ شَدِّدْ
+    // وَأَهْمِلَا / نَعَمْ دُونَ إِلْبَاسٍ ...», not the zawaid's 421 that the book
+    // quotes (the user, 2026-11-14).
+    if (poem == Poem.shatibiyya &&
+        '${v.surah}:${v.ayah}:${v.word}' == '6:57:17' &&
+        !v.isUsul) {
+      return {642, 643};
+    }
+    // «إِنَّهُۥ ... فَإِنَّهُۥ» (الأنعام ٥٤), Abu Ja'far's and Khalaf's their
+    // hamza broken: «وَحُزْ فَتْحَ إِنَّهْ مَعْ فَإِنَّهْ ...», Ya'qub's alone named
+    // (the user, 2026-11-14).
+    if (poem == Poem.durrah &&
+        {'6:54:13', '6:54:24'}.contains('${v.surah}:${v.ayah}:${v.word}')) {
+      return {106};
+    }
+    final huwa = hafs.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), '');
+    if (v.description.contains('إسكان الهاء') &&
+        RegExp(r'^[وفل]?ه[وي]$').hasMatch(huwa)) {
+      // «ثُمَّ هۡوَ», alone: «وَثُمَّ هْوَ رِفْقًا بَانَ».
+      return poem == Poem.durrah
+          ? {64, 65}
+          : huwa.length == 2
+          ? {450}
+          : {449};
+    }
+    if (v.rule == 'first_sakin') {
+      return poem == Poem.durrah ? {72, 73} : {495};
     }
     // Khalaf al-'Ashir's, the Durrah's bayt of the word (the user,
     // 2026-11-14): «يُظۡلَمُونَ» (النساء ٧٧) «وَلاَ يُظْلَمُوا أُدْ يَا»; «نِعِمَّا»

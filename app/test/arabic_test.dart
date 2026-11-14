@@ -111,6 +111,10 @@ void main() {
     expect(under('رَحۡمَةٞ'), 'رحم');
     // Already marked: unchanged.
     expect(withImalaSign('مَجۡر۪ىٰهَا'), 'مَجۡر۪ىٰهَا');
+    // The alif of a final «ها» not the one leaned when another is before it
+    // (أحياها: under the ya, the user, 2026-11-14).
+    expect(withImalaSign('أَحۡيَاهَا'), 'أَحۡيَ۪اهَا');
+    expect(withImalaSign('ضُحَىٰهَا'), 'ضُحَ۪ىٰهَا');
   });
 
   test('tarqiq distinguishes fathatan/dammatan from shared kasratan', () {

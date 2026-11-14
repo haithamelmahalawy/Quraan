@@ -853,16 +853,16 @@ class _MushafPageState extends State<MushafPage>
         listenable: scroll,
         builder: (context, _) {
           final offset = scroll.hasClients ? scroll.offset : 0.0;
-          // Only the lines wholly in sight: one cut by the frame has no note
-          // beside it (the user, 2026-11-13).
+          // The lines more than half in sight: one cut by the frame past its
+          // half has no note beside it (the user, 2026-11-14).
           final visible = <(Ayah, int)>[];
           var span = 0;
           for (final line in lines) {
             final top = span * lineHeight;
             final bottom = top + line.span * lineHeight;
             if (line is TextLine &&
-                top >= offset - .5 &&
-                bottom <= offset + window + .5) {
+                math.min(bottom, offset + window) - math.max(top, offset) >
+                    (bottom - top) / 2) {
               visible.addAll(line.words);
             }
             span += line.span;
@@ -907,15 +907,15 @@ class _MushafPageState extends State<MushafPage>
         listenable: scroll,
         builder: (context, _) {
           final offset = scroll.hasClients ? scroll.offset : 0.0;
-          // Only the lines wholly in sight (the user, 2026-11-13).
+          // The lines more than half in sight (the user, 2026-11-14).
           final visible = <(Ayah, int)>[];
           var span = 0;
           for (final l in lines) {
             final top = span * lineHeight;
             final bottom = top + l.span * lineHeight;
             if (l is TextLine &&
-                top >= offset - .5 &&
-                bottom <= offset + window + .5) {
+                math.min(bottom, offset + window) - math.max(top, offset) >
+                    (bottom - top) / 2) {
               visible.addAll(l.words);
             }
             span += l.span;
@@ -1700,8 +1700,22 @@ class _MushafPageState extends State<MushafPage>
       }
       var text = withNaqlVowel(v.text, ayah.words[w]);
       // Its own word read with imala: the sign under it too, as under
-      // Hafs's words (al-Kisa'i's «فَنَادَ۪ىٰهُ»).
-      if (_ownImala(base, w) case final imala?) {
+      // Hafs's words (al-Kisa'i's «فَنَادَ۪ىٰهُ»); each word of a row of two
+      // under its own (Khalaf al-'Ashir's «قَد جَّآءَ۪كُمُ»: the idgham of the
+      // first, the imala of the second, the user, 2026-11-14).
+      final parts = text.split(' ');
+      if (v.count > 1 && parts.length == v.count) {
+        for (var i = 0; i < parts.length; i++) {
+          final at = i == 0 ? base : _baseAt(widget.variants, s, ayah, w + i);
+          if (_ownImala(at, w + i) case final imala?) {
+            parts[i] = withImalaSign(
+              parts[i],
+              imala.text.isEmpty ? null : imala.text,
+            );
+          }
+        }
+        text = parts.join(' ');
+      } else if (_ownImala(base, w) case final imala?) {
         text = withImalaSign(text, imala.text.isEmpty ? null : imala.text);
       }
       return (

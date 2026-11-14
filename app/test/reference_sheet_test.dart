@@ -130,7 +130,9 @@ void main() {
     (tester) async {
       for (final (riwaya, poem) in [
         ('warsh', Poem.shatibiyya),
-        ('ishaq', Poem.durrah),
+        // Ya'qub's: Khalaf al-'Ashir's and Abu Ja'far's, the Durrah silent,
+        // have its two that leave them to their asl.
+        ('ruways', Poem.durrah),
       ]) {
         final v = reading(
           ayah: 1,

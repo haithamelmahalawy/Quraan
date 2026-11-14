@@ -17,6 +17,14 @@ int _imala(
 ) {
   var n = 0;
   final done = <String>{};
+  // The rows of the book's section, to be told again where their word
+  // comes again in the ayah.
+  final made = <List>[];
+  void add(List row) {
+    put(row);
+    made.add(row);
+  }
+
   for (final e in book['entries'] as List) {
     if (e[4] != 'mumal') continue;
     final (s, a) = (e[0] as int, e[1] as int);
@@ -108,7 +116,7 @@ int _imala(
                   .where((v) => v[3] == 1 && v[6] == his[6])
                   .firstOrNull ??
               his;
-          put([
+          add([
             s,
             a,
             at,
@@ -145,7 +153,7 @@ int _imala(
       if (stop) how = '$how وقفًا';
       if (khulf) how = '$how بخلف عنه';
       for (final at in also) {
-        put([
+        add([
           s,
           a,
           at,
@@ -165,6 +173,26 @@ int _imala(
         ]);
         n++;
       }
+    }
+  }
+  // A word the section names once and that comes again in the ayah, a waw,
+  // fa, ba or lam before it maybe (هُدٗى ... وَهُدٗى، المائدة ٤٦): leaned again,
+  // as the first (the user, 2026-11-14).
+  String own(String t) => t.replaceFirst(RegExp('^[وفبل][َُِ]?'), '');
+  for (final row in [...made]) {
+    final (s, a, w) = (row[0] as int, row[1] as int, row[2] as int);
+    final word = index[_key(s, a, w)];
+    if (word == null) continue;
+    final stop = (row[8] as Map)['stopOnly'] == true;
+    for (var j = 0; index.containsKey(_key(s, a, j)); j++) {
+      if (j == w || own(index[_key(s, a, j)]!.t) != own(word.t)) continue;
+      // Not where it is leaned already, in the stop or not (أَوۡلَىٰ لَكَ
+      // فَأَوۡلَىٰ، القيامة ٣٤, each its own).
+      final key = _key(s, a, j);
+      if (done.contains('$key:true') || done.contains('$key:false')) continue;
+      done.add('$key:$stop');
+      put([s, a, j, 1, '', ...row.sublist(5)]);
+      n++;
     }
   }
   // «كَفَىٰ» where the book's section leaves it out (النساء ٤٥ مرتين، ٥٠،

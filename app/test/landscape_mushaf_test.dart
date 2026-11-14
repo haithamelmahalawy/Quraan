@@ -502,14 +502,19 @@ void main() {
       find.descendant(of: note, matching: find.byType(RichText)),
     );
     expect(words.any((w) => w.text.toPlainText().contains('السطر')), isTrue);
-    // Its line cut by the frame, half of it above: no note for it (the
-    // user, 2026-11-13); whole again, its note back.
+    // Its line cut by the frame: more than half of it above, no note for
+    // it; less than half, its note kept (the user, 2026-11-14).
     final word = t.getRect(find.byKey(const ValueKey('word:2:6:0')));
     final window = t.getRect(central());
     final at = controller(t).offset;
-    controller(t).jumpTo(at + word.center.dy - window.top);
+    // A line's height: the lines' own, of the page's fifteen.
+    final line = t.getSize(find.byType(MushafLines)).height / 15;
+    controller(t).jumpTo(at + word.center.dy - window.top + line * .2);
     await t.pumpAndSettle();
     expect(note, findsNothing);
+    controller(t).jumpTo(at + word.center.dy - window.top - line * .2);
+    await t.pumpAndSettle();
+    expect(note, findsOneWidget);
     controller(t).jumpTo(at);
     await t.pumpAndSettle();
     expect(note, findsOneWidget);

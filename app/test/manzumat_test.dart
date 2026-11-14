@@ -3025,7 +3025,7 @@ void main() {
         surahs,
         entries: book.at(s, a, w),
       );
-      expect(r.mention, {64}, reason: '$s:$a');
+      expect(r.mention, {64, 65}, reason: '$s:$a');
     }
   });
 
@@ -6378,5 +6378,199 @@ void main() {
     expect(at('ishaq', 4, 155, 7, 'ٱلۡأَنۢبِيَآءَ', 'ٱلۡأَنۢبِيَآءَ').mention, {
       35,
     });
+  });
+
+  // Khalaf al-'Ashir's, the Durrah silent («أَحۡصَنَّ» النساء ٢٥): his asl's
+  // bayt in the Shatibiyya, Hamza's, with the Durrah's two that leave each to
+  // his asl, as Abu Ja'far's (the user, 2026-11-14).
+  test("Khalaf al-Ashir's, the Durrah silent, cites Hamza's bayt", () {
+    for (final id in ['ishaq', 'idris']) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 4,
+          ayah: 25,
+          word: 35,
+          count: 1,
+          text: 'أَحۡصَنَّ',
+          kind: VariantKind.farsh,
+          description: 'بفتح الهمزة وفتح الصاد',
+        ),
+        'أُحۡصِنَّ',
+        4,
+        surahs,
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, isNotEmpty, reason: id);
+      expect({for (final b in r.asl) b.n}, {7, 8}, reason: id);
+      // A word the Durrah tells keeps its own bayt.
+      final told = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 4,
+          ayah: 77,
+          word: 46,
+          count: 1,
+          text: 'يُظۡلَمُونَ',
+          kind: VariantKind.farsh,
+          description: 'بالياء',
+        ),
+        'تُظۡلَمُونَ',
+        4,
+        surahs,
+      );
+      expect(told.poem, Poem.durrah, reason: id);
+      expect(told.mention, {96}, reason: id);
+    }
+  });
+
+  // «التقاء الساكنين» in all its places, «فَمَنِ ٱضۡطُرَّ» among them: the
+  // Shatibiyya's «وَضَمُّكَ أَولَى السَّاكِنَيْنِ» and its examples, the
+  // Durrah's «وَأَوَّلَ السَّاكِنَيْنِ اضْمُمْ ...» (the user, 2026-11-14).
+  test('the first of two quiescents cites its bayts in both poems', () {
+    for (final (id, expected) in const [
+      ('qalun', {495}),
+      ('hisham', {495}),
+      ('duri_kisai', {495}),
+      ('ibn_wardan', {72, 73}),
+      ('ishaq', {72, 73}),
+    ]) {
+      for (final (s, a, w, hafs, text, how) in const [
+        (2, 173, 13, 'فَمَنِ', 'فَمَنُ', 'بضم النون وصلًا لالتقاء الساكنين'),
+        (4, 49, 13, 'فَتِيلًا', '', 'بضم التنوين وصلًا لالتقاء الساكنين'),
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: 1,
+            text: text,
+            kind: VariantKind.usul,
+            description: how,
+            rule: 'first_sakin',
+          ),
+          hafs,
+          s,
+          surahs,
+        );
+        expect(r.mention, expected, reason: '$id $s:$a');
+      }
+    }
+  });
+
+  // «هُزُوٗا» and «كُفُوًا» wherever they come: the Shatibiyya's 460-461 (the
+  // user, 2026-11-14).
+  test('huzuwan and kufuwan cite their two bayts', () {
+    for (final (id, s, a, w, hafs, text) in const [
+      ('khalaf_hamzah', 2, 67, 12, 'هُزُوٗاۖ', 'هُزۡؤٗاۖ'),
+      ('duri_kisai', 2, 67, 12, 'هُزُوٗاۖ', 'هُزُؤٗاۖ'),
+      ('khalaf_hamzah', 112, 4, 3, 'كُفُوًا', 'كُفۡؤًا'),
+    ]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: s,
+          ayah: a,
+          word: w,
+          count: 1,
+          text: text,
+          kind: VariantKind.farsh,
+          description: 'بالهمز',
+        ),
+        hafs,
+        s,
+        surahs,
+      );
+      expect(r.mention, {460, 461}, reason: '$id $s:$a');
+    }
+  });
+
+  // «وَهۡوَ، فَهۡيَ» its ha quiet, all the mushaf: the Shatibiyya's 449, the
+  // Durrah's 64-65 (the user, 2026-11-14).
+  test('wahwa and fahya cite their bayts in both poems', () {
+    for (final (id, expected) in const [
+      ('duri_kisai', {449}),
+      ('qalun', {449}),
+      ('ibn_wardan', {64, 65}),
+    ]) {
+      for (final (s, a, w, hafs, text) in const [
+        (2, 29, 15, 'وَهُوَ', 'وَهۡوَ'),
+        (5, 120, 6, 'وَهُوَ', 'وَهۡوَ'),
+        (22, 45, 5, 'فَهِيَ', 'فَهۡيَ'),
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: 1,
+            text: text,
+            kind: VariantKind.farsh,
+            description: 'بإسكان الهاء',
+          ),
+          hafs,
+          s,
+          surahs,
+        );
+        expect(r.mention, expected, reason: '$id $s:$a');
+      }
+    }
+  });
+
+  // Abu Ja'far's «يُكۡذِبُونَكَ» (الأنعام ٣٣), light as his asl: the Durrah's
+  // 105 «... وَيُكْذِبُ أُصِّلَا» (the user, 2026-11-14).
+  test("Abu Ja'far's yukdhibunaka cites the Durrah's 105", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ibn_wardan', 'ibn_jammaz']);
+    for (final id in ['ibn_wardan', 'ibn_jammaz']) {
+      final v = variants
+          .at([id], 6, 33, 8)
+          .where((v) => v.word == 8 && !v.isUsul)
+          .single;
+      expect(v.description, 'بإسكان الكاف وتخفيف الذال', reason: id);
+      final r = manzumat.referenceOf(v, 'يُكَذِّبُونَكَ', 6, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {105}, reason: id);
+    }
+  });
+
+  // «إِنَّهُۥ ... فَإِنَّهُۥ» (الأنعام ٥٤): the Durrah's 106 «وَحُزْ فَتْحَ إِنَّهْ مَعْ
+  // فَإِنَّهْ» (the user, 2026-11-14).
+  test("the Durrah's 106 for innahu and fa-innahu", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ishaq', 'ibn_wardan']);
+    for (final (id, w) in [('ishaq', 13), ('ishaq', 24), ('ibn_wardan', 24)]) {
+      final v = variants
+          .at([id], 6, 54, w)
+          .where((v) => v.word == w && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, 'أَنَّهُۥ', 6, surahs);
+      expect(r.poem, Poem.durrah, reason: '$id $w');
+      expect(r.mention, {106}, reason: '$id $w');
+    }
+  });
+
+  // Khalaf al-'Ashir's «يَقۡضِ» (الأنعام ٥٧): not the Durrah's zawaid (56) the
+  // book quotes, but Hamza's 642-643 with the Durrah's 7-8 (the user,
+  // 2026-11-14).
+  test("Khalaf's yaqdi cites his asl's Shatibiyya with the Durrah's 7-8", () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ishaq', 'khalaf_hamzah']);
+    final khalaf = variants
+        .at(['ishaq'], 6, 57, 17)
+        .where((v) => v.word == 17 && !v.isUsul)
+        .single;
+    final r = manzumat.referenceOf(khalaf, 'يَقُصُّ', 6, surahs);
+    expect(r.poem, Poem.shatibiyya);
+    expect(r.mention, {642, 643});
+    expect(r.asl.map((b) => b.n), [7, 8]);
+    final hamza = variants
+        .at(['khalaf_hamzah'], 6, 57, 17)
+        .where((v) => v.word == 17 && !v.isUsul)
+        .single;
+    expect(manzumat.referenceOf(hamza, 'يَقُصُّ', 6, surahs).mention, {642, 643});
   });
 }

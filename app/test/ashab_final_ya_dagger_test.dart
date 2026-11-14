@@ -243,4 +243,197 @@ void main() {
       expect(text, 'ٱلۡأُسَٰرَىٰ', reason: id);
     }
   });
+
+  // A ya of idafa read quiet before a hamza (يَدِيٓ إِلَيۡكَ، المائدة ٢٨): the
+  // separated madd over it, al-Ashab reading it long (the user, 2026-11-14).
+  test('al-Ashab put the separated madd over a quiet ya before a hamza', () {
+    final quran =
+        jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
+    final words = <String, String>{
+      for (final x in quran['ayahs'] as List)
+        for (final (i, w) in (x[4] as String).split(' ').indexed)
+          '${x[0]}:${x[1]}:$i': w,
+    };
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+      'ishaq',
+      'idris',
+    ]) {
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
+      final quiet = [
+        for (final v in rows)
+          if (v[7] == 'ya_idafa' &&
+              v[3] == 1 &&
+              RegExp(
+                '^[أإءآ]',
+              ).hasMatch(words['${v[0]}:${v[1]}:${(v[2] as int) + 1}'] ?? '') &&
+              RegExp(r'ي[ٓ]?$').hasMatch('${v[4]}'))
+            v,
+      ];
+      expect(quiet, isNotEmpty, reason: id);
+      for (final v in quiet) {
+        expect('${v[4]}', endsWith('يٓ'), reason: '$id ${v[0]}:${v[1]}');
+      }
+      expect(
+        quiet.where((v) => v[0] == 5 && v[1] == 28).single[4],
+        'يَدِيٓ',
+        reason: id,
+      );
+    }
+  });
+
+  // A word the book's section names once and that comes again in the ayah
+  // (هُدٗى ... وَهُدٗى، المائدة ٤٦): leaned again as the first; not where it is
+  // leaned already (أَوۡلَىٰ لَكَ فَأَوۡلَىٰ، القيامة ٣٤) (the user, 2026-11-14).
+  test('al-Ashab lean a word again where it comes again in the ayah', () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+      'ishaq',
+      'idris',
+    ]) {
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
+      List<String> at(int s, int a, int w) => [
+        for (final v in rows)
+          if (v[0] == s && v[1] == a && v[2] == w && '${v[6]}'.contains('مال'))
+            '${v[6]}',
+      ];
+      expect(at(5, 46, 15), ['بإمالة الألف وقفًا'], reason: id);
+      expect(at(5, 46, 23), ['بإمالة الألف وقفًا'], reason: id);
+      expect(at(75, 34, 0), hasLength(1), reason: id);
+      expect(at(75, 34, 2), hasLength(1), reason: id);
+    }
+  });
+
+  // «ٱلۡأَوَّلِينَ» (المائدة ١٠٧) its ya quiet, not opened, for Khalaf
+  // al-'Ashir, Hamza and Ya'qub; Hamza's sakt on its article over his own
+  // word (the user, 2026-11-14).
+  test('al-awwalin with its ya quiet, the sakt on its own word', () {
+    List<List> at(String id) => [
+      for (final v
+          in ((jsonDecode(
+                    File('assets/data/qiraat/$id.json').readAsStringSync(),
+                  ) as Map)['variants']
+                  as List)
+              .cast<List>())
+        if (v[0] == 5 && v[1] == 107 && v[2] == 13) v,
+    ];
+    for (final id in const [
+      'ishaq',
+      'idris',
+      'khalaf_hamzah',
+      'khallad',
+      'ruways',
+      'rawh',
+    ]) {
+      final farsh = at(id).where((v) => v[5] == 'f').single;
+      // Its ya quiet: no fatha over it.
+      expect('${farsh[4]}', endsWith('ينَ'), reason: id);
+      expect('${farsh[4]}', isNot(contains('يَ')), reason: id);
+    }
+    for (final id in const ['khalaf_hamzah', 'khallad']) {
+      final sakt = at(id).where((v) => '${v[4]}'.contains('ۜ')).single;
+      expect('${sakt[4]}', startsWith('ٱلۡۜأَ'), reason: id);
+      expect('${sakt[4]}', endsWith('ينَ'), reason: id);
+      expect('${sakt[4]}', isNot(contains('يَ')), reason: id);
+    }
+  });
+
+  // al-Kisa'i's «وَهۡوَ، فَهۡوَ» its ha quiet in all the places, as Qalun's
+  // (الأنعام ١٧، ١٨ were left out) (the user, 2026-11-14).
+  test('al-Kisai reads every wahwa and fahwa with the ha quiet', () {
+    final quran =
+        jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
+    final places = [
+      for (final x in quran['ayahs'] as List)
+        for (final (i, w) in (x[4] as String).split(' ').indexed)
+          if (RegExp(r'^[وفل]ه[وي]$')
+                  .hasMatch(w.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), '')) &&
+              // «لَهۡوٞ» the noun, not the pronoun.
+              !w.contains('ۡ'))
+            '${x[0]}:${x[1]}:$i',
+    ];
+    for (final id in const ['abul_harith', 'duri_kisai']) {
+      final quiet = {
+        for (final v
+            in ((jsonDecode(
+                      File('assets/data/qiraat/$id.json').readAsStringSync(),
+                    ) as Map)['variants']
+                    as List)
+                .cast<List>())
+          if ('${v[6]}'.contains('إسكان الهاء')) '${v[0]}:${v[1]}:${v[2]}',
+      };
+      expect(places.where((p) => !quiet.contains(p)), isEmpty, reason: id);
+      expect(quiet, containsAll(['6:17:12', '6:18:0', '6:18:4']), reason: id);
+    }
+  });
+
+  // al-Kisa'i's «أَرَيۡتُمۡ، أَرَيۡتَكُمۡ، أَفَرَيۡتَ» in every place, the second
+  // hamza gone (the user, 2026-11-14).
+  test("al-Kisai drops the second hamza of every ara'aytum", () {
+    final quran =
+        jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
+    final places = {
+      for (final x in quran['ayahs'] as List)
+        for (final (i, w) in (x[4] as String).split(' ').indexed)
+          if (RegExp('^أَ(?:فَ)?رَءَيۡت').hasMatch(w))
+            '${x[0]}:${x[1]}:$i': w.replaceFirst('رَءَ', 'رَ'),
+    };
+    expect(places, hasLength(34));
+    for (final id in const ['abul_harith', 'duri_kisai']) {
+      final farsh = {
+        for (final v
+            in ((jsonDecode(
+                      File('assets/data/qiraat/$id.json').readAsStringSync(),
+                    ) as Map)['variants']
+                    as List)
+                .cast<List>())
+          if (v[5] == 'f') '${v[0]}:${v[1]}:${v[2]}': v,
+      };
+      for (final MapEntry(:key, :value) in places.entries) {
+        expect(farsh[key]?[4], value, reason: '$id $key');
+        expect(farsh[key]?[6], 'بحذف الهمزة الثانية', reason: '$id $key');
+      }
+    }
+  });
+
+  // «إِلَى ٱلۡهُدَى ٱئۡتِنَا»: before a quiescent leaned at the stop alone, the
+  // plain row gone; «أَهۡدَىٰ مِنۡهُمۡ» leaned in both (the user, 2026-11-14).
+  test('a leaned alif before a quiescent is leaned at the stop alone', () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+      'ishaq',
+      'idris',
+    ]) {
+      final rows = ((jsonDecode(
+                File('assets/data/qiraat/$id.json').readAsStringSync(),
+              ) as Map)['variants']
+              as List)
+          .cast<List>();
+      List<String> at(String k) => [
+        for (final v in rows)
+          if ('${v[0]}:${v[1]}:${v[2]}' == k && '${v[6]}'.contains('إمالة'))
+            '${v[6]}',
+      ];
+      expect(at('6:71:27'), ['بإمالة الألف وقفًا'], reason: id);
+      expect(at('28:44:7'), ['بإمالة الألف وقفًا'], reason: id);
+      expect(at('6:157:8'), ['بإمالة الألف'], reason: id);
+    }
+  });
 }

@@ -254,7 +254,7 @@ class _ReadingReferenceState extends State<_ReadingReference> {
             // The Durrah's asl (7، 8) told as such; a bayt of its own not.
             if (r.asl.first.n == 7)
               Text(
-                'سكتت الدرة عن الكلمة، فيقرأ ${q.shortAr} كأصله نافع:',
+                'سكتت الدرة عن الكلمة، فيقرأ ${q.shortAr} كأصله ${q.id == 'khalaf' ? 'حمزة' : q.id == 'yaqub' ? 'أبي عمرو' : 'نافع'}:',
                 key: const ValueKey('reference-asl'),
                 style: TextStyle(color: MushafColors.frame, fontSize: 12),
               ),

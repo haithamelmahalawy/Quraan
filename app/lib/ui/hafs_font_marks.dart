@@ -384,7 +384,9 @@ const lamHamzaClip = .70;
 
 /// How far under the line the imala sign stands, in font sizes; under a jim.
 const imalaDrop = .20;
-const imalaUnderJim = .32;
+/// Under the jim's dot, raised a little off the line below (جَ۪آءَ, the user,
+/// 2026-11-14).
+const imalaUnderJim = .26;
 
 
 /// How low the dagger alif beside a ta stands, and its madd, in font sizes.

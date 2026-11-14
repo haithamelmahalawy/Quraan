@@ -192,7 +192,18 @@ String withImalaSign(String word, [String? reading]) {
       base(clusters.length - 1, 0x0629)) {
     target = clusters.length - 2;
   }
-  for (var i = clusters.length - 1; i >= 0 && target == null; i--) {
+  // The alif of a final «ها» (the pronoun) is not the one leaned when
+  // another stands before it (أَحۡيَ۪اهَا: under the ya, not the ha, the user,
+  // 2026-11-14).
+  var from = clusters.length - 1;
+  if (from >= 3 && base(from, 0x0627) && base(from - 1, 0x0647)) {
+    final earlier = [
+      for (var i = from - 2; i > 0; i--)
+        if (base(i, 0x0627) || dagger(i)) i,
+    ];
+    if (earlier.isNotEmpty) from -= 2;
+  }
+  for (var i = from; i >= 0 && target == null; i--) {
     if (base(i, 0x0627) && i > 0) target = i - 1;
     if (target == null && dagger(i)) target = i;
   }
@@ -591,10 +602,10 @@ String completeReadingVowels(String text, String baseline) {
                 own[i] == 'ن' &&
                 next.isNotEmpty &&
                 'تثجدذزسشصضطظفقك'.contains(next[0]);
-            // A bare last ya after a kasra is the madd ya, the ya of idafa
-            // read sakin (لِي، بَيۡتِي): not Hafs's fatha (لِيَ).
+            // A bare ya after a kasra is the madd ya, the ya of idafa read
+            // sakin (لِي، بَيۡتِي): not Hafs's fatha (لِيَ); so within a word
+            // too (ٱلۡأَوَّلِينَ for Hafs's ٱلۡأَوۡلَيَٰنِ, the user, 2026-11-14).
             final maddYa =
-                i == own.length - 1 &&
                 i > 0 &&
                 'يى'.contains(own[i][0]) &&
                 own[i - 1].contains('ِ');

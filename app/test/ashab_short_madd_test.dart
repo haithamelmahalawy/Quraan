@@ -239,4 +239,25 @@ void main() {
       }
     },
   );
+
+  // Khalaf al-'Ashir's «قَد جَّآءَكُمُ» (النساء ١٧٠، ١٧٤): the idgham of the
+  // first word and the imala of the second, its sign under the jim, both in
+  // the one row drawn (the user, 2026-11-14).
+  for (final ayah in const [170, 174]) {
+    testWidgets("Khalaf al-Ashir's qad ja'akum $ayah keeps the imala sign", (
+      t,
+    ) async {
+      addTearDown(t.view.reset);
+      t.view.physicalSize = const Size(620, 1000);
+      t.view.devicePixelRatio = 1;
+      for (final id in ['ishaq', 'idris']) {
+        final text = await shown(t, id, 4, ayah, 2);
+        expect(text, contains(' '), reason: id);
+        final [qad, jaa] = text!.split(' ');
+        expect(jaa, contains('۪'), reason: id);
+        expect(jaa, contains('ّ'), reason: id);
+        expect(qad, isNot(contains('۪')), reason: id);
+      }
+    });
+  }
 }
