@@ -378,38 +378,32 @@ void main() {
     await t.pumpAndSettle();
   });
 
-  // No bar of pages below: the index's icon on the frame's right lets it up,
-  // a page chosen puts it away two seconds later, a touch outside it at
-  // once; the icon dragged anywhere is kept there, in sight turned or
-  // upright (the user, 2026-11-15).
-  testWidgets('the pages\' bar let up by the index\'s icon, put away again', (
-    t,
-  ) async {
+  // No bar of pages below: «الفهرس» beside the lamp lets it down at the top,
+  // where the riwayat come down; a page chosen puts it away two seconds
+  // later, a touch outside it at once (the user, 2026-11-15).
+  testWidgets('the pages\' bar let down at the top by the index beside the '
+      'lamp, put away again', (t) async {
     final settings = ReaderSettings.memory(selected: {'warsh'})
       ..page = 3
       ..qcfFont = false;
     await show(t, const Size(800, 432), settings: settings, reader: true);
-    final top = find.byKey(const ValueKey('top-bar-toggle'));
-    final icon = find.byKey(const ValueKey('index-icon'));
+    final icon = find.byKey(const ValueKey('index-icon')).hitTestable();
+    final lamp = find.byKey(const ValueKey('glow-lamp')).hitTestable();
+    final riwayat = find
+        .byKey(const ValueKey('riwayat-panel-toggle'))
+        .hitTestable();
     final current = find.byType(MushafPage).last;
     expect(find.byKey(const ValueKey('bottom-bar-toggle')), findsNothing);
     expect(find.byType(Slider).hitTestable(), findsNothing);
-    expect(icon.hitTestable(), findsOneWidget);
+    expect(icon, findsOneWidget);
+    // On the right of «الرواة», on its row; the lamp on its left.
+    final button = t.getRect(riwayat.first);
+    expect(t.getRect(icon).left, greaterThanOrEqualTo(button.right));
+    expect(t.getRect(icon).left - button.right, lessThan(20));
+    expect(t.getCenter(icon).dy, closeTo(button.center.dy, 6));
+    expect(t.getCenter(lamp.first).dx, lessThan(button.left));
     final full = t.getRect(current);
-    expect(full.top, greaterThanOrEqualTo(t.getRect(top).bottom));
     expect(full.bottom, closeTo(432, 1));
-    // On the frame's band on the right, half way down.
-    final frame = t.getRect(
-      find.descendant(
-        of: current,
-        matching: find.byKey(const ValueKey('mushaf-ornament-3')),
-      ),
-    );
-    expect(
-      t.getCenter(icon).dx,
-      closeTo(frame.right - OrnamentFrame.band / 2, 1),
-    );
-    expect(t.getCenter(icon).dy, closeTo(full.center.dy, 2));
 
     final scroll = t
         .widget<SingleChildScrollView>(
@@ -420,12 +414,15 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(icon);
     await t.pumpAndSettle();
+    // At the top, the page beneath it shorter.
     expect(find.byType(Slider).hitTestable(), findsOneWidget);
+    final bar = t.getRect(find.byType(PageSlider));
+    expect(bar.bottom, lessThanOrEqualTo(t.getRect(current).top + 1));
+    expect(bar.top, lessThan(full.top + 1));
     expect(t.getSize(current).height, closeTo(full.height - 44, 1));
     expect(scroll.offset, closeTo(180, .1));
-    expect(icon.hitTestable(), findsOneWidget);
 
-    // A page chosen: still up a moment, away two seconds later.
+    // A page chosen: still down a moment, away two seconds later.
     t.widget<PageSlider>(find.byType(PageSlider)).onGo(9);
     t.widget<PageSlider>(find.byType(PageSlider)).onLetGo!();
     await t.pumpAndSettle();
@@ -437,7 +434,7 @@ void main() {
     expect(find.byType(Slider).hitTestable(), findsNothing);
     expect(t.getSize(current).height, closeTo(full.height, 1));
 
-    // Up again, a touch on the page puts it away, the page not turned.
+    // Down again, a touch on the page puts it away, the page not turned.
     await t.tap(icon);
     await t.pumpAndSettle();
     expect(find.byType(Slider).hitTestable(), findsOneWidget);
@@ -446,27 +443,19 @@ void main() {
     expect(find.byType(Slider).hitTestable(), findsNothing);
     expect(settings.page, 9);
 
-    // Dragged up and left, it stays where it is left, and is kept.
-    final before = t.getCenter(icon);
-    await t.drag(icon, const Offset(-120, -60));
-    await t.pumpAndSettle();
-    expect(t.getCenter(icon).dx, closeTo(before.dx - 120, 1));
-    expect(t.getCenter(icon).dy, closeTo(before.dy - 60, 1));
-    expect(settings.indexIconAt, isNotNull);
-    expect(settings.page, 9);
-
-    // Upright, in sight still, on the same side; no bar of pages below.
-    t.view.physicalSize = const Size(432, 800);
-    await t.pumpAndSettle();
-    final rect = t.getRect(icon);
-    expect(rect.left, greaterThanOrEqualTo(0));
-    expect(rect.right, lessThanOrEqualTo(432));
-    expect(rect.bottom, lessThanOrEqualTo(800));
-    expect(icon.hitTestable(), findsOneWidget);
-    expect(find.byType(Slider).hitTestable(), findsNothing);
+    // The riwayat let down in its place put it away.
     await t.tap(icon);
     await t.pumpAndSettle();
-    expect(find.byType(Slider).hitTestable(), findsOneWidget);
+    await t.tap(
+      find.byKey(const ValueKey('riwayat-panel-toggle')).hitTestable().first,
+    );
+    await t.pumpAndSettle();
+    expect(find.byType(Slider).hitTestable(), findsNothing);
+
+    // Upright, beside the lamp too.
+    t.view.physicalSize = const Size(432, 800);
+    await t.pumpAndSettle();
+    expect(icon, findsWidgets);
     expect(t.takeException(), isNull);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();

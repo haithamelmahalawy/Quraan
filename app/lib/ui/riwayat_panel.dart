@@ -26,6 +26,7 @@ class RiwayatPanel extends StatefulWidget {
     this.open,
     this.tab = false,
     this.beside,
+    this.besideRight,
     this.onJam,
     this.onJamSelected,
   });
@@ -49,8 +50,12 @@ class RiwayatPanel extends StatefulWidget {
   /// is opened from folded away, or in full screen.
   final bool tab;
 
-  /// Beside the arrow, over the page's header.
+  /// Left of the arrow, over the page's header, a little apart from it.
   final Widget? beside;
+
+  /// Right of the arrow, as far from it: the arrow in the middle between
+  /// them (the user, 2026-11-15).
+  final Widget? besideRight;
 
   final ReaderSettings settings;
   final VariantRepository variants;
@@ -692,26 +697,21 @@ class _RiwayatPanelState extends State<RiwayatPanel>
           Positioned.fill(child: widget.child),
           if (_open) outside,
           // Over the middle of the page's header, between its surah and
-          // its juz.
+          // its juz: the arrow at the middle, what goes beside it on either
+          // side, apart from it.
           Positioned(
-            left: at ?? box.maxWidth / 2,
+            left: 0,
+            right: 0,
             top: 0,
-            child: FractionalTranslation(
-              translation: const Offset(-.5, 0),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _arrow(),
-                  if (widget.beside case final beside?) ...[
-                    const SizedBox(width: 4),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 1),
-                      child: beside,
-                    ),
-                  ],
-                ],
-              ),
+            child: CustomMultiChildLayout(
+              delegate: _AroundArrow(at ?? box.maxWidth / 2),
+              children: [
+                LayoutId(id: #arrow, child: _arrow()),
+                if (widget.besideRight case final right?)
+                  LayoutId(id: #right, child: right),
+                if (widget.beside case final left?)
+                  LayoutId(id: #left, child: left),
+              ],
             ),
           ),
         ],
@@ -790,3 +790,46 @@ Widget riwayatLabel({required bool open, required double size}) => Row(
     ),
   ],
 );
+
+/// The riwayat's arrow centred at [middle], what goes on its right and on its
+/// left set apart from it, all at the top.
+class _AroundArrow extends MultiChildLayoutDelegate {
+  _AroundArrow(this.middle);
+
+  final double middle;
+
+  /// Between the arrow and what is beside it.
+  static const gap = 10.0;
+
+  /// As tall as the arrow and the lamp beside it.
+  static const height = 30.0;
+
+  @override
+  Size getSize(BoxConstraints constraints) =>
+      Size(constraints.maxWidth, height);
+
+  @override
+  void performLayout(Size size) {
+    final loose = BoxConstraints.loose(Size(size.width, height));
+    final arrow = layoutChild(#arrow, loose);
+    final left = middle - arrow.width / 2;
+    positionChild(#arrow, Offset(left, 0));
+    if (hasChild(#right)) {
+      final right = layoutChild(#right, loose);
+      positionChild(
+        #right,
+        Offset(left + arrow.width + gap, (arrow.height - right.height) / 2),
+      );
+    }
+    if (hasChild(#left)) {
+      final beside = layoutChild(#left, loose);
+      positionChild(
+        #left,
+        Offset(left - gap - beside.width, (arrow.height - beside.height) / 2),
+      );
+    }
+  }
+
+  @override
+  bool shouldRelayout(_AroundArrow old) => old.middle != middle;
+}

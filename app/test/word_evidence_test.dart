@@ -381,4 +381,41 @@ void main() {
     expect(all.indexOf(next), all.indexOf(before) + 1);
     expect(t.takeException(), isNull);
   });
+
+  // A riwaya come into the circle under the finger is shown at once, the
+  // finger not lifted; the next after it as well (the user, 2026-11-15).
+  testWidgets('the riwaya passing into the circle shown before the finger '
+      'is lifted', (t) async {
+    final all = [
+      for (final q in qiraat)
+        for (final r in q.riwayat)
+          if (r.id != hafsId) r.id,
+    ];
+    await showReader(t, selected: all.toSet());
+    final settings = t.widget<ReaderScreen>(find.byType(ReaderScreen)).settings;
+    final before = inCircle(t);
+    final ids = onWheel(t);
+    final next = ids[ids.indexOf(before) + 1];
+    final after = ids[ids.indexOf(before) + 2];
+    final step =
+        t.getCenter(inWheel(ValueKey('frame-riwaya-$before'))).dx -
+        t.getCenter(inWheel(ValueKey('frame-riwaya-$next'))).dx;
+    final finger = await t.startGesture(t.getCenter(wheelOf()));
+    for (var i = 0; i < 10; i++) {
+      await finger.moveBy(Offset(step / 10, 0));
+      await t.pump();
+    }
+    expect(settings.displayed, next);
+    for (var i = 0; i < 10; i++) {
+      await finger.moveBy(Offset(step / 10, 0));
+      await t.pump();
+    }
+    expect(settings.displayed, after);
+    await finger.up();
+    await t.pumpAndSettle();
+    expect(settings.displayed, after);
+    expect(inCircle(t), after);
+    expect(settings.page, 3);
+    expect(t.takeException(), isNull);
+  });
 }

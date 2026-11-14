@@ -3634,6 +3634,21 @@ class _RiwayatWheelState extends State<_RiwayatWheel>
   late final _turn = AnimationController.unbounded(vsync: this);
   bool _dragging = false;
 
+  /// The riwaya last brought into the circle under the finger.
+  int? _passing;
+
+  /// While the finger turns the wheel: a riwaya come well into the circle
+  /// is shown at once, the finger not yet lifted (the user, 2026-11-15).
+  void _chooseInCircle() {
+    if (_count == 0) return;
+    final at = _turn.value;
+    if ((at - at.roundToDouble()).abs() > .3) return;
+    final i = _nearest(at);
+    if (i == _passing) return;
+    _passing = i;
+    if (i != _shown) widget.riwayat[i].select();
+  }
+
   int get _count => widget.riwayat.length;
 
   int get _shown => math.max(0, widget.riwayat.indexWhere((r) => r.shown));
@@ -3712,10 +3727,14 @@ class _RiwayatWheelState extends State<_RiwayatWheel>
                       r.onDown = (_) {
                         if (_turn.isAnimating) _turn.stop();
                       };
-                      r.onStart = (_) => setState(() => _dragging = true);
+                      r.onStart = (_) {
+                        _passing = _shown;
+                        setState(() => _dragging = true);
+                      };
                       // They follow the finger: to the right, those on the left in.
                       r.onUpdate = (d) {
                         _turn.value += d.delta.dx / slot;
+                        _chooseInCircle();
                       };
                       r.onEnd = (d) {
                         setState(() => _dragging = false);
