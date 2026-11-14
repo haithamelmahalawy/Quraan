@@ -633,8 +633,8 @@ class _RiwayatPanelState extends State<RiwayatPanel>
         borderRadius: BorderRadius.circular(10),
         onTap: _toggle,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(9, 2, 9, 3),
-          child: riwayatLabel(open: _open, size: 13),
+          padding: const EdgeInsets.fromLTRB(6, 2, 6, 3),
+          child: riwayatLabel(open: _open, size: 12),
         ),
       ),
     ),
@@ -791,15 +791,22 @@ Widget riwayatLabel({required bool open, required double size}) => Row(
   ],
 );
 
-/// The riwayat's arrow centred at [middle], what goes on its right and on its
-/// left set apart from it, all at the top.
+/// Over the page's header, the middle above the frame's circle left clear: the
+/// riwayat's arrow and what goes on its right to the right of [middle], what
+/// goes on its left to the left of it, all at the top (the user, 2026-11-15).
 class _AroundArrow extends MultiChildLayoutDelegate {
   _AroundArrow(this.middle);
 
   final double middle;
 
   /// Between the arrow and what is beside it.
-  static const gap = 10.0;
+  static const gap = 6.0;
+
+  /// Kept off the page's corner, its ribbon there.
+  static const edge = 50.0;
+
+  /// Either side of the middle, clear of the frame's circle and its arrow.
+  static const clear = 36.0;
 
   /// As tall as the arrow and the lamp beside it.
   static const height = 30.0;
@@ -812,10 +819,16 @@ class _AroundArrow extends MultiChildLayoutDelegate {
   void performLayout(Size size) {
     final loose = BoxConstraints.loose(Size(size.width, height));
     final arrow = layoutChild(#arrow, loose);
-    final left = middle - arrow.width / 2;
+    final right = hasChild(#right) ? layoutChild(#right, loose) : null;
+    // Right of the middle; drawn in towards it on a narrow page, short of
+    // the corner.
+    final wide = arrow.width + (right == null ? 0 : gap + right.width);
+    final left = math.max(
+      middle + arrow.width / 2 - wide / 2,
+      math.min(middle + clear, size.width - edge - wide),
+    );
     positionChild(#arrow, Offset(left, 0));
-    if (hasChild(#right)) {
-      final right = layoutChild(#right, loose);
+    if (right != null) {
       positionChild(
         #right,
         Offset(left + arrow.width + gap, (arrow.height - right.height) / 2),
@@ -825,7 +838,10 @@ class _AroundArrow extends MultiChildLayoutDelegate {
       final beside = layoutChild(#left, loose);
       positionChild(
         #left,
-        Offset(left - gap - beside.width, (arrow.height - beside.height) / 2),
+        Offset(
+          middle - clear - beside.width,
+          (arrow.height - beside.height) / 2,
+        ),
       );
     }
   }

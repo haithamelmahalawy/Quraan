@@ -698,7 +698,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       beside: _tools(small: true, gap: 8),
       // «الفهرس» on the right of the arrow, the lamp on its left, the
       // arrow in the middle (the user, 2026-11-15).
-      besideRight: _indexButton(small: true),
+      besideRight: _indexButton(small: true, tight: true),
       // «الجمع للقراءات العشر»: a screen of its own, at the page read.
       onJam: () => Navigator.of(context)
           .push(
@@ -1072,24 +1072,28 @@ class _ReaderScreenState extends State<ReaderScreen>
           child: Center(child: child),
         ),
       );
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // «الفهرس» on the right of «الرواة» (the user, 2026-11-15).
-          band(_indexButton(small: true)),
-          band(_RiwayatButton(open: _riwayatOpen, small: true)),
-          band(_tools(small: true, side: false, gap: 10)),
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            // As tall as the buttons, down to their lower edge: taller, in
-            // landscape, it came down over the bar of the riwayat above the
-            // page (the user, 2026-11-13).
-            child: _side(width: 24, height: _handleHeight - 2, keyed: true),
-          ),
-          const SizedBox(width: 10),
-          band(handle),
-        ],
+      // On a narrow phone, all of it a little smaller rather than cut off.
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // «الفهرس» on the right of «الرواة» (the user, 2026-11-15).
+            band(_indexButton(small: true)),
+            band(_RiwayatButton(open: _riwayatOpen, small: true)),
+            band(_tools(small: true, side: false, gap: 10)),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              // As tall as the buttons, down to their lower edge: taller, in
+              // landscape, it came down over the bar of the riwayat above the
+              // page (the user, 2026-11-13).
+              child: _side(width: 24, height: _handleHeight - 2, keyed: true),
+            ),
+            const SizedBox(width: 10),
+            band(handle),
+          ],
+        ),
       );
     },
   );
@@ -1104,39 +1108,53 @@ class _ReaderScreenState extends State<ReaderScreen>
     if (_sliderOpen) _riwayatOpen.value = false;
   }
 
-  /// «الفهرس» beside the lamp: the pages' bar let down at the top, or put
+  /// «الفهرس» beside «الرواة»: the pages' bar let down at the top, or put
   /// away (the user, 2026-11-15).
-  /// Faint as the lamp, and as big.
-  Widget _indexButton({required bool small}) {
+  /// Its name written on it, as «الرواة» (the user, 2026-11-15).
+  Widget _indexButton({required bool small, bool tight = false}) {
     final on = _sliderOpen;
-    final colour = on ? MushafColors.gold : MushafColors.green;
-    final size = small ? 22.0 : 30.0;
+    final size = small ? 12.0 : 14.0;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: small ? 3 : 4),
+      padding: EdgeInsets.symmetric(horizontal: tight ? 0 : 3),
       child: Semantics(
         button: true,
         expanded: on,
-        label: on ? 'إخفاء الفهرس' : 'الفهرس',
-        child: GestureDetector(
+        child: Raised(
           key: const ValueKey('index-icon'),
-          behavior: HitTestBehavior.opaque,
+          radius: small ? 11 : 19,
+          depth: small ? 0.3 : 0.6,
+          color: on ? MushafColors.goldLight : null,
+          tooltip: on ? 'إخفاء الفهرس' : 'إظهار الفهرس',
           onTap: _toggleSlider,
-          child: Opacity(
-            opacity: on ? .9 : .65,
-            child: Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: colour.withAlpha(on ? 70 : 35),
-                border: Border.all(color: colour.withAlpha(150)),
-              ),
-              child: Icon(
+          // In full screen, short enough for the room right of the middle.
+          padding: small
+              ? EdgeInsets.symmetric(horizontal: tight ? 5 : 7, vertical: 2)
+              : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
                 Icons.format_list_numbered_rtl_rounded,
-                size: small ? 14 : 18,
-                color: colour,
+                size: size + 3,
+                color: MushafColors.green,
               ),
-            ),
+              SizedBox(width: size * .3),
+              Text(
+                'الفهرس',
+                style: TextStyle(
+                  fontSize: size,
+                  fontWeight: FontWeight.bold,
+                  color: MushafColors.green,
+                ),
+              ),
+              Icon(
+                on
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+                size: size + 3,
+                color: MushafColors.green,
+              ),
+            ],
           ),
         ),
       ),

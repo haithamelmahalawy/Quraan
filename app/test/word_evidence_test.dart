@@ -418,4 +418,42 @@ void main() {
     expect(settings.page, 3);
     expect(t.takeException(), isNull);
   });
+
+  // Near a riwaya, a little below it and not right on it: a tap brings it
+  // into the circle, a drag turns the wheel; the page not turned (the user,
+  // 2026-11-15).
+  testWidgets('a touch just below the riwayat turns the wheel, not the page', (
+    t,
+  ) async {
+    final all = [
+      for (final q in qiraat)
+        for (final r in q.riwayat)
+          if (r.id != hafsId) r.id,
+    ];
+    await showReader(t, selected: all.toSet());
+    final settings = t.widget<ReaderScreen>(find.byType(ReaderScreen)).settings;
+    final before = inCircle(t);
+    final ids = onWheel(t);
+    final next = ids[ids.indexOf(before) + 1];
+    final square = t.getRect(inWheel(ValueKey('frame-riwaya-$next')));
+    // Tapped below it, clear of its square.
+    await t.tapAt(Offset(square.center.dx, square.bottom + 10));
+    await t.pumpAndSettle();
+    expect(settings.displayed, next);
+    expect(settings.page, 3);
+    // Dragged along below them: the wheel turned, the page not.
+    final circle = t.getRect(inWheel(const ValueKey('frame-riwayat-circle')));
+    final after = onWheel(t)[onWheel(t).indexOf(next) + 1];
+    final step =
+        circle.center.dx -
+        t.getCenter(inWheel(ValueKey('frame-riwaya-$after'))).dx;
+    await t.dragFrom(
+      Offset(circle.center.dx - 40, circle.bottom + 12),
+      Offset(step, 0),
+    );
+    await t.pumpAndSettle();
+    expect(settings.displayed, after);
+    expect(settings.page, 3);
+    expect(t.takeException(), isNull);
+  });
 }

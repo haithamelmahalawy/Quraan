@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
@@ -63,9 +65,16 @@ void main() {
     await pump(t, ReaderSettings.memory(), open: false);
     expect(panel, findsNothing);
     expect(t.getSize(mushaf).height, 900);
-    // At the top, in the middle.
+    // At the top, right of the middle, short of the corner.
     expect(t.getTopLeft(toggle).dy, 0);
-    expect(t.getCenter(toggle).dx, moreOrLessEquals(200, epsilon: 1));
+    final width = t.getSize(toggle).width;
+    expect(
+      t.getRect(toggle).left,
+      moreOrLessEquals(
+        math.max(200.0, math.min(200 + 36, 400 - 50 - width)),
+        epsilon: 1,
+      ),
+    );
     await t.tap(toggle);
     await t.pumpAndSettle();
     // Above the mushaf, which grows shorter by as much, as wide as it was.
@@ -230,7 +239,11 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('the arrow stands over the middle of the header', (t) async {
+  // To the right of the header's middle, the frame's circle below it left
+  // clear (the user, 2026-11-15).
+  testWidgets('the arrow stands just right of the middle of the header', (
+    t,
+  ) async {
     final at = ValueNotifier<double?>(150);
     t.view.physicalSize = const Size(400, 900);
     t.view.devicePixelRatio = 1;
@@ -250,13 +263,29 @@ void main() {
         ),
       ),
     );
-    expect(t.getCenter(toggle).dx, moreOrLessEquals(150, epsilon: 1));
+    expect(t.getRect(toggle).left, moreOrLessEquals(150 + 36, epsilon: 1));
+    // Nearer the corner: drawn in, short of it.
     at.value = 260;
     await t.pump();
-    expect(t.getCenter(toggle).dx, moreOrLessEquals(260, epsilon: 1));
+    final width = t.getSize(toggle).width;
+    expect(
+      t.getRect(toggle).left,
+      moreOrLessEquals(
+        math.max(260.0, math.min(260 + 36, 400 - 50 - width)),
+        epsilon: 1,
+      ),
+    );
+    // Never left of the middle.
+    expect(t.getRect(toggle).left, greaterThanOrEqualTo(260 - 1));
     at.value = null;
     await t.pump();
-    expect(t.getCenter(toggle).dx, moreOrLessEquals(200, epsilon: 1));
+    expect(
+      t.getRect(toggle).left,
+      moreOrLessEquals(
+        math.max(200.0, math.min(200 + 36, 400 - 50 - width)),
+        epsilon: 1,
+      ),
+    );
     expect(t.takeException(), isNull);
   });
 

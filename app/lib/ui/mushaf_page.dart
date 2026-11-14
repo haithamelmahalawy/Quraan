@@ -3597,6 +3597,9 @@ class _PageFrame extends StatelessWidget {
 /// The height of a band's row of riwayat, a raised square's lift with it.
 const _riwayatBar = _PageFrame.squareDepth + _PageFrame.squareLift;
 
+/// How far below its band the wheel of the riwayat still takes a touch.
+const _wheelReach = 16.0;
+
 /// A riwaya on the frame's wheel: its square, its length along the band,
 /// whether the page shows it, and what shows it.
 typedef _FrameRiwaya = ({
@@ -3709,7 +3712,9 @@ class _RiwayatWheelState extends State<_RiwayatWheel>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: SizedBox(
-        height: _riwayatBar,
+        // A little below the band too: a touch near a riwaya, not right on
+        // it, turns the wheel and not the page (the user, 2026-11-15).
+        height: _riwayatBar + _wheelReach,
         child: LayoutBuilder(
           builder: (context, box) {
             final middle = box.maxWidth / 2;
@@ -3789,11 +3794,18 @@ class _RiwayatWheelState extends State<_RiwayatWheel>
                                             _turn.value + _way(_turn.value, i),
                                           ),
                                           child: IgnorePointer(
-                                            child: Center(
-                                              child: widget.riwayat[i].square(
-                                                Axis.horizontal,
-                                                _PageFrame.squareDepth,
-                                                AxisDirection.down,
+                                            child: Align(
+                                              alignment: Alignment.topCenter,
+                                              child: SizedBox(
+                                                height: _riwayatBar,
+                                                child: Center(
+                                                  child: widget.riwayat[i]
+                                                      .square(
+                                                        Axis.horizontal,
+                                                        _PageFrame.squareDepth,
+                                                        AxisDirection.down,
+                                                      ),
+                                                ),
                                               ),
                                             ),
                                           ),
