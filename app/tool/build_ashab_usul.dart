@@ -1332,6 +1332,16 @@ Map<String, int> buildAshabUsul(
       variants.insert(at < 0 ? variants.length : at, row);
     }
   }
+  // «أَمۡ هَلۡ يَسۡتَوِي» الرعد ١٦ with the ya: no idgham of «هل»'s lam there
+  // (the user, 2026-11-14).
+  (data['variants'] as List).removeWhere(
+    (r) =>
+        r[0] == 13 &&
+        r[1] == 16 &&
+        r[2] == 24 &&
+        (r as List).length > 7 &&
+        r[7] == 'idgham_saghir',
+  );
   // «تَتۡلُواْ» يونس ٣٠: Hafs's word, its ba a ta, its alif with the round
   // sukun kept (the user, 2026-11-14).
   for (final v in (data['variants'] as List).cast<List>()) {

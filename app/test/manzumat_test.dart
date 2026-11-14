@@ -6865,4 +6865,28 @@ void main() {
       }
     }
   });
+
+  // «يَسۡتَوِي» (الرعد ١٦) 794, no idgham of «هل» for al-Ashab; «خَٰلِقُ ...
+  // وَٱلۡأَرۡضِ» (إبراهيم ١٩) 797-798 (the user, 2026-11-14).
+  test('yastawi cites 794, khaliqu and wal-ardi 797-798', () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['duri_kisai', 'khallad'];
+    await variants.ensureLoaded(ids);
+    Reference ref(String id, int s, int a, int w) => manzumat.referenceOf(
+      variants.at([id], s, a, w).where((v) => v.word == w && !v.isUsul).single,
+      '',
+      s,
+      surahs,
+    );
+    for (final id in ids) {
+      expect(ref(id, 13, 16, 25).mention, {794}, reason: id);
+      expect(ref(id, 14, 19, 4).mention, {797, 798}, reason: id);
+      expect(ref(id, 14, 19, 6).mention, {797, 798}, reason: id);
+      expect(
+        variants.at([id], 13, 16, 24).where((v) => v.rule == 'idgham_saghir'),
+        isEmpty,
+        reason: id,
+      );
+    }
+  });
 }
