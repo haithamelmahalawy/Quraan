@@ -6668,4 +6668,30 @@ void main() {
       if (id == 'ishaq') expect(r.asl.map((b) => b.n), [7, 8]);
     }
   });
+
+  // «وَيَبۡصُطُ، بَصۡطَةٗ»: the Shatibiyya's 514-515, the Durrah's 81; «أَءِنَّكُمۡ
+  // لَتَأۡتُونَ»: the Shatibiyya's 691 (the user, 2026-11-14).
+  test('basta and a-innakum cite their bayts', () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['duri_kisai', 'khallad', 'ishaq', 'rawh', 'qalun'];
+    await variants.ensureLoaded(ids);
+    Reference ref(String id, int s, int a, int w, String hafs) =>
+        manzumat.referenceOf(
+          variants
+              .at([id], s, a, w)
+              .where((v) => v.word == w && v.kind != VariantKind.usul)
+              .first,
+          hafs,
+          s,
+          surahs,
+        );
+    for (final id in ['duri_kisai', 'qalun']) {
+      expect(ref(id, 7, 69, 21, 'بَصۜۡطَةٗ').mention, {514, 515}, reason: id);
+      expect(ref(id, 2, 245, 13, 'وَيَبۡصُۜطُ').mention, {514, 515}, reason: id);
+    }
+    expect(ref('rawh', 7, 69, 21, 'بَصۜۡطَةٗ').mention, {81});
+    for (final id in ['duri_kisai', 'khallad']) {
+      expect(ref(id, 7, 81, 0, 'إِنَّكُمۡ').mention, {691}, reason: id);
+    }
+  });
 }
