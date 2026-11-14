@@ -1071,7 +1071,9 @@ Map<String, int> buildAshabUsul(
           'ha_sakt',
           {'source': ashabSource, 'ways': ways},
         ];
-        variants.removeWhere((r) => r[7] == 'ha_sakt' && order(r) == order(row));
+        variants.removeWhere(
+          (r) => r[7] == 'ha_sakt' && order(r) == order(row),
+        );
         final at = variants.cast<List>().indexWhere(
           (r) => order(r) > order(row),
         );
@@ -1082,6 +1084,38 @@ Map<String, int> buildAshabUsul(
   // «التقاء الساكنين» for al-Kisa'i and Khalaf al-'Ashir in all its places,
   // not those the book names alone (the user, 2026-11-14).
   applyFirstSakin(id, quran, data['variants'] as List);
+  // «يُضَٰهُونَ» التوبة ٣٠ told in the usul with the hamza dropped, as Abu
+  // Ja'far's, its hamesh kept; no hamza to stop on (the user, 2026-11-14).
+  {
+    final variants = data['variants'] as List;
+    bool here(List r) => r[0] == 9 && r[1] == 30 && r[2] == 13;
+    // The row of a run before (its usul) stands for the farsh a step above
+    // dropped beside it.
+    final base = variants.cast<List>().where(
+      (r) => here(r) && (r[5] == 'f' || r[7] == 'hamza_hadhf'),
+    );
+    if (base.firstOrNull case final v?) {
+      final i = variants.indexOf(v);
+      variants.removeWhere(
+        (r) =>
+            here(r as List) &&
+            (r[5] == 'f' || r[5] == 'h' || r[7] == 'hisham_waqf'),
+      );
+      final at = i < 0 ? variants.length : i;
+      variants.insert(at, [9, 30, 13, 1, v[4], 'f', v[6], '', v[8]]);
+      variants.insert(at + 1, [
+        9,
+        30,
+        13,
+        1,
+        v[4],
+        'h',
+        v[6],
+        'hamza_hadhf',
+        v[8],
+      ]);
+    }
+  }
   return counts;
 }
 

@@ -219,8 +219,8 @@ void main() {
     expect(usulGuideLabel('الهمز المفرد (الهمز المتحرك)'), 'الهمز المفرد');
     // هأنتم 4, the ibdal of the single hamza 986, مِنسَاتَهُۥ; the 80 of
     // «ٱلنَّبِيٓءُ» and its bab, the 12 of «هُزُؤًا، كُفُؤًا» and the 3 of
-    // «وَٱلصَّٰبِـِٔينَ»; the 4 of «ٱلَّٰٓـِٔي».
-    expect(lin['الهمز المفرد'], hasLength(1090));
+    // «وَٱلصَّٰبِـِٔينَ»; the 4 of «ٱلَّٰٓـِٔي»; «يُضَٰهُونَ» (2026-11-14).
+    expect(lin['الهمز المفرد'], hasLength(1091));
     expect(
       kinds('الهمز المفرد')
           .where((k) => !k.startsWith('همز «ائتنا» ابتداءً: ')),
@@ -394,7 +394,7 @@ void main() {
         quran,
         'susi',
       )['الهمز المفرد']!.map((v) => v.rule).toSet(),
-      {'hamza_mutatarrif'},
+      {'hamza_mutatarrif', 'hamza_hadhf'},
     );
   });
 
