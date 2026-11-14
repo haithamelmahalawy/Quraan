@@ -832,7 +832,16 @@ void main() {
     await t.pump(const Duration(milliseconds: 400));
     expect(settings.mushafStyle, 'emerald');
     expect(ring, findsOneWidget);
-    // Closed by its button again.
+    // A touch outside it, on the mushaf: folded away, nothing else done.
+    await t.tapAt(t.getCenter(find.byType(MushafPage).last));
+    await t.pump(const Duration(milliseconds: 400));
+    expect(ring, findsNothing);
+    expect(find.byKey(const ValueKey('page-navigator')), findsNothing);
+    expect(find.byType(BottomSheet), findsNothing);
+    // Opened again, closed by its button again.
+    await t.tap(button);
+    await t.pump(const Duration(milliseconds: 400));
+    expect(ring, findsOneWidget);
     await t.tap(button);
     await t.pump(const Duration(milliseconds: 400));
     expect(ring, findsNothing);

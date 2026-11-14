@@ -940,7 +940,24 @@ class _ReaderScreenState extends State<ReaderScreen>
                   // Over the page, the page in sight below it: a look
                   // touched is seen on it at once.
                   if (_stylesOpen) MushafStyleRing(settings: widget.settings),
-                  Expanded(child: pages),
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        Positioned.fill(child: pages),
+                        // Open, a touch outside it, on the mushaf, folds the
+                        // ring of the looks away and does nothing else, as the
+                        // riwayat's (the user, 2026-11-14).
+                        if (_stylesOpen)
+                          Positioned.fill(
+                            child: GestureDetector(
+                              key: const ValueKey('mushaf-style-outside'),
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => setState(() => _stylesOpen = false),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                   if (_landscape) ...[
                     _barHandle(top: false),
                     _CollapsibleReaderBar(
