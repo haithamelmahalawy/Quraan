@@ -1252,7 +1252,25 @@ class Manzumat {
       // Khalaf al-'Ashir's by the Durrah's two; Abu Ja'far's by Nafi''s.
       if (qiraaOf(v.riwayaId).id == 'khalaf') return {106, 107};
     }
-    if (poem == Poem.durrah && word == '10:103:1' && !v.isUsul) return {107};
+    // Ya'qub's light «نُنجِي» (يونس ١٠٣) and «لَمُنجُوهُمۡ» (الحجر ٥٩), Khalaf's: the
+    // two, 106-107 (the user, 2026-11-14); the Shatibiyya's «وَمُنْجُوهُمُ خِفٌّ
+    // ... شَفَا» (806).
+    if (poem == Poem.durrah &&
+        (word == '10:103:1' || word == '15:59:4') &&
+        !v.isUsul) {
+      return {106, 107};
+    }
+    if (poem == Poem.shatibiyya && word == '15:59:4' && !v.isUsul) {
+      return {806};
+    }
+    // «عِيُونٍ» wherever it comes: «وَضَمَّ الْغُيُوبِ يَكْسِرَانِ عُيُوناً الْـعُيُونِ
+    // شُيُوخاً دَانَهُ صُحْبَهٌ مِلَا» (628); the Durrah's «... اضْمُمْ غُيُوبِ عُيُونِ
+    // مَعْ جُيُوبِ شُيُوخًا فِدْ» (102) (the user, 2026-11-14).
+    if (!v.isUsul &&
+        RegExp(r'^و?عيون(ا)?$')
+            .hasMatch(hafs.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), ''))) {
+      return poem == Poem.durrah ? {102} : {628};
+    }
     // «لِّعِبَادِي» (إبراهيم ٣١): «وَقُلْ لِعِبَادِيْ كَانَ شَرْعاً» (408)، the Durrah's
     // «... وَقُلْ لِعِبَادِي طِبْ فَشَا» (54); «تَحۡسِبَنَّ» (إبراهيم ٤٧): «وَيَحْسَبُ
     // كَسْرُ السِّينِ مُسْتَقبِلاً سَمَا / رِضَاهُ» (538)، the Durrah's «كَيَحْسَبُ أُدْ

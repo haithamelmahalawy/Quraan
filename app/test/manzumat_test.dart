@@ -6556,23 +6556,29 @@ void main() {
   // Khalaf al-'Ashir's «يَقۡضِ» (الأنعام ٥٧): not the Durrah's zawaid (56) the
   // book quotes, but Hamza's 642-643 with the Durrah's 7-8 (the user,
   // 2026-11-14).
-  test("Khalaf's yaqdi cites his asl's Shatibiyya with the Durrah's 7-8", () async {
-    final variants = await VariantRepository.discover();
-    await variants.ensureLoaded(['ishaq', 'khalaf_hamzah']);
-    final khalaf = variants
-        .at(['ishaq'], 6, 57, 17)
-        .where((v) => v.word == 17 && !v.isUsul)
-        .single;
-    final r = manzumat.referenceOf(khalaf, 'يَقُصُّ', 6, surahs);
-    expect(r.poem, Poem.shatibiyya);
-    expect(r.mention, {642, 643});
-    expect(r.asl.map((b) => b.n), [7, 8]);
-    final hamza = variants
-        .at(['khalaf_hamzah'], 6, 57, 17)
-        .where((v) => v.word == 17 && !v.isUsul)
-        .single;
-    expect(manzumat.referenceOf(hamza, 'يَقُصُّ', 6, surahs).mention, {642, 643});
-  });
+  test(
+    "Khalaf's yaqdi cites his asl's Shatibiyya with the Durrah's 7-8",
+    () async {
+      final variants = await VariantRepository.discover();
+      await variants.ensureLoaded(['ishaq', 'khalaf_hamzah']);
+      final khalaf = variants
+          .at(['ishaq'], 6, 57, 17)
+          .where((v) => v.word == 17 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(khalaf, 'يَقُصُّ', 6, surahs);
+      expect(r.poem, Poem.shatibiyya);
+      expect(r.mention, {642, 643});
+      expect(r.asl.map((b) => b.n), [7, 8]);
+      final hamza = variants
+          .at(['khalaf_hamzah'], 6, 57, 17)
+          .where((v) => v.word == 17 && !v.isUsul)
+          .single;
+      expect(manzumat.referenceOf(hamza, 'يَقُصُّ', 6, surahs).mention, {
+        642,
+        643,
+      });
+    },
+  );
 
   // The ha of silence in the usul as Ya'qub's, each with its bayt: 522، 652،
   // Hamza's 1079; the Durrah's 48-49 (the user, 2026-11-14).
@@ -6687,7 +6693,10 @@ void main() {
         );
     for (final id in ['duri_kisai', 'qalun']) {
       expect(ref(id, 7, 69, 21, 'بَصۜۡطَةٗ').mention, {514, 515}, reason: id);
-      expect(ref(id, 2, 245, 13, 'وَيَبۡصُۜطُ').mention, {514, 515}, reason: id);
+      expect(ref(id, 2, 245, 13, 'وَيَبۡصُۜطُ').mention, {
+        514,
+        515,
+      }, reason: id);
     }
     expect(ref('rawh', 7, 69, 21, 'بَصۜۡطَةٗ').mention, {81});
     for (final id in ['duri_kisai', 'khallad']) {
@@ -6782,7 +6791,7 @@ void main() {
     );
     expect(ref('khallad', 8).mention, {753, 754});
     expect(ref('ishaq', 8).mention, {106, 107});
-    expect(ref('ruways', 1).mention, {107});
+    expect(ref('ruways', 1).mention, {106, 107});
   });
 
   // «ٱرۡكَب مَّعَنَا» (هود ٤٢): 284, the Durrah's 41; «يَٰبُنَيِّ» 757 (the user,
@@ -6906,10 +6915,9 @@ void main() {
       final v = at(id, 14, 31, 1);
       expect(v.description, 'بإسكان ياء الإضافة', reason: id);
       expect(manzumat.referenceOf(v, '', 14, surahs).mention, {408});
-      expect(
-        manzumat.referenceOf(at(id, 15, 2, 0), '', 15, surahs).mention,
-        {802},
-      );
+      expect(manzumat.referenceOf(at(id, 15, 2, 0), '', 15, surahs).mention, {
+        802,
+      });
     }
     expect(
       manzumat.referenceOf(at('duri_kisai', 14, 47, 1), '', 14, surahs).mention,
@@ -6919,5 +6927,27 @@ void main() {
       manzumat.referenceOf(at('ishaq', 14, 47, 1), '', 14, surahs).mention,
       {83},
     );
+  });
+
+  // «لَمُنجُوهُمۡ» (الحجر ٥٩) 806 and the Durrah's 106-107; «عِيُونٍ» 628 (the
+  // user, 2026-11-14).
+  test("munjuhum and 'iyun cite their bayts", () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['duri_kisai', 'ishaq', 'ruways'];
+    await variants.ensureLoaded(ids);
+    Reference ref(String id, int s, int a, int w, String hafs) =>
+        manzumat.referenceOf(
+          variants
+              .at([id], s, a, w)
+              .where((v) => v.word == w && !v.isUsul)
+              .single,
+          hafs,
+          s,
+          surahs,
+        );
+    expect(ref('duri_kisai', 15, 59, 4, 'لَمُنَجُّوهُمۡ').mention, {806});
+    expect(ref('ishaq', 15, 59, 4, 'لَمُنَجُّوهُمۡ').mention, {106, 107});
+    expect(ref('ruways', 15, 59, 4, 'لَمُنَجُّوهُمۡ').mention, {106, 107});
+    expect(ref('duri_kisai', 15, 45, 4, 'وَعُيُونٍ').mention, {628});
   });
 }
