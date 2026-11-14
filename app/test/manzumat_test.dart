@@ -6861,7 +6861,11 @@ void main() {
     }
     for (final p in Poem.values) {
       for (final b in manzumat.verses(p)) {
-        expect('${b.sadr} ${b.ajz}', isNot(matches(RegExp(r'\Sيعقوب'))));
+        expect(
+          '${b.sadr} ${b.ajz}',
+          isNot(matches(RegExp('[ً-ْ](يعقوب|روح|رويس|خلف|حمزة)'))),
+          reason: '${p.name} ${b.n}',
+        );
       }
     }
   });
@@ -6888,5 +6892,32 @@ void main() {
         reason: id,
       );
     }
+  });
+
+  // «لِّعِبَادِي» (إبراهيم ٣١) quiet for Hamza and al-Kisa'i, 408; «تَحۡسِبَنَّ»
+  // (إبراهيم ٤٧) 538 and the Durrah's 83; «رُبَّمَا» 802 (the user, 2026-11-14).
+  test("li-'ibadi, tahsibanna and rubbama cite their bayts", () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['duri_kisai', 'khalaf_hamzah', 'ishaq'];
+    await variants.ensureLoaded(ids);
+    Variant at(String id, int s, int a, int w) =>
+        variants.at([id], s, a, w).where((v) => v.word == w).first;
+    for (final id in ['duri_kisai', 'khalaf_hamzah']) {
+      final v = at(id, 14, 31, 1);
+      expect(v.description, 'بإسكان ياء الإضافة', reason: id);
+      expect(manzumat.referenceOf(v, '', 14, surahs).mention, {408});
+      expect(
+        manzumat.referenceOf(at(id, 15, 2, 0), '', 15, surahs).mention,
+        {802},
+      );
+    }
+    expect(
+      manzumat.referenceOf(at('duri_kisai', 14, 47, 1), '', 14, surahs).mention,
+      {538},
+    );
+    expect(
+      manzumat.referenceOf(at('ishaq', 14, 47, 1), '', 14, surahs).mention,
+      {83},
+    );
   });
 }
