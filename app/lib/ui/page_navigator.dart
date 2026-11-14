@@ -44,6 +44,21 @@ class _PageNavigatorState extends State<PageNavigator> {
   /// One wheel turned by the other's choice: not a choice of its own.
   bool _following = false;
 
+  /// The page gone to from elsewhere (the pages' bar above): both wheels
+  /// brought to it, not a choice of their own.
+  @override
+  void didUpdateWidget(PageNavigator old) {
+    super.didUpdateWidget(old);
+    if (widget.page == old.page || widget.page == _page) return;
+    _page = widget.page;
+    _following = true;
+    if (_pages.hasClients) {
+      _pages.jumpToItem(widget.page - widget.quran.firstPage);
+    }
+    if (_surahs.hasClients) _surahs.jumpToItem(_surahOf(widget.page) - 1);
+    _following = false;
+  }
+
   @override
   void dispose() {
     _surahs.dispose();

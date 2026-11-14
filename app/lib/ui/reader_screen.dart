@@ -487,43 +487,53 @@ class _ReaderScreenState extends State<ReaderScreen>
     });
   }
 
-  /// «السور والصفحات»: the two wheels over the page, shown by a touch where
-  /// no word is, put away by another anywhere (the user, 2026-11-14).
-  bool _navigatorOpen = false;
-
-  /// A touch on the page where no word is: the wheels shown a moment later,
-  /// unless a second makes it a double tap (full screen); put away at once.
+  /// A touch on the page where no word is: nothing of its own; the wheels
+  /// of the surahs and pages come with «الفهرس» alone (the user,
+  /// 2026-11-15).
   void _emptyTapped() {
-    // The second of a double tap: full screen, no wheels.
     if (_swallowWord) return;
     _pendingWord?.cancel();
-    if (_navigatorOpen) {
-      _pendingWord = null;
-      setState(() => _navigatorOpen = false);
-      return;
-    }
-    _pendingWord = Timer(_doubleTapWait, () {
-      _pendingWord = null;
-      if (mounted) setState(() => _navigatorOpen = true);
-    });
+    _pendingWord = null;
   }
 
-  /// The wheels over the page, and all around them a touch putting them
-  /// away.
-  List<Widget> _navigator() => [
-    if (_navigatorOpen) ...[
-      Positioned.fill(
-        child: GestureDetector(
-          key: const ValueKey('page-navigator-outside'),
-          behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() => _navigatorOpen = false),
-        ),
-      ),
+  /// «السور والصفحات»: the two wheels, right under the pages' bar at the
+  /// top, shown and put away with it (the user, 2026-11-15); turned, the bar
+  /// and they put away two seconds after the last.
+  Widget _wheels() => PageNavigator(
+    quran: _quran,
+    page: _page,
+    onGo: (page) {
+      _goToPage(page);
+      _hideSliderSoon();
+    },
+  );
+
+  /// Full screen, no bar above the page: «الفهرس» lets the pages' bar and
+  /// the wheels down over its top.
+  List<Widget> _indexOverPage(Widget bar) => [
+    if (_sliderOpen) ...[
+      _sliderOutside(),
       Positioned(
-        left: 16,
-        right: 16,
-        bottom: MediaQuery.paddingOf(context).bottom + 56,
-        child: PageNavigator(quran: _quran, page: _page, onGo: _goToPage),
+        top: MediaQuery.paddingOf(context).top + 32,
+        left: 12,
+        right: 12,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Material(
+              color: MushafColors.page.withAlpha(245),
+              elevation: 4,
+              shadowColor: Colors.black26,
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: bar,
+              ),
+            ),
+            const SizedBox(height: 6),
+            _wheels(),
+          ],
+        ),
       ),
     ],
   ];
@@ -735,6 +745,13 @@ class _ReaderScreenState extends State<ReaderScreen>
       ),
     );
 
+    final indexBar = PageSlider(
+      key: const ValueKey('page-slider'),
+      quran: _quran,
+      page: _page,
+      onGo: _goToPage,
+      onLetGo: _hideSliderSoon,
+    );
     if (_fullScreen) {
       return Scaffold(
         body: Stack(
@@ -766,7 +783,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                 ),
               ),
             ),
-            ..._navigator(),
+            ..._indexOverPage(indexBar),
           ],
         ),
       );
@@ -939,13 +956,6 @@ class _ReaderScreenState extends State<ReaderScreen>
         ),
       ),
     );
-    final indexBar = PageSlider(
-      key: const ValueKey('page-slider'),
-      quran: _quran,
-      page: _page,
-      onGo: _goToPage,
-      onLetGo: _hideSliderSoon,
-    );
     return Scaffold(
       body: SafeArea(
         child: Stack(
@@ -981,6 +991,13 @@ class _ReaderScreenState extends State<ReaderScreen>
                             ),
                           ),
                         if (_sliderOpen) _sliderOutside(),
+                        if (_sliderOpen)
+                          Positioned(
+                            top: 4,
+                            left: 16,
+                            right: 16,
+                            child: _wheels(),
+                          ),
                       ],
                     ),
                   ),
@@ -995,7 +1012,6 @@ class _ReaderScreenState extends State<ReaderScreen>
                 right: 0,
                 child: _barHandle(top: true),
               ),
-            ..._navigator(),
           ],
         ),
       ),

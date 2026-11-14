@@ -438,7 +438,7 @@ void main() {
     await t.tap(icon);
     await t.pumpAndSettle();
     expect(find.byType(Slider).hitTestable(), findsOneWidget);
-    await t.tapAt(full.center);
+    await t.tapAt(full.bottomCenter - const Offset(0, 20));
     await t.pumpAndSettle();
     expect(find.byType(Slider).hitTestable(), findsNothing);
     expect(settings.page, 9);
@@ -873,11 +873,11 @@ void main() {
     await t.pumpAndSettle();
   });
 
-  // «السور والصفحات»: a touch where no word is shows two wheels, a surah's
-  // and a page's, each following the other and the mushaf going there at
-  // once; a touch anywhere puts them away; a double tap is full screen, not
-  // the wheels (the user, 2026-11-14).
-  testWidgets('a touch where no word is shows the wheels of surahs and pages', (
+  // «السور والصفحات»: two wheels, a surah's and a page's, each following the
+  // other and the mushaf going there at once. Shown only by «الفهرس», right
+  // under the pages' bar at the top, and put away with it; a touch where no
+  // word is shows nothing; full screen as well (the user, 2026-11-15).
+  testWidgets('the wheels of surahs and pages come with «الفهرس» alone', (
     t,
   ) async {
     final settings = ReaderSettings.memory(selected: {'warsh'})
@@ -885,6 +885,7 @@ void main() {
       ..qcfFont = false;
     await show(t, const Size(432, 800), settings: settings, reader: true);
     final navigator = find.byKey(const ValueKey('page-navigator'));
+    final index = find.byKey(const ValueKey('index-icon')).hitTestable();
     // On the frame's side band, beside the lines: no word there.
     final band = t.getRect(find.byKey(const ValueKey('mushaf-ornament-3')));
     final empty = Offset(band.left + 6, band.center.dy);
@@ -896,9 +897,15 @@ void main() {
     }
 
     await tapAt(empty, const Duration(seconds: 10));
-    expect(navigator, findsNothing, reason: 'Not before a double tap could');
-    await t.pump(const Duration(milliseconds: 300));
+    await t.pump(const Duration(milliseconds: 600));
+    expect(navigator, findsNothing, reason: 'Not by a touch on the page');
+    await t.tap(index.first);
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 400));
     expect(navigator, findsOneWidget);
+    // Right under the pages' bar.
+    final bar = t.getRect(find.byType(PageSlider));
+    expect(t.getRect(navigator).top, closeTo(bar.bottom + 4, 2));
     FixedExtentScrollController wheel(String key) =>
         t.widget<ListWheelScrollView>(find.byKey(ValueKey(key))).controller!
             as FixedExtentScrollController;
@@ -906,8 +913,8 @@ void main() {
     // with it.
     final quran = mushafs.of(MushafEdition.madani);
     wheel('surah-wheel').jumpToItem(2);
-    await t.pump(const Duration(milliseconds: 600));
-    await t.pump(const Duration(seconds: 1));
+    await t.pump(const Duration(milliseconds: 300));
+    await t.pump(const Duration(milliseconds: 300));
     expect(settings.page, quran.surah(3).startPage);
     expect(
       wheel('page-wheel').selectedItem,
@@ -916,22 +923,48 @@ void main() {
     // A page turned to: its surah's wheel with it.
     final page = quran.surah(4).startPage + 2;
     wheel('page-wheel').jumpToItem(page - quran.firstPage);
-    await t.pump(const Duration(milliseconds: 600));
-    await t.pump(const Duration(seconds: 1));
+    await t.pump(const Duration(milliseconds: 300));
+    await t.pump(const Duration(milliseconds: 300));
     expect(settings.page, page);
     expect(wheel('surah-wheel').selectedItem, 3);
-    // Put away by a touch elsewhere.
-    await t.tapAt(const Offset(20, 300));
-    await t.pump(const Duration(milliseconds: 300));
+    // A page chosen on the bar: the wheels brought to it.
+    t.widget<PageSlider>(find.byType(PageSlider)).onGo(page + 5);
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 100));
+    expect(wheel('page-wheel').selectedItem, page + 5 - quran.firstPage);
+    // Two seconds after the last, the bar and the wheels put away.
+    await t.pump(const Duration(seconds: 3));
+    await t.pumpAndSettle();
     expect(navigator, findsNothing);
-    // A double tap: full screen, the wheels not shown.
-    final now = t.getRect(find.byKey(ValueKey('mushaf-ornament-$page')));
+    expect(find.byType(Slider).hitTestable(), findsNothing);
+    // Again, and put away by a touch elsewhere, bar and wheels.
+    await t.tap(index.first);
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 400));
+    expect(navigator, findsOneWidget);
+    await t.tapAt(const Offset(20, 700));
+    await t.pumpAndSettle();
+    expect(navigator, findsNothing);
+    expect(find.byType(Slider).hitTestable(), findsNothing);
+    // Full screen: «الفهرس» lets the bar and the wheels down there too.
+    final now = t.getRect(
+      find.byKey(ValueKey('mushaf-ornament-${settings.page}')),
+    );
     final spot = Offset(now.left + 6, now.center.dy);
     await tapAt(spot, const Duration(seconds: 30));
     await tapAt(spot, const Duration(seconds: 30, milliseconds: 150));
     await t.pump(const Duration(milliseconds: 600));
-    expect(navigator, findsNothing);
     expect(find.byKey(const ValueKey('exit-full-screen')), findsOneWidget);
+    expect(navigator, findsNothing);
+    await t.tap(index.first);
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 400));
+    expect(navigator, findsOneWidget);
+    expect(find.byType(Slider).hitTestable(), findsOneWidget);
+    expect(
+      t.getRect(navigator).top,
+      greaterThan(t.getRect(find.byType(PageSlider)).bottom),
+    );
     expect(t.takeException(), isNull);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();
