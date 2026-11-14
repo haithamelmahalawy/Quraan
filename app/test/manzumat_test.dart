@@ -6804,4 +6804,20 @@ void main() {
     expect(ref('ibn_wardan', 13).mention, {41});
     expect(ref('duri_kisai', 12).mention, {757});
   });
+
+  // «يَرۡجِعُ ٱلۡأَمۡرُ» (هود ١٢٣): the Durrah's 63-64 (the user, 2026-11-14).
+  test("yarji'u al-amr cites the Durrah's 63-64", () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['ishaq', 'ruways', 'ibn_wardan'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 11, 123, 5)
+          .where((v) => v.word == 5 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, 'يُرۡجَعُ', 11, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {63, 64}, reason: id);
+    }
+  });
 }
