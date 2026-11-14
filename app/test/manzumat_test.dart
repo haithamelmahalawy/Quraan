@@ -6748,4 +6748,21 @@ void main() {
       expect(r.mention, {119}, reason: id);
     }
   });
+
+  // «تَزِيغُ» (التوبة ١١٧): the Durrah's 127 «يَزِيـغُ أَنِّثْ فَشَا» (the user,
+  // 2026-11-14).
+  test("tazighu cites the Durrah's 127", () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['ishaq', 'ruways', 'ibn_wardan'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 9, 117, 16)
+          .where((v) => v.word == 16 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, 'يَزِيغُ', 9, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {127}, reason: id);
+    }
+  });
 }

@@ -1084,6 +1084,47 @@ Map<String, int> buildAshabUsul(
   // «التقاء الساكنين» for al-Kisa'i and Khalaf al-'Ashir in all its places,
   // not those the book names alone (the user, 2026-11-14).
   applyFirstSakin(id, quran, data['variants'] as List);
+  // Hamza's and Khalaf al-'Ashir's «جَآءَ» leaned with its waw or fa too
+  // (وَجَآءَ ٱلۡمُعَذِّرُونَ، فَجَآءُوهُم), as Ibn Dhakwan's; the copy above took the
+  // bare word alone (the user, 2026-11-14).
+  if (_hamza.contains(id) || _khalafAshir.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final leaned = {
+      for (final v in variants.cast<List>())
+        if ('${v[6]}'.contains('إمالة') && !'${v[6]}'.contains('وقفًا'))
+          _key(v[0], v[1], v[2]),
+    };
+    for (final list in sources.verified['ibn_dhakwan']!.values) {
+      for (final v in list) {
+        if (v[5] != 'u' || !'${v[6]}'.contains('إمالة')) continue;
+        final key = _key(v[0], v[1], v[2]);
+        final word = index[key];
+        if (word == null ||
+            !RegExp(r'^[وف]جاء').hasMatch(_bare(word.t)) ||
+            leaned.contains(key)) {
+          continue;
+        }
+        final row = [
+          v[0],
+          v[1],
+          v[2],
+          1,
+          '',
+          'u',
+          'بإمالة الألف',
+          '',
+          {'source': ashabSource, 'farshFrom': 'ibn_dhakwan'},
+        ];
+        final at = variants.cast<List>().indexWhere(
+          (r) => order(r) > order(row),
+        );
+        variants.insert(at < 0 ? variants.length : at, row);
+        leaned.add(key);
+      }
+    }
+  }
   // «يُضَٰهُونَ» التوبة ٣٠ told in the usul with the hamza dropped, as Abu
   // Ja'far's, its hamesh kept; no hamza to stop on (the user, 2026-11-14).
   {
@@ -1361,6 +1402,32 @@ void _userFarsh(String id, List variants) {
         {'source': ashabSource, 'farshFrom': 'qalun'},
       ]);
     }
+  }
+  // «مَعِيَ عَدُوًّا» التوبة ٨٣: no farsh, «عَدُوًّا» as Hafs's; «مَعِي» a ya of
+  // idafa read quiet, its ya bare (the user, 2026-11-14).
+  variants.removeWhere(
+    (r) => r[0] == 9 && r[1] == 83 && r[2] == 15 && r[5] == 'f',
+  );
+  if (!variants.cast<List>().any(
+    (r) => r[0] == 9 && r[1] == 83 && r[2] == 15 && r[7] == 'ya_idafa',
+  )) {
+    final i = variants.cast<List>().indexWhere(
+      (r) =>
+          r[0] as int > 9 ||
+          r[0] == 9 && (r[1] as int) > 83 ||
+          r[0] == 9 && r[1] == 83 && (r[2] as int) > 15,
+    );
+    variants.insert(i < 0 ? variants.length : i, [
+      9,
+      83,
+      15,
+      1,
+      'مَعِي',
+      'u',
+      'بإسكان ياء الإضافة',
+      'ya_idafa',
+      {'source': ashabSource},
+    ]);
   }
   // Khalaf al-'Ashir's «حَـِۧيَ» الأنفال ٤٢ written as the verified readers'
   // (Nafi''s, al-Bazzi's, Shu'ba's, Ya'qub's): the small ya above the line

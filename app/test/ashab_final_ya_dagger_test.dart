@@ -685,4 +685,39 @@ void main() {
       expect(farsh['30:54:16'], 'ضُعۡفٗا|بضم الضاد', reason: id);
     }
   });
+
+  // «مَعِي عَدُوًّا» (التوبة ٨٣): no farsh, the ya of idafa bare; «وَجَآءَ» leaned
+  // with its waw for Hamza and Khalaf al-'Ashir (the user, 2026-11-14).
+  test("ma'iya 'aduwwan and wa-ja'a", () {
+    List<List> rows(String id) => ((jsonDecode(
+              File('assets/data/qiraat/$id.json').readAsStringSync(),
+            ) as Map)['variants']
+            as List)
+        .cast<List>();
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      final here = rows(id)
+          .where((v) => v[0] == 9 && v[1] == 83 && v[2] >= 15)
+          .where((v) => v[5] != 'u' || v[7] == 'ya_idafa');
+      expect(here.map((v) => '${v[4]}|${v[7]}'), [
+        'مَعِي|ya_idafa',
+      ], reason: id);
+      final kisai = id == 'abul_harith' || id == 'duri_kisai';
+      for (final k in ['9:90:0', '12:16:0', '10:74:7']) {
+        expect(
+          rows(id).where(
+            (v) => '${v[0]}:${v[1]}:${v[2]}' == k && v[6] == 'بإمالة الألف',
+          ),
+          hasLength(kisai ? 0 : 1),
+          reason: '$id $k',
+        );
+      }
+    }
+  });
 }

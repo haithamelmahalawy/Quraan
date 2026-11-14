@@ -1243,6 +1243,13 @@ class Manzumat {
         !v.isUsul) {
       return poem == Poem.durrah ? {81} : {514, 515};
     }
+    // «تَزِيغُ» (التوبة ١١٧): the Durrah's «... يَزِيـغُ أَنِّثْ فَشَا ...» (127)
+    // (the user, 2026-11-14).
+    if (poem == Poem.durrah &&
+        '${v.surah}:${v.ayah}:${v.word}' == '9:117:16' &&
+        !v.isUsul) {
+      return {127};
+    }
     // «حَـِۧيَ» (الأنفال ٤٢): the Durrah's «... حَيَّ أَظْهِرَنْ / فَتًى حُزْ ...» (119)
     // (the user, 2026-11-14).
     if (poem == Poem.durrah &&
