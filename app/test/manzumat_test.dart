@@ -6650,4 +6650,22 @@ void main() {
       expect(r.mention, {113}, reason: id);
     }
   });
+
+  // «يُفۡتَحُ» (الأعراف ٤٠): the ya in 684 «وَيُفْتَحُ شَمْلَلَا», the lightening in
+  // 685 (the user, 2026-11-14).
+  test('yuftah cites 684 with 685', () async {
+    final variants = await VariantRepository.discover();
+    const ids = ['khalaf_hamzah', 'duri_kisai', 'ishaq', 'susi'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 7, 40, 7)
+          .where((v) => v.word == 7 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, 'تُفَتَّحُ', 7, surahs);
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, id == 'susi' ? {685} : {684, 685}, reason: id);
+      if (id == 'ishaq') expect(r.asl.map((b) => b.n), [7, 8]);
+    }
+  });
 }

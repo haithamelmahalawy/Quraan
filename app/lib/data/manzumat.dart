@@ -405,7 +405,7 @@ class Manzumat {
   // Khalaf al-'Ashir's, the book's quote from another chapter (Durrah 56, the
   // zawaid, for «يَقۡضِ» الأنعام ٥٧): his asl's bayt and the Durrah's two (the
   // user, 2026-11-14).
-  static const _durrahSilentOnKhalaf = {'6:57:17'};
+  static const _durrahSilentOnKhalaf = {'6:57:17', '7:40:7'};
   static const _durrahSilentOnAbuJafar = {
     '12:110:10',
     '27:51:5',
@@ -1226,6 +1226,14 @@ class Manzumat {
     // وَأَشْمِمْ بَابَ أَصْدَقُ طِبْ وَلَا» (95) (the user, 2026-11-14).
     if (v.rule == 'ishmam_sad' && hafs.contains('صۡد')) {
       return poem == Poem.durrah ? {95} : {603};
+    }
+    // «لَا تُفَتَّحُ» (الأعراف ٤٠): the ya, «... وَيُفْتَحُ شَمْلَلَا» (684), with
+    // the lightening, «وَخَفِّفْ شَفَا حُكْماً» (685); Abu 'Amr's lightening alone
+    // (the user, 2026-11-14).
+    if (poem == Poem.shatibiyya &&
+        '${v.surah}:${v.ayah}:${v.word}' == '7:40:7' &&
+        !v.isUsul) {
+      return v.description.contains('بالياء') ? {684, 685} : {685};
     }
     // «وَمِنۡهَا تُخۡرَجُونَ» (الأعراف ٢٥): «هُنَا تُخْرَجُوا سَمَّى حِمًى ...» (113)
     // (the user, 2026-11-14).
