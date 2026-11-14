@@ -3399,7 +3399,9 @@ List<HameshEntry> _entriesOf(
         hafs,
         for (final v in starting) '${v.riwayaId}=${v.text}=${v.description}',
       ].join('|');
-      if (!seen.add(key)) continue;
+      // Each place told in its own line, a reading repeated on the page too
+      // (the user, 2026-11-14); a farsh across two ayahs once.
+      if (starting.any(_farshAcrossAyahs) && !seen.add(key)) continue;
       out.add(
         HameshEntry(
           ayah,
