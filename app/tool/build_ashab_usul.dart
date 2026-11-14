@@ -1184,6 +1184,50 @@ Map<String, int> buildAshabUsul(
       variants.insert(i < 0 ? variants.length : i, row);
     }
   }
+  // al-Kisa'i's «غَيَٰبَتِ» (يوسف ١٠، ١٥): stopped on with the ha as the rasm's
+  // open ta, «غَيَٰبَهۡ», and leaned there, its ba of «فجثت زينب»
+  // (the user, 2026-11-14).
+  if (_kisai.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final (s, a, w) in const [(12, 10, 8), (12, 15, 23)]) {
+      for (final row in [
+        [
+          s,
+          a,
+          w,
+          1,
+          '',
+          'u',
+          'بالوقف بالهاء على تاء التأنيث المرسومة تاء مفتوحة',
+          'rasm_stop',
+          {'source': ashabSource, 'stopOnly': true, 'stopText': 'غَيَٰبَهۡ'},
+        ],
+        [
+          s,
+          a,
+          w,
+          1,
+          '',
+          'u',
+          'بإمالة هاء التأنيث وما قبلها وقفًا قولًا واحدًا',
+          'imala_ha',
+          {'source': ashabSource, 'stopOnly': true},
+        ],
+      ]) {
+        if (variants.cast<List>().any(
+          (r) => order(r) == order(row) && r[7] == row[7],
+        )) {
+          continue;
+        }
+        final at = variants.cast<List>().indexWhere(
+          (r) => order(r) > order(row),
+        );
+        variants.insert(at < 0 ? variants.length : at, row);
+      }
+    }
+  }
   // «تَتۡلُواْ» يونس ٣٠: Hafs's word, its ba a ta, its alif with the round
   // sukun kept (the user, 2026-11-14).
   for (final v in (data['variants'] as List).cast<List>()) {

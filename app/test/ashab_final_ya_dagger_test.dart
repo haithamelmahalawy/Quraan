@@ -818,4 +818,26 @@ void main() {
       );
     }
   });
+
+  // al-Kisa'i's «غَيَٰبَتِ» (يوسف ١٠، ١٥): stopped on with the ha and leaned
+  // (the user, 2026-11-14).
+  test("al-Kisai's ghayabat at the stop", () {
+    for (final id in const ['abul_harith', 'duri_kisai']) {
+      final rows = ((jsonDecode(
+                File('assets/data/qiraat/$id.json').readAsStringSync(),
+              ) as Map)['variants']
+              as List)
+          .cast<List>();
+      for (final k in const ['12:10:8', '12:15:23']) {
+        expect(
+          {
+            for (final v in rows)
+              if ('${v[0]}:${v[1]}:${v[2]}' == k) v[7],
+          },
+          {'rasm_stop', 'imala_ha'},
+          reason: '$id $k',
+        );
+      }
+    }
+  });
 }
