@@ -12,7 +12,11 @@ class PageSlider extends StatefulWidget {
     required this.page,
     required this.onGo,
     this.beside,
+    this.onLetGo,
   });
+
+  /// The thumb let go, on a new page or the same.
+  final VoidCallback? onLetGo;
 
   /// Beside the surah's name and the page's number: the lamp's place.
   final Widget? beside;
@@ -107,6 +111,7 @@ class _PageSliderState extends State<PageSlider> {
                   setState(() => _dragged = null);
                   final target = v.round();
                   if (target != widget.page) widget.onGo(target);
+                  widget.onLetGo?.call();
                 },
               ),
             ),

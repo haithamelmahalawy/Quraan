@@ -378,70 +378,99 @@ void main() {
     await t.pumpAndSettle();
   });
 
-  testWidgets(
-    'landscape bars collapse independently without covering the page',
-    (t) async {
-      final settings = ReaderSettings.memory(selected: {'warsh'})
-        ..page = 3
-        ..qcfFont = false;
-      await show(t, const Size(800, 432), settings: settings, reader: true);
-      final top = find.byKey(const ValueKey('top-bar-toggle'));
-      final bottom = find.byKey(const ValueKey('bottom-bar-toggle'));
-      final current = find.byType(MushafPage).last;
-      expect(top.hitTestable(), findsOneWidget);
-      expect(bottom.hitTestable(), findsOneWidget);
-      expect(find.byType(Slider).hitTestable(), findsNothing);
-      final full = t.getRect(current);
-      expect(full.height, closeTo(432 - 48, 1));
-      expect(full.top, greaterThanOrEqualTo(t.getRect(top).bottom));
-      expect(full.bottom, lessThanOrEqualTo(t.getRect(bottom).top));
+  // No bar of pages below: the index's icon on the frame's right lets it up,
+  // a page chosen puts it away two seconds later, a touch outside it at
+  // once; the icon dragged anywhere is kept there, in sight turned or
+  // upright (the user, 2026-11-15).
+  testWidgets('the pages\' bar let up by the index\'s icon, put away again', (
+    t,
+  ) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..page = 3
+      ..qcfFont = false;
+    await show(t, const Size(800, 432), settings: settings, reader: true);
+    final top = find.byKey(const ValueKey('top-bar-toggle'));
+    final icon = find.byKey(const ValueKey('index-icon'));
+    final current = find.byType(MushafPage).last;
+    expect(find.byKey(const ValueKey('bottom-bar-toggle')), findsNothing);
+    expect(find.byType(Slider).hitTestable(), findsNothing);
+    expect(icon.hitTestable(), findsOneWidget);
+    final full = t.getRect(current);
+    expect(full.top, greaterThanOrEqualTo(t.getRect(top).bottom));
+    expect(full.bottom, closeTo(432, 1));
+    // On the frame's band on the right, half way down.
+    final frame = t.getRect(
+      find.descendant(
+        of: current,
+        matching: find.byKey(const ValueKey('mushaf-ornament-3')),
+      ),
+    );
+    expect(
+      t.getCenter(icon).dx,
+      closeTo(frame.right - OrnamentFrame.band / 2, 1),
+    );
+    expect(t.getCenter(icon).dy, closeTo(full.center.dy, 2));
 
-      final scroll = t
-          .widget<SingleChildScrollView>(
-            find.descendant(of: current, matching: central()),
-          )
-          .controller!;
-      scroll.jumpTo(180);
-      await t.pumpAndSettle();
-      await t.tap(top);
-      await t.pump();
-      await t.pump(const Duration(milliseconds: 160));
-      final halfway = t.getSize(current).height;
-      await t.pumpAndSettle();
-      final topOpen = t.getRect(current);
-      expect(halfway, lessThan(full.height));
-      expect(halfway, greaterThan(topOpen.height));
-      expect(find.byType(Slider).hitTestable(), findsNothing);
-      expect(scroll.offset, closeTo(180, .1));
+    final scroll = t
+        .widget<SingleChildScrollView>(
+          find.descendant(of: current, matching: central()),
+        )
+        .controller!;
+    scroll.jumpTo(180);
+    await t.pumpAndSettle();
+    await t.tap(icon);
+    await t.pumpAndSettle();
+    expect(find.byType(Slider).hitTestable(), findsOneWidget);
+    expect(t.getSize(current).height, closeTo(full.height - 44, 1));
+    expect(scroll.offset, closeTo(180, .1));
+    expect(icon.hitTestable(), findsOneWidget);
 
-      await t.tap(bottom);
-      await t.pumpAndSettle();
-      expect(find.byType(Slider).hitTestable(), findsOneWidget);
-      final bothOpen = t.getRect(current);
-      expect(bothOpen.height, closeTo(topOpen.height - 44, 1));
-      expect(bothOpen.bottom, lessThanOrEqualTo(t.getRect(bottom).top));
-      expect(
-        t.getRect(find.byType(PageSlider)).top,
-        greaterThanOrEqualTo(t.getRect(bottom).bottom),
-      );
-      await t.tap(top);
-      await t.tap(bottom);
-      await t.pumpAndSettle();
-      expect(t.getSize(current).height, full.height);
-      expect(settings.page, 3);
+    // A page chosen: still up a moment, away two seconds later.
+    t.widget<PageSlider>(find.byType(PageSlider)).onGo(9);
+    t.widget<PageSlider>(find.byType(PageSlider)).onLetGo!();
+    await t.pumpAndSettle();
+    expect(settings.page, 9);
+    await t.pump(const Duration(milliseconds: 1500));
+    expect(find.byType(Slider).hitTestable(), findsOneWidget);
+    await t.pump(const Duration(milliseconds: 600));
+    await t.pumpAndSettle();
+    expect(find.byType(Slider).hitTestable(), findsNothing);
+    expect(t.getSize(current).height, closeTo(full.height, 1));
 
-      t.view.physicalSize = const Size(432, 800);
-      await t.pumpAndSettle();
-      // Upright, the top bar folds away too, open at first; the bottom one
-      // stays.
-      expect(top, findsOneWidget);
-      expect(bottom, findsNothing);
-      expect(find.byType(Slider).hitTestable(), findsOneWidget);
-      expect(t.takeException(), isNull);
-      await t.pumpWidget(const SizedBox());
-      await t.pumpAndSettle();
-    },
-  );
+    // Up again, a touch on the page puts it away, the page not turned.
+    await t.tap(icon);
+    await t.pumpAndSettle();
+    expect(find.byType(Slider).hitTestable(), findsOneWidget);
+    await t.tapAt(full.center);
+    await t.pumpAndSettle();
+    expect(find.byType(Slider).hitTestable(), findsNothing);
+    expect(settings.page, 9);
+
+    // Dragged up and left, it stays where it is left, and is kept.
+    final before = t.getCenter(icon);
+    await t.drag(icon, const Offset(-120, -60));
+    await t.pumpAndSettle();
+    expect(t.getCenter(icon).dx, closeTo(before.dx - 120, 1));
+    expect(t.getCenter(icon).dy, closeTo(before.dy - 60, 1));
+    expect(settings.indexIconAt, isNotNull);
+    expect(settings.page, 9);
+
+    // Upright, in sight still, on the same side; no bar of pages below.
+    t.view.physicalSize = const Size(432, 800);
+    await t.pumpAndSettle();
+    final rect = t.getRect(icon);
+    expect(rect.left, greaterThanOrEqualTo(0));
+    expect(rect.right, lessThanOrEqualTo(432));
+    expect(rect.bottom, lessThanOrEqualTo(800));
+    expect(icon.hitTestable(), findsOneWidget);
+    expect(find.byType(Slider).hitTestable(), findsNothing);
+    await t.tap(icon);
+    await t.pumpAndSettle();
+    expect(find.byType(Slider).hitTestable(), findsOneWidget);
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
 
   testWidgets('landscape enlarges the print and scrolls its original lines', (
     t,

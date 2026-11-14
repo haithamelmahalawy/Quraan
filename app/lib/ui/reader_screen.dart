@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/services.dart';
 
 import '../data/background_json.dart';
@@ -22,6 +23,7 @@ import 'ayah_sheet.dart';
 import 'book_pager.dart';
 import 'glow_usul_screen.dart';
 import 'jam_screen.dart';
+import 'mushaf_decor.dart' show OrnamentFrame;
 import 'mushaf_page.dart';
 import 'page_side_hint.dart';
 import 'mutashabihat_sheet.dart';
@@ -186,7 +188,19 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   /// Folded away at first, in every view (the user, 2026-11-13).
   bool _topBarOpen = false;
-  bool _bottomBarOpen = false;
+
+  /// The pages' bar below, let up by the index's icon over the page and
+  /// put away again two seconds after a page is chosen, or at once by a
+  /// touch anywhere outside it (the user, 2026-11-15).
+  bool _sliderOpen = false;
+  Timer? _sliderHide;
+  Offset? _sliderDownAt;
+
+  /// Where the index's icon is being dragged, before it is kept.
+  Offset? _indexDragged;
+
+  /// The index's icon: a little wider than the frame's band.
+  static const _indexIconSize = Size(22, 46);
 
   /// The ring of the looks of the mushaf open over the page (the user,
   /// 2026-11-14).
@@ -202,7 +216,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _landscape = landscape;
     // Folded away at first, upright or turned (the user, 2026-11-13).
     _topBarOpen = false;
-    _bottomBarOpen = false;
+    _sliderOpen = false;
     // Landscape reads a single enlarged page in sections. Keep the saved
     // spread preference for portrait and retain the current page number.
     _pager = GlobalKey<BookPagerState>();
@@ -313,6 +327,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _blink.dispose();
     _settle?.cancel();
     _pendingWord?.cancel();
+    _sliderHide?.cancel();
     _readAhead?.cancel();
     _gestureLabelTimer?.cancel();
     _hint.dispose();
@@ -924,7 +939,13 @@ class _ReaderScreenState extends State<ReaderScreen>
         ),
       ),
     );
-    final bottomBar = PageSlider(quran: _quran, page: _page, onGo: _goToPage);
+    final bottomBar = PageSlider(
+      key: const ValueKey('page-slider'),
+      quran: _quran,
+      page: _page,
+      onGo: _goToPage,
+      onLetGo: _hideSliderSoon,
+    );
     return Scaffold(
       body: SafeArea(
         child: Stack(
@@ -942,6 +963,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                   if (_stylesOpen) MushafStyleRing(settings: widget.settings),
                   Expanded(
                     child: Stack(
+                      key: _pagesRoom,
                       children: [
                         Positioned.fill(child: pages),
                         // Open, a touch outside it, on the mushaf, folds the
@@ -955,17 +977,12 @@ class _ReaderScreenState extends State<ReaderScreen>
                               onTap: () => setState(() => _stylesOpen = false),
                             ),
                           ),
+                        if (_sliderOpen) _sliderOutside(),
+                        Positioned.fill(child: _indexIcon()),
                       ],
                     ),
                   ),
-                  if (_landscape) ...[
-                    _barHandle(top: false),
-                    _CollapsibleReaderBar(
-                      open: _bottomBarOpen,
-                      child: bottomBar,
-                    ),
-                  ] else
-                    bottomBar,
+                  _CollapsibleReaderBar(open: _sliderOpen, child: bottomBar),
                 ],
               ),
             ),
@@ -1072,8 +1089,200 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   static const _handleHeight = 24.0;
 
+  /// The pages' bar let up, or put away.
+  void _toggleSlider() {
+    _sliderHide?.cancel();
+    setState(() => _sliderOpen = !_sliderOpen);
+  }
+
+  /// A page chosen on the bar: the bar put away two seconds later, the page
+  /// grown again.
+  void _hideSliderSoon() {
+    _sliderHide?.cancel();
+    _sliderHide = Timer(const Duration(seconds: 2), () {
+      if (mounted && _sliderOpen) setState(() => _sliderOpen = false);
+    });
+  }
+
+  /// The bar up, a touch on the page puts it away at once and does nothing
+  /// else; a finger drawn along it puts it away and goes on, as the
+  /// riwayat's (the user, 2026-11-15).
+  Widget _sliderOutside() => Positioned.fill(
+    child: Listener(
+      key: const ValueKey('page-slider-outside'),
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (e) => _sliderDownAt = e.position,
+      onPointerMove: (e) {
+        final from = _sliderDownAt;
+        if (_sliderOpen && from != null && (e.position - from).distance > 8) {
+          _sliderDownAt = null;
+          _toggleSlider();
+        }
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          if (_sliderOpen) _toggleSlider();
+        },
+      ),
+    ),
+  );
+
+  /// The room the pages lie in, the index's icon over them.
+  final _pagesRoom = GlobalKey();
+
+  /// The index's icon on the frame's right band, as a fraction of its room
+  /// across; and what it was found for.
+  double? _frameDx;
+  Object? _frameFor;
+
+  /// After this frame, the frame of the page shown found, its right band's
+  /// place kept for the icon not yet moved.
+  void _findFrameSoon(Size box, Size room) {
+    final key = (box, _page, _twoPages, widget.settings.edition);
+    if (key == _frameFor) return;
+    _frameFor = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final stack = _pagesRoom.currentContext?.findRenderObject();
+      if (stack is! RenderBox || !stack.hasSize) return;
+      double? right;
+      // The page shown, and its facing one in a spread: the neighbours are
+      // built beneath it, out of sight.
+      final shown = {
+        for (final p in [
+          _page,
+          if (_twoPages) ...[_page - 1, _page + 1],
+        ])
+          ValueKey('mushaf-ornament-$p'),
+      };
+      void visit(Element e) {
+        if (e.widget is OrnamentFrame) {
+          final r = e.findRenderObject();
+          if (shown.contains(e.widget.key) &&
+              r is RenderBox &&
+              r.hasSize &&
+              r.attached) {
+            final at = r.localToGlobal(Offset.zero, ancestor: stack);
+            final edge = at.dx + r.size.width;
+            // The one in sight, not a neighbour waiting beside it.
+            if (at.dx >= -1 && edge <= stack.size.width + 1) {
+              right = math.max(right ?? edge, edge);
+            }
+          }
+          return;
+        }
+        e.visitChildElements(visit);
+      }
+
+      (_pagesRoom.currentContext as Element).visitChildElements(visit);
+      final edge = right;
+      if (edge == null || room.width == 0) return;
+      const band = OrnamentFrame.band;
+      final left = edge - band / 2 - _indexIconSize.width / 2;
+      final dx = (left / room.width).clamp(0.0, 1.0);
+      if (dx != _frameDx) setState(() => _frameDx = dx);
+    });
+  }
+
+  /// The index's icon over the page: faint, as a lamp's glass, on the
+  /// frame's right at first; dragged anywhere, it is left there, kept in
+  /// sight upright or turned (the user, 2026-11-15). Tapped, the pages' bar
+  /// below let up or put away.
+  Widget _indexIcon() => LayoutBuilder(
+    builder: (context, box) {
+      const size = _indexIconSize;
+      final room = Size(
+        math.max(0.0, box.maxWidth - size.width),
+        math.max(0.0, box.maxHeight - size.height),
+      );
+      // Not yet moved: on the frame's band on the right, half way down,
+      // the frame found once the page is laid out.
+      if (_indexDragged == null && widget.settings.indexIconAt == null) {
+        _findFrameSoon(box.biggest, room);
+      }
+      Offset now() =>
+          _indexDragged ??
+          widget.settings.indexIconAt ??
+          Offset(_frameDx ?? 1, .5);
+      final at = now();
+      final left = at.dx.clamp(0.0, 1.0) * room.width;
+      final top = at.dy.clamp(0.0, 1.0) * room.height;
+      // From where it is now, each move told before the next frame too.
+      Offset moved(Offset by) {
+        final from = now();
+        return Offset(
+          room.width == 0 ? 1 : (from.dx + by.dx / room.width).clamp(0.0, 1.0),
+          room.height == 0
+              ? .5
+              : (from.dy + by.dy / room.height).clamp(0.0, 1.0),
+        );
+      }
+
+      return Stack(
+        children: [
+          Positioned(
+            left: left,
+            top: top,
+            width: size.width,
+            height: size.height,
+            child: Semantics(
+              button: true,
+              expanded: _sliderOpen,
+              label: _sliderOpen ? 'إخفاء الفهرس' : 'إظهار الفهرس',
+              child: GestureDetector(
+                key: const ValueKey('index-icon'),
+                // From where the finger went down, the slop not lost.
+                dragStartBehavior: DragStartBehavior.down,
+                behavior: HitTestBehavior.opaque,
+                onTap: _toggleSlider,
+                onPanUpdate: (d) =>
+                    setState(() => _indexDragged = moved(d.delta)),
+                onPanEnd: (_) {
+                  final kept = _indexDragged;
+                  _indexDragged = null;
+                  widget.settings.indexIconAt = kept;
+                },
+                child: Opacity(
+                  opacity: _sliderOpen ? .9 : .6,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(size.width / 2),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          MushafColors.goldLight.withAlpha(210),
+                          MushafColors.gold.withAlpha(170),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: MushafColors.green.withAlpha(110),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: MushafColors.gold.withAlpha(120),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.toc_rounded,
+                      size: 17,
+                      color: MushafColors.green,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+
   Widget _barHandle({required bool top}) {
-    final open = top ? _topBarOpen : _bottomBarOpen;
+    final open = top ? _topBarOpen : false;
     final label = top ? 'الشريط العلوي' : 'شريط التنقل السفلي';
     final handle = Semantics(
       button: true,
@@ -1091,8 +1300,6 @@ class _ReaderScreenState extends State<ReaderScreen>
               if (open) _stylesOpen = false;
               // The riwayat folded away with the bar they open from.
               if (open) _riwayatOpen.value = false;
-            } else {
-              _bottomBarOpen = !open;
             }
           }),
           child: Tooltip(

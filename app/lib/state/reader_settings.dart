@@ -137,6 +137,20 @@ class ReaderSettings extends ChangeNotifier {
   bool get compareHafs => _get('compareHafs') as bool? ?? _prefs != null;
   set compareHafs(bool on) => _set('compareHafs', on);
 
+  /// Where the index's icon was left over the page, as fractions of the
+  /// room it moves in; null, on the frame's right (the user, 2026-11-15).
+  Offset? get indexIconAt {
+    final x = _get('indexIconX'), y = _get('indexIconY');
+    return x is double && y is double ? Offset(x, y) : null;
+  }
+
+  set indexIconAt(Offset? at) {
+    if (at == null) return;
+    _memory['indexIconX'] = at.dx;
+    _prefs?.setDouble('indexIconX', at.dx);
+    _set('indexIconY', at.dy);
+  }
+
   /// «تنبيه الاختلافات»: how the words that differ from Hafs (farsh or
   /// usul) move to catch the eye; off when null.
   DiffAlert? get diffAlert =>
