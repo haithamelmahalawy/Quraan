@@ -1706,6 +1706,52 @@ Map<String, int> buildAshabUsul(
     final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
     variants.insert(at < 0 ? variants.length : at, row);
   }
+  // «ضَعۡفٖ ... ضَعۡفٗا» (الروم ٥٤): the book's quote of the three together
+  // («ضَعف» معاً، «ضَعفاً») was drawn as each word; Hafs's words, read with the
+  // fatha alone, as Shu'ba's (the user, 2026-11-15).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] != 30 || v[1] != 54 || !'${v[4]}'.contains('»')) continue;
+    final w = v[2] as int;
+    v[4] = [
+      for (var i = w; i < w + (v[3] as int); i++) index[_key(30, 54, i)]!.t,
+    ].join(' ');
+    if (v[5] == 'f') {
+      v[6] = 'بفتح الضاد وجهًا واحدًا';
+      (v[8] as Map).remove('vocalizationSource');
+    }
+  }
+  // The idgham of its tanween in the waw: the waw doubled, as elsewhere.
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 30 &&
+        v[1] == 54 &&
+        v[2] == 16 &&
+        v.length > 7 &&
+        v[7] == 'idgham_bila_ghunna') {
+      v[4] = '${index[_key(30, 54, 16)]!.t} وَّشَيۡبَةٗۚ';
+    }
+  }
+  // «مِن كُلِّ زَوۡجَيۡنِ» (المؤمنون ٢٧) without the tanween, Hafs alone reading
+  // it: as every other riwaya's, in its words (the user, 2026-11-15).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      23,
+      27,
+      15,
+      1,
+      // كُلِّ, its shadda before its kasra as in Qalun's.
+      'كُلِّ',
+      'f',
+      'بكسر اللام دون تنوين',
+      '',
+      {'source': ashabSource, 'farshFrom': 'qalun'},
+    ];
+    variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
   // Hamza's and Khalaf al-'Ashir's «يَتَوَفَّىٰهُمُ» (النحل ٢٨، ٣٢): Hafs's word
   // with the ya for the ta, its dagger alif kept, leaned; and their and
   // al-Kisa'i's «يَأۡتِيَهُمُ» (النحل ٣٣) with the ya, its own opened (the user,

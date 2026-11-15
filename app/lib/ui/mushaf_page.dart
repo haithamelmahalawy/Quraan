@@ -315,27 +315,31 @@ class _MushafPageState extends State<MushafPage>
                   child: _flowingText(ayahs, narrow),
                 ),
               );
-        // Pinch zooms the whole page image: frame, text and hamesh together.
+        // Pinch zooms the whole page image: frame, text and hamesh together;
+        // turned, the page alone, its margins beside it as they are (the
+        // user, 2026-11-15).
+        final landscape =
+            printed &&
+            MediaQuery.orientationOf(context) == Orientation.landscape;
         return Stack(
           children: [
-            MushafZoom(
-              controller: _zoom,
-              onEdgeTurn: widget.onEdgeTurn,
-              onDoubleTap: widget.onDoubleTap,
-              onPinchChanged: (active) {
-                _pinching = active;
-                _syncZoom();
-              },
-              child: SizedBox.fromSize(size: viewport.biggest, child: content),
-            ),
+            if (landscape)
+              SizedBox.fromSize(size: viewport.biggest, child: content)
+            else
+              _zoomable(viewport.biggest, content),
             if (_zoomed)
+              // Turned, in the middle below the page, off the margins beside it.
               PositionedDirectional(
                 bottom: 12,
-                end: 12,
-                child: FilledButton.tonalIcon(
-                  onPressed: () => _zoom.value = Matrix4.identity(),
-                  icon: const Icon(Icons.zoom_out_map, size: 18),
-                  label: const Text('حجم الصفحة'),
+                end: landscape ? 0 : 12,
+                start: landscape ? 0 : null,
+                child: Center(
+                  widthFactor: landscape ? null : 1,
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => _zoom.value = Matrix4.identity(),
+                    icon: const Icon(Icons.zoom_out_map, size: 18),
+                    label: const Text('حجم الصفحة'),
+                  ),
                 ),
               ),
           ],
@@ -948,15 +952,11 @@ class _MushafPageState extends State<MushafPage>
                   widget.settings,
                   widget.quran,
                 );
-          // The page zoomed in: the margins zoomed with it showed only the
-          // starts of their lines at the screen's edge, a letter or two each;
-          // put out of sight till the page is back (the user, 2026-11-15).
-          return Visibility(
+          // Beside the page, outside its zoom: zoomed with it, they showed only
+          // the starts of their lines at the screen's edge; hidden, they were
+          // gone. In sight and as they are (the user, 2026-11-15).
+          return KeyedSubtree(
             key: const ValueKey('landscape-margin-zoom'),
-            visible: !_zoomed,
-            maintainSize: true,
-            maintainAnimation: true,
-            maintainState: true,
             child: _LandscapeMargin(
               key: ValueKey('landscape-${farsh ? 'farsh' : 'usul'}-$section'),
               farsh: farsh,
@@ -1010,11 +1010,29 @@ class _MushafPageState extends State<MushafPage>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (hasFarsh) margin(true),
-        Expanded(child: Center(child: print)),
+        // The page alone zoomed, the margins beside it read as they are.
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, box) =>
+                _zoomable(box.biggest, Center(child: print)),
+          ),
+        ),
         if (hasUsul) margin(false),
       ],
     );
   }
+
+  /// [child] pinched, zoomed and turned at its edges.
+  Widget _zoomable(Size size, Widget child) => MushafZoom(
+    controller: _zoom,
+    onEdgeTurn: widget.onEdgeTurn,
+    onDoubleTap: widget.onDoubleTap,
+    onPinchChanged: (active) {
+      _pinching = active;
+      _syncZoom();
+    },
+    child: SizedBox.fromSize(size: size, child: child),
+  );
 
   /// The printed page filling the screen: the header line (surah, juz), the
   /// framed 15 lines spread over the height, and the hamesh beside it with
@@ -3441,6 +3459,9 @@ bool _shadedFarsh(Variant v) =>
     v.description == 'بحذف المد الطبيعي بعد الهمزة' ||
     // «لَأَتَوۡهَا» of Ashab al-Silah: written as Hafs's, read short.
     v.description == 'بقصر الهمزة' ||
+    // «ضَعۡفٖ ... ضَعۡفٗا» (الروم ٥٤): Hafs's two ways, Shu'ba's and Hamza's
+    // fatha alone, the same letters (the user, 2026-11-15).
+    v.description == 'بفتح الضاد وجهًا واحدًا' ||
     // ٱلۡغَنِيُّ ٱلۡحَمِيدُ (الحديد 24), without هُوَ.
     v.description == 'بحذف هو' ||
     _farshAcrossAyahs(v) ||

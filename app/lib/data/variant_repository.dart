@@ -327,7 +327,10 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
             // apart from the word's farsh, which it reads as Hafs.
             !(id == 'warsh' && v.description.startsWith('بإدغام')) &&
             // Nor its tanween in wasl, apart from the word (وَعُيُونٍ).
-            !(id == 'warsh' && v.description == 'بالضم في الوصل'),
+            !(id == 'warsh' && v.description == 'بالضم في الوصل') &&
+            // Nor one way where Hafs reads two (ٱلۡمُصَيۡطِرُونَ، ضَعۡفٖ): it
+            // differs from him (the user, 2026-11-15).
+            !v.description.contains('وجهًا واحدًا'),
       );
     }
   }
@@ -476,8 +479,12 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
     // Nor the repeated question (أَءِذَا كُنَّا تُرَٰبًا أَءِنَّا): told in the usul,
     // each reader's way at each word, not as a farsh across the phrase (the
     // user, 2026-11-14).
+    // Nor a quote of several words joined («ضَعف» معاً، «ضَعفاً»): drawn as the
+    // word, it was the book's sentence inside the mushaf (the user,
+    // 2026-11-15).
     if (!found &&
         p[6] == 'farsh' &&
+        !RegExp('[«»،]').hasMatch(p[4] as String) &&
         !repeatedIstifham.contains('$surah:$ayah:$word') &&
         !const {
           'hisham',

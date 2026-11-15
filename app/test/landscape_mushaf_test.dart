@@ -1064,21 +1064,22 @@ void main() {
     await t.pumpAndSettle();
   });
 
-  // Turned and zoomed in: the margins, zoomed with the page, showed only the
-  // starts of their lines at the screen's edge; out of sight till the page
-  // is back (the user, 2026-11-15).
-  testWidgets('a zoomed landscape page hides its margins till it is back', (
+  // Turned and zoomed in: the page alone zoomed, its margins beside it in
+  // sight and as they are; zoomed with it they showed only the starts of
+  // their lines, hidden they were gone (the user, 2026-11-15).
+  testWidgets('a zoomed landscape page keeps its margins as they are', (
     t,
   ) async {
     final settings = ReaderSettings.memory(selected: {'warsh'})
       ..page = 3
       ..qcfFont = false;
     await show(t, const Size(754, 418), settings: settings, reader: true);
-    final margin = find.byKey(const ValueKey('landscape-margin-zoom'));
-    bool shown() => t.widgetList<Visibility>(margin).every((v) => v.visible);
-    expect(margin, findsWidgets);
-    expect(shown(), isTrue);
-    final c = t.getCenter(find.byType(MushafLines).last);
+    final margin = find.byKey(const ValueKey('landscape-usul-margin'));
+    expect(margin.hitTestable(), findsOneWidget);
+    final before = t.getRect(margin.hitTestable());
+    final lines = find.byType(MushafLines).last;
+    final page = t.getRect(lines);
+    final c = page.center;
     final a = await t.startGesture(c - const Offset(40, 0), pointer: 1);
     final b = await t.startGesture(c + const Offset(40, 0), pointer: 2);
     await t.pump();
@@ -1090,11 +1091,14 @@ void main() {
     await a.up();
     await b.up();
     await t.pump(const Duration(seconds: 1));
-    expect(shown(), isFalse);
-    // «حجم الصفحة»: back, and the margins with it.
+    expect(find.text('حجم الصفحة'), findsOneWidget);
+    // The page zoomed, the margin where it was and as large.
+    expect(t.getRect(lines).width, greaterThan(page.width + 1));
+    expect(margin.hitTestable(), findsOneWidget);
+    expect(t.getRect(margin.hitTestable()), before);
     await t.tap(find.text('حجم الصفحة'));
     await t.pump(const Duration(seconds: 1));
-    expect(shown(), isTrue);
+    expect(t.getRect(margin.hitTestable()), before);
     expect(t.takeException(), isNull);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();

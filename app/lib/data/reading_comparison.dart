@@ -312,7 +312,9 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
       // So a madd dropped though its alif is written (وَلَاْ أَدۡرَىٰكُمُۥ).
       if (v.description.startsWith('بوجهين') ||
           v.description.startsWith('بخلف') ||
-          v.description.contains('بحذف المد'))
+          v.description.contains('بحذف المد') ||
+          // One way where Hafs reads two (ضَعۡفٖ، الروم ٥٤) (the user, 2026-11-15).
+          v.description.contains('وجهًا واحدًا'))
         '${v.word - from}:faces:${_descriptionKey(v.description)}',
       if (_yaIdafa(v) case final ya? when ya != _hafsYa(ayah, v.word))
         '${v.word - from}:ya:$ya',
