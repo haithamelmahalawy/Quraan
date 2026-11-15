@@ -113,14 +113,14 @@ class _PageNavigatorState extends State<PageNavigator> {
   Widget build(BuildContext context) {
     final q = widget.quran;
     Widget wheel({
-      required Key key,
+      required String name,
       required FixedExtentScrollController controller,
       required int count,
       required ValueChanged<int> onChanged,
       required String Function(int) label,
       required TextStyle style,
     }) => ListWheelScrollView.useDelegate(
-      key: key,
+      key: ValueKey(name),
       controller: controller,
       itemExtent: 38,
       diameterRatio: 1.5,
@@ -131,15 +131,40 @@ class _PageNavigatorState extends State<PageNavigator> {
       onSelectedItemChanged: onChanged,
       childDelegate: ListWheelChildBuilderDelegate(
         childCount: count,
-        builder: (context, i) => Center(child: Text(label(i), style: style)),
+        // Tapped, brought into the band and chosen, no turning needed (the
+        // user, 2026-11-15); a halo of the page round its letters, the
+        // mushaf's lines faint behind.
+        builder: (context, i) => GestureDetector(
+          key: ValueKey('$name-$i'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => controller.animateToItem(
+            i,
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOut,
+          ),
+          child: Center(
+            child: Text(
+              label(i),
+              style: style.copyWith(
+                shadows: [
+                  for (final blur in const [2.0, 4.0])
+                    Shadow(color: MushafColors.page, blurRadius: blur),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
     return Material(
       key: const ValueKey('page-navigator'),
-      color: MushafColors.page.withAlpha(245),
-      elevation: 6,
-      shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(22),
+      // Faint, the mushaf's first lines read through it; the band of the
+      // surah and the page chosen clear, hardly faint (the user, 2026-11-15).
+      color: MushafColors.page.withAlpha(150),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(color: MushafColors.gold.withAlpha(140)),
+      ),
       child: SizedBox(
         height: PageNavigator.height,
         child: Stack(
@@ -177,7 +202,7 @@ class _PageNavigatorState extends State<PageNavigator> {
                 height: 40,
                 margin: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: MushafColors.goldLight.withAlpha(150),
+                  color: MushafColors.goldLight.withAlpha(225),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: MushafColors.gold, width: 1.2),
                 ),
@@ -189,7 +214,7 @@ class _PageNavigatorState extends State<PageNavigator> {
                 Expanded(
                   flex: 3,
                   child: wheel(
-                    key: const ValueKey('surah-wheel'),
+                    name: 'surah-wheel',
                     controller: _surahs,
                     count: q.surahs.length,
                     onChanged: _surahChosen,
@@ -205,7 +230,7 @@ class _PageNavigatorState extends State<PageNavigator> {
                 Expanded(
                   flex: 2,
                   child: wheel(
-                    key: const ValueKey('page-wheel'),
+                    name: 'page-wheel',
                     controller: _pages,
                     count: q.lastPage - q.firstPage + 1,
                     onChanged: _pageChosen,

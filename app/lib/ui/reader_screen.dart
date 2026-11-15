@@ -187,11 +187,10 @@ class _ReaderScreenState extends State<ReaderScreen>
   /// Folded away at first, in every view (the user, 2026-11-13).
   bool _topBarOpen = false;
 
-  /// The pages' bar below, let up by the index's icon over the page and
-  /// put away again two seconds after a page is chosen, or at once by a
-  /// touch anywhere outside it (the user, 2026-11-15).
+  /// The pages' bar at the top, let down by «الفهرس»; it stays, no time
+  /// putting it away, until a touch anywhere outside it (the user,
+  /// 2026-11-15).
   bool _sliderOpen = false;
-  Timer? _sliderHide;
   Offset? _sliderDownAt;
 
   /// The ring of the looks of the mushaf open over the page (the user,
@@ -257,6 +256,9 @@ class _ReaderScreenState extends State<ReaderScreen>
       }
       fly ? _hint.forward(from: 0) : setState(() {});
     });
+    // A tap asks no frame of its own: one asked, so it answers at once, not
+    // after a few more taps (the user, 2026-11-15).
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   /// A page was turned: hide the side of the mushaf until the reader stays.
@@ -323,7 +325,6 @@ class _ReaderScreenState extends State<ReaderScreen>
     _blink.dispose();
     _settle?.cancel();
     _pendingWord?.cancel();
-    _sliderHide?.cancel();
     _readAhead?.cancel();
     _gestureLabelTimer?.cancel();
     _hint.dispose();
@@ -497,16 +498,9 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   /// «السور والصفحات»: the two wheels, right under the pages' bar at the
-  /// top, shown and put away with it (the user, 2026-11-15); turned, the bar
-  /// and they put away two seconds after the last.
-  Widget _wheels() => PageNavigator(
-    quran: _quran,
-    page: _page,
-    onGo: (page) {
-      _goToPage(page);
-      _hideSliderSoon();
-    },
-  );
+  /// top, shown and put away with it (the user, 2026-11-15).
+  Widget _wheels() =>
+      PageNavigator(quran: _quran, page: _page, onGo: _goToPage);
 
   /// Full screen, no bar above the page: «الفهرس» lets the pages' bar and
   /// the wheels down over its top.
@@ -750,7 +744,6 @@ class _ReaderScreenState extends State<ReaderScreen>
       quran: _quran,
       page: _page,
       onGo: _goToPage,
-      onLetGo: _hideSliderSoon,
     );
     if (_fullScreen) {
       return Scaffold(
@@ -1062,6 +1055,7 @@ class _ReaderScreenState extends State<ReaderScreen>
               ? 'الصفحة في يمين المصحف'
               : 'الصفحة في يسار المصحف',
           child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () => _showSide(fly: true),
             child: OpenMushafView(
               key: keyed ? _sideIcon : null,
@@ -1118,7 +1112,6 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   /// The pages' bar let up, or put away.
   void _toggleSlider() {
-    _sliderHide?.cancel();
     setState(() => _sliderOpen = !_sliderOpen);
     // Let down where the riwayat come down: they go up.
     if (_sliderOpen) _riwayatOpen.value = false;
@@ -1175,15 +1168,6 @@ class _ReaderScreenState extends State<ReaderScreen>
         ),
       ),
     );
-  }
-
-  /// A page chosen on the bar: the bar put away two seconds later, the page
-  /// grown again.
-  void _hideSliderSoon() {
-    _sliderHide?.cancel();
-    _sliderHide = Timer(const Duration(seconds: 2), () {
-      if (mounted && _sliderOpen) setState(() => _sliderOpen = false);
-    });
   }
 
   /// The bar up, a touch on the page puts it away at once and does nothing

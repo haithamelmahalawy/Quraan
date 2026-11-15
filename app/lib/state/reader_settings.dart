@@ -138,9 +138,14 @@ class ReaderSettings extends ChangeNotifier {
   set compareHafs(bool on) => _set('compareHafs', on);
 
   /// «تنبيه الاختلافات»: how the words that differ from Hafs (farsh or
-  /// usul) move to catch the eye; off when null.
-  DiffAlert? get diffAlert =>
-      DiffAlert.values.asNameMap()[_get('diffAlert') as String? ?? ''];
+  /// usul) move to catch the eye; off when null. Lit at first in the app
+  /// (the user, 2026-11-15); tests' settings without it.
+  DiffAlert? get diffAlert {
+    final kept = _get('diffAlert') as String?;
+    if (kept == null) return _prefs != null ? DiffAlert.glow : null;
+    return DiffAlert.values.asNameMap()[kept];
+  }
+
   set diffAlert(DiffAlert? style) => _set('diffAlert', style?.name ?? '');
 
   /// What the camera reads of a printed page: its number (the fastest), a
@@ -240,13 +245,15 @@ class ReaderSettings extends ChangeNotifier {
         DisplayMode.hamesh;
     s._fontSize = prefs.getDouble('fontSize') ?? 24;
     s._page = prefs.getInt('page') ?? 1;
-    s._showMutashabihat = prefs.getBool('mutashabihat') ?? true;
+    // Off at first (the user, 2026-11-15).
+    s._showMutashabihat = prefs.getBool('mutashabihat') ?? false;
     s._blinkToOpen = prefs.getBool('blink') ?? false;
     s._twoPages = prefs.getBool('twoPages') ?? false;
     s._qcfFont = prefs.getBool('qcf') ?? true;
     s._themeMode =
         ThemeMode.values.asNameMap()[prefs.getString('theme')] ??
-        ThemeMode.dark;
+        // The light mushaf at first (the user, 2026-11-15).
+        ThemeMode.light;
     return s;
   }
 

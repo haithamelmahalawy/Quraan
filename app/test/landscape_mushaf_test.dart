@@ -11,6 +11,7 @@ import 'package:qiraat_mushaf/ui/mushaf_decor.dart';
 import 'package:qiraat_mushaf/ui/mushaf_lines.dart';
 import 'package:qiraat_mushaf/ui/mushaf_page.dart';
 import 'package:qiraat_mushaf/ui/mushaf_zoom.dart';
+import 'package:qiraat_mushaf/ui/page_side_hint.dart';
 import 'package:qiraat_mushaf/ui/page_slider.dart';
 import 'package:qiraat_mushaf/ui/reader_screen.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
@@ -379,8 +380,8 @@ void main() {
   });
 
   // No bar of pages below: «الفهرس» beside the lamp lets it down at the top,
-  // where the riwayat come down; a page chosen puts it away two seconds
-  // later, a touch outside it at once (the user, 2026-11-15).
+  // where the riwayat come down; it stays, a page chosen or not, until a
+  // touch outside it (the user, 2026-11-15).
   testWidgets('the pages\' bar let down at the top by the index beside the '
       'lamp, put away again', (t) async {
     final settings = ReaderSettings.memory(selected: {'warsh'})
@@ -422,14 +423,14 @@ void main() {
     expect(t.getSize(current).height, closeTo(full.height - 44, 1));
     expect(scroll.offset, closeTo(180, .1));
 
-    // A page chosen: still down a moment, away two seconds later.
+    // A page chosen: it stays, no time putting it away.
     t.widget<PageSlider>(find.byType(PageSlider)).onGo(9);
-    t.widget<PageSlider>(find.byType(PageSlider)).onLetGo!();
+    t.widget<PageSlider>(find.byType(PageSlider)).onLetGo?.call();
     await t.pumpAndSettle();
     expect(settings.page, 9);
-    await t.pump(const Duration(milliseconds: 1500));
+    await t.pump(const Duration(seconds: 5));
     expect(find.byType(Slider).hitTestable(), findsOneWidget);
-    await t.pump(const Duration(milliseconds: 600));
+    await t.tapAt(full.bottomCenter - const Offset(0, 20));
     await t.pumpAndSettle();
     expect(find.byType(Slider).hitTestable(), findsNothing);
     expect(t.getSize(current).height, closeTo(full.height, 1));
@@ -927,13 +928,30 @@ void main() {
     await t.pump(const Duration(milliseconds: 300));
     expect(settings.page, page);
     expect(wheel('surah-wheel').selectedItem, 3);
+    // A surah seen on its wheel, tapped: brought into the band and chosen,
+    // no turning needed; a page as well (the user, 2026-11-15).
+    final next = wheel('surah-wheel').selectedItem + 2;
+    await t.tap(find.byKey(ValueKey('surah-wheel-$next')).hitTestable());
+    await t.pump(const Duration(milliseconds: 300));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(wheel('surah-wheel').selectedItem, next);
+    expect(settings.page, quran.surah(next + 1).startPage);
+    await t.pump(const Duration(milliseconds: 300));
+    await t.pump(const Duration(milliseconds: 300));
+    final shown = wheel('page-wheel').selectedItem;
+    await t.tap(find.byKey(ValueKey('page-wheel-${shown + 1}')).hitTestable());
+    await t.pump(const Duration(milliseconds: 300));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(settings.page, quran.firstPage + shown + 1);
     // A page chosen on the bar: the wheels brought to it.
     t.widget<PageSlider>(find.byType(PageSlider)).onGo(page + 5);
     await t.pump();
     await t.pump(const Duration(milliseconds: 100));
     expect(wheel('page-wheel').selectedItem, page + 5 - quran.firstPage);
-    // Two seconds after the last, the bar and the wheels put away.
-    await t.pump(const Duration(seconds: 3));
+    // No time puts them away.
+    await t.pump(const Duration(seconds: 5));
+    expect(navigator, findsOneWidget);
+    await t.tapAt(const Offset(20, 700));
     await t.pumpAndSettle();
     expect(navigator, findsNothing);
     expect(find.byType(Slider).hitTestable(), findsNothing);
@@ -1020,6 +1038,30 @@ void main() {
     expect(print.width, closeTo(800 - 240, 1));
     expect(print.left, closeTo(800 - print.right, 1));
     expect(t.takeException(), isNull);
+  });
+
+  // The small icon of the side of the mushaf answers its first tap: the open
+  // mushaf shown at once, not after a few more (the user, 2026-11-15).
+  testWidgets('the side icon answers the first tap', (t) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..page = 3
+      ..twoPages = false
+      ..qcfFont = false;
+    await show(t, const Size(432, 800), settings: settings, reader: true);
+    await t.pump(const Duration(seconds: 2));
+    await t.pumpAndSettle();
+    final icon = find.byType(OpenMushafView).hitTestable();
+    expect(icon, findsWidgets);
+    expect(find.byType(PageSideHint), findsNothing);
+    await t.tap(icon.first);
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 100));
+    expect(find.byType(PageSideHint), findsOneWidget);
+    await t.pump(const Duration(seconds: 3));
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
   });
 }
 
