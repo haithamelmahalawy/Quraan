@@ -7053,4 +7053,57 @@ void main() {
       expect(r.mention, {826}, reason: '$s');
     }
   });
+
+  // الكهف ١٨، ٢٥ (the user, 2026-11-15).
+  test('ru\'uban and mi\'ati of al-Kisa\'i cite their bayts', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'khalaf_hamzah', 'ishaq']);
+    for (final (id, s, a, w, hafs, bayt) in const [
+      ('duri_kisai', 18, 18, 21, 'رُعۡبٗا', 572),
+      ('duri_kisai', 18, 25, 4, 'مِاْئَةٖ', 837),
+      ('khalaf_hamzah', 18, 25, 4, 'مِاْئَةٖ', 837),
+      ('ishaq', 18, 25, 4, 'مِاْئَةٖ', 837),
+    ]) {
+      final v = variants
+          .at([id], s, a, w)
+          .where((v) => v.word == w && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, hafs, s, surahs);
+      expect(r.poem, Poem.shatibiyya, reason: '$id $a');
+      expect(r.mention, {bayt}, reason: '$id $a');
+      final asl = [for (final b in r.asl) b.n];
+      expect(asl, id == 'ishaq' ? [7, 8] : isEmpty, reason: '$id $a');
+      expect(v.text, isNot(contains('ٖ')), reason: id);
+    }
+  });
+
+  // «بِثُمُرِهِۦ» (الكهف ٤٢) for Hamza, al-Kisa'i and Khalaf al-'Ashir as Ibn
+  // Kathir's, Ibn 'Amir's and Ruways's: the same bayt (the user, 2026-11-15).
+  test('bi-thumurihi cites as Ibn Kathir\'s and Ibn \'Amir\'s', () async {
+    final variants = await VariantRepository.discover();
+    final ids = [
+      'qunbul',
+      'hisham',
+      'ruways',
+      'duri_kisai',
+      'khalaf_hamzah',
+      'ishaq',
+    ];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 18, 42, 1)
+          .where((v) => v.word == 1 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, 'بِثَمَرِهِۦ', 18, surahs);
+      expect(v.text, 'بِثُمُرِهِۦ', reason: id);
+      expect(v.description, 'بضم الثاء والميم', reason: id);
+      expect(r.mention, id == 'ruways' ? {148} : {838}, reason: id);
+      expect(
+        [for (final b in r.asl) b.n],
+        id == 'ishaq' ? [7, 8] : isEmpty,
+        reason: id,
+      );
+    }
+  });
 }

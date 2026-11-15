@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
@@ -3640,16 +3641,33 @@ class _RiwayatWheelState extends State<_RiwayatWheel>
   /// The riwaya last brought into the circle under the finger.
   int? _passing;
 
+  /// The riwaya in the circle waiting to be shown, the finger still on it.
+  Timer? _resting;
+
+  /// How long a riwaya rests in the circle under the finger before the page
+  /// shows it.
+  static const restBeforeShown = Duration(milliseconds: 300);
+
   /// While the finger turns the wheel: a riwaya come well into the circle
-  /// is shown at once, the finger not yet lifted (the user, 2026-11-15).
+  /// and resting there a moment is shown, the finger not yet lifted (the
+  /// user, 2026-11-15). Passed over as the finger goes on, the page is not
+  /// drawn again for it: drawing each one stopped the wheel on a phone, a
+  /// riwaya at a time (the user, 2026-11-15).
   void _chooseInCircle() {
     if (_count == 0) return;
     final at = _turn.value;
-    if ((at - at.roundToDouble()).abs() > .3) return;
+    if ((at - at.roundToDouble()).abs() > .3) {
+      _resting?.cancel();
+      return;
+    }
     final i = _nearest(at);
     if (i == _passing) return;
     _passing = i;
-    if (i != _shown) widget.riwayat[i].select();
+    _resting?.cancel();
+    _resting = Timer(restBeforeShown, () {
+      if (!mounted || !_dragging || _nearest(_turn.value) != i) return;
+      if (i != _shown) widget.riwayat[i].select();
+    });
   }
 
   int get _count => widget.riwayat.length;
@@ -3678,6 +3696,7 @@ class _RiwayatWheelState extends State<_RiwayatWheel>
 
   @override
   void dispose() {
+    _resting?.cancel();
     _turn.dispose();
     super.dispose();
   }

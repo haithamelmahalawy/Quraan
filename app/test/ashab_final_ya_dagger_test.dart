@@ -1093,4 +1093,55 @@ void main() {
       );
     }
   });
+
+  // الكهف ١٨-٢٥ (the user, 2026-11-15).
+  test('ru\'uban, the second labithtum and mi\'ati in al-Kahf', () {
+    List<List> at(String id, int a, int w) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>()
+            .where((v) => v[0] == 18 && v[1] == a && v[2] == w)
+            .toList();
+    for (final id in ['duri_kisai', 'abul_harith', 'ibn_wardan', 'rawh']) {
+      final v = at(id, 18, 21).singleWhere((v) => v[5] == 'f');
+      expect(v[4], 'رُعُبٗا', reason: id);
+      expect(v[6], 'بضم العين', reason: id);
+    }
+    for (final id in [
+      'duri_kisai',
+      'abul_harith',
+      'khalaf_hamzah',
+      'khallad',
+      'hisham',
+      'ibn_dhakwan',
+      'ibn_wardan',
+      'ibn_jammaz',
+    ]) {
+      final first = at(id, 19, 8).singleWhere((v) => v[7] == 'idgham_saghir');
+      final second = at(id, 19, 19).singleWhere((v) => v[5] == 'u');
+      expect(second[7], 'idgham_saghir', reason: id);
+      expect(second[6], first[6], reason: id);
+      expect('${second[4]}', allOf(contains('ثت'), contains('ّ')), reason: id);
+    }
+    for (final id in ['ishaq', 'idris', 'qalun']) {
+      expect(
+        at(id, 19, 19).where((v) => v.length > 7 && v[7] == 'idgham_saghir'),
+        isEmpty,
+        reason: id,
+      );
+    }
+    for (final id in [
+      'duri_kisai',
+      'abul_harith',
+      'khalaf_hamzah',
+      'khallad',
+      'ishaq',
+      'idris',
+    ]) {
+      final v = at(id, 25, 4).singleWhere((v) => v[5] == 'f');
+      expect(v[4], 'مِاْئَةِ', reason: id);
+      expect(v[6], 'بكسر التاء دون التنوين', reason: id);
+    }
+  });
 }

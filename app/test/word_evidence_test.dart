@@ -382,8 +382,10 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  // A riwaya come into the circle under the finger is shown at once, the
-  // finger not lifted; the next after it as well (the user, 2026-11-15).
+  // A riwaya come into the circle under the finger and resting there a
+  // moment is shown, the finger not lifted; passed over as the finger goes
+  // on, the page not drawn for it, the wheel turning freely (the user,
+  // 2026-11-15).
   testWidgets('the riwaya passing into the circle shown before the finger '
       'is lifted', (t) async {
     final all = [
@@ -396,7 +398,7 @@ void main() {
     final before = inCircle(t);
     final ids = onWheel(t);
     final next = ids[ids.indexOf(before) + 1];
-    final after = ids[ids.indexOf(before) + 2];
+    final third = ids[ids.indexOf(before) + 3];
     final step =
         t.getCenter(inWheel(ValueKey('frame-riwaya-$before'))).dx -
         t.getCenter(inWheel(ValueKey('frame-riwaya-$next'))).dx;
@@ -405,16 +407,23 @@ void main() {
       await finger.moveBy(Offset(step / 10, 0));
       await t.pump();
     }
+    // Not yet: it has not rested there.
+    expect(settings.displayed, isNot(next));
+    await t.pump(const Duration(milliseconds: 400));
     expect(settings.displayed, next);
-    for (var i = 0; i < 10; i++) {
+    // On over the one after it to the third, quickly: passed over, the page
+    // not drawn for it.
+    for (var i = 0; i < 20; i++) {
       await finger.moveBy(Offset(step / 10, 0));
-      await t.pump();
+      await t.pump(const Duration(milliseconds: 10));
     }
-    expect(settings.displayed, after);
+    expect(settings.displayed, next);
+    await t.pump(const Duration(milliseconds: 400));
+    expect(settings.displayed, third);
     await finger.up();
     await t.pumpAndSettle();
-    expect(settings.displayed, after);
-    expect(inCircle(t), after);
+    expect(settings.displayed, third);
+    expect(inCircle(t), third);
     expect(settings.page, 3);
     expect(t.takeException(), isNull);
   });

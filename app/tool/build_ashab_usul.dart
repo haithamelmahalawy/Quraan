@@ -1470,7 +1470,9 @@ Map<String, int> buildAshabUsul(
         a,
         5,
         1,
-        hafs.replaceFirst('نَ', 'نَ$imalaSign').replaceFirst('ٔ', 'ٔ$imalaSign'),
+        hafs
+            .replaceFirst('نَ', 'نَ$imalaSign')
+            .replaceFirst('ٔ', 'ٔ$imalaSign'),
         'u',
         'بإمالة النون والهمزة',
         '',
@@ -1506,13 +1508,102 @@ Map<String, int> buildAshabUsul(
       ];
       variants.removeWhere(
         (r) =>
-            order(r as List) == order(row) &&
-            r.length > 7 &&
-            r[7] == 'no_sakt',
+            order(r as List) == order(row) && r.length > 7 && r[7] == 'no_sakt',
       );
       final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
       variants.insert(at < 0 ? variants.length : at, row);
     }
+  }
+  // الكهف ١٨-٢٥ (the user, 2026-11-15): al-Kisa'i's «رُعُبٗا» as Abu Ja'far's
+  // and Ya'qub's; «لَبِثۡتُمۡ» the second (١٩) merged as the first; «مِاْئَةِ»
+  // drawn as Hafs's, its ta broken for the tanween.
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    void put(List row, bool Function(List) old) {
+      variants.removeWhere((r) => order(r as List) == order(row) && old(r));
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+
+    if (_kisai.contains(id)) {
+      put([
+        18,
+        18,
+        21,
+        1,
+        'رُعُبٗا',
+        'f',
+        'بضم العين',
+        '',
+        {'source': ashabSource, 'farshFrom': 'ibn_wardan'},
+      ], (r) => r[5] == 'f');
+    }
+    final merged = variants.cast<List>().any(
+      (r) =>
+          r[0] == 18 &&
+          r[1] == 19 &&
+          r[2] == 8 &&
+          r.length > 7 &&
+          r[7] == 'idgham_saghir',
+    );
+    if (merged) {
+      final hafs = index[_key(18, 19, 19)]!.t;
+      put([
+        18,
+        19,
+        19,
+        1,
+        hafs.replaceFirst('ثۡتُ', 'ثتُّ'),
+        'u',
+        'بإدغام الثاء في التاء',
+        'idgham_saghir',
+        {'source': ashabSource},
+      ], (r) => r.length > 7 && r[7] == 'idgham_saghir');
+    }
+    if (_hamza.contains(id) ||
+        _kisai.contains(id) ||
+        _khalafAshir.contains(id)) {
+      final hafs = index[_key(18, 25, 4)]!.t;
+      put([
+        18,
+        25,
+        4,
+        1,
+        hafs.replaceFirst(RegExp('[ٍٖ]\$'), 'ِ'),
+        'f',
+        'بكسر التاء دون التنوين',
+        '',
+        {'source': ashabSource},
+      ], (r) => r[5] == 'f');
+    }
+  }
+  // «بِثُمُرِهِۦ» (الكهف ٤٢) as «ثُمُرٞ» before it, as Ibn Kathir's, Ibn
+  // 'Amir's and Ruways's; «ثُمُرٞ» with Hafs's tanween (the user, 2026-11-15).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final v in variants.cast<List>()) {
+      if (v[0] == 18 && v[1] == 34 && v[2] == 2 && v[5] == 'f') {
+        v[4] = 'ثُمُرٞ';
+      }
+    }
+    final row = [
+      18,
+      42,
+      1,
+      1,
+      'بِثُمُرِهِۦ',
+      'f',
+      'بضم الثاء والميم',
+      '',
+      {'source': ashabSource, 'farshFrom': 'hisham'},
+    ];
+    variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
   }
   // Hamza's and Khalaf al-'Ashir's «يَتَوَفَّىٰهُمُ» (النحل ٢٨، ٣٢): Hafs's word
   // with the ya for the ta, its dagger alif kept, leaned; and their and

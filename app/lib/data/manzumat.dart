@@ -324,10 +324,7 @@ class Manzumat {
     // 2026-11-15).
     final withKhalaf =
         poem == Poem.shatibiyya &&
-            const {
-              'hamzah',
-              'kisai',
-            }.contains(qiraaOf(reading.riwayaId).id)
+            const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id)
         ? _durrahOnKhalafToo(reading, hafs)
         : const <int>{};
     final asl = withKhalaf.isNotEmpty
@@ -1319,6 +1316,23 @@ class Manzumat {
     // اِذْ» (143), Abu Ja'far's nun, Ya'qub and Khalaf as their asl (the user,
     // 2026-11-15).
     if (poem == Poem.durrah && word == '16:96:7' && !v.isUsul) return {143};
+    // «رُعُبٗا» (الكهف ١٨) with the damma: «وَحُرِّكَ عَيْنُ الرُّعْبِ ضَمَّا كَمَا
+    // رَسَا وَرُعْباً» (572); «مِاْئَةِ» (الكهف ٢٥) without the tanween:
+    // «وَحَذْفُكَ لِلتَّنْوِينِ مِنْ مِائَةٍ شَفَا» (837) (the user, 2026-11-15).
+    if (poem == Poem.shatibiyya && word == '18:18:21' && !v.isUsul) {
+      return {572};
+    }
+    if (poem == Poem.shatibiyya && word == '18:25:4' && !v.isUsul) {
+      return {837};
+    }
+    // «ثُمُرٞ» and «بِثُمُرِهِۦ» (الكهف ٣٤، ٤٢) with two dammas: «وَفِي ثُمُرٍ
+    // ضَمَّيْهِ يَفْتَحُ عَاصِمٌ بِحَرْفَيْهِ وَاْلإِسْكَانُ فِي الْمِيمِ حُصِّلاِ» (838);
+    // Ruways's, the Durrah's «... كَثُمْرِهِ بِضَمَّيْ طُوىً» (148) (the user,
+    // 2026-11-15).
+    if (!v.isUsul && (word == '18:34:2' || word == '18:42:1')) {
+      if (poem == Poem.shatibiyya) return {838};
+      if (v.riwayaId == 'ruways') return {148};
+    }
     // «وَنَـَٔا» (الإسراء ٨٣، فصلت ٥١) leaned: «نَأَى شَرْعُ يُمْنٍ بِاخْتِلاَفٍ وَشُعْبَةٌ
     // في الاِسْرَا وَهُمْ وَالنُّونُ ضَوْءُ سَنًا تَلَا» (312) (the user, 2026-11-15).
     if (poem == Poem.shatibiyya &&
