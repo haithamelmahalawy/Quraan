@@ -7106,4 +7106,153 @@ void main() {
       );
     }
   });
+
+  // al-Kisa'i's «أَرَيۡتَ» of the question, wherever it comes: «أَرَيْتَ فِي
+  // الاِسْتِفْهَامِ لاَ عَيْنَ رَاجِعٌ ...» (638), the Durrah's «وَسَهِّلَا / أَرَيْتَ
+  // وَإِسْرَائِيلَ كَائِنْ وَمَدَّ أُدْ» (33-34) beside it (the user, 2026-11-15).
+  test('al-Kisa\'i\'s ara\'ayta cites 638 and the Durrah\'s 33-34', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'abul_harith']);
+    final quran = await QuranRepository.load();
+    var seen = 0;
+    for (final id in ['duri_kisai', 'abul_harith']) {
+      final rows =
+          (jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                  as Map)['variants']
+              as List;
+      for (final row in rows.cast<List>()) {
+        if (row[5] != 'f' || !'${row[4]}'.contains('رَيۡت')) continue;
+        final (s, a, w) = (row[0] as int, row[1] as int, row[2] as int);
+        final v = variants
+            .at([id], s, a, w)
+            .where((v) => v.word == w && !v.isUsul)
+            .single;
+        final hafs = quran.ayah(s, a).words[w];
+        final r = manzumat.referenceOf(v, hafs, s, surahs);
+        expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
+        expect(r.mention, {638}, reason: '$id $s:$a');
+        expect([for (final b in r.asl) b.n], [33, 34], reason: '$id $s:$a');
+        seen++;
+      }
+    }
+    expect(seen, greaterThan(20));
+  });
+
+  // «ٱلسُّدَّيۡنِ» (الكهف ٩٣) of the Durrah's readers: «... ضَمُّ سَدَّيْنِ حُوِّلَا /
+  // كَسَدًّا هُنَا» (151-152) (the user, 2026-11-15).
+  test('al-suddayni cites the Durrah\'s 151-152', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ishaq', 'idris', 'rawh', 'ruways']);
+    for (final (id, a, w, hafs) in const [
+      ('ishaq', 93, 4, 'ٱلسَّدَّيۡنِ'),
+      ('idris', 93, 4, 'ٱلسَّدَّيۡنِ'),
+      ('rawh', 93, 4, 'ٱلسَّدَّيۡنِ'),
+      ('rawh', 94, 18, 'سَدّٗا'),
+    ]) {
+      final v = variants
+          .at([id], 18, a, w)
+          .where((v) => v.word == w && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, hafs, 18, surahs);
+      expect(r.poem, Poem.durrah, reason: '$id $a');
+      expect(r.mention, {151, 152}, reason: '$id $a');
+    }
+  });
+
+  // «يَرِثۡنِي وَيَرِثۡ» (مريم ٦) quiet: «وَحَرْفَا يَرِثْ بِالْجَزْمِ حُلْوُ رِضىً»
+  // (860), the Durrah's «يَرِثْ رَفْعُ حُزْ» (153) beside it (the user,
+  // 2026-11-15).
+  test('yarithni wa-yarith cite 860 and the Durrah\'s 153', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded([
+      'duri_abuamr',
+      'susi',
+      'duri_kisai',
+      'abul_harith',
+    ]);
+    for (final (id, w, hafs) in const [
+      ('duri_abuamr', 0, 'يَرِثُنِي'),
+      ('duri_abuamr', 1, 'وَيَرِثُ'),
+      ('susi', 1, 'وَيَرِثُ'),
+      ('duri_kisai', 0, 'يَرِثُنِي وَيَرِثُ'),
+      ('abul_harith', 0, 'يَرِثُنِي وَيَرِثُ'),
+    ]) {
+      final v = variants
+          .at([id], 19, 6, w)
+          .where((v) => v.word == w && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, hafs, 19, surahs);
+      expect(r.poem, Poem.shatibiyya, reason: '$id $w');
+      expect(r.mention, {860}, reason: '$id $w');
+      expect([for (final b in r.asl) b.n], [153], reason: '$id $w');
+    }
+  });
+
+  // «نُنجِي» (مريم ٧٢) light: the Durrah's 106-107 (the user, 2026-11-15).
+  test('nunji of Maryam cites the Durrah\'s 106-107', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['rawh', 'ruways', 'duri_kisai']);
+    for (final id in ['rawh', 'ruways', 'duri_kisai']) {
+      final v = variants
+          .at([id], 19, 72, 1)
+          .where((v) => v.word == 1 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'نُنَجِّي',
+        19,
+        surahs,
+        entries: book.at(19, 72, 1),
+      );
+      if (id == 'duri_kisai') {
+        expect(r.mention, {866}, reason: id);
+      } else {
+        expect(r.poem, Poem.durrah, reason: id);
+        expect(r.mention, {106, 107}, reason: id);
+      }
+    }
+  });
+
+  // «يَكَادُ» (مريم ٩٠) with the ya, Nafi''s and al-Kisa'i's: «... يَكَادُ أَتَى
+  // رِضاً» (868), the Durrah's «... فَافْتَحْ يَكَادُ أَنْ / نِثِ» (156) beside it,
+  // Abu Ja'far parting from Nafi' there (the user, 2026-11-15).
+  test('yakadu of Maryam cites 868 and the Durrah\'s 156', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['qalun', 'warsh', 'duri_kisai']);
+    for (final id in ['qalun', 'warsh', 'duri_kisai']) {
+      final v = variants
+          .at([id], 19, 90, 0)
+          .where((v) => v.word == 0 && !v.isUsul)
+          .single;
+      expect(v.text, 'يَكَادُ', reason: id);
+      final r = manzumat.referenceOf(
+        v,
+        'تَكَادُ',
+        19,
+        surahs,
+        entries: book.at(19, 90, 0),
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, {868}, reason: id);
+      expect([for (final b in r.asl) b.n], [156], reason: id);
+    }
+    // Qalun's «يُبَشِّرُ» of al-Shura, as Hafs's: no bayt of Khalaf's beside it.
+    final shura = manzumat.referenceOf(
+      Variant(
+        riwayaId: 'qalun',
+        surah: 42,
+        ayah: 23,
+        word: 2,
+        count: 1,
+        text: 'يُبَشِّرُ',
+        kind: VariantKind.farsh,
+        description: '',
+        rule: 'comparison',
+      ),
+      'يُبَشِّرُ',
+      42,
+      surahs,
+    );
+    expect(shura.asl, isEmpty);
+  });
 }

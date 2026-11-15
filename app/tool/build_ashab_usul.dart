@@ -1605,6 +1605,107 @@ Map<String, int> buildAshabUsul(
     final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
     variants.insert(at < 0 ? variants.length : at, row);
   }
+  // al-Kisa'i's «هُزُؤٗا» in the hamesh as Shu'ba's: «بالهمز» (the user,
+  // 2026-11-15).
+  if (_kisai.contains(id)) {
+    for (final v in (data['variants'] as List).cast<List>()) {
+      if (v[5] == 'h' && '${v[4]}'.startsWith('هُزُؤ')) v[6] = 'بالهمز';
+    }
+  }
+  // «كٓهيعٓصٓ ذِكۡرُ» (مريم ١-٢) merged: «ذِّكۡرُ» with the shadda on its dhal,
+  // in the idgham with «كٓهيعٓصٓ» (the user, 2026-11-15).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final merged = variants.cast<List>().any(
+      (r) =>
+          r[0] == 19 &&
+          r[1] == 1 &&
+          r[2] == 0 &&
+          r.length > 7 &&
+          r[7] == 'idgham_saghir',
+    );
+    if (merged) {
+      final hafs = index[_key(19, 2, 0)]!.t;
+      final row = [
+        19,
+        2,
+        0,
+        1,
+        'ذّ${hafs.substring(1)}',
+        'u',
+        'بإدغام الصاد في الذال',
+        'idgham_saghir',
+        {'source': ashabSource},
+      ];
+      variants.removeWhere(
+        (r) =>
+            order(r as List) == order(row) &&
+            r.length > 7 &&
+            r[7] == 'idgham_saghir',
+      );
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+    // Its words as the user tells them, «كٓهيعٓصٓ» too; and its imala: Hamza's
+    // and Khalaf al-'Ashir's of the ya, al-Kisa'i's of the ha and the ya
+    // (the user, 2026-11-15).
+    for (final r in variants.cast<List>()) {
+      if (r[0] != 19 || r[1] != 1 || r[2] != 0 || r[5] != 'u') continue;
+      if (r.length > 7 && r[7] == 'idgham_saghir') {
+        r[6] = 'بإدغام الصاد في الذال';
+      } else if ('${r[6]}'.startsWith('بإمالة')) {
+        final both = _kisai.contains(id);
+        r[4] = both ? 'كٓه۪ي۪عٓصٓ' : 'كٓهي۪عٓصٓ';
+        r[6] = both ? 'بإمالة الهاء والياء' : 'بإمالة الياء';
+      }
+    }
+  }
+  // Hamza's and al-Kisa'i's «خَلَقۡنَٰكَ» (مريم ٩): the added alif the dagger one
+  // (the user, 2026-11-15).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 19 && v[1] == 9 && v[2] == 8 && v[5] == 'f') {
+      v[4] = 'خَلَقۡنَٰكَ';
+    }
+  }
+  // «وُلۡدٗا» (مريم ٨٨، ٩١، ٩٢): Hafs's «وَلَدٗا» with its waw raised and its lam
+  // quiet, one waw, none added; «وَوُلۡدًا» (٧٧) as it is (the user,
+  // 2026-11-15).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] != 19 || v[5] != 'f' || !const {88, 91, 92}.contains(v[1])) {
+      continue;
+    }
+    final hafs = index[_key(19, v[1] as int, v[2] as int)]?.t;
+    if (hafs == null || !hafs.startsWith('وَلَد')) continue;
+    v[4] = hafs.replaceFirst('وَلَد', 'وُلۡد');
+    v[6] = 'بضم الواو وإسكان اللام';
+  }
+  // «طه» (طه ١): Hamza, al-Kisa'i and Khalaf al-'Ashir lean the ta and the ha,
+  // in the imala (the user, 2026-11-15).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      20,
+      1,
+      0,
+      1,
+      'ط$imalaSignه$imalaSign',
+      'u',
+      'بإمالة الطاء والهاء',
+      '',
+      {'source': ashabSource},
+    ];
+    variants.removeWhere(
+      (r) =>
+          order(r as List) == order(row) &&
+          (r[5] == 'f' || '${r[6]}'.contains('إمالة')),
+    );
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
   // Hamza's and Khalaf al-'Ashir's «يَتَوَفَّىٰهُمُ» (النحل ٢٨، ٣٢): Hafs's word
   // with the ya for the ta, its dagger alif kept, leaned; and their and
   // al-Kisa'i's «يَأۡتِيَهُمُ» (النحل ٣٣) with the ya, its own opened (the user,

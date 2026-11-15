@@ -132,8 +132,7 @@ class _PageNavigatorState extends State<PageNavigator> {
       childDelegate: ListWheelChildBuilderDelegate(
         childCount: count,
         // Tapped, brought into the band and chosen, no turning needed (the
-        // user, 2026-11-15); a halo of the page round its letters, the
-        // mushaf's lines faint behind.
+        // user, 2026-11-15).
         builder: (context, i) => GestureDetector(
           key: ValueKey('$name-$i'),
           behavior: HitTestBehavior.opaque,
@@ -142,29 +141,17 @@ class _PageNavigatorState extends State<PageNavigator> {
             duration: const Duration(milliseconds: 260),
             curve: Curves.easeOut,
           ),
-          child: Center(
-            child: Text(
-              label(i),
-              style: style.copyWith(
-                shadows: [
-                  for (final blur in const [2.0, 4.0])
-                    Shadow(color: MushafColors.page, blurRadius: blur),
-                ],
-              ),
-            ),
-          ),
+          child: Center(child: Text(label(i), style: style)),
         ),
       ),
     );
     return Material(
       key: const ValueKey('page-navigator'),
-      // Faint, the mushaf's first lines read through it; the band of the
-      // surah and the page chosen clear, hardly faint (the user, 2026-11-15).
-      color: MushafColors.page.withAlpha(150),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: BorderSide(color: MushafColors.gold.withAlpha(140)),
-      ),
+      // Clear again, as it was before (the user, 2026-11-15).
+      color: MushafColors.page.withAlpha(245),
+      elevation: 6,
+      shadowColor: Colors.black26,
+      borderRadius: BorderRadius.circular(22),
       child: SizedBox(
         height: PageNavigator.height,
         child: Stack(
@@ -202,7 +189,7 @@ class _PageNavigatorState extends State<PageNavigator> {
                 height: 40,
                 margin: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: MushafColors.goldLight.withAlpha(225),
+                  color: MushafColors.goldLight.withAlpha(150),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: MushafColors.gold, width: 1.2),
                 ),

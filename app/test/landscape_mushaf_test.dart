@@ -1063,6 +1063,42 @@ void main() {
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();
   });
+
+  // Turned and zoomed in: the margins, zoomed with the page, showed only the
+  // starts of their lines at the screen's edge; out of sight till the page
+  // is back (the user, 2026-11-15).
+  testWidgets('a zoomed landscape page hides its margins till it is back', (
+    t,
+  ) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..page = 3
+      ..qcfFont = false;
+    await show(t, const Size(754, 418), settings: settings, reader: true);
+    final margin = find.byKey(const ValueKey('landscape-margin-zoom'));
+    bool shown() => t.widgetList<Visibility>(margin).every((v) => v.visible);
+    expect(margin, findsWidgets);
+    expect(shown(), isTrue);
+    final c = t.getCenter(find.byType(MushafLines).last);
+    final a = await t.startGesture(c - const Offset(40, 0), pointer: 1);
+    final b = await t.startGesture(c + const Offset(40, 0), pointer: 2);
+    await t.pump();
+    for (var i = 0; i < 10; i++) {
+      await a.moveBy(const Offset(-1.2, 0));
+      await b.moveBy(const Offset(1.2, 0));
+      await t.pump(const Duration(milliseconds: 16));
+    }
+    await a.up();
+    await b.up();
+    await t.pump(const Duration(seconds: 1));
+    expect(shown(), isFalse);
+    // «حجم الصفحة»: back, and the margins with it.
+    await t.tap(find.text('حجم الصفحة'));
+    await t.pump(const Duration(seconds: 1));
+    expect(shown(), isTrue);
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
 }
 
 class _StudyVariants extends VariantRepository {

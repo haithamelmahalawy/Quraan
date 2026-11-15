@@ -324,7 +324,12 @@ class Manzumat {
     // 2026-11-15).
     final withKhalaf =
         poem == Poem.shatibiyya &&
-            const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id)
+            const {
+              'hamzah',
+              'kisai',
+              'abu_amr',
+              'nafi',
+            }.contains(qiraaOf(reading.riwayaId).id)
         ? _durrahOnKhalafToo(reading, hafs)
         : const <int>{};
     final asl = withKhalaf.isNotEmpty
@@ -445,8 +450,21 @@ class Manzumat {
   static Set<int> _durrahOnKhalafToo(Variant v, String hafs) {
     if (v.isUsul) return const {};
     final bare = hafs.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '');
-    if (bare.startsWith('أمهت')) return const {94};
-    if (RegExp(r'^[وفل]?[ينت]بشر').hasMatch(bare)) return const {87};
+    // Hamza's and al-Kisa'i's alone: Nafi' and Abu 'Amr read these as Hafs.
+    final ashab = const {'hamzah', 'kisai'}.contains(qiraaOf(v.riwayaId).id);
+    if (ashab && bare.startsWith('أمهت')) return const {94};
+    if (ashab && RegExp(r'^[وفل]?[ينت]بشر').hasMatch(bare)) return const {87};
+    // al-Kisa'i's «أَرَيۡتَ», its hamza dropped: the Durrah's «وَسَهِّلَا /
+    // أَرَيْتَ وَإِسْرَائِيلَ كَائِنْ وَمَدَّ أُدْ» (33-34) (the user, 2026-11-15).
+    if (_kisaiAraita(v)) return const {33, 34};
+    // «يَكَادُ» (مريم ٩٠) with the ya: the Durrah's «... فَافْتَحْ يَكَادُ أَنْ / نِثِ»
+    // (156), Abu Ja'far parting from Nafi' there (the user, 2026-11-15).
+    if (_at(v) == '19:90:0') return const {156};
+    // «يَرِثۡنِي وَيَرِثۡ» (مريم ٦) quiet: the Durrah's «يَرِثْ رَفْعُ حُزْ» (153),
+    // Ya'qub parting from his asl there (the user, 2026-11-15).
+    if (v.surah == 19 && v.ayah == 6 && RegExp(r'^و?يرث').hasMatch(bare)) {
+      return const {153};
+    }
     return const {};
   }
 
@@ -594,6 +612,15 @@ class Manzumat {
   bool _araayta(Variant v) =>
       v.riwayaId == 'warsh' &&
       v.description.contains('تسهيل الهمزة الثانية، أو إبدالها ألفًا');
+
+  /// al-Kisa'i's «أَرَيۡتَ» of the question, wherever it comes, its hamza
+  /// dropped: «أَرَيْتَ فِي الاِسْتِفْهَامِ لاَ عَيْنَ رَاجِعٌ وَعَنْ نَافِعٍ سَهِّلْ وَكَمْ
+  /// مُبْدِلٍ جَلَا» (638), the Durrah's 33-34 beside it (the user, 2026-11-15).
+  static bool _kisaiAraita(Variant v) =>
+      const {'duri_kisai', 'abul_harith'}.contains(v.riwayaId) &&
+      !v.isUsul &&
+      RegExp(r'^[وف]?اف?ريت').hasMatch(_letters(v.text)) &&
+      v.description.contains('حذف الهمزة');
 
   /// Ibn Dhakwan's imala of «ٱلتَّوۡر۪ىٰةَ», in the farsh of Al 'Imran:
   /// «وَإِضْجَاعُكَ التَّوْرَاةَ مَا رُدَّ حُسْنُهُ».
@@ -1186,6 +1213,8 @@ class Manzumat {
   /// The verses reviewed word by word, each as the reviewer named it: they
   /// stand before a chapter's rule and before what the book quotes.
   Set<int> _reviewedVerses(Poem poem, Variant v, String hafs) {
+    // al-Kisa'i's «أَرَيۡتَ» of the question, before any other place's rule.
+    if (poem == Poem.shatibiyya && _kisaiAraita(v)) return {638};
     // «ٱلَّٰٓـِٔي» (الأحزاب ٤، المجادلة ٢، الطلاق ٤): «وَبِالْهَمْزِ كُلُّ اللاَّءِ
     // وَالْياَءِ بَعْدَهُ ذَكَا وَبِيَاءٍ سَاكِنٍ حَجَّ هُمَّلَا / وَكَالْيَاءِ مَكْسُوراً
     // لِوَرْشٍ وَعَنْهُمَا وَقِفْ مُسْكِناً وَالْهَمْزُ زَاكِيهِ بُجِّلَا»; Abu Ja'far's
@@ -1288,6 +1317,11 @@ class Manzumat {
     if (poem == Poem.shatibiyya && word == '15:59:4' && !v.isUsul) {
       return {806};
     }
+    // «نُنجِي» (مريم ٧٢) light: the Durrah's 106 and 107 together, not 107
+    // alone (the user, 2026-11-15).
+    if (poem == Poem.durrah && word == '19:72:1' && !v.isUsul) {
+      return {106, 107};
+    }
     // «عِيُونٍ» wherever it comes: «وَضَمَّ الْغُيُوبِ يَكْسِرَانِ عُيُوناً الْـعُيُونِ
     // شُيُوخاً دَانَهُ صُحْبَهٌ مِلَا» (628); the Durrah's «... اضْمُمْ غُيُوبِ عُيُونِ
     // مَعْ جُيُوبِ شُيُوخًا فِدْ» (102) (the user, 2026-11-14).
@@ -1324,6 +1358,20 @@ class Manzumat {
     }
     if (poem == Poem.shatibiyya && word == '18:25:4' && !v.isUsul) {
       return {837};
+    }
+    // «يَرِثۡنِي وَيَرِثۡ» (مريم ٦) quiet: «وَحَرْفَا يَرِثْ بِالْجَزْمِ حُلْوُ رِضىً»
+    // (860) (the user, 2026-11-15).
+    if (poem == Poem.shatibiyya &&
+        !v.isUsul &&
+        (word == '19:6:0' || word == '19:6:1')) {
+      return {860};
+    }
+    // «ٱلسُّدَّيۡنِ» and «سُدّٗا» (الكهف ٩٣-٩٤) of the Durrah's readers: «... ضَمُّ
+    // سَدَّيْنِ حُوِّلَا / كَسَدًّا هُنَا» (151-152) (the user, 2026-11-15).
+    if (poem == Poem.durrah &&
+        !v.isUsul &&
+        (word == '18:93:4' || word == '18:94:18')) {
+      return {151, 152};
     }
     // «ثُمُرٞ» and «بِثُمُرِهِۦ» (الكهف ٣٤، ٤٢) with two dammas: «وَفِي ثُمُرٍ
     // ضَمَّيْهِ يَفْتَحُ عَاصِمٌ بِحَرْفَيْهِ وَاْلإِسْكَانُ فِي الْمِيمِ حُصِّلاِ» (838);
@@ -2765,7 +2813,9 @@ class Manzumat {
     }
     final d = v.shownDescription;
     if (poem == Poem.shatibiyya && _anaWasl(v)) return {521};
-    if (poem == Poem.shatibiyya && _araayta(v)) return {638};
+    if (poem == Poem.shatibiyya && (_araayta(v) || _kisaiAraita(v))) {
+      return {638};
+    }
     if (poem == Poem.durrah) {
       // Abu Ja'far's sakt on each letter that opens a sura: «حُرُوفَ
       // التَّهَجِّي افْصِلْ بِسَكْتٍ كَحَا أَلِفْ».

@@ -1144,4 +1144,69 @@ void main() {
       expect(v[6], 'بكسر التاء دون التنوين', reason: id);
     }
   });
+
+  // al-Kisa'i's «هُزُؤٗا» in the hamesh as Shu'ba's (the user, 2026-11-15).
+  test('al-Kisa\'i\'s huzu\'an told as Shu\'ba\'s', () {
+    Map<String, List> rows(String id) => {
+      for (final v
+          in ((jsonDecode(
+                    File('assets/data/qiraat/$id.json').readAsStringSync(),
+                  ) as Map)['variants']
+                  as List)
+              .cast<List>())
+        if (v[5] == 'h' && '${v[4]}'.startsWith('هُزُؤ'))
+          '${v[0]}:${v[1]}:${v[2]}': v,
+    };
+    final shubah = rows('shubah');
+    for (final id in ['duri_kisai', 'abul_harith']) {
+      final mine = rows(id);
+      expect(mine, hasLength(11), reason: id);
+      for (final MapEntry(:key, :value) in mine.entries) {
+        expect(value[6], 'بالهمز', reason: '$id $key');
+        if (shubah[key] case final s?) {
+          expect(value[6], s[6], reason: '$id $key');
+        }
+      }
+    }
+  });
+
+  // «كٓهيعٓصٓ ذِكۡرُ» (مريم ١-٢) merged by Abu 'Amr, Ibn 'Amir, Hamza,
+  // al-Kisa'i and Khalaf al-'Ashir: both words in the idgham, «ذِّكۡرُ» with
+  // the shadda on its dhal (the user, 2026-11-15).
+  test('kaf-ha-ya-ayn-sad dhikru merged, the dhal doubled', () {
+    List<List> idgham(String id, int a) =>
+        ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                    as Map)['variants']
+                as List)
+            .cast<List>()
+            .where(
+              (v) =>
+                  v[0] == 19 &&
+                  v[1] == a &&
+                  v[2] == 0 &&
+                  v.length > 7 &&
+                  v[7] == 'idgham_saghir',
+            )
+            .toList();
+    for (final id in [
+      'duri_abuamr',
+      'susi',
+      'hisham',
+      'ibn_dhakwan',
+      'khalaf_hamzah',
+      'khallad',
+      'duri_kisai',
+      'abul_harith',
+      'ishaq',
+      'idris',
+    ]) {
+      expect(idgham(id, 1), hasLength(1), reason: id);
+      final dhikr = idgham(id, 2).single;
+      expect('${dhikr[4]}', allOf(startsWith('ذ'), contains('ّ')), reason: id);
+      expect(dhikr[6], idgham(id, 1).single[6], reason: id);
+    }
+    for (final id in ['qalun', 'warsh', 'bazzi', 'qunbul', 'shubah', 'rawh']) {
+      expect(idgham(id, 2), isEmpty, reason: id);
+    }
+  });
 }

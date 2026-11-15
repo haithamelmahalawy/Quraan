@@ -948,47 +948,57 @@ class _MushafPageState extends State<MushafPage>
                   widget.settings,
                   widget.quran,
                 );
-          return _LandscapeMargin(
-            key: ValueKey('landscape-${farsh ? 'farsh' : 'usul'}-$section'),
-            farsh: farsh,
-            child: farsh
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'الفرش',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: MushafColors.green,
-                        ),
-                      ),
-                      for (final e in notes)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 5),
-                          child: KeyedSubtree(
-                            key: ValueKey(
-                              'landscape-note:${e.ayah.surah}:${e.ayah.number}:${e.word}',
-                            ),
-                            child: _EntryView(
-                              entry: e,
-                              onTap: _openReference,
-                              compact: false,
-                              scale: 1.1,
-                            ),
+          // The page zoomed in: the margins zoomed with it showed only the
+          // starts of their lines at the screen's edge, a letter or two each;
+          // put out of sight till the page is back (the user, 2026-11-15).
+          return Visibility(
+            key: const ValueKey('landscape-margin-zoom'),
+            visible: !_zoomed,
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
+            child: _LandscapeMargin(
+              key: ValueKey('landscape-${farsh ? 'farsh' : 'usul'}-$section'),
+              farsh: farsh,
+              child: farsh
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'الفرش',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: MushafColors.green,
                           ),
                         ),
-                    ],
-                  )
-                : groups.isEmpty
-                ? const SizedBox()
-                : _UsulBox(
-                    groups: groups,
-                    onTap: _openUsulReference,
-                    onGuide: _openUsulGuide,
-                    scale: 1.5,
-                  ),
+                        for (final e in notes)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 5),
+                            child: KeyedSubtree(
+                              key: ValueKey(
+                                'landscape-note:${e.ayah.surah}:${e.ayah.number}:${e.word}',
+                              ),
+                              child: _EntryView(
+                                entry: e,
+                                onTap: _openReference,
+                                compact: false,
+                                scale: 1.1,
+                              ),
+                            ),
+                          ),
+                      ],
+                    )
+                  : groups.isEmpty
+                  ? const SizedBox()
+                  : _UsulBox(
+                      groups: groups,
+                      onTap: _openUsulReference,
+                      onGuide: _openUsulGuide,
+                      scale: 1.5,
+                    ),
+            ),
           );
         },
       ),

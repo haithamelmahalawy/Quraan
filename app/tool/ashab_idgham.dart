@@ -28,14 +28,13 @@ String _merged(String first, String second) =>
     '${first.replaceFirst(RegExp(r'ۡ$'), '')} '
     '${second.substring(0, 1)}ّ${second.substring(1)}';
 
-typedef _Add =
-    void Function(
-      _Word w,
-      String rule,
-      String how, {
-      required String text,
-      List<String> ways,
-    });
+typedef _Add = void Function(
+  _Word w,
+  String rule,
+  String how, {
+  required String text,
+  List<String> ways,
+});
 
 /// «الإدغام» of al-Ashab, by al-Taysir, the Shatibiyya and the Durrah, from
 /// the guide and «البدور الزاهرة»: إذ، قد، تاء التأنيث، بل، هل، and the
@@ -61,14 +60,7 @@ void _idgham(
     if (khallad || kisai) ...{'ز', 'س', 'ص'},
   };
   const qad = {'ج', 'ذ', 'ز', 'س', 'ش', 'ص', 'ض', 'ظ'};
-  final ta = {
-    'ج',
-    'ز',
-    'س',
-    'ص',
-    'ظ',
-    if (!ashir) 'ث',
-  };
+  final ta = {'ج', 'ز', 'س', 'ص', 'ظ', if (!ashir) 'ث'};
   final bal = {
     if (hamza) ...{'ت', 'س'},
     if (khallad) 'ط',
@@ -130,7 +122,10 @@ void _idgham(
       // اتخذتم وبابه، لبثت، أورثتموها: the letter inside the word.
       'بإدغام الذال في التاء' => v[3] == 1,
       'بإدغام الثاء في التاء' => !ashir,
-      'بإدغام الدال في الثاء' || 'بإدغام الدال في الذال وصلاً' => true,
+      'بإدغام الدال في الثاء' ||
+      'بإدغام الدال في الذال وصلاً' ||
+      // كٓهيعٓصٓ ذِكۡرُ, as the user tells it (2026-11-15).
+      'بإدغام الصاد في الذال' => true,
       _ when how.contains('«يسٓ»') || how.contains('«نٓ»') => kisai || ashir,
       _ => false,
     };
@@ -143,10 +138,7 @@ void _idgham(
       w,
       'idgham_saghir',
       'بإدغام الذال في التاء',
-      text: w.t.replaceFirstMapped(
-        RegExp('ذۡت([َُِ]?)'),
-        (m) => 'ذتّ${m[1]}',
-      ),
+      text: w.t.replaceFirstMapped(RegExp('ذۡت([َُِ]?)'), (m) => 'ذتّ${m[1]}'),
     );
   }
   // وَيُعَذِّب مَّن يَشَآءُ: Qalun's row.
@@ -159,12 +151,7 @@ void _idgham(
   // faces, the idgham first, by al-Taysir; al-Kisa'i merges as Hafs.
   if (khalaf || ashir || khallad) {
     final at = words.indexWhere((w) => key(w) == '11:42:13');
-    final row = (
-      s: 11,
-      a: 42,
-      w: 13,
-      t: '${words[at].t} ${words[at + 1].t}',
-    );
+    final row = (s: 11, a: 42, w: 13, t: '${words[at].t} ${words[at + 1].t}');
     const text = 'ٱرۡكَبۡ مَعَنَا';
     if (khallad) {
       add(
