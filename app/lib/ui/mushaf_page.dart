@@ -3137,17 +3137,27 @@ List<_UsulGroup> _usulNotes(
         continue;
       }
       final kinds = usulKindsOf(v);
-      final word = usulReadingText(
-        v,
-        ayah,
-        variants,
-        nextAyah: ayah.number < quran.surah(ayah.surah).ayahCount
-            ? quran.ayah(ayah.surah, ayah.number + 1)
-            : null,
-        previousAyah: v.word == 0 && ayah.number > 1
-            ? quran.ayah(ayah.surah, ayah.number - 1)
-            : null,
-      );
+      // «كٓهيعٓصٓ ذِّكۡرُ» (مريم ١-٢) merged: one item of the two words for all
+      // who merge them, not a reader's each with its own imala, nor ذِّكۡرُ
+      // apart (the user, 2026-11-15).
+      final kafDhikr =
+          v.surah == 19 &&
+          (v.ayah == 1 || v.ayah == 2) &&
+          v.word == 0 &&
+          v.rule == 'idgham_saghir';
+      final word = kafDhikr
+          ? 'كٓهيعٓصٓ ذِّكۡرُ'
+          : usulReadingText(
+              v,
+              ayah,
+              variants,
+              nextAyah: ayah.number < quran.surah(ayah.surah).ayahCount
+                  ? quran.ayah(ayah.surah, ayah.number + 1)
+                  : null,
+              previousAyah: v.word == 0 && ayah.number > 1
+                  ? quran.ayah(ayah.surah, ayah.number - 1)
+                  : null,
+            );
       for (final (label, _) in kinds) {
         final faces =
             ReadingColors.labelForRule(v.rule) != null ||
@@ -3194,7 +3204,9 @@ List<_UsulGroup> _usulNotes(
               (m) => 'ذت${m[1]}${m[2]}',
             );
         final item = g.items.putIfAbsent(
-          hasYaqub
+          kafDhikr
+              ? 'kaf-dhikr'
+              : hasYaqub
               ? 'yaqub:${v.stopOnly}:$same:${v.hamzaReplacement}'
               : '${ayah.surah}:${ayah.number}:$w:${v.stopOnly}:$same:${v.hamzaReplacement}',
           () => _UsulItem(

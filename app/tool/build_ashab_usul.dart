@@ -1752,6 +1752,46 @@ Map<String, int> buildAshabUsul(
     final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
     variants.insert(at < 0 ? variants.length : at, row);
   }
+  // رؤوس الآي of طه and النجم, their alif maqsura leaned, which the book
+  // leaves to the chapter (لِتَشۡقَىٰٓ، يَخۡشَىٰ، ٱلۡعُلَى): at the stop alone
+  // before the next ayah's quiescent (وَأَخۡفَى ٱللَّهُ) or with the tanween
+  // (هُدٗى، طُوٗى) (the user, 2026-11-15).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final leaned = {
+      for (final r in variants.cast<List>())
+        if (r[5] == 'u' && '${r[6]}'.contains('إمالة'))
+          for (var i = 0; i < (r[3] as int); i++)
+            _key(r[0] as int, r[1] as int, (r[2] as int) + i),
+    };
+    final ends = <(int, int), _Word>{};
+    for (final w in words) {
+      if (w.s != 20 && w.s != 53) continue;
+      final at = (w.s, w.a);
+      if ((ends[at]?.w ?? -1) < w.w) ends[at] = w;
+    }
+    for (final MapEntry(key: (s, a), value: w) in ends.entries) {
+      if (!_bare(w.t).endsWith('ى')) continue;
+      if (leaned.contains(_key(s, a, w.w))) continue;
+      final next = index[_key(s, a + 1, 0)]?.t ?? '';
+      final stop = next.startsWith('ٱ') || RegExp('[ًٌٍٗ]').hasMatch(w.t);
+      final row = [
+        s,
+        a,
+        w.w,
+        1,
+        withImalaSign(w.t),
+        'u',
+        stop ? 'بإمالة الألف وقفًا' : 'بإمالة الألف',
+        '',
+        {'source': ashabSource, if (stop) 'stopOnly': true},
+      ];
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
   // Hamza's and Khalaf al-'Ashir's «يَتَوَفَّىٰهُمُ» (النحل ٢٨، ٣٢): Hafs's word
   // with the ya for the ta, its dagger alif kept, leaned; and their and
   // al-Kisa'i's «يَأۡتِيَهُمُ» (النحل ٣٣) with the ya, its own opened (the user,

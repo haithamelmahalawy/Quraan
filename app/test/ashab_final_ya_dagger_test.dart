@@ -1209,4 +1209,42 @@ void main() {
       expect(idgham(id, 2), isEmpty, reason: id);
     }
   });
+
+  // رؤوس الآي of طه and النجم leaned for Hamza, al-Kisa'i and Khalaf
+  // al-'Ashir: at the stop alone before a quiescent or with the tanween
+  // (the user, 2026-11-15).
+  test('the ayah ends of Ta-Ha and al-Najm leaned', () {
+    final quran =
+        jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
+    final ends = <String, String>{};
+    for (final x in quran['ayahs'] as List) {
+      if (x[0] != 20 && x[0] != 53) continue;
+      final words = (x[4] as String).split(' ');
+      ends['${x[0]}:${x[1]}:${words.length - 1}'] = words.last;
+    }
+    final leaning = {
+      for (final MapEntry(:key, :value) in ends.entries)
+        if (value.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '').endsWith('ى')) key,
+    };
+    expect(leaning.length, greaterThan(90));
+    for (final id in ['duri_kisai', 'khalaf_hamzah', 'ishaq']) {
+      final rows =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .cast<List>();
+      final leaned = {
+        for (final r in rows)
+          if (r[5] == 'u' && '${r[6]}'.contains('إمالة'))
+            '${r[0]}:${r[1]}:${r[2]}': r,
+      };
+      expect(leaning.difference(leaned.keys.toSet()), isEmpty, reason: id);
+      expect(leaned['20:2:4']![6], 'بإمالة الألف', reason: id);
+      for (final stop in ['20:7:6', '20:10:17', '20:12:8']) {
+        expect(leaned[stop]![6], 'بإمالة الألف وقفًا', reason: '$id $stop');
+      }
+      expect('${leaned['20:12:8']![4]}', matches(RegExp('و[ً-ٰ]*۪')), reason: id);
+      expect('${leaned['20:10:17']![4]}', matches(RegExp('د[ً-ٰ]*۪')), reason: id);
+    }
+  });
 }
