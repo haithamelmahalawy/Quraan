@@ -5,8 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-/// The KFGQPC QCF V1 page fonts: the calligraphy of the printed Madinah
-/// mushaf (1405H, the print of assets/data/layout.json and qcf.json), one font per page in which every word is a single glyph.
+/// The KFGQPC QCF V2 page fonts: the calligraphy of the printed Madinah
+/// mushaf (1421H, the latest print, as the Kuwait mushaf: page 597 opens with
+/// «ٱلَّذِيٓ أَنقَضَ ظَهۡرَكَ»; the print of assets/data/layout.json and qcf.json)
+/// (the user, 2026-11-15), one font per page in which every word is a single
+/// glyph.
 ///
 /// A page's font is downloaded once (from the quran.com CDN, ~300–600 KB),
 /// kept on the device and registered as `QCF_P<page>`. Pages whose font is
@@ -19,7 +22,7 @@ class QcfFonts extends ChangeNotifier {
   static String family(int page) => 'QCF_P$page';
 
   /// The print of the glyph codes in assets/data/qcf.json.
-  static const version = 'v1';
+  static const version = 'v2';
 
   final _ready = <int>{};
   final _pending = <int>{};
