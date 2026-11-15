@@ -220,6 +220,11 @@ class _MushafPageState extends State<MushafPage>
 
   /// Pinch zoom of the page.
   final _zoom = TransformationController();
+
+  /// Turned, each margin zoomed in its own column, the hamesh's and the
+  /// usul's (the user, 2026-11-15).
+  final _farshZoom = TransformationController();
+  final _usulZoom = TransformationController();
   bool _zoomed = false;
   bool _pinching = false;
   bool _pageQcf = false;
@@ -253,6 +258,8 @@ class _MushafPageState extends State<MushafPage>
   void dispose() {
     _disposeRecognizers();
     _zoom.dispose();
+    _farshZoom.dispose();
+    _usulZoom.dispose();
     _scroll.dispose();
     _landscapeScroll.dispose();
     super.dispose();
@@ -954,9 +961,13 @@ class _MushafPageState extends State<MushafPage>
                 );
           // Beside the page, outside its zoom: zoomed with it, they showed only
           // the starts of their lines at the screen's edge; hidden, they were
-          // gone. In sight and as they are (the user, 2026-11-15).
-          return KeyedSubtree(
+          // gone. Each zoomed in its own column, kept within it (the user,
+          // 2026-11-15).
+          return MushafZoom(
             key: const ValueKey('landscape-margin-zoom'),
+            controller: farsh ? _farshZoom : _usulZoom,
+            onPinchChanged: (_) {},
+            onDoubleTap: widget.onDoubleTap,
             child: _LandscapeMargin(
               key: ValueKey('landscape-${farsh ? 'farsh' : 'usul'}-$section'),
               farsh: farsh,

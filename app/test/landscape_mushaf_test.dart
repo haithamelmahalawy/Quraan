@@ -83,6 +83,11 @@ void main() {
   });
 
   Finder central() => find.byKey(const ValueKey('landscape-page-scroll'));
+
+  /// The page's own zoom, not a margin's (the user, 2026-11-15).
+  final pageZoom = find.byWidgetPredicate(
+    (w) => w is MushafZoom && w.key != const ValueKey('landscape-margin-zoom'),
+  );
   ScrollController controller(WidgetTester t) =>
       t.widget<SingleChildScrollView>(central()).controller!;
 
@@ -676,7 +681,15 @@ void main() {
         await show(t, size, settings: settings, reader: true);
         final current = find.byType(MushafPage).last;
         final zoom = t.widget<MushafZoom>(
-          find.descendant(of: current, matching: find.byType(MushafZoom)),
+          find.descendant(
+            of: current,
+            // The page's, not a margin's of its own (the user, 2026-11-15).
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w is MushafZoom &&
+                  w.key != const ValueKey('landscape-margin-zoom'),
+            ),
+          ),
         );
         final center = t.getCenter(current);
         final first = await t.startGesture(
@@ -753,11 +766,7 @@ void main() {
       await second.moveBy(const Offset(5, 0));
       await t.pump();
       expect(
-        t
-            .widget<MushafZoom>(find.byType(MushafZoom))
-            .controller
-            .value
-            .getMaxScaleOnAxis(),
+        t.widget<MushafZoom>(pageZoom).controller.value.getMaxScaleOnAxis(),
         greaterThan(1.1),
       );
       expect(controller(t).offset, closeTo(offset, .01));
@@ -767,7 +776,7 @@ void main() {
       await t.tap(find.text('حجم الصفحة'));
       await t.pumpAndSettle();
       expect(
-        t.widget<MushafZoom>(find.byType(MushafZoom)).controller.value,
+        t.widget<MushafZoom>(pageZoom).controller.value,
         Matrix4.identity(),
       );
       await t.drag(central(), const Offset(0, -100));
@@ -786,7 +795,7 @@ void main() {
       await show(t, const Size(432, 800), settings: settings, reader: true);
       final current = find.byType(MushafPage).last;
       final zoom = t.widget<MushafZoom>(
-        find.descendant(of: current, matching: find.byType(MushafZoom)),
+        find.descendant(of: current, matching: pageZoom),
       );
       final center = t.getCenter(current);
       final first = await t.startGesture(
@@ -1099,6 +1108,48 @@ void main() {
     await t.tap(find.text('حجم الصفحة'));
     await t.pump(const Duration(seconds: 1));
     expect(t.getRect(margin.hitTestable()), before);
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
+
+  // Turned, the usul pinched: zoomed in its own column, kept within it, the
+  // page as it is (the user, 2026-11-15).
+  testWidgets('the landscape usul zoomed in their own column', (t) async {
+    final settings = ReaderSettings.memory(selected: {'warsh'})
+      ..page = 3
+      ..qcfFont = false;
+    await show(t, const Size(754, 418), settings: settings, reader: true);
+    final margin = find.byKey(const ValueKey('landscape-usul-margin'));
+    final column = t.getRect(
+      find.byKey(const ValueKey('landscape-margin-zoom')).hitTestable().first,
+    );
+    final page = t.getRect(find.byType(MushafLines).last);
+    final shown = margin.hitTestable().evaluate().single;
+    final usul = find.byElementPredicate((e) => e == shown);
+    final before = t.getRect(usul);
+    final c = before.center;
+    final a = await t.startGesture(c - const Offset(0, 30), pointer: 1);
+    final b = await t.startGesture(c + const Offset(0, 30), pointer: 2);
+    await t.pump();
+    for (var i = 0; i < 10; i++) {
+      await a.moveBy(const Offset(0, -3));
+      await b.moveBy(const Offset(0, 3));
+      await t.pump(const Duration(milliseconds: 16));
+    }
+    await a.up();
+    await b.up();
+    await t.pump(const Duration(seconds: 1));
+    // The usul larger, the page as it was.
+    expect(t.getRect(usul).height, greaterThan(before.height + 1));
+    expect(t.getRect(find.byType(MushafLines).last), page);
+    // Still within its column: what shows of it, there alone.
+    expect(
+      t.getRect(
+        find.byKey(const ValueKey('landscape-margin-zoom')).hitTestable().first,
+      ),
+      column,
+    );
     expect(t.takeException(), isNull);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();
