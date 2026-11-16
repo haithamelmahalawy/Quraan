@@ -1774,7 +1774,39 @@ Map<String, int> buildAshabUsul(
     }
     for (final MapEntry(key: (s, a), value: w) in ends.entries) {
       if (!_bare(w.t).endsWith('ى')) continue;
-      if (leaned.contains(_key(s, a, w.w))) continue;
+      // The word as the reader reads it: al-Kisa'i's «سِوٗى» (طه ٥٨), not
+      // Hafs's «سُوٗى» (the user, 2026-11-15).
+      final own =
+          variants
+                  .cast<List>()
+                  .where(
+                    (r) =>
+                        r[0] == s &&
+                        r[1] == a &&
+                        r[2] == w.w &&
+                        r[3] == 1 &&
+                        r[5] == 'f',
+                  )
+                  .firstOrNull?[4]
+              as String? ??
+          w.t;
+      if (leaned.contains(_key(s, a, w.w))) {
+        // This chapter's own rows of an earlier run: drawn on the reader's
+        // word; the book's as they are.
+        for (final r in variants.cast<List>()) {
+          if (r[0] == s &&
+              r[1] == a &&
+              r[2] == w.w &&
+              r[5] == 'u' &&
+              '${r[6]}'.startsWith('بإمالة الألف') &&
+              r.length > 8 &&
+              r[8] is Map &&
+              !(r[8] as Map).containsKey('book')) {
+            r[4] = withImalaSign(own);
+          }
+        }
+        continue;
+      }
       final next = index[_key(s, a + 1, 0)]?.t ?? '';
       final stop = next.startsWith('ٱ') || RegExp('[ًٌٍٗ]').hasMatch(w.t);
       final row = [
@@ -1782,7 +1814,7 @@ Map<String, int> buildAshabUsul(
         a,
         w.w,
         1,
-        withImalaSign(w.t),
+        withImalaSign(own),
         'u',
         stop ? 'بإمالة الألف وقفًا' : 'بإمالة الألف',
         '',
@@ -1790,6 +1822,72 @@ Map<String, int> buildAshabUsul(
       ];
       final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
       variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
+  // «تَلَقَّفۡ» (طه ٦٩) on its own word, not over «يَمِينِكَ» before it, told
+  // as Qalun's and Shu'ba's (the user, 2026-11-15).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 20 && v[1] == 69 && v[2] == 3 && v[3] == 2 && v[5] == 'f') {
+      v[2] = 4;
+      v[3] = 1;
+      // تَلَقَّفۡ, its shadda before its fatha as in Qalun's.
+      v[4] = 'تَلَقَّفۡ';
+      v[6] = 'بفتح اللام وتشديد القاف';
+      (v[8] as Map).remove('vocalizationSource');
+    }
+  }
+  // «وَوَٰعَدتُّكُمۡ» (طه ٨٠): its alif the small dagger one above, as Hafs's
+  // «وَوَٰعَدۡنَٰكُمۡ» (the user, 2026-11-15).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 20 && v[1] == 80 && v[2] == 6 && v[5] == 'f') {
+      v[4] = '${v[4]}'.replaceFirst('وَوَا', 'وَوَٰ');
+    }
+  }
+  // «أُفِّ» (الأنبياء ٦٧) broken without the tanween, as in its two sisters
+  // and as Shu'ba's (the user, 2026-11-15).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      21,
+      67,
+      0,
+      1,
+      // أُفِّ, its shadda before its kasra as in Shu'ba's.
+      'أُفِّ',
+      'f',
+      'بكسر الفاء دون تنوين',
+      '',
+      {'source': ashabSource, 'farshFrom': 'shubah'},
+    ];
+    variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // «قُل رَّبِّ» (الأنبياء ١١٢) told without «على الأمر»; «سَكۡرَىٰ» (الحج ٢)
+  // in both its places without «وإسكان الياء» (the user, 2026-11-15).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] != 'f') continue;
+    if (v[0] == 21 && v[1] == 112 && v[2] == 0) {
+      v[6] = '${v[6]}'.replaceFirst(' على الأمر', '');
+    }
+    if (v[0] == 22 && v[1] == 2 && (v[2] == 14 || v[2] == 17)) {
+      v[6] = '${v[6]}'.replaceFirst(' وإسكان الياء', '');
+    }
+  }
+  // «وَلُؤۡلُؤٖاْ» (الحج ٢٣) broken: its alif written, the round sukun on it,
+  // as Ibn 'Amir's (the user, 2026-11-15).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 22 && v[1] == 23 && v[2] == 18 && v[5] == 'f') {
+      v[4] = 'وَلُؤۡلُؤٖاْ';
+    }
+  }
+  // «صَلَوٰتِهِمۡ» (المؤمنون ٩) one prayer: its waw kept, the small alif above
+  // it, not «صَلَاتِهِمۡ» (the user, 2026-11-16).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 23 && v[1] == 9 && v[2] == 3 && v[5] == 'f') {
+      v[4] = 'صَلَوٰتِهِمۡ';
     }
   }
   // Hamza's and Khalaf al-'Ashir's «يَتَوَفَّىٰهُمُ» (النحل ٢٨، ٣٢): Hafs's word

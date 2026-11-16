@@ -322,14 +322,17 @@ class Manzumat {
     // A Shatibiyya reader's word whose Durrah bayt tells Khalaf al-'Ashir's
     // apart from it: that bayt too, under the Shatibiyya's (the user,
     // 2026-11-15).
-    final withKhalaf =
-        poem == Poem.shatibiyya &&
-            const {
-              'hamzah',
-              'kisai',
-              'abu_amr',
-              'nafi',
-            }.contains(qiraaOf(reading.riwayaId).id)
+    // «ءَآمَنتُم»: every riwaya's, the Durrah's «ءَآمَنْتُم اَخْبِرْ طِبْ» (24)
+    // under the Shatibiyya's (the user, 2026-11-15).
+    final withKhalaf = poem == Poem.shatibiyya && _aamantum(reading)
+        ? const {24}
+        : poem == Poem.shatibiyya &&
+              const {
+                'hamzah',
+                'kisai',
+                'abu_amr',
+                'nafi',
+              }.contains(qiraaOf(reading.riwayaId).id)
         ? _durrahOnKhalafToo(reading, hafs)
         : const <int>{};
     final asl = withKhalaf.isNotEmpty
@@ -454,9 +457,17 @@ class Manzumat {
     final ashab = const {'hamzah', 'kisai'}.contains(qiraaOf(v.riwayaId).id);
     if (ashab && bare.startsWith('أمهت')) return const {94};
     if (ashab && RegExp(r'^[وفل]?[ينت]بشر').hasMatch(bare)) return const {87};
+    // «وَحَرَٰمٌ» (الأنبياء ٩٥): the Durrah's «حَرَامٌ فَشَا» (163), Khalaf al-'Ashir
+    // parting from his asl (the user, 2026-11-15).
+    if (ashab && _at(v) == '21:95:0') return const {163};
     // al-Kisa'i's «أَرَيۡتَ», its hamza dropped: the Durrah's «وَسَهِّلَا /
     // أَرَيْتَ وَإِسْرَائِيلَ كَائِنْ وَمَدَّ أُدْ» (33-34) (the user, 2026-11-15).
     if (_kisaiAraita(v)) return const {33, 34};
+    // «أُفِّ» (الإسراء ٢٣، الأنبياء ٦٧، الأحقاف ١٧): the Durrah's «وَأُفِّ افْتَحَنْ
+    // حَقًّا» (145) (the user, 2026-11-15).
+    if (const {'17:23:18', '21:67:0', '46:17:3'}.contains(_at(v))) {
+      return const {145};
+    }
     // «يَكَادُ» (مريم ٩٠) with the ya: the Durrah's «... فَافْتَحْ يَكَادُ أَنْ / نِثِ»
     // (156), Abu Ja'far parting from Nafi' there (the user, 2026-11-15).
     if (_at(v) == '19:90:0') return const {156};
@@ -1144,19 +1155,17 @@ class Manzumat {
 
   /// «ءَآمَنتُم» (الأعراف ١٢٣، طه ٧١، الشعراء ٤٩) of Ashab al-Silah, Abu
   /// Ja'far's too: «وَطه وفِي الأَعْرَافِ وَالشُّعَرَا بِهَا ءَآمَنْتُمُ ...».
+  /// Every riwaya's, the Durrah's «ءَآمَنْتُم اَخْبِرْ طِبْ» (24) beside it (the
+  /// user, 2026-11-15).
   bool _aamantum(Variant v) =>
       const {
         '7:123:2',
         '20:71:1',
         '26:49:1',
       }.contains('${v.surah}:${v.ayah}:${v.word}') &&
-      const {
-        'qalun',
-        'bazzi',
-        'qunbul',
-        'ibn_wardan',
-        'ibn_jammaz',
-      }.contains(v.riwayaId);
+      v.riwayaId != 'hafs' &&
+      // Its hamzas, not a silah or madd of the word's.
+      v.kind != VariantKind.usul;
 
   /// Abu Ja'far's «بِيسٍ» (الأعراف ١٦٥), as Nafi''s: the Durrah tells it not;
   /// «وَبِيسٍ بِيَاءٍ أَمَّ».
@@ -1358,6 +1367,13 @@ class Manzumat {
     }
     if (poem == Poem.shatibiyya && word == '18:25:4' && !v.isUsul) {
       return {837};
+    }
+    // «وَسَلُواْ، فَسَلُوٓاْ» with the naql, wherever they come: «... وَسَلْ / فَسَلْ
+    // حَرَّكُوا بِالنَّقْلِ رَاشِدُهُ دَلَا» (598); the Durrah's «... وَسَلْ مَعْ فَسَلْ
+    // فَشَا» (37) (the user, 2026-11-15).
+    if (v.description.contains('نقل') &&
+        RegExp(r'^[وف]سل').hasMatch(_letters(v.text))) {
+      return poem == Poem.durrah ? {37} : {598};
     }
     // «يَرِثۡنِي وَيَرِثۡ» (مريم ٦) quiet: «وَحَرْفَا يَرِثْ بِالْجَزْمِ حُلْوُ رِضىً»
     // (860) (the user, 2026-11-15).
@@ -1888,10 +1904,19 @@ class Manzumat {
     }
     // Ibn Kathir's «أُفَّ» (الإسراء ٢٣، الأنبياء ٦٧، الأحقاف ١٧), its fa opened:
     // «وَفَا أُفِّ كُلِّهاَ / بِفَتْحٍ دَناَ كُفْؤًا وَنَوِّنْ عَلَى اعْتِلَا».
-    if (poem == Poem.shatibiyya &&
-        const {'bazzi', 'qunbul'}.contains(v.riwayaId) &&
-        const {'17:23:18', '21:67:0', '46:17:3'}.contains(at)) {
-      return {818};
+    // Every riwaya's, broken or opened, the Durrah's «وَأُفِّ افْتَحَنْ حَقًّا»
+    // (145) its own (the user, 2026-11-15).
+    // «صَلَوٰتِهِمۡ» (المؤمنون ٩) one prayer: «... صَلاَتِهِمُ شَافٍ» (903) (the user,
+    // 2026-11-16).
+    if (poem == Poem.shatibiyya && !v.isUsul && at == '23:9:3') return {903};
+    // «يُقَٰتِلُونَ» (الحج ٣٩) its ta broken: «... وَالْفَتْحُ فِي تَا يُقَاتِلُو / نَ
+    // عَمَّ عُلاَهُ» (899) (the user, 2026-11-15).
+    if (poem == Poem.shatibiyya && !v.isUsul && at == '22:39:2') return {899};
+    // «لِتُحۡصِنَكُم» (الأنبياء ٨٠): the Durrah's «وَطِبْ نُوْنَ يُحْصِنْ أَنِّثاً أُدْ»
+    // (162) (the user, 2026-11-15).
+    if (poem == Poem.durrah && !v.isUsul && at == '21:80:4') return {162};
+    if (!v.isUsul && const {'17:23:18', '21:67:0', '46:17:3'}.contains(at)) {
+      return poem == Poem.durrah ? {145} : {818};
     }
     // «فَٱسۡرِ» (هود ٨١، الحجر ٦٥، الدخان ٢٣) and «أَنِ ٱسۡرِ» (طه ٧٧، الشعراء
     // ٥٢), the hamza of wasl for Nafi' and Ibn Kathir: «وَفَاسْرِ أَنِ اسْرِ

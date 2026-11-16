@@ -7255,4 +7255,165 @@ void main() {
     );
     expect(shura.asl, isEmpty);
   });
+
+  // «ءَآمَنتُم» (الأعراف ١٢٣، طه ٧١، الشعراء ٤٩), every riwaya's: «وَطه وفِي
+  // الأَعْرَافِ وَالشُّعَرَا بِهَا ءَآمَنْتُمُ ...» (189-191), the Durrah's
+  // «ءَآمَنْتُم اَخْبِرْ طِبْ» (24) beside it (the user, 2026-11-15).
+  test('aamantum cites 189-191 and the Durrah\'s 24 for all', () async {
+    final variants = await VariantRepository.discover();
+    final ids = [
+      'qalun',
+      'warsh',
+      'qunbul',
+      'hisham',
+      'shubah',
+      'khalaf_hamzah',
+      'duri_kisai',
+      'ibn_wardan',
+      'rawh',
+      'ishaq',
+    ];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 20, 71, 1)
+          .where((v) => v.word == 1 && v.kind != VariantKind.usul)
+          .firstOrNull;
+      expect(v, isNotNull, reason: id);
+      if (v == null) continue;
+      final r = manzumat.referenceOf(
+        v,
+        'ءَامَنتُمۡ',
+        20,
+        surahs,
+        entries: book.at(20, 71, 1),
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, {189, 190, 191}, reason: id);
+      expect([for (final b in r.asl) b.n], [24], reason: id);
+    }
+  });
+
+  // «وَسَلُواْ، فَسَلُوٓاْ» with the naql: «... فَسَلْ حَرَّكُوا بِالنَّقْلِ رَاشِدُهُ
+  // دَلَا» (598); Khalaf al-'Ashir's, the Durrah's «وَسَلْ مَعْ فَسَلْ فَشَا» (37)
+  // (the user, 2026-11-15).
+  test('fasalu with the naql cites 598 and the Durrah\'s 37', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'bazzi', 'ishaq']);
+    for (final id in ['duri_kisai', 'bazzi', 'ishaq']) {
+      for (final (s, a, w) in const [(21, 7, 7), (4, 32, 17), (16, 43, 8)]) {
+        final v = variants
+            .at([id], s, a, w)
+            .where((v) => v.word == w && v.description.contains('نقل'))
+            .single;
+        final r = manzumat.referenceOf(
+          v,
+          'فَسۡـَٔلُوٓاْ',
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        final ashir = id == 'ishaq';
+        expect(r.poem, ashir ? Poem.durrah : Poem.shatibiyya, reason: id);
+        expect(r.mention, ashir ? {37} : {598}, reason: '$id $s:$a');
+      }
+    }
+  });
+
+  // «أُفّٖ» (الإسراء ٢٣، الأنبياء ٦٧، الأحقاف ١٧): «وَفَا أُفِّ كُلِّهاَ / بِفَتْحٍ
+  // دَناَ ...» (818), the Durrah's «وَأُفِّ افْتَحَنْ حَقًّا» (145); «لِتُحۡصِنَكُم»
+  // (الأنبياء ٨٠): the Durrah's 162 (the user, 2026-11-15).
+  test('uffin and li-tuhsinakum cite their bayts', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'ishaq', 'ruways', 'shubah']);
+    for (final (s, a, w) in const [(17, 23, 18), (21, 67, 0), (46, 17, 3)]) {
+      for (final id in ['duri_kisai', 'ishaq', 'ruways', 'shubah']) {
+        final v = variants
+            .at([id], s, a, w)
+            .where((v) => v.word == w && !v.isUsul)
+            .first;
+        final r = manzumat.referenceOf(v, 'أُفّٖ', s, surahs);
+        final durrah = id == 'ishaq' || id == 'ruways';
+        expect(r.mention, durrah ? {145} : {818}, reason: '$id $s:$a');
+        if (id == 'duri_kisai') {
+          expect([for (final b in r.asl) b.n], [145], reason: '$id $s:$a');
+        }
+      }
+    }
+    for (final id in ['ishaq', 'ruways']) {
+      final v = variants
+          .at([id], 21, 80, 4)
+          .where((v) => v.word == 4 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(v, 'لِتُحۡصِنَكُم', 21, surahs);
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {162}, reason: id);
+    }
+  });
+
+  // «وَحِرۡمٌ» (الأنبياء ٩٥) of Hamza and al-Kisa'i: the Durrah's «حَرَامٌ فَشَا»
+  // (163) beside the Shatibiyya's (the user, 2026-11-15).
+  test('wa-hirmun has the Durrah\'s 163 beside it', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'khalaf_hamzah']);
+    for (final id in ['duri_kisai', 'khalaf_hamzah']) {
+      final v = variants
+          .at([id], 21, 95, 0)
+          .where((v) => v.word == 0 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'وَحَرَٰمٌ',
+        21,
+        surahs,
+        entries: book.at(21, 95, 0),
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect([for (final b in r.asl) b.n], [163], reason: id);
+    }
+  });
+
+  // «يُقَٰتِلُونَ» (الحج ٣٩) its ta broken: «... وَالْفَتْحُ فِي تَا يُقَاتِلُو / نَ
+  // عَمَّ عُلاَهُ» (899) (the user, 2026-11-15).
+  test('yuqatilun of al-Hajj cites 899', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'bazzi', 'khalaf_hamzah']);
+    for (final id in ['duri_kisai', 'bazzi', 'khalaf_hamzah']) {
+      final v = variants
+          .at([id], 22, 39, 2)
+          .where((v) => v.word == 2 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'يُقَٰتَلُونَ',
+        22,
+        surahs,
+        entries: book.at(22, 39, 2),
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, {899}, reason: id);
+    }
+  });
+
+  // «صَلَوٰتِهِمۡ» (المؤمنون ٩) one prayer, its small alif above the waw:
+  // «... صَلاَتِهِمُ شَافٍ» (903) (the user, 2026-11-16).
+  test('salatihim of al-Mu\'minun 9 drawn and cited', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'khalaf_hamzah', 'ishaq']);
+    for (final id in ['duri_kisai', 'khalaf_hamzah', 'ishaq']) {
+      final v = variants
+          .at([id], 23, 9, 3)
+          .where((v) => v.word == 3 && !v.isUsul)
+          .single;
+      expect(v.text, 'صَلَوٰتِهِمۡ', reason: id);
+      final r = manzumat.referenceOf(
+        v,
+        'صَلَوَٰتِهِمۡ',
+        23,
+        surahs,
+        entries: book.at(23, 9, 3),
+      );
+      expect(r.mention, {903}, reason: id);
+    }
+  });
 }

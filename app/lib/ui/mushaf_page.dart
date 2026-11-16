@@ -2296,6 +2296,11 @@ class _MushafPageState extends State<MushafPage>
           // Into the next word (حُرِّمَت ظُّهُورُهَا): this word's last
           // letter; the next word colours its first.
           mark(letters.length - 1, ReadingColors.idgham);
+        } else if (_withinWord(letters, into) case final i?) {
+          // Within the word (لَّبِثتُّمۡ): the two letters, not its first
+          // doubled one, the lam (the user, 2026-11-15).
+          mark(i, ReadingColors.idgham);
+          mark(i + 1, ReadingColors.idgham);
         } else if (letters.first.contains('ّ')) {
           mark(0, ReadingColors.idgham);
         }
@@ -2892,6 +2897,20 @@ const _letterNames = {
   'واو': 'و',
   'ياء': 'ي',
 };
+
+/// Where an idgham's merged letter stands right before the one it merges in,
+/// that one doubled, inside the word (لَبِثتُّمۡ: ث then تّ); null if nowhere.
+int? _withinWord(List<String> letters, (String, String)? into) {
+  if (into == null) return null;
+  for (var i = 0; i + 1 < letters.length; i++) {
+    if (letters[i].startsWith(into.$1) &&
+        letters[i + 1].startsWith(into.$2) &&
+        letters[i + 1].contains('ّ')) {
+      return i;
+    }
+  }
+  return null;
+}
 
 /// The two letters an idgham names («بإدغام الدال في الضاد»: د and ض).
 (String, String)? _idghamLetters(String description) {

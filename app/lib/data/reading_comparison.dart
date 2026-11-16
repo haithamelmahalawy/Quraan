@@ -166,7 +166,11 @@ String? _yaIdafa(Variant v) {
 bool _lexical(Variant v) =>
     (v.inHamesh ||
         // «اتخذتم، أخذتم»: told in the usul alone, shaded where it differs.
-        _writtenIdgham(v) && v.description != 'بإدغام الذال في التاء' ||
+        // So «لَبِثتُّمۡ»: its tha and ta alone coloured, not the word (the
+        // user, 2026-11-15).
+        _writtenIdgham(v) &&
+            v.description != 'بإدغام الذال في التاء' &&
+            v.description != 'بإدغام الثاء في التاء' ||
         _yaIdafaRule(v)) &&
     !v.isMarginNote &&
     !v.readsAsHafs;

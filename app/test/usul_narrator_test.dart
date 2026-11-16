@@ -47,7 +47,8 @@ void main() {
       number: 1,
       page: 1,
       juz: 1,
-      // Not «اتخذتم»: told in the usul alone, never compared as written.
+      // Not «اتخذتم» nor «لَبِثۡتُمۡ»: told in the usul alone, their letters
+      // coloured, never compared as written (the user, 2026-11-15).
       words: ['لَبِثۡتُمۡ'],
     );
     final rows = [
@@ -63,7 +64,7 @@ void main() {
               ? VariantKind.farsh
               : VariantKind.usul,
           rule: id == 'shubah' || id == 'warsh' ? '' : 'idgham',
-          description: 'بإدغام الثاء في التاء',
+          description: 'بإدغام الدال في التاء',
         ),
     ];
     final repository = _Variants(rows);
