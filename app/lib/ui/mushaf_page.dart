@@ -1713,12 +1713,7 @@ class _MushafPageState extends State<MushafPage>
       // own words after that one, not none (the user, 2026-11-16).
       if (v.word != w && v.word < w && v.text.isNotEmpty) {
         final parts = v.text.split(' ');
-        final drawnBefore = _baseAt(
-          widget.variants,
-          s,
-          ayah,
-          v.word,
-        ).any(
+        final drawnBefore = _baseAt(widget.variants, s, ayah, v.word).any(
           (r) =>
               r.canReplaceText &&
               r.word < v.word &&
@@ -3399,9 +3394,9 @@ bool _openingLetters(Ayah ayah, int word) =>
 bool _leanedLettersTold(_UsulItem i) =>
     i.readings.isNotEmpty &&
     i.readings.every(
-      (v) => RegExp(
-        r'^بإمالة (الراء|الهمزة)( فقط| والهمزة) (وقفًا|وصلًا)$',
-      ).hasMatch(v.description),
+      (v) =>
+          RegExp(r'^بإمالة (الراء|الهمزة)( فقط| والهمزة) (وقفًا|وصلًا)$')
+              .hasMatch(v.description),
     );
 
 /// The descriptions of [readings], each once; with its readers when the
@@ -4918,10 +4913,13 @@ class _UsulBox extends StatelessWidget {
         // والهمزة وقفًا، بإمالة الهمزة فقط وقفًا), by each reader if they differ.
         if (_openingLetters(i.ayah, i.word) || _leanedLettersTold(i))
           for (final (d, readers) in _descriptionsOf(i.readings))
-            Text(
-              readers == null ? ' ($d)' : ' ($d: $readers)',
-              style: TextStyle(fontSize: 9 * scale, color: g.color),
-            ),
+            // «بالإمالة» alone says no more than the chapter (حمٓ, the user,
+            // 2026-11-16).
+            if (!(d == 'بالإمالة' && readers == null))
+              Text(
+                readers == null ? ' ($d)' : ' ($d: $readers)',
+                style: TextStyle(fontSize: 9 * scale, color: g.color),
+              ),
         // A naql told in words of its own (مِنِ ٱجۡلِ، مِلُ), not the bare rule.
         for (final d in {
           for (final v in i.readings)

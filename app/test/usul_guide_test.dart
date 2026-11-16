@@ -354,10 +354,10 @@ void main() {
       contains('الوقف على الهمز'),
     );
     final hisham = usulOfRiwaya(variants, quran, 'hisham')['الهمزتان من كلمة']!;
-    expect(hisham, hasLength(52));
+    expect(hisham, hasLength(53));
     expect(
       usulOfRiwaya(variants, quran, 'ibn_dhakwan')['الهمزتان من كلمة'],
-      hasLength(4),
+      hasLength(5),
     );
     // ءامنتم: for Ibn Amir its farsh and its usul together; Rawh and Shu'bah
     // its farsh alone.
