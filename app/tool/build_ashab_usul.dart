@@ -1347,6 +1347,42 @@ Map<String, int> buildAshabUsul(
         variants.insert(at < 0 ? variants.length : at, row);
       }
     }
+    // An-Naml's two (٦٧) in the usul too, «إِنَّنَا» with its two nuns, no
+    // more in the hamesh (the user, 2026-11-16).
+    const ways = [
+      'الاستفهام في «أءذا» مع التحقيق',
+      'الإخبار في «إننا» بالتحقيق',
+    ];
+    variants.removeWhere(
+      (r) =>
+          (r as List)[0] == 27 &&
+          r[1] == 67 &&
+          (r[2] == 3 || r[2] == 7) &&
+          (r[5] == 'f' || r[7] == 'tasheel_word'),
+    );
+    for (final (w, text, said, context) in [
+      (3, index[_key(27, 67, 3)]!.t, 'بالاستفهام مع التحقيق', 'أَءِذَا'),
+      (
+        7,
+        'إِنَّنَا',
+        'بالإخبار بهمزة واحدة مكسورة، وبعدها نون مشددة مفتوحة ثم نون مخففة مفتوحة',
+        'أَئِنَّا',
+      ),
+    ]) {
+      final row = [
+        27,
+        67,
+        w,
+        1,
+        text,
+        'h',
+        said,
+        'tasheel_word',
+        {'source': ashabSource, 'context': context, 'ways': ways},
+      ];
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
   }
   // Hamza's and al-Kisa'i's «لِّعِبَادِي ٱلَّذِينَ» (إبراهيم ٣١), its ya quiet:
   // «وَقُلْ لِعِبَادِيْ كَانَ شَرْعاً»; Khalaf al-'Ashir opens it, «وَقُلْ لِعِبَادِي
@@ -1937,6 +1973,212 @@ Map<String, int> buildAshabUsul(
       );
       final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
       variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
+  // al-Kisa'i's «وَادِ ٱلنَّمۡلِ» (النمل ١٨): the ya dropped in wasl, kept at the
+  // stop, as Ya'qub's row (the user, 2026-11-16).
+  if (_kisai.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      27,
+      18,
+      4,
+      1,
+      '',
+      'u',
+      'بحذف الياء وصلاً لالتقاء الساكنين وإثباتها وقفًا',
+      'ya_zaida',
+      {
+        'source': ashabSource,
+        'stopOnly': true,
+        'stopText': 'وَادِۦ',
+        'ways': ['حذف الياء وصلاً', 'إثبات الياء وقفًا'],
+      },
+    ];
+    variants.removeWhere(
+      (r) => order(r as List) == order(row) && r.length > 7 && r[7] == 'ya_zaida',
+    );
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // al-Kisa'i's «أَلَا يَسۡجُدُواْ» (النمل ٢٥), drawn and told as Abu Ja'far's and
+  // Ruways's (the user, 2026-11-16).
+  if (_kisai.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      27,
+      25,
+      0,
+      2,
+      'أَلَا يَسۡجُدُواْ',
+      'f',
+      'بتخفيف اللام ثم ياء نداء ثم فعل أمر، ويجوز الوقف اختبارًا على «ألا يا» ويبتدئون «اسجدوا» بهمزة مضمومة على الأمر، على معنى «ألا يا هؤلاء»',
+      '',
+      {
+        'source': ashabSource,
+        'farshFrom': 'ruways',
+        'marginText': 'أَلَا يَا ٱسۡجُدُواْ',
+      },
+    ];
+    variants.removeWhere(
+      (r) =>
+          (r as List)[0] == 27 &&
+          r[1] == 25 &&
+          (r[2] == 0 || r[2] == 1) &&
+          r[5] == 'f',
+    );
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // al-Kisa'i's «ءَاتَىٰنِ» (النمل ٣٦) leaned, the imala sign under its ta (the
+  // user, 2026-11-16).
+  if (_kisai.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final v in variants.cast<List>()) {
+      if (v[0] == 27 && v[1] == 36 && v[2] == 7 && v[7] == 'ya_zaida') {
+        v[4] = 'ءَاتَىٰنِ';
+      }
+    }
+    final row = [
+      27,
+      36,
+      7,
+      1,
+      'ءَات$imalaSignىٰنِ',
+      'u',
+      'بإمالة الألف',
+      '',
+      {'source': ashabSource},
+    ];
+    variants.removeWhere(
+      (r) =>
+          order(r as List) == order(row) &&
+          r[5] == 'u' &&
+          r[6] == 'بإمالة الألف',
+    );
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // al-Kisa'i's stop by test on the ya of «وَيۡكَأَنَّ» and «وَيۡكَأَنَّهُۥ» (القصص
+  // ٨٢), starting «كَأَنَّ» and «كَأَنَّهُۥ», in the hamesh (the user, 2026-11-16).
+  if (_kisai.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final (w, start) in const [(6, 'كَأَنَّ'), (22, 'كَأَنَّهُۥ')]) {
+      final row = [
+        28,
+        82,
+        w,
+        1,
+        index[_key(28, 82, w)]!.t,
+        'u',
+        'بالوقف اختبارًا على الياء «وَيۡ»، والابتداء «$start»',
+        '',
+        {'source': ashabSource, 'hamesh': true},
+      ];
+      variants.removeWhere(
+        (r) =>
+            order(r as List) == order(row) &&
+            '${r[6]}'.startsWith('بالوقف اختبارًا'),
+      );
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
+  // «يَٰعِبَادِيَ ٱلَّذِينَ» (العنكبوت ٥٦): no farsh of the two words in the
+  // hamesh; «يَٰعِبَادِي» alone, with the dagger alif, its ya quiet, in the ya of
+  // the idafa (the user, 2026-11-16).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    variants.removeWhere(
+      (r) =>
+          (r as List)[0] == 29 &&
+          r[1] == 56 &&
+          r[2] == 0 &&
+          (r[5] == 'f' || r[7] == 'ya_idafa'),
+    );
+    final row = [
+      29,
+      56,
+      0,
+      1,
+      'يَٰعِبَادِي',
+      'u',
+      'بإسكان ياء الإضافة',
+      'ya_idafa',
+      {'source': ashabSource},
+    ];
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // «ءَايَٰتٞ مِّن رَّبِّهِۦ» (العنكبوت ٥٠) read as one, «ءَايَتٞ», as al-Bazzi's
+  // («وَآيَاتٌ التَّوْحِيدُ صُحْبَةُ دُخْلُلًا»); al-Kisa'i stops on it with the
+  // ha, «ءَايَهۡ», leaned (the user, 2026-11-16).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    void put(List row) {
+      variants.removeWhere(
+        (r) =>
+            order(r as List) == order(row) &&
+            r[5] == row[5] &&
+            r[7] == row[7],
+      );
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+
+    put([
+      29,
+      50,
+      4,
+      1,
+      'ءَايَتٞ',
+      'f',
+      'بحذف الألف',
+      '',
+      {'source': ashabSource, 'farshFrom': 'bazzi'},
+    ]);
+    if (_kisai.contains(id)) {
+      put([
+        29,
+        50,
+        4,
+        1,
+        '',
+        'u',
+        'بالوقف بالهاء على تاء التأنيث المرسومة تاء مفتوحة',
+        'rasm_stop',
+        {'source': ashabSource, 'stopOnly': true, 'stopText': 'ءَايَهۡ'},
+      ]);
+      put([
+        29,
+        50,
+        4,
+        1,
+        '',
+        'u',
+        'بإمالة هاء التأنيث وما قبلها وقفًا قولًا واحدًا',
+        'imala_ha',
+        {'source': ashabSource, 'stopOnly': true},
+      ]);
+    }
+  }
+  // «نَشۡرًا» (الأعراف ٥٧، الفرقان ٤٨، النمل ٦٣) told with its nun's fatha, not
+  // the nun alone (the user, 2026-11-16).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] == 'f' && v[4] == 'نَشۡرًا' && v[6] == 'بالنون') {
+      v[6] = 'بالنون وفتح النون';
     }
   }
   // al-Duri's «كَمِشۡكَ۪وٰةٖ» (النور ٣٥) leaned on its second kaf, in the imala

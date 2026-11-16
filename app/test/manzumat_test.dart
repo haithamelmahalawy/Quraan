@@ -7629,6 +7629,283 @@ void main() {
     }
   });
 
+  test('naran of al-Naml 7 is leaned by none', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'warsh', 'duri_abuamr', 'susi', 'abul_harith'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      expect(
+        variants
+            .at([id], 27, 7, 6)
+            .where((v) => v.word == 6 && v.description.contains(RegExp('إمالة|تقليل'))),
+        isEmpty,
+        reason: id,
+      );
+    }
+    expect(
+      variants
+          .at(['duri_kisai'], 27, 8, 7)
+          .where((v) => v.description == 'بإمالة الألف'),
+      isNotEmpty,
+    );
+  });
+
+  test('al-Kisa\'i\'s wadi and ala yasjudu as Ruways\'s', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'abul_harith', 'ruways'];
+    await variants.ensureLoaded(ids);
+    String row(String id, int a, int w) => [
+      for (final v in variants.at([id], 27, a, w).where((v) => v.word == w))
+        '${v.text}|${v.description}|${v.rule}|${v.stopOnly}',
+    ].join(';');
+    for (final id in ids.take(2)) {
+      expect(row(id, 18, 4), row('ruways', 18, 4), reason: id);
+      expect(row(id, 25, 0), row('ruways', 25, 0), reason: id);
+      final v = variants
+          .at([id], 27, 25, 0)
+          .where((v) => v.word == 0 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'أَلَّا',
+        27,
+        surahs,
+        entries: book.at(27, 25, 0),
+      );
+      expect(r.mention, {934, 935}, reason: id);
+      expect([for (final b in r.asl) b.n], [174], reason: id);
+    }
+  });
+
+  test('yusaddiqni cites 948 and the Durrah\'s 176', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'idris', 'ishaq'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 28, 34, 9)
+          .where((v) => v.word == 9 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'يُصَدِّقُنِيٓ',
+        28,
+        surahs,
+        entries: book.at(28, 34, 9),
+      );
+      if (id == 'duri_kisai') {
+        expect(r.mention, {948}, reason: id);
+        expect([for (final b in r.asl) b.n], [176], reason: id);
+      } else {
+        expect(r.poem, Poem.durrah, reason: id);
+        expect(r.mention, {176}, reason: id);
+      }
+    }
+  });
+
+  test('yarji\'una of al-Qasas cites 949 and the Durrah\'s 63-64', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'idris'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 28, 39, 11)
+          .where((v) => v.word == 11 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'يُرۡجَعُونَ',
+        28,
+        surahs,
+        entries: book.at(28, 39, 11),
+      );
+      if (id == 'duri_kisai') {
+        expect(r.mention, {949}, reason: id);
+        expect([for (final b in r.asl) b.n], [63, 64], reason: id);
+      } else {
+        expect(r.poem, Poem.durrah, reason: id);
+        expect(r.mention, {63, 64}, reason: id);
+      }
+    }
+  });
+
+  test('ummiha and its like cite 590 and the Durrah\'s 94', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'khalaf_hamzah'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      for (final (s, a, w) in [(4, 11, 40), (28, 59, 8), (43, 4, 2)]) {
+        final v = variants
+            .at([id], s, a, w)
+            .where((v) => v.word == w && !v.isUsul)
+            .single;
+        final r = manzumat.referenceOf(
+          v,
+          'أُمِّ',
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.mention, contains(590), reason: '$id $s:$a');
+        expect([for (final b in r.asl) b.n], [94], reason: '$id $s:$a');
+      }
+    }
+  });
+
+  test('la-khusifa cites 950 and the Durrah\'s 177', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'khalaf_hamzah', 'idris', 'shubah'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 28, 82, 20)
+          .where((v) => v.word == 20 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'لَخَسَفَ',
+        28,
+        surahs,
+        entries: book.at(28, 82, 20),
+      );
+      if (id == 'idris') {
+        expect(r.poem, Poem.durrah, reason: id);
+        expect(r.mention, {177}, reason: id);
+      } else {
+        expect(r.mention, {950}, reason: id);
+        expect(
+          [for (final b in r.asl) b.n],
+          id == 'shubah' ? isEmpty : [177],
+          reason: id,
+        );
+      }
+    }
+  });
+
+  test('mawaddatan baynakum cites the Durrah\'s 177-178', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['idris', 'ishaq', 'duri_kisai', 'ruways'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids.take(2)) {
+      final v = variants
+          .at([id], 29, 25, 7)
+          .where((v) => v.word == 7 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'مَّوَدَّةَ',
+        29,
+        surahs,
+        entries: book.at(29, 25, 7),
+      );
+      expect(r.mention, {177, 178}, reason: id);
+    }
+    for (final id in ids.skip(2)) {
+      expect(
+        variants
+            .at([id], 29, 25, 7)
+            .where((v) => v.word == 7 && !v.isUsul)
+            .single
+            .text,
+        isNot(matches(RegExp('ّ[ً-ِ]?ّ'))),
+        reason: id,
+      );
+    }
+  });
+
+  test('a-innakum of al-Ankabut cites 789-793 and the Durrah\'s 25-26', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'khalaf_hamzah', 'idris'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 29, 28, 4)
+          .where((v) => v.word == 4 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'إِنَّكُمۡ',
+        29,
+        surahs,
+        entries: book.at(29, 28, 4),
+      );
+      if (id == 'idris') {
+        expect(r.poem, Poem.durrah, reason: id);
+        expect(r.mention, {25, 26}, reason: id);
+      } else {
+        expect(r.mention, {789, 790, 791, 792, 793}, reason: id);
+        expect([for (final b in r.asl) b.n], [25, 26], reason: id);
+      }
+    }
+  });
+
+  test('la-nunjiyannahu, munjuka and thamudan cite their bayts', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'idris'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      for (final (a, w, shatibi, durrah) in [
+        (32, 9, {806}, {106, 107}),
+        (33, 16, {806}, {106, 107}),
+        (38, 1, {762}, {132}),
+      ]) {
+        final v = variants
+            .at([id], 29, a, w)
+            .where((v) => v.word == w && !v.isUsul)
+            .single;
+        if (a == 32) expect(v.text, 'لَنُنجِيَنَّهُۥ', reason: id);
+        final r = manzumat.referenceOf(
+          v,
+          '',
+          29,
+          surahs,
+          entries: book.at(29, a, w),
+        );
+        if (id == 'idris') {
+          expect(r.poem, Poem.durrah, reason: '$id $a');
+          expect(r.mention, durrah, reason: '$id $a');
+        } else {
+          expect(r.mention, shatibi, reason: '$id $a');
+          expect({for (final b in r.asl) b.n}, durrah, reason: '$id $a');
+        }
+      }
+    }
+  });
+
+  test('ya-ibadiya of al-Ankabut and la-nuthwiyannahum', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'duri_abuamr', 'susi', 'ruways', 'idris'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final rows = variants.at([id], 29, 56, 0);
+      expect(rows.where((v) => !v.isUsul), isEmpty, reason: id);
+      expect(
+        rows.where((v) => v.rule == 'ya_idafa').single.description,
+        'بإسكان ياء الإضافة',
+        reason: id,
+      );
+    }
+    for (final id in ['duri_kisai', 'idris']) {
+      final v = variants
+          .at([id], 29, 58, 4)
+          .where((v) => v.word == 4 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'لَنُبَوِّئَنَّهُم',
+        29,
+        surahs,
+        entries: book.at(29, 58, 4),
+      );
+      if (id == 'idris') {
+        expect(r.mention, {30}, reason: id);
+      } else {
+        expect(r.mention, {956}, reason: id);
+        expect([for (final b in r.asl) b.n], [30], reason: id);
+      }
+    }
+  });
+
   test('arjihi cites 166-167 and the Durrah\'s 20', () async {
     final variants = await VariantRepository.discover();
     final ids = ['duri_kisai', 'abul_harith', 'idris', 'ishaq'];

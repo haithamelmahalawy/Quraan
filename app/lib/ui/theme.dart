@@ -524,7 +524,13 @@ class InkText extends StatelessWidget {
         glowStrength: glowStrength,
       );
     }
-    final small = style.fontFamily == 'Hafs'
+    // A word with the imala sign keeps the painter that draws it apart
+    // (al-Kisa'i's «ءَات۪ىٰنِ»: its dot under the ta, the user, 2026-11-16).
+    final small =
+        style.fontFamily == 'Hafs' &&
+            !(parts?.map((p) => p.$1).join() ?? text).contains(
+              RegExp('[۪ٜ]'),
+            )
         ? smallHamzaAlifParts(parts ?? [(text, null)])
         : null;
     if (small != null) return _drawSmallAlif(small);
