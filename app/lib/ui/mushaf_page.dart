@@ -221,10 +221,6 @@ class _MushafPageState extends State<MushafPage>
   /// Pinch zoom of the page.
   final _zoom = TransformationController();
 
-  /// Turned, each margin zoomed in its own column, the hamesh's and the
-  /// usul's (the user, 2026-11-15).
-  final _farshZoom = TransformationController();
-  final _usulZoom = TransformationController();
   bool _zoomed = false;
   bool _pinching = false;
   bool _pageQcf = false;
@@ -258,8 +254,6 @@ class _MushafPageState extends State<MushafPage>
   void dispose() {
     _disposeRecognizers();
     _zoom.dispose();
-    _farshZoom.dispose();
-    _usulZoom.dispose();
     _scroll.dispose();
     _landscapeScroll.dispose();
     super.dispose();
@@ -322,18 +316,15 @@ class _MushafPageState extends State<MushafPage>
                   child: _flowingText(ayahs, narrow),
                 ),
               );
-        // Pinch zooms the whole page image: frame, text and hamesh together;
-        // turned, the page alone, its margins beside it as they are (the
-        // user, 2026-11-15).
+        // Pinch zooms the whole page image: frame, text and hamesh together,
+        // turned as upright (the user, 2026-11-16: zoomed apart, the margins'
+        // words hid in their narrow columns under the mushaf).
         final landscape =
             printed &&
             MediaQuery.orientationOf(context) == Orientation.landscape;
         return Stack(
           children: [
-            if (landscape)
-              SizedBox.fromSize(size: viewport.biggest, child: content)
-            else
-              _zoomable(viewport.biggest, content),
+            _zoomable(viewport.biggest, content),
             if (_zoomed)
               // Turned, in the middle below the page, off the margins beside it.
               PositionedDirectional(
@@ -959,15 +950,10 @@ class _MushafPageState extends State<MushafPage>
                   widget.settings,
                   widget.quran,
                 );
-          // Beside the page, outside its zoom: zoomed with it, they showed only
-          // the starts of their lines at the screen's edge; hidden, they were
-          // gone. Each zoomed in its own column, kept within it (the user,
-          // 2026-11-15).
-          return MushafZoom(
+          // Zoomed with the page, as upright: dragged into sight when zoomed
+          // in (the user, 2026-11-16).
+          return KeyedSubtree(
             key: const ValueKey('landscape-margin-zoom'),
-            controller: farsh ? _farshZoom : _usulZoom,
-            onPinchChanged: (_) {},
-            onDoubleTap: widget.onDoubleTap,
             child: _LandscapeMargin(
               key: ValueKey('landscape-${farsh ? 'farsh' : 'usul'}-$section'),
               farsh: farsh,
@@ -1021,13 +1007,7 @@ class _MushafPageState extends State<MushafPage>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (hasFarsh) margin(true),
-        // The page alone zoomed, the margins beside it read as they are.
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, box) =>
-                _zoomable(box.biggest, Center(child: print)),
-          ),
-        ),
+        Expanded(child: Center(child: print)),
         if (hasUsul) margin(false),
       ],
     );
@@ -3393,6 +3373,16 @@ bool _openingLetters(Ayah ayah, int word) =>
     _openingSurahs.contains(ayah.surah) &&
     (ayah.number == 1 || ayah.surah == 42 && ayah.number == 2);
 
+/// Whether [i]'s imala names its leaned letters with when they are leaned
+/// (بإمالة الراء فقط وصلًا، بإمالة الراء والهمزة وقفًا، بإمالة الهمزة فقط وقفًا).
+bool _leanedLettersTold(_UsulItem i) =>
+    i.readings.isNotEmpty &&
+    i.readings.every(
+      (v) => RegExp(
+        r'^بإمالة (الراء|الهمزة)( فقط| والهمزة) (وقفًا|وصلًا)$',
+      ).hasMatch(v.description),
+    );
+
 /// The descriptions of [readings], each once; with its readers when the
 /// readings are not told alike.
 List<(String, String?)> _descriptionsOf(List<Variant> readings) {
@@ -4903,7 +4893,9 @@ class _UsulBox extends StatelessWidget {
           ),
         // How the opening letters are read, whatever the chapter (الٓمٓ:
         // بالسكت على كل حرف، الٓرۚ: بإمالة الراء), by each reader if they differ.
-        if (_openingLetters(i.ayah, i.word))
+        // Which letters of رَءَا and تَرَٰٓءَا are leaned, and when (بإمالة الراء
+        // والهمزة وقفًا، بإمالة الهمزة فقط وقفًا), by each reader if they differ.
+        if (_openingLetters(i.ayah, i.word) || _leanedLettersTold(i))
           for (final (d, readers) in _descriptionsOf(i.readings))
             Text(
               readers == null ? ' ($d)' : ' ($d: $readers)',
@@ -4965,7 +4957,7 @@ class _UsulBox extends StatelessWidget {
             ' (بالتفخيم والترقيق)',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
-        if (i.stopOnly)
+        if (i.stopOnly && !_leanedLettersTold(i))
           Text(
             ' (وقفًا فقط)',
             style: TextStyle(fontSize: 9 * scale, color: g.color),

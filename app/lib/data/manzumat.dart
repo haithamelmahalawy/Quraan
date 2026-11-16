@@ -326,6 +326,26 @@ class Manzumat {
     // under the Shatibiyya's (the user, 2026-11-15).
     final withKhalaf = poem == Poem.shatibiyya && _aamantum(reading)
         ? const {24}
+        // «بُيُوت» in every place: the Durrah's «بُيُوتَ اضْمُمًا» (77) under the
+        // Shatibiyya's for all who break its ba (the user, 2026-11-16).
+        : poem == Poem.shatibiyya &&
+              !reading.isUsul &&
+              _buyut.contains(_at(reading))
+        ? const {77}
+        // «نَحۡشُرُهُمۡ» (الفرقان ١٧): the Durrah's «وَنَحْشُرُ يَا حُزْ إِذْ» (172)
+        // under the Shatibiyya's (the user, 2026-11-16).
+        : poem == Poem.shatibiyya &&
+              !reading.isUsul &&
+              const {'25:17:1', '25:74:7'}.contains(_at(reading))
+        ? const {172}
+        // «أَرۡجِهِۦ» (الأعراف ١١١، الشعراء ٣٦) of al-Kisa'i: the Durrah's
+        // «وَبِالْقَصْرِ طُفْ وَأَرْ / جِهِ بِنْ وَأَشْبِعْ جُدْ» (20) under the
+        // Shatibiyya's (the user, 2026-11-16).
+        : poem == Poem.shatibiyya &&
+              !reading.isUsul &&
+              qiraaOf(reading.riwayaId).id == 'kisai' &&
+              const {'7:111:1', '26:36:1'}.contains(_at(reading))
+        ? const {20}
         : poem == Poem.shatibiyya &&
               const {
                 'hamzah',
@@ -463,6 +483,9 @@ class Manzumat {
     // «إِنَّهُمۡ هُمُ ٱلۡفَآئِزُونَ» (المؤمنون ١١١): the Durrah's «وَإِنَّهُمُ افْتَحْ فِدْ»
     // (168), Khalaf al-'Ashir opening it (the user, 2026-11-16).
     if (ashab && _at(v) == '23:111:5') return const {168};
+    // «وَيَتَّقۡهِ» (النور ٥٢): the Durrah's «كَيَتَّقْهِ وَامْدُدْ جُدْ وَسَكِّنْ بِهِ» (19)
+    // (the user, 2026-11-16).
+    if (ashab && _at(v) == '24:52:6') return const {19};
     // al-Kisa'i's «أَرَيۡتَ», its hamza dropped: the Durrah's «وَسَهِّلَا /
     // أَرَيْتَ وَإِسْرَائِيلَ كَائِنْ وَمَدَّ أُدْ» (33-34) (the user, 2026-11-15).
     if (_kisaiAraita(v)) return const {33, 34};
@@ -1913,6 +1936,9 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _buyut.contains(at) && !v.isUsul) {
       return {503};
     }
+    // Khalaf al-'Ashir's, the Durrah's «بُيُوتَ اضْمُمًا» (77) (the user,
+    // 2026-11-16).
+    if (poem == Poem.durrah && _buyut.contains(at) && !v.isUsul) return {77};
     // «يَحۡسِبُ» and its like, the future, its sin broken by Qalun and Ibn
     // Kathir: «وَيَحْسَبُ كَسْرُ السِّينِ مُسْتَقبِلاً سَمَا / رِضَاهُ».
     if (poem == Poem.shatibiyya &&
@@ -1930,6 +1956,38 @@ class Manzumat {
     // «يُقَٰتِلُونَ» (الحج ٣٩) its ta broken: «... وَالْفَتْحُ فِي تَا يُقَاتِلُو / نَ
     // عَمَّ عُلاَهُ» (899) (the user, 2026-11-15).
     if (poem == Poem.shatibiyya && !v.isUsul && at == '22:39:2') return {899};
+    // «وَيَتَّقۡهِ» (النور ٥٢) of the Durrah's readers: «كَيَتَّقْهِ وَامْدُدْ جُدْ
+    // وَسَكِّنْ بِهِ» (19) (the user, 2026-11-16).
+    if (poem == Poem.durrah && !v.isUsul && at == '24:52:6') return {19};
+    // «نَحۡشُرُهُمۡ» (الفرقان ١٧) with the nun: «وَنَحْشُرُ يَا دَارٍ عَلاَ» (921); the
+    // Durrah's «وَنَحْشُرُ يَا حُزْ إِذْ» (172) (the user, 2026-11-16).
+    if (!v.isUsul && at == '25:17:1') {
+      return poem == Poem.durrah ? {172} : {921};
+    }
+    // «تَأۡمُرُنَا» (الفرقان ٦٠) with the ya: «وَيَأْمُرُ شَافٍ» (923) (the user,
+    // 2026-11-16).
+    if (poem == Poem.shatibiyya && !v.isUsul && at == '25:60:10') return {923};
+    // «وَذُرِّيَّـٰتِنَا» (الفرقان ٧٤) as one: the Durrah's «جَمْعُ ذُرِّيَّةٍ حَلَا»
+    // (172) (the user, 2026-11-16).
+    if (poem == Poem.durrah && !v.isUsul && at == '25:74:7') return {172};
+    // «أَرۡجِهِۦ» (الأعراف ١١١، الشعراء ٣٦), its ha broken and joined: «وَعى
+    // نَفَرٌ أَرْجِئْهُ بِالْهَمْزِ سَاكِنا / وَفي الْهَاءِ ضَمٌّ لَفَّ دَعْوَاهُ
+    // حَرْمَلَا» (166) and the next naming the rest (167); the Durrah's
+    // «وَبِالْقَصْرِ طُفْ وَأَرْ / جِهِ بِنْ وَأَشْبِعْ جُدْ» (20) (the user,
+    // 2026-11-16).
+    // «تَلَقَّفُ» (الشعراء ٤٥) as in al-A'raf: «وَفِي الْكُلِّ تَلْقَفْ خِفُّ حَفْصٍ»
+    // (694) (the user, 2026-11-16).
+    if (poem == Poem.shatibiyya &&
+        !v.isUsul &&
+        at == '26:45:5' &&
+        v.description.contains('وتشديد القاف')) {
+      return {694};
+    }
+    if (!v.isUsul &&
+        (at == '7:111:1' || at == '26:36:1') &&
+        v.description == 'بكسر الهاء وصلتها') {
+      return poem == Poem.durrah ? {20} : {166, 167};
+    }
     // «لِتُحۡصِنَكُم» (الأنبياء ٨٠): the Durrah's «وَطِبْ نُوْنَ يُحْصِنْ أَنِّثاً أُدْ»
     // (162) (the user, 2026-11-15).
     if (poem == Poem.durrah && !v.isUsul && at == '21:80:4') return {162};

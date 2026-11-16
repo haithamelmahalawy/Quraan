@@ -1073,19 +1073,18 @@ void main() {
     await t.pumpAndSettle();
   });
 
-  // Turned and zoomed in: the page alone zoomed, its margins beside it in
-  // sight and as they are; zoomed with it they showed only the starts of
-  // their lines, hidden they were gone (the user, 2026-11-15).
-  testWidgets('a zoomed landscape page keeps its margins as they are', (
-    t,
-  ) async {
+  // Turned and zoomed in, as upright: the page and its margins one picture,
+  // zoomed together, none of the margins' words hidden in a narrow column
+  // (the user, 2026-11-16).
+  testWidgets('a zoomed landscape page zooms its margins with it', (t) async {
     final settings = ReaderSettings.memory(selected: {'warsh'})
       ..page = 3
       ..qcfFont = false;
     await show(t, const Size(754, 418), settings: settings, reader: true);
     final margin = find.byKey(const ValueKey('landscape-usul-margin'));
-    expect(margin.hitTestable(), findsOneWidget);
-    final before = t.getRect(margin.hitTestable());
+    final shown = margin.hitTestable().evaluate().single;
+    final usul = find.byElementPredicate((e) => e == shown);
+    final before = t.getRect(usul);
     final lines = find.byType(MushafLines).last;
     final page = t.getRect(lines);
     final c = page.center;
@@ -1100,56 +1099,21 @@ void main() {
     await a.up();
     await b.up();
     await t.pump(const Duration(seconds: 1));
-    expect(find.text('حجم الصفحة'), findsOneWidget);
-    // The page zoomed, the margin where it was and as large.
-    expect(t.getRect(lines).width, greaterThan(page.width + 1));
-    expect(margin.hitTestable(), findsOneWidget);
-    expect(t.getRect(margin.hitTestable()), before);
+    // Page and margin zoomed alike.
+    final scale = t.getRect(lines).width / page.width;
+    expect(scale, greaterThan(1.01));
+    expect(t.getRect(usul).width / before.width, closeTo(scale, .01));
+    // One zoom only.
+    expect(
+      find
+          .byKey(const ValueKey('landscape-margin-zoom'))
+          .evaluate()
+          .every((e) => e.widget is! MushafZoom),
+      isTrue,
+    );
     await t.tap(find.text('حجم الصفحة'));
     await t.pump(const Duration(seconds: 1));
-    expect(t.getRect(margin.hitTestable()), before);
-    expect(t.takeException(), isNull);
-    await t.pumpWidget(const SizedBox());
-    await t.pumpAndSettle();
-  });
-
-  // Turned, the usul pinched: zoomed in its own column, kept within it, the
-  // page as it is (the user, 2026-11-15).
-  testWidgets('the landscape usul zoomed in their own column', (t) async {
-    final settings = ReaderSettings.memory(selected: {'warsh'})
-      ..page = 3
-      ..qcfFont = false;
-    await show(t, const Size(754, 418), settings: settings, reader: true);
-    final margin = find.byKey(const ValueKey('landscape-usul-margin'));
-    final column = t.getRect(
-      find.byKey(const ValueKey('landscape-margin-zoom')).hitTestable().first,
-    );
-    final page = t.getRect(find.byType(MushafLines).last);
-    final shown = margin.hitTestable().evaluate().single;
-    final usul = find.byElementPredicate((e) => e == shown);
-    final before = t.getRect(usul);
-    final c = before.center;
-    final a = await t.startGesture(c - const Offset(0, 30), pointer: 1);
-    final b = await t.startGesture(c + const Offset(0, 30), pointer: 2);
-    await t.pump();
-    for (var i = 0; i < 10; i++) {
-      await a.moveBy(const Offset(0, -3));
-      await b.moveBy(const Offset(0, 3));
-      await t.pump(const Duration(milliseconds: 16));
-    }
-    await a.up();
-    await b.up();
-    await t.pump(const Duration(seconds: 1));
-    // The usul larger, the page as it was.
-    expect(t.getRect(usul).height, greaterThan(before.height + 1));
-    expect(t.getRect(find.byType(MushafLines).last), page);
-    // Still within its column: what shows of it, there alone.
-    expect(
-      t.getRect(
-        find.byKey(const ValueKey('landscape-margin-zoom')).hitTestable().first,
-      ),
-      column,
-    );
+    expect(t.getRect(usul), before);
     expect(t.takeException(), isNull);
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();

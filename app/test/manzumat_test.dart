@@ -7485,4 +7485,175 @@ void main() {
       expect(r.mention, {63, 64}, reason: id);
     }
   });
+
+  // «بُيُوت» in every place, its ba broken: «وَكَسْرُ بُيُوتٍ ...» (503), the
+  // Durrah's «بُيُوتَ اضْمُمًا ...» (77) beside it; Khalaf al-'Ashir's the
+  // Durrah's alone (the user, 2026-11-16).
+  test('buyut cites 503 and the Durrah\'s 77 everywhere', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'qalun', 'hisham', 'shubah', 'ishaq'];
+    await variants.ensureLoaded(ids);
+    for (final (s, a, w) in const [(24, 27, 5), (24, 27, 7), (2, 189, 12)]) {
+      for (final id in ids) {
+        final v = variants
+            .at([id], s, a, w)
+            .where((v) => !v.isUsul && v.description.contains('بكسر الباء'))
+            .firstOrNull;
+        if (v == null) continue;
+        final r = manzumat.referenceOf(v, 'بُيُوتٗا', s, surahs);
+        if (id == 'ishaq') {
+          expect(r.poem, Poem.durrah, reason: '$id $s:$a:$w');
+          expect(r.mention, {77}, reason: '$id $s:$a:$w');
+        } else {
+          expect(r.mention, {503}, reason: '$id $s:$a:$w');
+          expect([for (final b in r.asl) b.n], [77], reason: '$id $s:$a:$w');
+        }
+      }
+    }
+  });
+
+  // «وَيَتَّقۡهِ» (النور ٥٢): the Durrah's «كَيَتَّقْهِ وَامْدُدْ جُدْ وَسَكِّنْ بِهِ»
+  // (19), Khalaf al-'Ashir's, and under the Shatibiyya's for Hamza and
+  // al-Kisa'i (the user, 2026-11-16).
+  test('wa-yattaqhi cites the Durrah\'s 19', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['ishaq', 'duri_kisai', 'khalaf_hamzah']);
+    for (final id in ['ishaq', 'duri_kisai', 'khalaf_hamzah']) {
+      final v = variants
+          .at([id], 24, 52, 6)
+          .where((v) => v.word == 6 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'وَيَتَّقۡهِ',
+        24,
+        surahs,
+        entries: book.at(24, 52, 6),
+      );
+      if (id == 'ishaq') {
+        expect(r.poem, Poem.durrah, reason: id);
+        expect(r.mention, {19}, reason: id);
+      } else {
+        expect([for (final b in r.asl) b.n], [19], reason: id);
+      }
+    }
+  });
+
+  // «نَحۡشُرُهُمۡ» (الفرقان ١٧) with the nun: «وَنَحْشُرُ يَا دَارٍ عَلاَ» (921), the
+  // Durrah's «وَنَحْشُرُ يَا حُزْ إِذْ» (172) under it; Khalaf al-'Ashir's the
+  // Durrah's (the user, 2026-11-16).
+  test('nahshuruhum cites 921 and the Durrah\'s 172', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['qalun', 'duri_kisai', 'shubah', 'ishaq'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 25, 17, 1)
+          .where((v) => v.word == 1 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'يَحۡشُرُهُمۡ',
+        25,
+        surahs,
+        entries: book.at(25, 17, 1),
+      );
+      if (id == 'ishaq') {
+        expect(r.poem, Poem.durrah, reason: id);
+        expect(r.mention, {172}, reason: id);
+      } else {
+        expect(r.mention, {921}, reason: id);
+        expect([for (final b in r.asl) b.n], [172], reason: id);
+      }
+    }
+  });
+
+  test('ya-muruna cites 923 and wa-dhurriyyatina the Durrah\'s 172', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['khalaf_hamzah', 'duri_kisai', 'idris'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids.take(2)) {
+      final v = variants
+          .at([id], 25, 60, 10)
+          .where((v) => v.word == 10 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'تَأۡمُرُنَا',
+        25,
+        surahs,
+        entries: book.at(25, 60, 10),
+      );
+      expect(r.mention, {923}, reason: id);
+    }
+    for (final id in ids) {
+      final v = variants
+          .at([id], 25, 74, 7)
+          .where((v) => v.word == 7 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'وَذُرِّيَّٰتِنَا',
+        25,
+        surahs,
+        entries: book.at(25, 74, 7),
+      );
+      if (id == 'idris') {
+        expect(r.poem, Poem.durrah, reason: id);
+        expect(r.mention, {172}, reason: id);
+      } else {
+        expect(r.mention, {925}, reason: id);
+        expect([for (final b in r.asl) b.n], [172], reason: id);
+      }
+    }
+  });
+
+  test('talaqqafu of al-Shu\'ara cites 694 as al-A\'raf\'s', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'khalaf_hamzah', 'idris', 'shubah'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 26, 45, 5)
+          .where((v) => v.word == 5 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'تَلۡقَفُ',
+        26,
+        surahs,
+        entries: book.at(26, 45, 5),
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, {694}, reason: id);
+    }
+  });
+
+  test('arjihi cites 166-167 and the Durrah\'s 20', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'abul_harith', 'idris', 'ishaq'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      for (final (s, a) in [(7, 111), (26, 36)]) {
+        final v = variants
+            .at([id], s, a, 1)
+            .where((v) => v.word == 1 && !v.isUsul)
+            .single;
+        final r = manzumat.referenceOf(
+          v,
+          'أَرۡجِهۡ',
+          s,
+          surahs,
+          entries: book.at(s, a, 1),
+        );
+        if (id == 'idris' || id == 'ishaq') {
+          expect(r.poem, Poem.durrah, reason: id);
+          expect(r.mention, {20}, reason: id);
+        } else {
+          expect(r.mention, {166, 167}, reason: id);
+          expect([for (final b in r.asl) b.n], [20], reason: id);
+        }
+      }
+    }
+  });
 }
