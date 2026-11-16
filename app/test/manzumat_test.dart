@@ -7416,4 +7416,73 @@ void main() {
       expect(r.mention, {903}, reason: id);
     }
   });
+
+  // «أَيَحۡسِبُونَ» (المؤمنون ٥٥), its sin broken: «وَيَحْسَبُ كَسْرُ السِّينِ
+  // مُسْتَقبِلاً سَمَا / رِضَاهُ» (538); the Durrah's «... كَيَحْسَبُ أُدْ وَاكْسِرْهُ
+  // فُقْ» (83) (the user, 2026-11-16).
+  test('a-yahsibuna cites 538 and the Durrah\'s 83', () async {
+    final variants = await VariantRepository.discover();
+    final ids = ['duri_kisai', 'duri_abuamr', 'qalun', 'ishaq', 'rawh'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      final v = variants
+          .at([id], 23, 55, 0)
+          .where((v) => v.word == 0 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'أَيَحۡسَبُونَ',
+        23,
+        surahs,
+        entries: book.at(23, 55, 0),
+      );
+      final durrah = id == 'ishaq' || id == 'rawh';
+      expect(r.poem, durrah ? Poem.durrah : Poem.shatibiyya, reason: id);
+      expect(r.mention, durrah ? {83} : {538}, reason: id);
+    }
+  });
+
+  // «إِنَّهُمۡ» (المؤمنون ١١١) of Hamza and al-Kisa'i: the Durrah's «وَإِنَّهُمُ
+  // افْتَحْ فِدْ» (168) beside the Shatibiyya's (the user, 2026-11-16).
+  test('innahum of al-Mu\'minun 111 has the Durrah\'s 168 beside it', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'khalaf_hamzah']);
+    for (final id in ['duri_kisai', 'khalaf_hamzah']) {
+      final v = variants
+          .at([id], 23, 111, 5)
+          .where((v) => v.word == 5 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'أَنَّهُمۡ',
+        23,
+        surahs,
+        entries: book.at(23, 111, 5),
+      );
+      expect(r.mention, {910}, reason: id);
+      expect([for (final b in r.asl) b.n], [168], reason: id);
+    }
+  });
+
+  // «تَرۡجِعُونَ» (المؤمنون ١١٥) of the Durrah's readers: «وَيُرْجَعُ كَيْفَ جَا /
+  // إِذَا كَانَ لِلأُخْرَى فَسَمِّ حُلًى حَلَا» (63، 64) (the user, 2026-11-16).
+  test('tarji\'una of al-Mu\'minun cites the Durrah\'s 63-64', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['rawh', 'ruways', 'ishaq']);
+    for (final id in ['rawh', 'ruways', 'ishaq']) {
+      final v = variants
+          .at([id], 23, 115, 7)
+          .where((v) => v.word == 7 && !v.isUsul)
+          .single;
+      final r = manzumat.referenceOf(
+        v,
+        'تُرۡجَعُونَ',
+        23,
+        surahs,
+        entries: book.at(23, 115, 7),
+      );
+      expect(r.poem, Poem.durrah, reason: id);
+      expect(r.mention, {63, 64}, reason: id);
+    }
+  });
 }

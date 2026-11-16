@@ -460,6 +460,9 @@ class Manzumat {
     // «وَحَرَٰمٌ» (الأنبياء ٩٥): the Durrah's «حَرَامٌ فَشَا» (163), Khalaf al-'Ashir
     // parting from his asl (the user, 2026-11-15).
     if (ashab && _at(v) == '21:95:0') return const {163};
+    // «إِنَّهُمۡ هُمُ ٱلۡفَآئِزُونَ» (المؤمنون ١١١): the Durrah's «وَإِنَّهُمُ افْتَحْ فِدْ»
+    // (168), Khalaf al-'Ashir opening it (the user, 2026-11-16).
+    if (ashab && _at(v) == '23:111:5') return const {168};
     // al-Kisa'i's «أَرَيۡتَ», its hamza dropped: the Durrah's «وَسَهِّلَا /
     // أَرَيْتَ وَإِسْرَائِيلَ كَائِنْ وَمَدَّ أُدْ» (33-34) (the user, 2026-11-15).
     if (_kisaiAraita(v)) return const {33, 34};
@@ -1416,6 +1419,15 @@ class Manzumat {
     if (word == '14:47:1' && !v.isUsul) {
       return poem == Poem.durrah ? {83} : {538};
     }
+    // «يَحۡسِبُ» and its like, the future (أَيَحۡسِبُونَ المؤمنون ٥٥), its sin
+    // broken, every reader: «وَيَحْسَبُ كَسْرُ السِّينِ مُسْتَقبِلاً سَمَا / رِضَاهُ»
+    // (538); the Durrah's «... كَيَحْسَبُ أُدْ وَاكْسِرْهُ فُقْ» (83) (the user,
+    // 2026-11-16).
+    if (_yahsibu.contains(word) &&
+        !v.isUsul &&
+        v.description.contains('بكسر السين')) {
+      return poem == Poem.durrah ? {83} : {538};
+    }
     if (word == '15:2:0' && !v.isUsul && poem == Poem.shatibiyya) return {802};
     // «هَلۡ يَسۡتَوِي ٱلظُّلُمَٰتُ» (الرعد ١٦): «... هَلْ يَسْتَوِي صُحْبَةٌ تَلَا» (794);
     // «خَٰلِقُ ... وَٱلۡأَرۡضِ» (إبراهيم ١٩): «... خَا / لِقُ امْدُدْهُ وَاكْسِرْ وَارْفَعِ
@@ -1437,6 +1449,12 @@ class Manzumat {
     // كَانَ لِلأُخْرَى فَسَمِّ حُلًى حَلَا // وَالامْرُ اتْلُ ...» (63، 64) (the user,
     // 2026-11-14).
     if (poem == Poem.durrah && word == '11:123:5' && !v.isUsul) {
+      return {63, 64};
+    }
+    // «لَا تُرۡجَعُونَ» (المؤمنون ١١٥) of the Durrah's readers: the same «وَيُرْجَعُ
+    // كَيْفَ جَا / إِذَا كَانَ لِلأُخْرَى فَسَمِّ حُلًى حَلَا» (63، 64) (the user,
+    // 2026-11-16).
+    if (poem == Poem.durrah && word == '23:115:7' && !v.isUsul) {
       return {63, 64};
     }
     // «ٱرۡكَب مَّعَنَا» (هود ٤٢): «وَفِي ارْكَبْ هُدَى بَرٍّ قَرِيبٍ بِخُلْفِهِمْ / كَمَا

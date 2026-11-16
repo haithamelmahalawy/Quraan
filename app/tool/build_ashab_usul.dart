@@ -1890,6 +1890,17 @@ Map<String, int> buildAshabUsul(
       v[4] = 'صَلَوٰتِهِمۡ';
     }
   }
+  // «قُلۡ كَمۡ لَبِثۡتُمۡ ... قُلۡ إِن لَّبِثۡتُمۡ» (المؤمنون ١١٢، ١١٤): both the
+  // command, its lam quiet, told alike (the user, 2026-11-16).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 23 &&
+        (v[1] == 112 || v[1] == 114) &&
+        v[2] == 0 &&
+        v[5] == 'f') {
+      v[4] = 'قُلۡ';
+      v[6] = 'بضم القاف وحذف الألف وإسكان اللام';
+    }
+  }
   // Hamza's and Khalaf al-'Ashir's «يَتَوَفَّىٰهُمُ» (النحل ٢٨، ٣٢): Hafs's word
   // with the ya for the ta, its dagger alif kept, leaned; and their and
   // al-Kisa'i's «يَأۡتِيَهُمُ» (النحل ٣٣) with the ya, its own opened (the user,
