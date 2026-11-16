@@ -149,7 +149,8 @@ class VariantSheet extends StatelessWidget {
             KharoufSection(
               surah: ayah.surah,
               ayah: ayah.number,
-              word: word,
+              word: from,
+              to: to,
               // The book's note told of the riwayat on the page only.
               riwayat: {
                 ...settings.selected,

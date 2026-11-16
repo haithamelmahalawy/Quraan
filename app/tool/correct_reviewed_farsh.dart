@@ -71,13 +71,14 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
     'f',
     'بإبدال الهمزة الأولى واوًا ساكنة مدية',
   ]);
-  // Hafs's sakt left, as Warsh: in the usul «ترك السكت».
+  // Hafs's sakt left, as Warsh: in the usul «ترك السكت», the two words shaded
+  // together (the user, 2026-11-16).
   put([
     36,
     52,
     5,
-    1,
-    '',
+    2,
+    'مَّرۡقَدِنَاۗ هَٰذَا',
     'u',
     'بالوصل دون سكت',
     'no_sakt',

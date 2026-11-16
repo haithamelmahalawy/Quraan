@@ -109,8 +109,14 @@ void main() {
       final hanian = rows('hisham', 4, 4, 'hisham_waqf');
       expect(hanian.map((v) => v[8]['stopText']), contains('هَنِيَّا'));
       expect(hanian.map((v) => v[8]['stopText']), contains('مَّرِيَّا'));
+      // After an alif with the tanween of the nasb (dua'an, nida'an): no change
+      // of Hisham's, the hamza as Hafs's (the user, 2026-11-16).
       final duaan = rows('hisham', 2, 171, 'hisham_waqf');
-      expect(duaan.map((v) => v[8]['stopText']), contains('دُعَآ'));
+      expect(duaan, isEmpty);
+      expect(
+        rows('hisham', 2, 22, 'hisham_waqf').where((v) => v[2] == 6 || v[2] == 10),
+        isEmpty,
+      );
     },
   );
   test('internal idgham keeps the canonical shared Shubah spelling', () {

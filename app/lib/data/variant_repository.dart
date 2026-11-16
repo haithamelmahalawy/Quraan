@@ -330,7 +330,15 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
             !(id == 'warsh' && v.description == 'بالضم في الوصل') &&
             // Nor one way where Hafs reads two (ٱلۡمُصَيۡطِرُونَ، ضَعۡفٖ): it
             // differs from him (the user, 2026-11-15).
-            !v.description.contains('وجهًا واحدًا'),
+            !v.description.contains('وجهًا واحدًا') &&
+            // «ضُعۡفٖ ... ضُعۡفٗا» (الروم ٥٤): the book counts Hafs's second
+            // way with the damma; al-Kisa'i's and Khalaf al-'Ashir's damma
+            // alone stays, one hamesh with Ibn Kathir's and Ya'qub's (the
+            // user, 2026-11-16).
+            !(v.surah == 30 && v.ayah == 54 && v.description == 'بضم الضاد') &&
+            // «يَرۡضَهُۥ» (الزمر ٧): the book writes the silah's «يرضهُ» as
+            // Hafs's, «بالضم مع الصلة» apart (the user, 2026-11-16).
+            !(v.surah == 39 && v.ayah == 7 && v.description.contains('الصلة')),
       );
     }
   }
@@ -540,6 +548,11 @@ String _bare(String text) =>
 bool _matchesUsul(Variant v, String how) {
   // The ishmam the riwaya's rule tells (سِيٓءَ «بإشمام كسرة السين الضم»).
   if (v.rule == 'ishmam' && how.contains('إشمام')) return true;
+  // «يسٓ وَٱلۡقُرۡءَانِ» «وأدغم النون من «يس»…»: the riwaya's idgham row tells it
+  // in the usul, no hamesh besides (Shu'ba's, the user, 2026-11-16).
+  if (v.rule == 'idgham_saghir' && RegExp('أدغم|إدغام').hasMatch(how)) {
+    return true;
+  }
   if (v.isLinHamz) {
     final plain = how.replaceAll(RegExp('[ً-ٰٟ]'), '').trim();
     // The book also records madd faces in its farsh section. They are

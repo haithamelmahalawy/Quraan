@@ -1708,6 +1708,27 @@ class _MushafPageState extends State<MushafPage>
                   .firstOrNull
             : null);
     if (v != null) {
+      // A chain of Khalaf's idgham (ظُلُمَٰتٞ وَّرَعۡدٞ، وَرَعۡدٞ وَّبَرۡقٞ): the row
+      // that starts on a word already drawn with the one before it draws its
+      // own words after that one, not none (the user, 2026-11-16).
+      if (v.word != w && v.word < w && v.text.isNotEmpty) {
+        final parts = v.text.split(' ');
+        final drawnBefore = _baseAt(
+          widget.variants,
+          s,
+          ayah,
+          v.word,
+        ).any(
+          (r) =>
+              r.canReplaceText &&
+              r.word < v.word &&
+              r.word + r.count - 1 >= v.word &&
+              r.word + r.count - 1 < w,
+        );
+        if (drawnBefore && parts.length == v.count) {
+          return (text: parts[w - v.word], font: 'Hafs');
+        }
+      }
       if (v.word != w || v.text.isEmpty) return null;
       if (const {'ruways', 'rawh'}.contains(s.displayed) &&
           _replacementAt(ayah, w) != null) {

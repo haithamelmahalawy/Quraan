@@ -133,6 +133,9 @@ class _ReadingReferencesState extends State<ReadingReferences> {
                 surah: widget.readings.first.surah,
                 ayah: widget.readings.first.ayah,
                 word: widget.readings.first.word,
+                to: widget.readings
+                    .map((v) => v.word + v.count)
+                    .reduce((a, b) => a > b ? a : b),
                 riwayat: {for (final v in widget.readings) v.riwayaId},
                 showVerses: false,
               ),

@@ -794,6 +794,10 @@ void _stoppingHamza(_Word w, String text, _Add add) {
   final ways = <String>[];
   var page = 30;
   if (base == 'ا' && v.isEmpty) {
+    // After an alif with the tanween of the nasb (بِنَآءٗ، مَآءٗ، نِدَآءٗ): the
+    // stop on its alif leaves the hamza as Hafs's, no change of Hisham's (the
+    // user, 2026-11-16).
+    if (fathatan) return;
     page = 31;
     stopText = prefix;
     ways.addAll([
@@ -807,7 +811,7 @@ void _stoppingHamza(_Word w, String text, _Add add) {
         h.contains('ٖ')) {
       ways.addAll([
         'تسهيل الهمزة بالروم مع القصر',
-        'تسهيل الهمزة بالروم مع المد',
+        'تسهيل الهمزة بالروم مع التوسط',
       ]);
     }
   } else if (v.isNotEmpty) {

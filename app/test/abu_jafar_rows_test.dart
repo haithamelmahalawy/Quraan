@@ -66,6 +66,9 @@ void main() {
           final own = '${v[4]}'.split(' ');
           if (count < 2 || own.length != count) continue;
           if (v.length > 7 && v[7] == 'idgham_saghir') continue;
+          // «مَّرۡقَدِنَاۗ هَٰذَا»: Hafs's sakt left, the two words joined and
+          // shaded together (the user, 2026-11-16).
+          if (v.length > 7 && v[7] == 'no_sakt') continue;
           final first = words['${v[0]}:${v[1]}:${v[2]}'] ?? '';
           final last =
               words['${v[0]}:${v[1]}:${(v[2] as int) + count - 1}'] ?? '';

@@ -138,7 +138,7 @@ String readingVariantKey(Variant v, {String? baseline}) {
   // «عَمِلَتۡهُۥ» with the others' «عَمِلَتۡهُ».
   final text = v.rule == 'comparison' ? withoutHaSilah(v.text) : v.text;
   return 'farsh:${v.count}:${readingTextKey(text, baseline: baseline)}:$marks:'
-      '${v.description.startsWith('بوجهين') ? _descriptionKey(v.description) : ''}:'
+      '${v.description.startsWith('بوجهين') || v.description.contains('بخلف عنه') ? _descriptionKey(v.description) : ''}:'
       '${v.text.isEmpty ? _descriptionKey(v.description) : ''}:'
       '${_descriptionKey(v.bookWujuh)}';
 }
@@ -318,7 +318,10 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
           v.description.startsWith('بخلف') ||
           v.description.contains('بحذف المد') ||
           // One way where Hafs reads two (ضَعۡفٖ، الروم ٥٤) (the user, 2026-11-15).
-          v.description.contains('وجهًا واحدًا'))
+          v.description.contains('وجهًا واحدًا') ||
+          // A silah of the farsh, where Hafs reads none (يَرۡضَهُۥ الزمر ٧):
+          // a difference of the word, in the hamesh (the user, 2026-11-16).
+          v.description.contains('بمد الصلة'))
         '${v.word - from}:faces:${_descriptionKey(v.description)}',
       if (_yaIdafa(v) case final ya? when ya != _hafsYa(ayah, v.word))
         '${v.word - from}:ya:$ya',

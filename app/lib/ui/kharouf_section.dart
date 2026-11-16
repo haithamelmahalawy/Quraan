@@ -16,9 +16,15 @@ class KharoufSection extends StatelessWidget {
     required this.word,
     required this.riwayat,
     this.showVerses = true,
+    this.to,
   });
 
   final int surah, ayah, word;
+
+  /// The end (exclusive) of the words told: a reading of several words
+  /// (هشام's «وَلَقَد جَّآءَكُم») has the book's notes of each of them, Ibn
+  /// Dhakwan's imala of «جَآءَ» with the idgham (the user, 2026-11-16).
+  final int? to;
   final Set<String> riwayat;
 
   /// ReferenceSheet renders filtered, numbered, expandable verses itself.
@@ -31,10 +37,11 @@ class KharoufSection extends StatelessWidget {
       builder: (context, snapshot) {
         final book = snapshot.data;
         if (book == null) return const SizedBox.shrink();
-        final entries = [
-          for (final e in book.at(surah, ayah, word))
-            if (_mine(e).isNotEmpty) e,
-        ];
+        final entries = <KharoufEntry>{
+          for (var w = word; w < (to ?? word + 1); w++)
+            for (final e in book.at(surah, ayah, w))
+              if (_mine(e).isNotEmpty) e,
+        }.toList();
         if (entries.isEmpty) return const SizedBox.shrink();
         final theme = Theme.of(context);
         return Container(

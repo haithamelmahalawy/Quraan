@@ -13,8 +13,50 @@ int _waqfFinal(
 ) {
   if (!_hamza.contains(id)) return 0;
   var n = 0;
-  for (final v in hisham) {
-    if (v.length < 9 || v[7] != 'hisham_waqf') continue;
+  // A hamza after an alif with the tanween of the nasb (بِنَآءٗ، مَآءٗ، نِدَآءٗ):
+  // middle at the stop, eased bayna bayna by Hamza; Hisham reads it as Hafs, so
+  // it is no row of his to copy (the user, 2026-11-16).
+  final his = {for (final v in hisham) _key(v[0], v[1], v[2])};
+  final nasb = [
+    for (final word in index.values)
+      if (!his.contains(_key(word.s, word.a, word.w)) &&
+          RegExp(
+            '[اٰ]ٓ?ء[ًٗ]ا?\$',
+          ).hasMatch(word.t.replaceAll(RegExp('[ۖ-ۭ]'), '')))
+        [
+          word.s,
+          word.a,
+          word.w,
+          1,
+          '',
+          'u',
+          'وقفًا: تسهيلها بين بين مع المد، أو تسهيلها بين بين مع القصر',
+          'hisham_waqf',
+          {
+            'stopOnly': true,
+            'ways': ['تسهيلها بين بين مع المد', 'تسهيلها بين بين مع القصر'],
+            'context': word.t,
+          },
+        ],
+  ];
+  for (final raw in [...hisham, ...nasb]) {
+    if (raw.length < 9 || raw[7] != 'hisham_waqf') continue;
+    // Hisham's rawm with the tawassut (the user, 2026-11-16); Hamza's as it
+    // was, with the madd.
+    String his(String s) =>
+        s.replaceAll('تسهيلها بالروم مع التوسط', 'تسهيلها بالروم مع المد');
+    final v = [
+      ...raw.take(6),
+      his('${raw[6]}'),
+      raw[7],
+      {
+        ...(raw[8] as Map),
+        if ((raw[8] as Map)['ways'] is List)
+          'ways': [
+            for (final w in ((raw[8] as Map)['ways'] as List)) his('$w'),
+          ],
+      },
+    ];
     final word = index[_key(v[0], v[1], v[2])];
     final rasm = word != null
         ? _rasmFaces(word.t, '${v[6]}')
