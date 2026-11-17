@@ -331,6 +331,9 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
             // Nor one way where Hafs reads two (ٱلۡمُصَيۡطِرُونَ، ضَعۡفٖ): it
             // differs from him (the user, 2026-11-15).
             !v.description.contains('وجهًا واحدًا') &&
+            // «ٱلۡمُصَۜيۡطِرُونَ» (الطور ٣٧) with the sin alone for Hisham and
+            // Qunbul, where Hafs reads it two ways (the user, 2026-11-17).
+            !(v.surah == 52 && v.ayah == 37 && v.description == 'بالسين') &&
             // «ضُعۡفٖ ... ضُعۡفٗا» (الروم ٥٤): the book counts Hafs's second
             // way with the damma; al-Kisa'i's and Khalaf al-'Ashir's damma
             // alone stays, one hamesh with Ibn Kathir's and Ya'qub's (the

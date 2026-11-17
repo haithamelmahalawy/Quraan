@@ -25,6 +25,24 @@ void main() {
         : null,
   );
 
+  // «لِإِخۡوَٰنِهُمُ ٱلَّذِينَ» (الحشر ١١): the ha damma told with the word whose
+  // sakin it meets (the user, 2026-11-17).
+  test('the ha damma before a sakin is told with the next word', () {
+    final v = variants
+        .at(['khalaf_hamzah'], 59, 11, 6)
+        .singleWhere((v) => v.rule == 'ha_damir');
+    final words = text(v).split(' ');
+    expect(words, hasLength(2));
+    expect(words.first, contains('هُمُ'));
+    expect(words.last, startsWith('ٱل'));
+    expect(
+      variants
+          .at(['khalaf_hamzah'], 59, 11, 6)
+          .where((v) => !v.isUsul && v.count == 2),
+      isEmpty,
+    );
+  });
+
   test('naql replaces the Hafs spelling, also in its other usul examples', () {
     for (final id in ['naql', 'badal', 'tarqiq']) {
       expect(text(rule(4, 9, id)), 'وَبِالَاخِرَةِ');

@@ -23,11 +23,20 @@
 //   ["s", surah]                       surah name
 //   ["b", surah]                       basmala
 //   ["a", s1, a1, w1, s2, a2, w2]      Hafs words (s1:a1:w1) .. (s2:a2:w2)
-//   and pages 1-2 carry a leading "c" (centered lines).
+//   and pages 1-2 carry a leading "c" (centered lines); a text line may end
+//   with "c" (centred) and "m" (the end of the ayah before opens it).
 import 'dart:convert';
 import 'dart:io';
 
 typedef WordRef = (int surah, int ayah, int word);
+
+/// Short lines centred as in the print, by their first word: «فَٱسۡجُدُواْ
+/// لِلَّهِ وَٱعۡبُدُواْ۩» (النجم ٦٢) (the user, 2026-11-17).
+const _centeredLines = {(53, 62, 0)};
+
+/// Lines the end of the ayah before opens, by their first word, the line
+/// before ending on its last word (the user, 2026-11-17).
+const _movedEnds = {(53, 62, 0)};
 
 void main(List<String> args) {
   final dir = args.isNotEmpty ? args[0] : '../tools/source/layout_v1';
@@ -115,7 +124,12 @@ void main(List<String> args) {
       if (ws != null) {
         final (s1, a1, w1) = ws.first;
         final (s2, a2, w2) = ws.last;
-        out.add(['a', s1, a1, w1, s2, a2, w2]);
+        out.add([
+          'a', s1, a1, w1, s2, a2, w2,
+          // A short last line of a surah, centred as in the print.
+          if (_centeredLines.contains((s1, a1, w1))) 'c',
+          if (_movedEnds.contains((s1, a1, w1))) 'm',
+        ]);
         l++;
         continue;
       }

@@ -261,7 +261,10 @@ String usulReadingText(
   }
   // The first of two sakins, moved for the second, of two words (قُلِ
   // ٱدۡعُواْ): the word it meets as well.
-  if (reading.rule == 'first_sakin' &&
+  // The ha damma for the mim before a sakin of the next word (لِإِخۡوَٰنِهُمُ
+  // ٱلَّذِينَ), told with the word whose sakin it meets (the user,
+  // 2026-11-17).
+  if ((reading.rule == 'first_sakin' || reading.rule == 'ha_damir') &&
       reading.count == 1 &&
       !target.contains(' ')) {
     final following = reading.word + 1 < ayah.words.length ? ayah : nextAyah;

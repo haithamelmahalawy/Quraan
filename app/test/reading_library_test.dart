@@ -122,7 +122,7 @@ void main() {
   );
 
   test('book browsing exposes each note once and preserves span indexing', () {
-    expect(book.entries, hasLength(7969));
+    expect(book.entries, hasLength(7967));
     expect(book.entries.toSet(), hasLength(book.entries.length));
     expect(() => book.entries.clear(), throwsUnsupportedError);
     for (final e in book.entries) {
@@ -243,7 +243,7 @@ void main() {
         size: const Size(540, 1100),
         screen: TasheelLibraryScreen(quran: mushafs.madani),
       );
-      expect(find.text('المواضع المعروضة: 7969 من 7969'), findsOneWidget);
+      expect(find.text('المواضع المعروضة: 7967 من 7967'), findsOneWidget);
       await select(
         t,
         'السورة',
@@ -279,11 +279,11 @@ void main() {
         'كلمةغيرموجودة',
       );
       await t.pumpAndSettle();
-      expect(find.text('المواضع المعروضة: 0 من 7969'), findsOneWidget);
+      expect(find.text('المواضع المعروضة: 0 من 7967'), findsOneWidget);
       expect(find.text('لا توجد مواضع مطابقة.'), findsOneWidget);
       await t.tap(find.text('إظهار الجميع'));
       await t.pumpAndSettle();
-      expect(find.text('المواضع المعروضة: 7969 من 7969'), findsOneWidget);
+      expect(find.text('المواضع المعروضة: 7967 من 7967'), findsOneWidget);
       expect(t.takeException(), isNull);
     },
   );

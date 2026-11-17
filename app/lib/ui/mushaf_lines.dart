@@ -69,6 +69,23 @@ class MushafLines extends StatelessWidget {
       marker?.call(ayah) ??
       (text: ' ${_ayahMarker(ayah.number)}', font: 'Hafs');
 
+  /// The end after [word] on [line]: none where it was moved to the next
+  /// line.
+  ({String text, String font})? _endOn(TextLine? line, Ayah ayah, int word) =>
+      line != null &&
+          line.endMoved &&
+          line.words.isNotEmpty &&
+          identical(line.words.last.$1, ayah) &&
+          line.words.last.$2 == word
+      ? null
+      : _end(ayah, word);
+
+  /// The end moved to open [line], from the line before.
+  ({String text, String font})? _leadingEnd(TextLine? line) {
+    final ayah = line?.leadingEnd;
+    return ayah == null ? null : _end(ayah, ayah.words.length - 1);
+  }
+
   ({String text, String font})? _end(Ayah ayah, int word) => wordMarker != null
       ? wordMarker!(ayah, word)
       : word == ayah.words.length - 1
@@ -131,6 +148,7 @@ class MushafLines extends StatelessWidget {
                     fontSize,
                     constraints.maxWidth,
                     short,
+                    line,
                   ),
                 },
               ),
@@ -145,6 +163,7 @@ class MushafLines extends StatelessWidget {
     double pageSize,
     double width, [
     bool short = false,
+    TextLine? line,
   ]) {
     // Every word and line shares the page's font size. The longest line
     // has already constrained that size in _fitFontSize.
@@ -152,12 +171,24 @@ class MushafLines extends StatelessWidget {
     final centered = this.centered || short;
     final kashida = centered
         ? const <int, int>{}
-        : _kashida(words, fontSize, width);
+        : _kashida(words, fontSize, width, line);
     // The words drawn, in the order of the row's children.
     final shown = <(Ayah, int)>[];
-    final children = <Widget>[];
+    final children = <Widget>[
+      if (_leadingEnd(line) case final end?)
+        Padding(
+          padding: centered
+              ? EdgeInsets.symmetric(horizontal: fontSize * 0.12)
+              : EdgeInsets.zero,
+          child: InkText(
+            end.text.trimLeft(),
+            style: _style(fontSize, end.font),
+            firmness: 0.35,
+          ),
+        ),
+    ];
     for (final (i, (ayah, w)) in words.indexed) {
-      final item = _item(ayah, w, fontSize, kashida[i] ?? 0);
+      final item = _item(ayah, w, fontSize, kashida[i] ?? 0, line);
       if (item == null) continue;
       shown.add((ayah, w));
       children.add(
@@ -190,8 +221,9 @@ class MushafLines extends StatelessWidget {
   Map<int, int> _kashida(
     List<(Ayah, int)> words,
     double fontSize,
-    double width,
-  ) {
+    double width, [
+    TextLine? line,
+  ]) {
     final scale = fontSize / _probe;
     var natural = 0.0;
     var items = 0;
@@ -218,9 +250,12 @@ class MushafLines extends StatelessWidget {
           }
         }
       }
-      if (_end(ayah, w) case final end?) {
+      if (_endOn(line, ayah, w) case final end?) {
         natural += _measure(end.text, end.font) * scale;
       }
+    }
+    if (_leadingEnd(line) case final end?) {
+      natural += _measure(end.text, end.font) * scale;
     }
     if (slots.isEmpty) return const {};
     // Words keep at least a narrow space between them.
@@ -248,9 +283,15 @@ class MushafLines extends StatelessWidget {
   }
 
   /// A word, followed by the ayah-end marker when it closes its ayah.
-  Widget? _item(Ayah ayah, int w, double fontSize, int kashida) {
+  Widget? _item(
+    Ayah ayah,
+    int w,
+    double fontSize,
+    int kashida, [
+    TextLine? line,
+  ]) {
     final shown = _show(ayah, w) != null;
-    final end = _end(ayah, w);
+    final end = _endOn(line, ayah, w);
     final closes = end != null;
     if (!shown && !closes) return null;
     final marker = InkText(
@@ -289,7 +330,7 @@ class MushafLines extends StatelessWidget {
   double _fitFontSize(double width) {
     final widths = [
       for (final line in lines)
-        if (line is TextLine) _naturalWidth(line.words),
+        if (line is TextLine) _naturalWidth(line.words, line),
     ].where((w) => w > 0).toList()..sort();
     if (widths.isEmpty) return width / 16;
     // Fit the longest printed line once for the entire page; shrinking
@@ -302,7 +343,7 @@ class MushafLines extends StatelessWidget {
 
   /// Width of [words] at the probe size with the font's own word spacing
   /// (centred lines pad every word).
-  double _naturalWidth(List<(Ayah, int)> words) {
+  double _naturalWidth(List<(Ayah, int)> words, [TextLine? line]) {
     var w = 0.0;
     var items = 0;
     String? font;
@@ -317,9 +358,13 @@ class MushafLines extends StatelessWidget {
         font ??= shown.font;
         items++;
       }
-      if (_end(ayah, i) case final end?) {
+      if (_endOn(line, ayah, i) case final end?) {
         w += _measure(end.text, end.font);
       }
+    }
+    if (_leadingEnd(line) case final end?) {
+      w += _measure(end.text, end.font);
+      items++;
     }
     return w +
         (centered

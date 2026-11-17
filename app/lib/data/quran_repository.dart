@@ -274,15 +274,36 @@ class QuranRepository {
             out.add(const TextLine([]));
           case 'a':
             final ref = l.skip(1).take(6).cast<int>().toList();
+            final flags = l.skip(7).toSet();
+            final words = _words(
+              ayahs,
+              (ref[0], ref[1], ref[2]),
+              (ref[3], ref[4], ref[5]),
+            );
+            // The end of the ayah before opens the line, as the print sets
+            // «۝ فَٱسۡجُدُواْ لِلَّهِ وَٱعۡبُدُواْ۩ ۝» (النجم ٦٢): the line before
+            // ends on its last word.
+            Ayah? leading;
+            if (flags.contains('m') && words.isNotEmpty) {
+              final i = ayahs.indexOf(words.first.$1);
+              final before = out.lastIndexWhere((l) => l is TextLine);
+              if (i > 0 && before >= 0) {
+                leading = ayahs[i - 1];
+                final b = out[before] as TextLine;
+                out[before] = TextLine(
+                  b.words,
+                  centered: b.centered,
+                  leadingEnd: b.leadingEnd,
+                  endMoved: true,
+                );
+              }
+            }
             out.add(
               TextLine(
-                _words(
-                  ayahs,
-                  (ref[0], ref[1], ref[2]),
-                  (ref[3], ref[4], ref[5]),
-                ),
+                words,
                 // A short last line of a surah, centred as in the print.
-                centered: l.length > 7 && l[7] == 'c',
+                centered: flags.contains('c'),
+                leadingEnd: leading,
               ),
             );
         }
@@ -336,7 +357,12 @@ class BasmalaLine extends MushafLine {
 }
 
 class TextLine extends MushafLine {
-  const TextLine(this.words, {this.centered = false});
+  const TextLine(
+    this.words, {
+    this.centered = false,
+    this.leadingEnd,
+    this.endMoved = false,
+  });
 
   /// The Hafs words on the line, in reading order.
   final List<(Ayah, int)> words;
@@ -344,6 +370,12 @@ class TextLine extends MushafLine {
   /// Centred with the words' own spacing (القارعة، الكوثر… end so), not
   /// drawn out to the width.
   final bool centered;
+
+  /// The ayah whose end opens the line, moved from the line before.
+  final Ayah? leadingEnd;
+
+  /// The end of the line's last ayah is drawn on the next line instead.
+  final bool endMoved;
 }
 
 /// The printed mushafs the app shows, with the same Hafs text.

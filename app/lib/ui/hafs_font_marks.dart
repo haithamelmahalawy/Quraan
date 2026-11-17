@@ -165,6 +165,10 @@ class HafsFontMarks extends StatelessWidget {
   static bool _shaddaOverSmallYa(String cluster) =>
       cluster.startsWith('ـ') && cluster.contains('ۧ') && cluster.contains('ّ');
 
+  /// The small low seen under the sad (ٱلۡمُصَۣيۡطِرُونَ): the font has no
+  /// glyph for it; a small sin is painted under the letter.
+  static bool _lowSeen(String cluster) => cluster.contains('ۣ');
+
   static bool _iqlabApart(String cluster) =>
       cluster.contains('ۭ') ||
       cluster.contains('ۢ') &&
@@ -185,6 +189,7 @@ class HafsFontMarks extends StatelessWidget {
       if (_lamHamzaApart(cluster, previous, text.substring(m.end)) ||
           _raisedMadd(cluster, previous) ||
           _lowerImala(cluster) ||
+          _lowSeen(cluster) ||
           _kasraUnderHamza(cluster) ||
           _waqfOverTanween(cluster) ||
           _waqfOverMadd(cluster) ||
@@ -260,6 +265,10 @@ class HafsFontMarks extends StatelessWidget {
       }
       if (_lowerImala(m[0]!)) {
         final markAt = full.indexOf(RegExp('[۪ٜ]'), m.start);
+        marks[markAt] = placed[markAt].$2;
+      }
+      if (_lowSeen(m[0]!)) {
+        final markAt = full.indexOf('ۣ', m.start);
         marks[markAt] = placed[markAt].$2;
       }
       if (_kasraUnderHamza(m[0]!)) {
@@ -384,10 +393,17 @@ const lamHamzaClip = .70;
 
 /// How far under the line the imala sign stands, in font sizes; under a jim.
 const imalaDrop = .20;
+
+/// The small sin under the sad (ٱلۡمُصَۣيۡطِرُونَ): its size, how far under the
+/// line its baseline stands, and how far right of the sad's middle, in font
+/// sizes.
+const lowSeenSize = .42;
+const lowSeenDrop = .22;
+const lowSeenShift = .0;
+
 /// Under the jim's dot, raised a little off the line below (جَ۪آءَ, the user,
 /// 2026-11-14).
 const imalaUnderJim = .26;
-
 
 /// How low the dagger alif beside a ta stands, and its madd, in font sizes.
 const taDaggerDrop = .30;
@@ -541,6 +557,31 @@ class _QuranMarkPainter extends CustomPainter {
         canvas.restore();
         waw.dispose();
         madd.dispose();
+        continue;
+      }
+      if (sign == 'ۣ') {
+        final mark = TextPainter(
+          text: TextSpan(
+            text: 'س',
+            style: TextStyle(
+              fontFamily: 'Hafs',
+              fontSize: font * lowSeenSize,
+              height: 1,
+              color: color ?? style.color,
+            ),
+          ),
+          textDirection: TextDirection.rtl,
+        )..layout();
+        mark.paint(
+          canvas,
+          Offset(
+            (box.left + box.right - mark.width) / 2 + font * lowSeenShift,
+            line.baseline +
+                font * lowSeenDrop -
+                mark.computeLineMetrics().single.baseline,
+          ),
+        );
+        mark.dispose();
         continue;
       }
       if (sakt) {
@@ -815,8 +856,14 @@ List<(String, Color?, bool)>? smallHamzaAlifParts(
 /// The text as the Hafs font can draw it: the small low seen under the sad
 /// (ٱلۡمُصَۣيۡطِرُونَ) has no glyph in it, and would show as a dotted circle.
 /// Only what is drawn; the Quran text itself keeps the mark.
-String hafsDrawable(String text) => text
-    .replaceAll('ۣ', '')
+String hafsDrawable(String text) =>
+    hafsDrawableKeepingLowSeen(text).replaceAll('ۣ', '');
+
+/// [hafsDrawable] for a word drawn through [HafsFontMarks], which paints the
+/// small low seen itself, a small sin under the sad (حفص وخلاد، the user,
+/// 2026-11-17).
+String hafsDrawableKeepingLowSeen(String text) =>
+    text
     // ٱلَّٰٓـِٔي: the dagger alif and its madd on the lam crowd its shadda and
     // fatha. Drawn out, they stand apart between the lam and the hamza.
     .replaceAll('لَّٰٓ', 'لَّــٰٓ');

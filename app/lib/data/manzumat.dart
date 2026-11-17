@@ -365,21 +365,30 @@ class Manzumat {
         // (177) under the Shatibiyya's (the user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               _at(reading) == '28:82:20'
         ? const {177}
         // «أَءِنَّكُمۡ» (العنكبوت ٢٨) of Hamza and al-Kisa'i: the Durrah's (25، 26)
         // under the Shatibiyya's (the user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               _at(reading) == '29:28:4'
         ? const {25, 26}
         // «لَنُنجِيَنَّهُۥ» and «مُنجُوكَ» (العنكبوت ٣٢، ٣٣) of Hamza and al-Kisa'i:
         // the Durrah's (106، 107) under the Shatibiyya's (the user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               const {'29:32:9', '29:33:16'}.contains(_at(reading))
         ? const {106, 107}
         // «وَثَمُودٗا» (العنكبوت ٣٨) of al-Kisa'i: the Durrah's (132) under the
@@ -393,21 +402,30 @@ class Manzumat {
         // under the Shatibiyya's (the user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               _at(reading) == '29:58:4'
         ? const {30}
         // «لِمَا صَبَرُواْ» (السجدة ٢٤) of Hamza and al-Kisa'i: the Durrah's (181)
         // under the Shatibiyya's (the user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               _at(reading) == '32:24:5'
         ? const {181}
         // «أُذِنَ» (سبأ ٢٣) of Hamza and al-Kisa'i: the Durrah's (186) under the
         // Shatibiyya's (the user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               _at(reading) == '34:23:6'
         ? const {186}
         // «ٱلۡعِيُونِ» of Hamza and al-Kisa'i: the Durrah's «... جُيُوبِ شُيُوخًا فِدْ»
@@ -415,11 +433,12 @@ class Manzumat {
         // user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               reading.description == 'بكسر العين' &&
-              reading.text
-                  .replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '')
-                  .contains('عيون')
+              reading.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '').contains('عيون')
         ? const {102}
         // «نَنۡكُسۡهُ» (يس ٦٨) of al-Kisa'i: the Durrah's (192) under the
         // Shatibiyya's (the user, 2026-11-16).
@@ -432,28 +451,50 @@ class Manzumat {
         // the Shatibiyya's (the user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               _at(reading) == '39:36:3'
         ? const {197}
         // «يَظۡهَرَ ... ٱلۡفَسَادُ» (غافر ٢٦) of Hamza and al-Kisa'i: the Durrah's
         // (199) under the Shatibiyya's (the user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               const {'40:26:14', '40:26:17'}.contains(_at(reading))
         ? const {199}
         // «يَبۡشُرُ» (الشورى ٢٣) of Hamza and al-Kisa'i: the Durrah's «يُبَشِّرُ
         // كُلاًّ فِدْ» (87) with «يُبَشِّرُ فِي حِمًى» (201) (the user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               _at(reading) == '42:23:2'
         ? const {87, 201}
+        // «أَفَتَمۡرُونَهُۥ» (النجم ١٢) of Hamza and al-Kisa'i: the Durrah's «تَمْرُونَهُ
+        // حُمْ» (212) under the Shatibiyya's (the user, 2026-11-17).
+        : poem == Poem.shatibiyya &&
+              !reading.isUsul &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
+              _at(reading) == '53:12:0'
+        ? const {212}
         // «تُؤۡمِنُونَ» (الجاثية ٦) of Hamza and al-Kisa'i: the Durrah's (205) under
         // the Shatibiyya's (the user, 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               _at(reading) == '45:6:11'
         ? const {205}
         // «يَصُدُّونَ» (الزخرف ٥٧) of al-Kisa'i: the Durrah's (203) under the
@@ -468,7 +509,10 @@ class Manzumat {
         // 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               _at(reading) == '43:81:4'
         ? const {156}
         // «يَكَادُ» (الشورى ٥) of al-Kisa'i: the Durrah's «... يَكَادُ أَنْـ / ـنِثِ»
@@ -483,7 +527,10 @@ class Manzumat {
         // 2026-11-16).
         : poem == Poem.shatibiyya &&
               !reading.isUsul &&
-              const {'hamzah', 'kisai'}.contains(qiraaOf(reading.riwayaId).id) &&
+              const {
+                'hamzah',
+                'kisai',
+              }.contains(qiraaOf(reading.riwayaId).id) &&
               _at(reading) == '40:67:19'
         ? const {102}
         // «يَرۡجِعُونَ» (القصص ٣٩) of al-Kisa'i: the Durrah's (63، 64) under the
@@ -627,12 +674,7 @@ class Manzumat {
     // كُلاًّ كَحَفْصِ فُقْ» (94) (the user, 2026-11-16).
     if (ashab &&
         v.description == 'بكسر الهمزة' &&
-        const {
-          '4:11:40',
-          '4:11:46',
-          '28:59:8',
-          '43:4:2',
-        }.contains(_at(v))) {
+        const {'4:11:40', '4:11:46', '28:59:8', '43:4:2'}.contains(_at(v))) {
       return const {94};
     }
     if (ashab && RegExp(r'^[وفل]?[ينت]بشر').hasMatch(bare)) return const {87};
@@ -2197,6 +2239,13 @@ class Manzumat {
     // «مِن ثَمَرِهِۦ» (يس ٣٥) with both dammas: «وَضَمَّانِ مَعْ يَاسِينَ فِي ثَمَرٍ
     // شَفَا» (657) (the user, 2026-11-16).
     if (poem == Poem.shatibiyya && !v.isUsul && at == '36:35:2') return {657};
+    // «رَءُوفٞ» (الحشر ١٠) short, as in its other places: «... وَرَءُوفٌ قَصْرُ
+    // صُحْبَتِهِ حَلَا» (487); the book reads Ya'qub with them there (the
+    // user, 2026-11-17).
+    if (poem == Poem.shatibiyya && !v.isUsul && at == '59:10:21') return {487};
+    // «فَسَيَعۡلَمُونَ» (الملك ٢٩) with the ya: «مَعْ غَيْبِ يَعْلَمُو / نَ مَنْ رُضْ»
+    // (the user, 2026-11-17).
+    if (poem == Poem.shatibiyya && !v.isUsul && at == '67:29:7') return {1077};
     // «نُنَكِّسۡهُ» (يس ٦٨) light: the Durrah's «نَنْكُسِ افْتَحْ ضُمَّ خَفِّفْ فِدًا»
     // (192) (the user, 2026-11-16).
     if (poem == Poem.durrah && !v.isUsul && at == '36:68:2') return {192};
@@ -2206,6 +2255,9 @@ class Manzumat {
     // «يَصُدُّونَ» (الزخرف ٥٧) with the damma: the Durrah's «وَفِي سُلُفًا فَتْحَانِ
     // ضُمَّ يَصِدُّ فُقْ» (203) (the user, 2026-11-16).
     if (poem == Poem.durrah && !v.isUsul && at == '43:57:8') return {203};
+    // «أَفَتَمۡرُونَهُۥ» (النجم ١٢): the Durrah's «تَمْرُونَهُ حُمْ» (212) (the user,
+    // 2026-11-17).
+    if (poem == Poem.durrah && !v.isUsul && at == '53:12:0') return {212};
     // «تُؤۡمِنُونَ» (الجاثية ٦) with the ta: the Durrah's «... خَاطِبًا يُؤْمِنُوا
     // طُلَا» (205) (the user, 2026-11-16).
     if (poem == Poem.durrah && !v.isUsul && at == '45:6:11') return {205};
@@ -2733,6 +2785,25 @@ class Manzumat {
         const {'11:111:0', '11:111:2'}.contains(at)) {
       return {766, 767};
     }
+    // «خُشُبٞ» (المنافقون ٤) as Hafs, for every reader of the Durrah:
+    // «وَالْعُسْرُ وَالْيُسْرُ أُثْقِلَا … خُشْبُ سُبْلَنَا حِمًا» (the user,
+    // 2026-11-17).
+    if (poem == Poem.durrah && !v.isUsul && at == '63:4:9') return {74, 76};
+    // «وَٱلرُّجۡزَ» (المدثر ٥): «الرِّجْزَ إِذْ حَلاَ / فَضُمَّ», for every reader
+    // of the Durrah (the user, 2026-11-17).
+    if (poem == Poem.durrah && !v.isUsul && at == '74:5:0') return {222, 223};
+    // «رَّبُّ ٱلۡمَشۡرِقِ» (المزمل ٩): «وَرَبُّ اخْفِضْ حَوَى» (the user,
+    // 2026-11-17).
+    if (poem == Poem.durrah && !v.isUsul && at == '73:9:0') return {222};
+    // «وَوَلَدُهُۥٓ» (نوح ٢١): «وَفُزْ وَلَدًا لاَ نُوْحَ فَافْتَحْ», Abu Ja'far's
+    // fatha and Khalaf al-'Ashir's «لا نوح»; «قَالَ إِنَّمَآ» (الجن ٢٠):
+    // «وَقُلْ إِنَّمَا أَلَا / وَقَالَ فَتًى» (the user, 2026-11-17).
+    if (poem == Poem.durrah &&
+        !v.isUsul &&
+        const {'abu_jafar', 'khalaf'}.contains(qiraaOf(v.riwayaId).id)) {
+      if (at == '71:21:10') return {156};
+      if (at == '72:20:0') return {221, 222};
+    }
     // Abu Ja'far's «وَإِنَّ» doubled: «إِنْ كُلاًّ اتْلُ مُثَقِّلَا»; his «وَزُلُفٗا»:
     // «وَخِفُّ الْكُلِّ فُقْ زُلَفَا أَلَا».
     if (poem == Poem.durrah && qiraaOf(v.riwayaId).id == 'abu_jafar') {
@@ -2797,19 +2868,10 @@ class Manzumat {
       if ((at == '66:5:5' || at == '68:32:3') && !v.isUsul) return {151};
       // «تُؤۡمِنُونَ، تَذَكَّرُونَ» (الحاقة ٤١، ٤٢) with the ta: «وَحُطْ يُؤْمِنُوا يَذَّكَّرُوا».
       if ((at == '69:41:6' || at == '69:42:5') && !v.isUsul) return {220};
-      // «وَوَلَدُهُۥٓ» (نوح ٢١) with the fatha: «وَلَدًا لاَ نُوْحَ فَافْتَحْ».
-      if (at == '71:21:10' && !v.isUsul) return {156};
-      // «قُلۡ إِنَّمَآ» (الجن ٢٠) as Hafs: «وَقُلْ إِنَّمَا أَلَا / وَقَالَ فَتًى».
-      if (at == '72:20:0' && !v.isUsul) return {221, 222};
-      // «وَٱلرُّجۡزَ» (المدثر ٥) with the damma: «الرِّجْزَ إِذْ حَلاَ / فَضُمَّ».
-      if (at == '74:5:0' && !v.isUsul) return {222, 223};
       // «وَنُحَاسٞ» (الرحمن ٣٥) raised, as Hafs: «نُحَاسٌ طَوَى».
       if (at == '55:35:5' && !v.isUsul) return {213};
       // «تَكُونُ» (المجادلة ٧) and «تَكُونَ دُولَةٌۢ» (الحشر ٧): «أَنِّثْ مَعًا يَكُو / نُ دُوْلَةٌ اِذْ رَفْعٌ».
       if (at == '58:7:12' && !v.isUsul) return {216};
-      // «خُشُبٞ» (المنافقون ٤) as Hafs: «وَالْعُسْرُ وَالْيُسْرُ أُثْقِلَا … خُشْبُ
-      // سُبْلَنَا حِمًا».
-      if (at == '63:4:9' && !v.isUsul) return {74, 76};
       // «ٱلنَّشۡأَةَ» (العنكبوت ٢٠، النجم ٤٧، الواقعة ٦٢) as Hafs: «وَنَشْـأَةً حَافِظٌ».
       if (const {'29:20:11', '53:47:2', '56:62:2'}.contains(at) && !v.isUsul) {
         return {177};

@@ -511,15 +511,16 @@ class InkText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (style.fontFamily == 'Hafs' &&
-        (hafsDrawable(text) != text ||
-            (parts?.any((p) => hafsDrawable(p.$1) != p.$1) ?? false))) {
+        (hafsDrawableKeepingLowSeen(text) != text ||
+            (parts?.any((p) => hafsDrawableKeepingLowSeen(p.$1) != p.$1) ??
+                false))) {
       return InkText(
-        hafsDrawable(text),
+        hafsDrawableKeepingLowSeen(text),
         style: style,
         firmness: firmness,
         parts: parts == null
             ? null
-            : [for (final (s, c) in parts!) (hafsDrawable(s), c)],
+            : [for (final (s, c) in parts!) (hafsDrawableKeepingLowSeen(s), c)],
         glowFinalAlif: glowFinalAlif,
         glowStrength: glowStrength,
       );
@@ -528,9 +529,7 @@ class InkText extends StatelessWidget {
     // (al-Kisa'i's «ءَات۪ىٰنِ»: its dot under the ta, the user, 2026-11-16).
     final small =
         style.fontFamily == 'Hafs' &&
-            !(parts?.map((p) => p.$1).join() ?? text).contains(
-              RegExp('[۪ٜ]'),
-            )
+            !(parts?.map((p) => p.$1).join() ?? text).contains(RegExp('[۪ٜ]'))
         ? smallHamzaAlifParts(parts ?? [(text, null)])
         : null;
     if (small != null) return _drawSmallAlif(small);

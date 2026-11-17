@@ -2478,6 +2478,36 @@ Map<String, int> buildAshabUsul(
       v[6] = 'بضم الهاء وبمد الصلة';
     }
   }
+  // al-Kisa'i's «أَنَّهُۥ هُوَ ٱلۡبَرُّ» (الطور ٢٨) opened, as Qalun's (the user,
+  // 2026-11-17).
+  if (_kisai.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      52,
+      28,
+      5,
+      1,
+      'أَنَّهُۥ',
+      'f',
+      'بفتح الهمزة',
+      '',
+      {'source': ashabSource, 'farshFrom': 'qalun'},
+    ];
+    variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // al-Kisa'i's «ٱلصَّعۡقَةُ» (الذاريات ٤٤): its ayn quiet too (the user,
+  // 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 51 && v[1] == 44 && v[2] == 5 && v[5] == 'f') {
+      v[4] = 'ٱلصَّعۡقَةُ';
+      v[6] = 'بحذف الألف وإسكان العين';
+      (v[8] as Map).remove('vocalizationSource');
+    }
+  }
   // «لِيَجۡزِيَ قَوۡمَۢا» (الجاثية ١٤): «لِنَجۡزِيَ» alone, «قَوۡمَۢا» as Hafs's (the
   // user, 2026-11-16).
   for (final v in (data['variants'] as List).cast<List>()) {
@@ -2541,6 +2571,205 @@ Map<String, int> buildAshabUsul(
       'ثَمَرَتٖ',
       'f',
       'بحذف الألف',
+      '',
+      {'source': ashabSource, 'farshFrom': 'shubah'},
+    ];
+    variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // «ٱللَّٰتَ» (النجم ١٩) stopped on as «اللاه», its alif written, not drawn as
+  // the Name of Allah (the user, 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 53 && v[1] == 19 && v[2] == 1 && v[7] == 'rasm_stop') {
+      (v[8] as Map)['stopText'] = 'ٱللَّاهۡ';
+    }
+  }
+  // «ٱنشُزُواْ فَٱنشُزُواْ» (المجادلة ١١) one way, the shin broken in both, as
+  // Ya'qub's; not Shu'ba's two ways (the user, 2026-11-17).
+  {
+    final variants = (data['variants'] as List).cast<List>();
+    variants.removeWhere(
+      (v) =>
+          v[0] == 58 &&
+          v[1] == 11 &&
+          (v[2] == 15 || v[2] == 16) &&
+          v[5] == 'f',
+    );
+    final row = [
+      58,
+      11,
+      15,
+      2,
+      'ٱنشِزُواْ فَٱنشِزُواْ',
+      'f',
+      'بكسر الشين في الكلمتين',
+      '',
+      {
+        'source': ashabSource,
+        'farshFrom': 'ruways',
+        'vocalizationSource': 'ٱنشِزُوا فَٱنشِزُوا',
+      },
+    ];
+    final at = variants.indexWhere(
+      (r) =>
+          (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int) >
+          58011015,
+    );
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // «رَءُوفٞ» with the waw dropped wherever Shu'ba drops it, as his: al-Ashab
+  // lacked al-Hadid 9 and Hamza al-Nahl 7 (the user, 2026-11-17).
+  {
+    final variants = (data['variants'] as List).cast<List>();
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final s in sources.shubah) {
+      if (s[5] != 'f' || !'${s[4]}'.contains('رَؤُف')) continue;
+      final row = [
+        ...s.take(4),
+        s[4],
+        'f',
+        s[6],
+        '',
+        {'source': ashabSource, 'farshFrom': 'shubah'},
+      ];
+      if (variants.any(
+        (r) => order(r) == order(row) && r[5] == 'f' && r[4] == row[4],
+      )) {
+        continue;
+      }
+      variants.removeWhere((r) => order(r) == order(row) && r[5] == 'f');
+      final at = variants.indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
+  // «مَرۡضَاتِ» leaned for al-Kisa'i, its dot under the dad (the user,
+  // 2026-11-17).
+  if (_kisai.contains(id)) {
+    final ayahs = {
+      for (final a in quran['ayahs'] as List) (a[0], a[1]): a[4] as String,
+    };
+    for (final v in (data['variants'] as List).cast<List>()) {
+      if (v[5] != 'u' || '${v[4]}'.isNotEmpty || v[6] != 'بإمالة الألف') {
+        continue;
+      }
+      final words = ayahs[(v[0], v[1])]!.split(' ');
+      final word = words[v[2] as int];
+      if (word.startsWith('مَرۡضَات')) {
+        v[4] = word.replaceFirst('مَرۡضَات', 'مَرۡض۪ات');
+      }
+    }
+  }
+  // «ءَاتَىٰكُمۡ» (الحديد ٢٣) leaned with its dot under the ta, as «ءَات۪ىٰنِ»
+  // (النمل ٣٦); «فَاتَكُمۡ» before it has none (the user, 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 57 &&
+        v[1] == 23 &&
+        v[2] == 8 &&
+        v[5] == 'u' &&
+        '${v[6]}'.startsWith('بإمالة')) {
+      v[4] = 'ءَات۪ىٰكُمۡ';
+    }
+  }
+  // «يَطۡمِثۡهُنَّ» (الرحمن ٧٤) of al-Kisa'i told as in ayah 56, its two ways
+  // (the user, 2026-11-17).
+  if (_kisai.contains(id)) {
+    final variants = (data['variants'] as List).cast<List>();
+    final first = variants
+        .where((v) => v[0] == 55 && v[1] == 56 && v[2] == 4 && v[5] == 'f')
+        .firstOrNull;
+    if (first != null) {
+      variants.removeWhere(
+        (v) => v[0] == 55 && v[1] == 74 && v[2] == 1 && v[5] == 'f',
+      );
+      final row = [
+        55,
+        74,
+        1,
+        ...first.skip(3).map((x) => x is Map ? {...x} : x),
+      ];
+      final at = variants.indexWhere(
+        (r) =>
+            (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int) >
+            55074001,
+      );
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
+  // A quiet ya of the idafa before a hamza told with its madd (مَّعِيٓ أَوۡ،
+  // الملك ٢٨; the user, 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v.length > 7 &&
+        v[7] == 'ya_idafa' &&
+        v[6] == 'بإسكان ياء الإضافة' &&
+        '${v[4]}'.contains('ٓ')) {
+      v[6] = 'بإسكان ياء الإضافة مع المد المنفصل';
+    }
+  }
+  // «إِذَا دَبَرَ» (المدثر ٣٣) for al-Kisa'i one row, written and told as Ibn
+  // Wardan's (the user, 2026-11-17).
+  if (_kisai.contains(id)) {
+    final variants = data['variants'] as List;
+    variants.removeWhere(
+      (r) =>
+          r[0] == 74 &&
+          r[1] == 33 &&
+          (r[2] == 1 || r[2] == 2) &&
+          r[5] == 'f',
+    );
+    final at = variants.indexWhere(
+      (r) =>
+          (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int) >
+          74033001,
+    );
+    variants.insert(at < 0 ? variants.length : at, [
+      74,
+      33,
+      1,
+      2,
+      'إِذَا دَبَرَ',
+      'f',
+      'بفتح الذال وإثبات الألف، وبحذف الهمزة وفتح الدال',
+      '',
+      {'source': ashabSource, 'farshFrom': 'ibn_wardan'},
+    ]);
+  }
+  // «لَا يَخۡفَىٰ» (الحاقة ١٨) told by its ya alone (the user, 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 69 && v[1] == 18 && v[2] == 3 && v[5] == 'f') {
+      v[6] = 'بالياء';
+    }
+  }
+  // «بَٰلِغٌ أَمۡرَهُۥ» (الطلاق ٣): the ha raised after the fatha, told by its
+  // tanween and ra alone (the user, 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 65 && v[1] == 3 && v[2] == 13 && v[5] == 'f') {
+      v[4] = 'بَٰلِغٌ أَمۡرَهُۥ';
+      v[6] = 'بتنوين الغين بالضم وفتح الراء';
+    }
+  }
+  // «أَفَتَمۡرُونَهُۥ» (النجم ١٢) told with its ta and mim (the user,
+  // 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 53 && v[1] == 12 && v[2] == 0 && v[5] == 'f') {
+      v[6] = 'بفتح التاء وإسكان الميم وحذف الألف';
+    }
+  }
+  // «ٱلۡمُصَيۡطِرُونَ» (الطور ٣٧) with the sad alone for al-Kisa'i and Khalaf
+  // al-'Ashir, as Shu'ba's (the user, 2026-11-17).
+  if (_kisai.contains(id) || _khalafAshir.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      52,
+      37,
+      6,
+      1,
+      'ٱلۡمُصَيۡطِرُونَ',
+      'f',
+      'بالصاد وجهًا واحدًا',
       '',
       {'source': ashabSource, 'farshFrom': 'shubah'},
     ];

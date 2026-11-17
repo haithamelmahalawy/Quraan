@@ -181,6 +181,11 @@ bool _lexical(Variant v) =>
 bool _ibnAmirIdgham(Variant v) =>
     _writtenIdgham(v) && const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId);
 
+/// Hafs's words read two ways, told in his hamesh where another riwaya is
+/// shown: «ٱلۡمُصَۣيۡطِرُونَ» (الطور ٣٧), the sin under the sad (the user,
+/// 2026-11-17).
+const _hafsWays = {(52, 37, 6): 'بالسين وبالصاد بخلف عنه'};
+
 List<Variant> _rows(
   VariantRepository repository,
   String? id,
@@ -706,6 +711,9 @@ List<Variant> compareReadings({
           if (own.isEmpty)
             for (final v in lexical[displayed ?? 'hafs'] ?? const <Variant>[])
               if (v.description == 'بحذف هو') 'بزيادة هو',
+          // Hafs's own two ways, told where he is compared.
+          if (id == 'hafs' && from == to - 1)
+            ?_hafsWays[(ayah.surah, ayah.number, from)],
         }.join('، '),
         bookWujuh: own
             .map((v) => v.bookWujuh)

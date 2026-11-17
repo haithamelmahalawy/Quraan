@@ -38,6 +38,10 @@ typedef WordTap = void Function(Ayah ayah, int word);
 
 const _ashabSilah = {'qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz'};
 
+/// A quiet ya of the idafa before a hamza, told with its madd (مَّعِيٓ أَوۡ،
+/// the user, 2026-11-17).
+const _yaWithMadd = 'بإسكان ياء الإضافة مع المد المنفصل';
+
 /// Ashab al-Silah's eased hamza in the place Hafs writes it, marked ۬ for
 /// the tasheel dot to take: after a ra, its seat the dagger alif in their
 /// source (أَرَٰ۬يْتَ → أَرَءَ۬يْتَ); a waw with the sifr (أَٰوْ۟نَبِّئُكُمُۥ →
@@ -1785,7 +1789,8 @@ class _MushafPageState extends State<MushafPage>
     // Nor letters coloured apart.
     if (_letterReadings(ayah, w) != null ||
         _waslDammColor(ayah, w) != null ||
-        w > 0 && _waslDammColor(ayah, w - 1) != null) {
+        w > 0 && _waslDammColor(ayah, w - 1) != null ||
+        _haDamirBefore(ayah, w) != null) {
       return (text: ayah.words[w], font: 'Hafs');
     }
     if (glyph != null) return (text: glyph, font: QcfFonts.family(widget.page));
@@ -2328,6 +2333,43 @@ class _MushafPageState extends State<MushafPage>
   /// The word the word before is merged into (حُرِّمَت ظُّهُورُهَا، قَد
   /// ضَّلُّواْ), or Abu Ja'far's nun hidden before (قَوۡلًا غَيۡرَ): its first
   /// letter in the rule's colour, the rest in ink.
+  /// The ha damma of the word before, for the mim before this word's sakin
+  /// (لِإِخۡوَٰنِهُمُ ٱلَّذِينَ): told on both words, for every reader who reads
+  /// it (the user, 2026-11-17).
+  Variant? _haDamirBefore(Ayah ayah, int w) {
+    if (w == 0 || !ayah.words[w].startsWith('ٱ')) return null;
+    final s = widget.settings;
+    return [
+          ..._baseAt(widget.variants, s, ayah, w - 1).where((v) => v.isUsul),
+          ..._readingsAt(widget.variants, s, ayah, w - 1).shown,
+        ]
+        .where(
+          (v) =>
+              v.word == w - 1 &&
+              v.rule == 'ha_damir' &&
+              s.kinds.contains(v.kind) &&
+              _glows([v]),
+        )
+        .firstOrNull;
+  }
+
+  /// The sakin the ha damma before meets, in its colour: the wasl alif and
+  /// the lam of «ٱل» (ٱلَّذِينَ), or the wasl alif and the letter with the sukun
+  /// (ٱثۡنَيۡنِ).
+  List<(String, Color?)>? _haDamirInto(Ayah ayah, int w, String text) {
+    final ha = _haDamirBefore(ayah, w);
+    if (ha == null) return null;
+    final letters = lettersOf(text);
+    var last = letters.length > 1 && letters[1].startsWith('ل')
+        ? 1
+        : letters.indexWhere((l) => RegExp('[ْۡ]').hasMatch(l), 1);
+    if (last < 0) last = 0;
+    final color = ReadingColors.of(ha);
+    return [
+      for (final (i, l) in letters.indexed) (l, i <= last ? color : null),
+    ];
+  }
+
   List<(String, Color?)>? _idghamInto(Ayah ayah, int w, String text) {
     final s = widget.settings;
     // The word before, the last of the ayah before at an ayah's head: the
@@ -2571,7 +2613,7 @@ class _MushafPageState extends State<MushafPage>
     // خَطَٰيَٰهُمُۥ: its silah, and the kha Abu Ja'far's nun is hidden before).
     final into =
         hafsFont && (own == null || (own.isNotEmpty && own.first.$2 == null))
-        ? _idghamInto(ayah, w, shown.text)
+        ? _idghamInto(ayah, w, shown.text) ?? _haDamirInto(ayah, w, shown.text)
         : null;
     final coloured = own == null
         ? into
@@ -4889,7 +4931,7 @@ class _UsulBox extends StatelessWidget {
         // وتشديد النون مع المد المشبع).
         if (i.readings.any((v) => v.rule == 'ya_idafa'))
           Text(
-            ' (${i.readings.where((v) => v.rule == 'ya_idafa' && RegExp('^بفتح الياء و').hasMatch(v.description)).firstOrNull?.description ?? (i.readings.any((v) => v.rule == 'ya_idafa' && v.description.contains('فتح')) ? 'بفتح ياء الإضافة' : 'بإسكان ياء الإضافة')}'
+            ' (${i.readings.where((v) => v.rule == 'ya_idafa' && RegExp('^بفتح الياء و').hasMatch(v.description)).firstOrNull?.description ?? (i.readings.any((v) => v.rule == 'ya_idafa' && v.description.contains('فتح')) ? 'بفتح ياء الإضافة' : i.readings.where((v) => v.rule == 'ya_idafa').every((v) => v.description == _yaWithMadd) ? _yaWithMadd : 'بإسكان ياء الإضافة')}'
             // A second face of one of them (رَبِّيَ: ولقالون وجه ثانٍ بإسكان الياء).
             '${{for (final v in i.readings)
               if (v.rule == 'ya_idafa' && v.description.contains('، ول')) v.description.substring(v.description.indexOf('، ول'))}.join()})',
