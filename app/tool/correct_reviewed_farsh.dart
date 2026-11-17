@@ -163,12 +163,13 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
       'بتنوين الراء بالفتح وصلًا، وإبدال التنوين ألفًا وقفًا',
     ]);
   }
+  // Both words joined, the lam bare and the ra doubled (the user, 2026-11-17).
   put([
     83,
     14,
     1,
-    1,
-    '',
+    2,
+    'بَل رَّانَ',
     'u',
     'بالإدغام دون سكت',
     'no_sakt',

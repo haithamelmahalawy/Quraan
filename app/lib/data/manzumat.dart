@@ -2246,6 +2246,9 @@ class Manzumat {
     // «فَسَيَعۡلَمُونَ» (الملك ٢٩) with the ya: «مَعْ غَيْبِ يَعْلَمُو / نَ مَنْ رُضْ»
     // (the user, 2026-11-17).
     if (poem == Poem.shatibiyya && !v.isUsul && at == '67:29:7') return {1077};
+    // «كِذَٰبٗا» (النبأ ٣٥) light: «وقُلْ وَلاَ / كِذَاباً بِتَخْفِيفِ الْكِسَائِيِّ أَقْبَلَا»
+    // (the user, 2026-11-17).
+    if (poem == Poem.shatibiyya && !v.isUsul && at == '78:35:5') return {1099};
     // «نُنَكِّسۡهُ» (يس ٦٨) light: the Durrah's «نَنْكُسِ افْتَحْ ضُمَّ خَفِّفْ فِدًا»
     // (192) (the user, 2026-11-16).
     if (poem == Poem.durrah && !v.isUsul && at == '36:68:2') return {192};
@@ -2792,6 +2795,15 @@ class Manzumat {
     // «وَٱلرُّجۡزَ» (المدثر ٥): «الرِّجْزَ إِذْ حَلاَ / فَضُمَّ», for every reader
     // of the Durrah (the user, 2026-11-17).
     if (poem == Poem.durrah && !v.isUsul && at == '74:5:0') return {222, 223};
+    // «فَكُّ رَقَبَةٍ أَوۡ إِطۡعَٰمٞ» (البلد ١٣-١٤): «فَكُّ إِطْعَامٌ كَحَفْصٍ حُلًى
+    // حَلَا» (the user, 2026-11-17).
+    if (poem == Poem.durrah &&
+        !v.isUsul &&
+        const {'90:13:0', '90:13:1', '90:14:1'}.contains(at)) {
+      return {232};
+    }
+    // «بِضَنِينٖ» (التكوير ٢٤): «وَضَادُ ظَنِينِ يَا» (the user, 2026-11-17).
+    if (poem == Poem.durrah && !v.isUsul && at == '81:24:4') return {229};
     // «رَّبُّ ٱلۡمَشۡرِقِ» (المزمل ٩): «وَرَبُّ اخْفِضْ حَوَى» (the user,
     // 2026-11-17).
     if (poem == Poem.durrah && !v.isUsul && at == '73:9:0') return {222};

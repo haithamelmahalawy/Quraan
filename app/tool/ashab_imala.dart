@@ -63,6 +63,9 @@ int _imala(
       final all = (g[1] as List).cast<String>();
       final disputed = (g[2] as List).cast<String>();
       if (!all.contains(id) && !disputed.contains(id)) continue;
+      // A group the book reads with the fath alone (تَلَىٰهَا، طَحَىٰهَا for
+      // Hamza and Khalaf al-'Ashir): no imala of theirs (the user, 2026-11-17).
+      if (RegExp(r'^بالفتح|إلا الفتح$').hasMatch('${g[3]}')) continue;
       // al-Kisa'i's feminine ha (غِشَٰوَةٞ): when stopping, whatever the book;
       // but an imala the book gives others too is its alif's (ٱلتَّوۡرَىٰةَ,
       // with Abu 'Amr, Ibn Dhakwan and Khalaf al-'Ashir), not the ha's.

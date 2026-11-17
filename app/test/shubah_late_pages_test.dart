@@ -240,12 +240,15 @@ void main() {
   test('bal ran leaves the sakt in the usul, its ra with imala', () {
     final v = at(83, 14, 1);
     expect(quran.pageOf(83, 14), 588);
-    expect(v.count, 1);
+    expect(v.count, 2);
+    expect(v.text, 'بَل رَّانَ');
     expect(v.rule, 'no_sakt');
     expect(v.shownDescription, 'بالإدغام دون سكت');
     expect(v.isUsul, isTrue);
-    expect(at(83, 14, 2).isImala, isTrue);
-    expect(at(83, 14, 2).isUsul, isTrue);
+    final rana = variants
+        .at(['shubah'], 83, 14, 2)
+        .singleWhere((v) => v.isImala);
+    expect(rana.isUsul, isTrue);
   });
 
   test('musada is farsh with a madd waw replacing hamza', () {

@@ -32,7 +32,7 @@ typedef WordRef = (int surah, int ayah, int word);
 
 /// Short lines centred as in the print, by their first word: «فَٱسۡجُدُواْ
 /// لِلَّهِ وَٱعۡبُدُواْ۩» (النجم ٦٢) (the user, 2026-11-17).
-const _centeredLines = {(53, 62, 0)};
+const _centeredLines = {(53, 62, 0), (112, 4, 0), (113, 5, 0), (114, 6, 0)};
 
 /// Lines the end of the ayah before opens, by their first word, the line
 /// before ending on its last word (the user, 2026-11-17).

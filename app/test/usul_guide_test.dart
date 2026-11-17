@@ -588,7 +588,19 @@ void main() {
         variants.at(['warsh'], s, a, w).singleWhere(own).description,
       );
     }
-    expect(variants.at(['shubah'], 83, 14, 2).single.isImala, isTrue);
+    // «رَانَ» leaned, under the joined «بَل رَّانَ» of ترك السكت.
+    expect(
+      variants.at(['shubah'], 83, 14, 2).where((v) => v.isImala),
+      hasLength(1),
+    );
+    expect(
+      variants
+          .at(['shubah'], 83, 14, 2)
+          .where((v) => v.rule == 'no_sakt')
+          .single
+          .count,
+      2,
+    );
     expect(
       variants.at(['shubah'], 18, 1, 10).map((v) => v.kind),
       contains(VariantKind.farsh),

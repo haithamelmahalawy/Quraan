@@ -613,7 +613,7 @@ Map<String, int> buildAshabUsul(
 
   // ---- الوقف بالهاء على تاء التأنيث المبسوطة للكسائي (رَحۡمَتَ، نِعۡمَتَ):
   // صفوف البزي ورويس حيث يقرأ الكلمة مفردة، إلا «يا أبت»؛ و«مرضات، اللات،
-  // ذات بهجة، ولات، هيهات» له وحده. ثم تمال هاؤها كالمربوطة (المستخدم،
+  // ذات بهجة، ولات، هيهات، جمالت» له وحده. ثم تمال هاؤها كالمربوطة (المستخدم،
   // 2026-11-12).
   if (_kisai.contains(id)) {
     final told = {
@@ -647,7 +647,7 @@ Map<String, int> buildAshabUsul(
       final bare = _bare(word.t);
       final next = index[_key(word.s, word.a, word.w + 1)];
       final his =
-          RegExp(r'^(و?مرضات|ا?للت|ولات|هيهات)$').hasMatch(bare) ||
+          RegExp(r'^(و?مرضات|ا?للت|ولات|هيهات|جملت)$').hasMatch(bare) ||
           bare == 'ذات' && next != null && _bare(next.t).startsWith('بهج');
       if (!his || !told.add(key)) continue;
       rows.add([
@@ -2735,6 +2735,53 @@ Map<String, int> buildAshabUsul(
       {'source': ashabSource, 'farshFrom': 'ibn_wardan'},
     ]);
   }
+  // «خَـٰتَمُهُۥ» (المطففين ٢٦) for al-Kisa'i: the kha opened, its alif moved
+  // between the kha and the ta on a kashida;
+  // before the ta (the user, 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 83 && v[1] == 26 && v[2] == 0 && v[5] == 'f') {
+      v[4] = 'خَـٰتَمُهُۥ';
+      v[6] = 'بفتح الخاء ونقل المد إلى ما قبل التاء';
+    }
+  }
+  // «أَطۡعَمَ» (البلد ١٤) with the fatha on its hamza (the user, 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 90 && v[1] == 14 && v[2] == 1 && v[5] == 'f') {
+      v[4] = 'أَطۡعَمَ';
+    }
+  }
+  // «ٱلۡأَشۡقَى ٱلَّذِي» and «ٱلۡأَتۡقَى ٱلَّذِي» (الليل ١٥-١٨): leaned at the
+  // stop alone, the quiescent after them in joining (the user, 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 92 &&
+        (v[1] == 15 && v[2] == 3 || v[1] == 17 && v[2] == 1) &&
+        v[5] == 'u' &&
+        v[6] == 'بإمالة الألف') {
+      v[6] = 'بإمالة الألف وقفًا';
+      v[8] = {...(v[8] as Map), 'stopOnly': true};
+    }
+  }
+  // «كُفُؤٗا» (الإخلاص ٤) for al-Kisa'i as Abu Ja'far's, the tanween on the
+  // hamza over the waw (the user, 2026-11-17).
+  if (_kisai.contains(id)) {
+    final variants = data['variants'] as List;
+    for (var i = 0; i < variants.length; i++) {
+      final r = variants[i] as List;
+      if (r[0] == 112 && r[1] == 4 && r[2] == 3 && r[5] == 'h') {
+        variants[i] = [
+          112,
+          4,
+          3,
+          1,
+          'كُفُؤٗا',
+          'h',
+          'بإبدال الواو همزة',
+          'hamza_zaida',
+          {'source': ashabSource, 'farshFrom': 'ibn_wardan'},
+        ];
+      }
+    }
+  }
   // «لَا يَخۡفَىٰ» (الحاقة ١٨) told by its ya alone (the user, 2026-11-17).
   for (final v in (data['variants'] as List).cast<List>()) {
     if (v[0] == 69 && v[1] == 18 && v[2] == 3 && v[5] == 'f') {
@@ -2755,6 +2802,74 @@ Map<String, int> buildAshabUsul(
     if (v[0] == 53 && v[1] == 12 && v[2] == 0 && v[5] == 'f') {
       v[6] = 'بفتح التاء وإسكان الميم وحذف الألف';
     }
+  }
+  // «قَوَارِيرٗا» (الإنسان ١٥) with its tanween for al-Kisa'i and Khalaf
+  // al-'Ashir, and the second (١٦) for al-Kisa'i, as Shu'ba's (the user,
+  // 2026-11-17).
+  for (final (a, w, readers) in [
+    (15, 7, {..._kisai, ..._khalafAshir}),
+    (16, 0, _kisai),
+  ]) {
+    if (!readers.contains(id)) continue;
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      76,
+      a,
+      w,
+      1,
+      'قَوَارِيرٗا',
+      'f',
+      'بتنوين الراء بالفتح وصلًا، وإبدال التنوين ألفًا وقفًا',
+      '',
+      {'source': ashabSource, 'farshFrom': 'shubah'},
+    ];
+    variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // «كِذَٰبٗا» (النبأ ٣٥) light for al-Kisa'i: «وَلَا كِذَاباً بِتَخْفِيفِ الْكِسَائِيِّ»
+  // (the user, 2026-11-17).
+  if (_kisai.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      78,
+      35,
+      5,
+      1,
+      'كِذَٰبٗا',
+      'f',
+      'بتخفيف الذال',
+      '',
+      {'source': ashabSource, 'book': 'kharouf'},
+    ];
+    variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // «سَلَٰسِلَ» (الإنسان ٤) of Khalaf al-'Ashir written and told as Ruways's
+  // (the user, 2026-11-17).
+  if (_khalafAshir.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      76,
+      4,
+      3,
+      1,
+      'سَلَٰسِلَ',
+      'f',
+      'بحذف الألف مع إسكان اللام وقفًا',
+      '',
+      {'source': ashabSource, 'farshFrom': 'ruways'},
+    ];
+    variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
   }
   // «ٱلۡمُصَيۡطِرُونَ» (الطور ٣٧) with the sad alone for al-Kisa'i and Khalaf
   // al-'Ashir, as Shu'ba's (the user, 2026-11-17).
@@ -2873,6 +2988,30 @@ Map<String, int> buildAshabUsul(
       {'source': ashabSource, 'farshFrom': 'shubah'},
     ];
     variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // «بَلۡۜ رَانَ» (المطففين ١٤): Hafs's sakt alone; the lam bare and the ra
+  // doubled, both words in ترك السكت for every other reader (the user,
+  // 2026-11-17).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      83,
+      14,
+      1,
+      2,
+      'بَل رَّانَ',
+      'u',
+      'بالإدغام دون سكت',
+      'no_sakt',
+      {'source': ashabSource, 'context': 'بَلۡۜ رَانَ'},
+    ];
+    variants.removeWhere(
+      (r) => order(r as List) == order(row) && r.length > 7 && r[7] == 'no_sakt',
+    );
     final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
     variants.insert(at < 0 ? variants.length : at, row);
   }
