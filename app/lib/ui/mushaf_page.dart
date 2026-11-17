@@ -2817,7 +2817,11 @@ class _MushafPageState extends State<MushafPage>
         ((m.color != null || coloured != null) &&
                 _glows([...m.shown, ...?_letterReadings(ayah, w)]) ||
             _pairGlows(ayah, w))) {
-      word = _Alerting(child: word);
+      // The sin of the sakt stands above the letters: the glow reaches it.
+      word = _Alerting(
+        top: drawnText.contains('ۜ') ? fontSize * .35 : 0,
+        child: word,
+      );
     }
     if (m.colors.length > 1 && widget.settings.mode == DisplayMode.highlight) {
       word = Stack(
@@ -4475,24 +4479,40 @@ class _NotesLayout extends MultiChildLayoutDelegate {
 /// A word that differs from Hafs, glowing still while the lamp of
 /// «تنبيه الاختلافات» is lit.
 class _Alerting extends StatelessWidget {
-  const _Alerting({required this.child});
+  const _Alerting({required this.child, this.top = 0});
 
   final Widget child;
 
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(6),
-      boxShadow: [
-        BoxShadow(
-          color: MushafColors.gold.withAlpha(150),
-          blurRadius: 8,
-          spreadRadius: 1,
-        ),
-      ],
-    ),
-    child: child,
+  /// How far above the word the glow reaches: over the sin of the sakt.
+  final double top;
+
+  static BoxDecoration get _glow => BoxDecoration(
+    borderRadius: BorderRadius.circular(6),
+    boxShadow: [
+      BoxShadow(
+        color: MushafColors.gold.withAlpha(150),
+        blurRadius: 8,
+        spreadRadius: 1,
+      ),
+    ],
   );
+
+  @override
+  Widget build(BuildContext context) => top == 0
+      ? DecoratedBox(decoration: _glow, child: child)
+      : Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              top: -top,
+              bottom: 0,
+              child: DecoratedBox(decoration: _glow),
+            ),
+            child,
+          ],
+        );
 }
 
 /// The usul of the page below it: each kind in its colour, then every word

@@ -318,7 +318,13 @@ class HafsFontMarks extends StatelessWidget {
       }
       previous = m[0]!;
     }
-    final sakt = {for (final m in _boundarySakt.allMatches(full)) m.start: m};
+    // A quiet letter before the alif of the plural (خَلَوۡۜاْ): over its letter,
+    // not after the word as the tanween's (عِوَجٗاۜ).
+    final sakt = {
+      for (final m in _boundarySakt.allMatches(full))
+        if (!(full.startsWith('ۡ', m.start - 1) && m[1]!.startsWith('ا')))
+          m.start: m,
+    };
     // Abu Ja'far's sakt drawn out between two letters (الٓـۜـمٓۜ): painted over
     // its kashida, at the height of the one after the last letter.
     for (final m in RegExp('(?<=ـ)ۜ').allMatches(full)) {
@@ -617,9 +623,11 @@ class _QuranMarkPainter extends CustomPainter {
         // After the word, in its own room; over a letter, above the letter
         // and its sukun: a tall one (ٱلۡۜأَرۡضِ) or a short one (شَيۡۜءٍ).
         final over = source[at];
+        // A tall letter after it (خَلَوۡۜاْ) reaches over it too: above that.
+        final after = end < source.length ? source[end] : '';
         final rise = over == ' ' || over == 'ـ'
             ? saktRise
-            : 'اأإآلكطظ'.contains(over)
+            : 'اأإآلكطظ'.contains(over) || 'اأإآلكطظ'.contains(after)
             ? saktOverTall
             : saktOverShort;
         mark.paint(
