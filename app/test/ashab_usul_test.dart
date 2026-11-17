@@ -73,6 +73,18 @@ void main() {
       at('abul_harith', 2, 3, 1).map((v) => v[7]),
       isNot(contains('hisham_waqf')),
     );
+    // Khalaf's sakt on a quiet letter before the round sukun of its alif
+    // (خَلَوۡاْ إِلَىٰ); none for Khallad.
+    expect(
+      at('khalaf_hamzah', 2, 14, 7)
+          .where((v) => v[7] == 'sakt')
+          .map((v) => v[4]),
+      contains('خَلَوۡۜاْ'),
+    );
+    expect(
+      at('khallad', 2, 14, 7).map((v) => v[7]),
+      isNot(contains('sakt')),
+    );
     // al-Kisa'i's repeated question: the statement in the second.
     expect(
       at('abul_harith', 13, 5, 7).map((v) => v[6]),

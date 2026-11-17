@@ -474,7 +474,7 @@ Map<String, int> buildAshabUsul(
     );
     final shay = RegExp('^([وفبلك]?[َِ]?شَيۡ)(?=ـ?[ءٔ])');
     // The last letter sakin: a sukun, or a tanween (before its alif).
-    final sakinEnd = RegExp(r'(ۡ|[ًࣰٌࣱٍࣲ])([اى]?[ۖ-ۛ]*)$|(ۡ)(ا۟[ۖ-ۛ]*)$');
+    final sakinEnd = RegExp(r'(ۡ|[ًࣰٌࣱٍࣲ])([اى]?[ۖ-ۛ]*)$|(ۡ)(ا[ْ۟][ۖ-ۛ]*)$');
     String marked(String key, String hafs, int at) {
       final t = textAt[key] ?? hafs;
       return '${t.substring(0, at)}ۜ${t.substring(at)}';
