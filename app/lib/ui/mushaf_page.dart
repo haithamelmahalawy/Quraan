@@ -2604,8 +2604,7 @@ class _MushafPageState extends State<MushafPage>
         ? at(w - 1)
               .where(
                 (v) =>
-                    v.isSakt &&
-                    RegExp(r'ۜ[^ء-ي]*$').hasMatch(v.text),
+                    v.isSakt && RegExp(r'ۜ(?:ا[ْ۟])?[^ء-ي]*$').hasMatch(v.text),
               )
               .toList()
         : const <Variant>[];
@@ -2812,14 +2811,27 @@ class _MushafPageState extends State<MushafPage>
         ],
       );
     }
+    // A word every chosen riwaya reads alike (بِمُؤۡمِنِينَ for Khalaf and
+    // Khallad) is coloured still, its rows dropped from the differences: it
+    // glows by the shown riwaya's own rows, not as one with none.
+    final told = [...m.shown, ...?_letterReadings(ayah, w)];
     if (alert != null &&
         !stopping &&
         ((m.color != null || coloured != null) &&
-                _glows([...m.shown, ...?_letterReadings(ayah, w)]) ||
+                _glows(
+                  told.isNotEmpty
+                      ? told
+                      : _baseAt(
+                          widget.variants,
+                          widget.settings,
+                          ayah,
+                          w,
+                        ).where((v) => v.word == w).toList(),
+                ) ||
             _pairGlows(ayah, w))) {
       // The sin of the sakt stands above the letters: the glow reaches it.
       word = _Alerting(
-        top: drawnText.contains('ۜ') ? fontSize * .35 : 0,
+        top: drawnText.contains('ۜ') ? fontSize * .5 : 0,
         child: word,
       );
     }
@@ -4974,7 +4986,11 @@ class _UsulBox extends StatelessWidget {
         // وتشديد النون مع المد المشبع).
         if (i.readings.any((v) => v.rule == 'ya_idafa'))
           Text(
-            ' (${i.readings.where((v) => v.rule == 'ya_idafa' && RegExp('^بفتح الياء و').hasMatch(v.description)).firstOrNull?.description ?? (i.readings.any((v) => v.rule == 'ya_idafa' && v.description.contains('فتح')) ? 'بفتح ياء الإضافة' : i.readings.where((v) => v.rule == 'ya_idafa').every((v) => v.description == _yaWithMadd) ? _yaWithMadd : 'بإسكان ياء الإضافة')}'
+            ' (${i.readings.where((v) => v.rule == 'ya_idafa' && RegExp('^بفتح الياء و').hasMatch(v.description)).firstOrNull?.description ?? (i.readings.any((v) => v.rule == 'ya_idafa' && v.description.contains('فتح'))
+                    ? 'بفتح ياء الإضافة'
+                    : i.readings.where((v) => v.rule == 'ya_idafa').every((v) => v.description == _yaWithMadd)
+                    ? _yaWithMadd
+                    : 'بإسكان ياء الإضافة')}'
             // A second face of one of them (رَبِّيَ: ولقالون وجه ثانٍ بإسكان الياء).
             '${{for (final v in i.readings)
               if (v.rule == 'ya_idafa' && v.description.contains('، ول')) v.description.substring(v.description.indexOf('، ول'))}.join()})',
@@ -5779,8 +5795,6 @@ bool fiveQiyas(Iterable<String> ways) =>
 
 /// Several faces numbered, «خمسة القياس» first when they are those five.
 String numberedWays(Iterable<String> ways) {
-  final told = [
-    for (final (n, w) in ways.indexed) '${n + 1}- $w',
-  ].join('؛ ');
+  final told = [for (final (n, w) in ways.indexed) '${n + 1}- $w'].join('؛ ');
   return fiveQiyas(ways) ? '$fiveQiyasLabel: $told' : told;
 }

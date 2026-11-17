@@ -318,19 +318,13 @@ class HafsFontMarks extends StatelessWidget {
       }
       previous = m[0]!;
     }
-    // A quiet letter before the alif of the plural (خَلَوۡۜاْ): over its letter,
-    // not after the word as the tanween's (عِوَجٗاۜ).
-    final sakt = {
-      for (final m in _boundarySakt.allMatches(full))
-        if (!(full.startsWith('ۡ', m.start - 1) && m[1]!.startsWith('ا')))
-          m.start: m,
-    };
+    final sakt = {for (final m in _boundarySakt.allMatches(full)) m.start: m};
     // Abu Ja'far's sakt drawn out between two letters (الٓـۜـمٓۜ): painted over
     // its kashida, at the height of the one after the last letter.
     for (final m in RegExp('(?<=ـ)ۜ').allMatches(full)) {
       if (!sakt.containsKey(m.start)) marks[m.start] = placed[m.start].$2;
     }
-    // The sakt within a word (ٱلۡۜأَرۡضِ، شَيۡۜءٍ): painted over its letter, clear
+    // The sakt within a word (ٱلۡۜأَرۡضِ، شَيۡۜءٍ): painted before its hamza, clear
     // of the letter's sukun and of the hamza after it, not left to the font
     // (the user, 2026-11-17).
     for (final m in RegExp('ۜ').allMatches(full)) {
@@ -411,6 +405,12 @@ const saktSize = .24;
 const saktRise = .72;
 const saktOverTall = 1.05;
 const saktOverShort = .78;
+
+/// Over the hamza on its alif and its vowel (ٱلۡۜأَرۡضِ).
+const saktOverHamza = 1.16;
+
+/// How far the sin after a word stands clear of its last letter.
+const saktGap = .05;
 
 /// How far under the line the imala sign stands, in font sizes; under a jim.
 const imalaDrop = .20;
@@ -620,20 +620,28 @@ class _QuranMarkPainter extends CustomPainter {
           ),
           textDirection: TextDirection.rtl,
         )..layout();
-        // After the word, in its own room; over a letter, above the letter
-        // and its sukun: a tall one (ٱلۡۜأَرۡضِ) or a short one (شَيۡۜءٍ).
+        // Right before the hamza (the user, 2026-11-18): after the word, in its
+        // own room, clear of the word's last letter (خَلَوۡاْۜ، عَذَابٌۜ); within
+        // it, between its quiet letter and the hamza (ٱلۡۜأَرۡضِ، شَيۡۜءٍ), above
+        // the taller of the two.
         final over = source[at];
-        // A tall letter after it (خَلَوۡۜاْ) reaches over it too: above that.
         final after = end < source.length ? source[end] : '';
         final rise = over == ' ' || over == 'ـ'
             ? saktRise
+            : 'أآ'.contains(after)
+            ? saktOverHamza
             : 'اأإآلكطظ'.contains(over) || 'اأإآلكطظ'.contains(after)
             ? saktOverTall
             : saktOverShort;
+        final x = over == ' '
+            ? box.right - mark.width - font * saktGap
+            : over == 'ـ'
+            ? (box.left + box.right - mark.width) / 2
+            : box.left - mark.width / 2;
         mark.paint(
           canvas,
           Offset(
-            (box.left + box.right - mark.width) / 2,
+            x,
             line.baseline -
                 font * rise -
                 mark.computeLineMetrics().single.baseline,

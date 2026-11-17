@@ -87,10 +87,10 @@ void main() {
           expect(xs, isNotEmpty);
           final left = xs.reduce((a, b) => a < b ? a : b),
               right = xs.reduce((a, b) => a > b ? a : b);
-          expect(
-            (left + right) / 2,
-            closeTo(100 + (gap.left + gap.right) / 2, size * .08),
-          );
+          // Right after the word, clear of its last letter (the user,
+          // 2026-11-18).
+          expect(right, lessThanOrEqualTo(100 + gap.right - size * .03));
+          expect(left, greaterThan(100 + gap.right - size * .40));
           expect(
             ys.reduce((a, b) => a > b ? a : b),
             lessThan(
