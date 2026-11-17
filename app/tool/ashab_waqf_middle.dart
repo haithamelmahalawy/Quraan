@@ -84,6 +84,61 @@ int _waqfMiddle(String id, List<_Word> words, void Function(List row) put) {
   return n;
 }
 
+const _lamNote = 'من سكت فله السكت والنقل، ومن لم يسكت فله النقل';
+
+/// The stop on the hamzas of Hamza's reading that Hafs's text has not
+/// (هُزۡؤٗا، جَبۡرَئِيلَ، مِيكَٰٓئِيلَ), from «نهج حمزة في الوقف على كل همزة»
+/// (the user, 2026-11-17).
+int _waqfOwn(String id, List<_Word> words, void Function(List row) put) {
+  if (!_hamza.contains(id)) return 0;
+  final own = [
+    (
+      RegExp('هُزُو[ًٗ]ا'),
+      (String t) =>
+          t.replaceFirstMapped(RegExp('هُزُو([ًٗ])ا'), (m) => 'هُزۡؤ${m[1]}ا'),
+      'الهمز المتحرك بعد ساكن صحيح',
+      const ['نقل حركتها إلى الساكن قبلها', 'إبدالها واوًا على الرسم'],
+    ),
+    (
+      RegExp('جِبۡرِيل'),
+      (String t) => t.replaceFirst('جِبۡرِيل', 'جَبۡرَئِيل').replaceAll('ـ', ''),
+      'الهمز المتحرك بعد متحرك',
+      const ['تسهيلها بين بين'],
+    ),
+    (
+      RegExp('مِيكَىٰل'),
+      (String t) => t.replaceFirst('مِيكَىٰل', 'مِيكَٰٓئِيل'),
+      'الهمز المتوسط بعد ألف',
+      const ['تسهيلها بين بين مع المد', 'تسهيلها بين بين مع القصر'],
+    ),
+  ];
+  var n = 0;
+  for (final w in words) {
+    for (final (match, text, kind, ways) in own) {
+      if (!match.hasMatch(w.t)) continue;
+      put([
+        w.s,
+        w.a,
+        w.w,
+        1,
+        '',
+        'u',
+        'وقفًا: ${ways.join('، أو ')}',
+        'hisham_waqf',
+        {
+          'source': ashabSource,
+          'stopOnly': true,
+          'ways': ways,
+          'context': text(w.t).replaceAll(RegExp('[ۖ-ۛ]'), ''),
+          'kind': kind,
+        },
+      ]);
+      n++;
+    }
+  }
+  return n;
+}
+
 /// The faces of the hamza at [k] of the word [cs], not its first letter.
 List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
   final c = cs[k], before = cs[k - 1];
@@ -102,10 +157,10 @@ List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
           // لِلۡإِيمَٰنِ: the article's alif dropped after the lam (لَلۡأَخِرَةُ too).
           cs[k - 2].base == 'ل' && _vowelOf(cs[k - 2]) != '') &&
       _vowelOf(before) == '') {
-    // The guide (ص3، ص6): «ولخلاد في الوقف النقل في لام التعريف»; Khalaf
-    // the naql and the sakt, neither first (the user, 2026-11-12), told with
-    // Khallad's in one row: «النقل، ولخلف وجه آخر بالسكت».
-    return khallad ? const ['النقل'] : const ['النقل', 'السكت'];
+    // The naql and the sakt for both narrators, as «نهج حمزة في الوقف على كل
+    // همزة» (the user, 2026-11-17, over the guide's Khallad the naql alone),
+    // with who takes which.
+    return const ['النقل', 'السكت ($_lamNote)'];
   }
   // A quiet hamza: the letter of the vowel before it.
   if (vowel == '' && c.base != 'آ') {
@@ -126,11 +181,14 @@ List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
           ? ['$plain، وهو المقدّم', merged]
           : ['$merged، وهو المقدّم', plain];
     }
-    // أَنۢبِئۡهُم، وَنَبِّئۡهُمۡ: the ha with the damma or the kasra.
+    // أَنۢبِئۡهُم، وَنَبِّئۡهُمۡ: the ha with the damma or the kasra, alike for
+    // both narrators, the damma told first and neither preferred (the user,
+    // 2026-11-17).
     if (RegExp(r'^و?(ءنب|نب)ءهم$').hasMatch(bare)) {
-      const kasr = 'إبدالها ياءً ساكنة مع كسر الهاء';
-      const damm = 'إبدالها ياءً ساكنة مع ضم الهاء';
-      return khallad ? ['$damm، وهو المقدّم', kasr] : [kasr, damm];
+      return const [
+        'إبدالها ياءً ساكنة مع ضم الهاء',
+        'إبدالها ياءً ساكنة مع كسر الهاء',
+      ];
     }
     return ['إبدالها $letter ساكنة'];
   }
@@ -197,6 +255,15 @@ List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
   if (vowel == 'a' && pv == 'u') return const ['إبدالها واوًا مفتوحة'];
   if (vowel == 'a' && pv == 'i') return const ['إبدالها ياءً مفتوحة'];
   final next = k + 1 < cs.length ? cs[k + 1].base : '';
+  // سُئِلَ: eased, or al-Akhfash's waw, سُوِلَ (نهج حمزة, the user, 2026-11-17).
+  if (vowel == 'i' && pv == 'u') {
+    return const ['تسهيلها بين بين', 'إبدالها واوًا مكسورة'];
+  }
+  // وَٱلصَّٰبِـِٔينَ، خَٰسِـِٔينَ: a hamza with no seat before the ya, eased or
+  // dropped as the rasm (نهج حمزة, the user, 2026-11-17).
+  if (vowel == 'i' && pv == 'i' && next == 'ي' && 'ـء'.contains(c.base)) {
+    return const ['تسهيلها بين بين', 'حذفها على الرسم'];
+  }
   if (vowel == 'u' && pv == 'i' && next == 'و') {
     // أَنۢبِـُٔونِي، مُسۡتَهۡزِءُونَ: eased, or dropped (the guide); and the
     // ya with its damma, مُسۡتَهۡزِيُونَ (the user, 2026-11-12), though the
@@ -216,26 +283,29 @@ bool _asliMadd(String bare) =>
     RegExp(r'(^|[وفبل]|ٱل|ال)(سوء|سيء|مسيء|سيـ?ء)').hasMatch(bare);
 
 /// The hamza of a word after a sakin ending the word before it (مَنۡ ءَامَنَ،
-/// عَذَابٌ أَلِيمٌ), when stopping on it: told once, as a rule, not at each
-/// word (the user, 2026-11-12). The tahqiq first, by al-Taysir; and the
-/// Shatibiyya's additions, Khalaf's sakt and both narrators' naql, which is
-/// not after the mim of the plural (لَكُمۡ إِنِّيٓ). On the first such sakin in
-/// the mushaf not a mim of the plural, a word with no other hamza.
+/// عَذَابٌ أَلِيمٌ، لَكُمۡ إِنِّيٓ), when stopping on it: at every such word.
 int _waqfSeparated(String id, List<_Word> words, void Function(List row) put) {
   if (!_hamza.contains(id)) return 0;
-  const naql = 'النقل، ما لم يكن الساكن ميم الجمع، فلا نقل فيها';
-  final ways = id == 'khallad'
-      ? const ['التحقيق، وهو المقدّم', naql]
-      : const ['التحقيق، وهو المقدّم', naql, 'السكت'];
+  // Every such word, with who takes which, for both narrators; after the mim
+  // of the plural no naql (the user, 2026-11-17).
+  const ways = [
+    'التحقيق',
+    'النقل',
+    'السكت (من سكت فله السكت والنقل، ومن لم يسكت فله التحقيق والنقل)',
+  ];
+  const mimWays = [
+    'التحقيق',
+    'السكت (من سكت فله السكت، ومن لم يسكت فله التحقيق؛ ولا نقل بعد ميم الجمع)',
+  ];
   final sakinEnd = RegExp(r'(ۡ|[ًࣰٌࣱٍࣲ])([اى]?[ۖ-ۛ]*)$|(ۡ)(ا[ْ۟][ۖ-ۛ]*)$');
   final mimJam = RegExp(r'(ه[ُِ]|ك[ُ]|ت[ُ])مۡ[ۖ-ۛ]*$');
+  var n = 0;
   for (var i = 1; i < words.length; i++) {
     final w = words[i], before = words[i - 1];
     if (before.s != w.s || before.a != w.a) continue;
     if (!RegExp('^[ءأإآ]').hasMatch(w.t)) continue;
     if (sakinEnd.firstMatch(before.t) == null) continue;
-    if (mimJam.hasMatch(before.t)) continue;
-    if (RegExp('[ءأإؤئٔ]').hasMatch(w.t.substring(1))) continue;
+    final faces = mimJam.hasMatch(before.t) ? mimWays : ways;
     put([
       w.s,
       w.a,
@@ -243,19 +313,19 @@ int _waqfSeparated(String id, List<_Word> words, void Function(List row) put) {
       1,
       '',
       'u',
-      'وقفًا على الساكن المفصول قبل الهمز حيث وقع: ${ways.join('، أو ')}',
+      'وقفًا: ${faces.join('، أو ')}',
       'hisham_waqf',
       {
         'source': ashabSource,
         'stopOnly': true,
-        'ways': ways,
+        'ways': faces,
         'context': '${before.t} ${w.t}',
         'kind': 'الوقف على الساكن المفصول',
       },
     ]);
-    return 1;
+    n++;
   }
-  return 0;
+  return n;
 }
 
 const _ordinals = ['الأولى', 'الثانية', 'الثالثة'];

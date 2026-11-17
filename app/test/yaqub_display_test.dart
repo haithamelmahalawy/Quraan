@@ -247,10 +247,12 @@ void main() {
         expect(v.text, mikail.text, reason: id);
         expect(v.description, mikail.description, reason: id);
       }
+      // Ibn Kathir's with a ya after it, told as al-Kisa'i's and Khalaf's (the
+      // user, 2026-11-17).
       for (final id in ['bazzi', 'qunbul']) {
         expect(
           variants.at([id], 2, 98, 7).single.description,
-          'بهمزة مكسورة بعد الألف وبعدها ياء ساكنة',
+          'بزيادة همز وياء مدية بعد الألف مع المد المتصل',
           reason: id,
         );
       }

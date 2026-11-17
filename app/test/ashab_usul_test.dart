@@ -87,13 +87,36 @@ void main() {
               (v) => v[7] == 'hisham_waqf' && (v[8] as Map)['kind'] == kind,
             )[8]
             as Map;
-    // «ولخلاد في الوقف النقل في لام التعريف» (ص3): no sakt for him.
-    expect(waqf('khallad', 2, 11, 6, 'الوقف على لام التعريف')['ways'], [
-      'النقل',
+    // The naql and the sakt for both narrators, as «نهج حمزة في الوقف على كل
+    // همزة», with who takes which.
+    for (final (id, a, w) in const [
+      ('khallad', 11, 6),
+      ('khalaf_hamzah', 25, 11),
+    ]) {
+      expect(waqf(id, 2, a, w, 'الوقف على لام التعريف')['ways'], [
+        'النقل',
+        'السكت (من سكت فله السكت والنقل، ومن لم يسكت فله النقل)',
+      ]);
+    }
+    // The hamzas of Hamza's reading alone: سُئِلَ, the rasm's dropping, the
+    // added prefix, and جَبۡرَئِيلَ.
+    expect(waqf('khallad', 2, 108, 6, 'الهمز المتحرك بعد متحرك')['ways'], [
+      'تسهيلها بين بين',
+      'إبدالها واوًا مكسورة',
     ]);
-    expect(waqf('khalaf_hamzah', 2, 25, 11, 'الوقف على لام التعريف')['ways'], [
-      'النقل',
-      'السكت',
+    expect(waqf('khalaf_hamzah', 2, 62, 6, 'الهمز المتحرك بعد متحرك')['ways'], [
+      'تسهيلها بين بين',
+      'حذفها على الرسم',
+    ]);
+    expect(waqf('khallad', 2, 124, 5, 'الهمز المتوسط بحرف زائد')['ways'], [
+      'التحقيق',
+      'تسهيلها بين بين',
+    ]);
+    expect(waqf('khalaf_hamzah', 2, 97, 4, 'الهمز المتحرك بعد متحرك')['context'],
+        contains('جَبۡرَئِيلَ'));
+    expect(waqf('khallad', 2, 67, 12, 'الهمز المتحرك بعد ساكن صحيح')['ways'], [
+      'نقل حركتها إلى الساكن قبلها',
+      'إبدالها واوًا على الرسم',
     ]);
     expect(waqf('khallad', 2, 31, 7, 'الهمز المتوسط بعد ألف'), isNotEmpty);
     expect(waqf('khallad', 2, 31, 10, 'الهمز المتوسط بحرف زائد'), isNotEmpty);

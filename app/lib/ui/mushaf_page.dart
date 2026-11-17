@@ -2597,6 +2597,29 @@ class _MushafPageState extends State<MushafPage>
       ).shown.where((v) => v.word == p && v.rule == 'first_sakin').toList();
       if (sakin.isNotEmpty && _glows(sakin)) return true;
     }
+    // The separated sakin and its hamza (عَذَابٌۜ أَلِيمٌ): the sakt told on the
+    // first word, the stop on the second; each glows with the other, so the
+    // two glow while either asl is lit (the user, 2026-11-17).
+    final saktBefore = RegExp('^[ءأإآ]').hasMatch(ayah.words[w])
+        ? at(w - 1)
+              .where(
+                (v) =>
+                    v.isSakt &&
+                    RegExp(r'ۜ[^ء-ي]*$').hasMatch(v.text),
+              )
+              .toList()
+        : const <Variant>[];
+    final stopAfter = at(w + 1)
+        .where(
+          (v) =>
+              v.rule == 'hisham_waqf' &&
+              v.usulKind == 'الوقف على الساكن المفصول',
+        )
+        .toList();
+    if (saktBefore.isNotEmpty && _glows(saktBefore) ||
+        stopAfter.isNotEmpty && _glows(stopAfter)) {
+      return true;
+    }
     return next.isNotEmpty && _glows(next) ||
         before.isNotEmpty && _glows(before);
   }
@@ -3290,7 +3313,17 @@ List<_UsulGroup> _usulNotes(
       }
     }
   }
-  return groups.values.toList();
+  // «الوقف على الهمز» last, «السكت قبل الهمز» just before it, the others in
+  // the order of the page (the user, 2026-11-18).
+  int last(_UsulGroup g) => switch (usulGuideLabel(g.label)) {
+    'الوقف على الهمز' => 2,
+    'السكت قبل الهمز' => 1,
+    _ => 0,
+  };
+  return [
+    for (final at in const [0, 1, 2])
+      ...groups.values.where((g) => last(g) == at),
+  ];
 }
 
 /// The readers verified so far share one set of chapters: their rules are
@@ -4653,12 +4686,7 @@ class _UsulBox extends StatelessWidget {
         final faces = g.ways.length == 1
             ? g.ways.single
             : g.ways.isNotEmpty
-            ? g.ways
-                  .toList()
-                  .asMap()
-                  .entries
-                  .map((e) => '${e.key + 1}- ${e.value}')
-                  .join('؛ ')
+            ? numberedWays(g.ways)
             : i.readings.first.description.replaceFirst(RegExp('^ب'), '');
         byRow
             .putIfAbsent(
@@ -4875,12 +4903,7 @@ class _UsulBox extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 1, bottom: 1),
             child: Text(
-              g.ways
-                  .toList()
-                  .asMap()
-                  .entries
-                  .map((e) => '${e.key + 1}- ${e.value}')
-                  .join('؛ '),
+              numberedWays(g.ways),
               key: ValueKey(
                 g.label.contains('في كلمة') ||
                         g.label.startsWith('الهمزتان من كلمة (')
@@ -5030,7 +5053,7 @@ class _UsulBox extends StatelessWidget {
           ),
         if (i.ways.isNotEmpty)
           Text(
-            ' ${i.ways.join('؛ ')}',
+            ' ${fiveQiyas(i.ways) ? '$fiveQiyasLabel: ' : ''}${i.ways.join('؛ ')}',
             style: TextStyle(fontSize: 8.5 * scale, color: g.color),
           ),
       ],
@@ -5721,4 +5744,23 @@ class _ShownArrow extends CustomPainter {
 
   @override
   bool shouldRepaint(_ShownArrow old) => false;
+}
+
+/// The five faces of the stop on a final hamza after an alif, moved (سَوَآءٌ،
+/// ٱلسُّفَهَآءُ): the alif with the qasr, tawassut and madd, and the rawm with
+/// the madd and the qasr; named so before they are told (the user,
+/// 2026-11-18).
+const fiveQiyasLabel = 'خمسة القياس';
+
+bool fiveQiyas(Iterable<String> ways) =>
+    ways.length == 5 &&
+    ways.where((w) => w.startsWith('إبدالها ألفًا مع')).length == 3 &&
+    ways.where((w) => w.startsWith('تسهيلها بالروم')).length == 2;
+
+/// Several faces numbered, «خمسة القياس» first when they are those five.
+String numberedWays(Iterable<String> ways) {
+  final told = [
+    for (final (n, w) in ways.indexed) '${n + 1}- $w',
+  ].join('؛ ');
+  return fiveQiyas(ways) ? '$fiveQiyasLabel: $told' : told;
 }

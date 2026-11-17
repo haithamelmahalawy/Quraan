@@ -61,8 +61,13 @@ bool _prefixed(List<_Letter> cs, int k) {
   return ok && _notRoot(cs);
 }
 
-bool _notRoot(List<_Letter> cs) =>
-    !RegExp('^(سء|سا|فءاد|فءة|فءت|بءيس|بءس(?!م)|لءلء|كءس)').hasMatch(_bare(cs));
+bool _notRoot(List<_Letter> cs) {
+  final bare = _bare(cs);
+  // فِئَةٞ، فِئَتَيۡنِ: the fa of the root, with its kasra; the added fa is opened
+  // (فَأَتَمَّهُنَّ، فَأَتَىٰ).
+  if (RegExp('^(فءة|فءت)').hasMatch(bare)) return _vowelOf(cs[0]) != 'i';
+  return !RegExp('^(سء|سا|فءاد|بءيس|بءس(?!م)|لءلء|كءس)').hasMatch(bare);
+}
 
 /// The hamza at the letter [k] of [word] made a middle one by a letter added
 /// before it: «هيا لكسب الوفاء» (وَأَوۡحَىٰ، هَٰٓأَنتُمۡ). Not «سَأَلَ»، its sin

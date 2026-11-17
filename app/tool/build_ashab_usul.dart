@@ -457,6 +457,7 @@ Map<String, int> buildAshabUsul(
   counts['waqf final'] = _waqfFinal(id, index, sources.hisham, copy, rows.add);
   counts['waqf middle'] = _waqfMiddle(id, words, rows.add);
   counts['waqf separated'] = _waqfSeparated(id, words, rows.add);
+  counts['waqf own'] = _waqfOwn(id, words, rows.add);
 
   // ---- السكت قبل الهمز، وصلًا، من التيسير وزيادة الشاطبية: لخلف على «أل»
   // و«شيء» بلا خلاف، وعلى الساكن المفصول بخلف عنه؛ ولخلاد مثله على «أل»
@@ -2780,6 +2781,93 @@ Map<String, int> buildAshabUsul(
           {'source': ashabSource, 'farshFrom': 'ibn_wardan'},
         ];
       }
+    }
+  }
+  // «جَبۡرَئِيلَ» in its three places (البقرة ٩٧، ٩٨، التحريم ٤) and
+  // «مِيكَٰٓـِٔيلَ» (البقرة ٩٨) told in full (the user, 2026-11-17).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    for (final (s, a, w, text) in const [
+      (2, 97, 4, 'لِّجَبۡرَئِيلَ'),
+      (2, 98, 6, 'وَجَبۡرَئِيلَ'),
+      (66, 4, 14, 'وَجَبۡرَئِيلُ'),
+    ]) {
+      final row = [
+        s,
+        a,
+        w,
+        1,
+        text,
+        'f',
+        'بفتح الجيم وفتح الراء وزيادة همز قبل الياء',
+        '',
+        {'source': ashabSource, 'book': 'kharouf'},
+      ];
+      variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+    for (final v in variants.cast<List>()) {
+      if (v[0] == 2 && v[1] == 98 && v[2] == 7 && v[5] == 'f') {
+        v[6] = 'بزيادة همز وياء مدية بعد الألف مع المد المتصل';
+      }
+    }
+  }
+  // «يَحۡسِبُهُمُ» (البقرة ٢٧٣) with the sin broken for al-Kisa'i and Khalaf
+  // al-'Ashir, as Ruways's: the book's row has no wording (the user,
+  // 2026-11-17).
+  if (_kisai.contains(id) || _khalafAshir.contains(id)) {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      2,
+      273,
+      11,
+      1,
+      'يَحۡسِبُهُمُ',
+      'f',
+      'بكسر السين',
+      '',
+      {
+        'vocalizationSource': 'يحسِبهمُ',
+        'source': ashabSource,
+        'farshFrom': 'ruways',
+      },
+    ];
+    variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+    final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+    variants.insert(at < 0 ? variants.length : at, row);
+  }
+  // «وَيُعَذِّب مَّن» (البقرة ٢٨٤): the ba merged in the mim, both words told
+  // and shaded, the mim doubled (the user, 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 2 &&
+        v[1] == 284 &&
+        v[2] == 20 &&
+        v.length > 7 &&
+        v[7] == 'idgham_saghir') {
+      v[3] = 2;
+      v[4] = 'وَيُعَذِّب مَّن';
+    }
+  }
+  // Not Ibn Kathir's ba shown (بإسكان الباء مع الإظهار): merged.
+  (data['variants'] as List).removeWhere(
+    (r) =>
+        r[0] == 2 &&
+        r[1] == 284 &&
+        r[2] == 20 &&
+        r[5] == 'f' &&
+        '${r[6]}'.contains('الإظهار'),
+  );
+  // «وَكِتَٰبِهِۦ» (البقرة ٢٨٥) the singular: the kaf broken, the ta opened,
+  // its alif after it (the user, 2026-11-17).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 2 && v[1] == 285 && v[2] == 12 && v[5] == 'f') {
+      v[4] = 'وَكِتَٰبِهِۦ';
+      v[6] = 'بكسر الكاف وفتح التاء وإثبات الألف بعد التاء على الإفراد';
     }
   }
   // «لَا يَخۡفَىٰ» (الحاقة ١٨) told by its ya alone (the user, 2026-11-17).

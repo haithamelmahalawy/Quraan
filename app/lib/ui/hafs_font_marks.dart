@@ -179,6 +179,8 @@ class HafsFontMarks extends StatelessWidget {
   static bool needsAdjustment(String text) =>
       _cluster.allMatches(text).any((m) => _iqlabApart(m[0]!)) ||
       _boundarySakt.hasMatch(text) ||
+      // The sakt within a word (ٱلۡۜأَرۡضِ), painted clear of the letter's marks.
+      text.contains('ۜ') ||
       _tanween.hasMatch(text) ||
       _needsClusterAdjustment(text);
 
@@ -322,6 +324,12 @@ class HafsFontMarks extends StatelessWidget {
     for (final m in RegExp('(?<=ـ)ۜ').allMatches(full)) {
       if (!sakt.containsKey(m.start)) marks[m.start] = placed[m.start].$2;
     }
+    // The sakt within a word (ٱلۡۜأَرۡضِ، شَيۡۜءٍ): painted over its letter, clear
+    // of the letter's sukun and of the hamza after it, not left to the font
+    // (the user, 2026-11-17).
+    for (final m in RegExp('ۜ').allMatches(full)) {
+      if (!sakt.containsKey(m.start)) marks[m.start] = placed[m.start].$2;
+    }
     if (marks.isEmpty &&
         sakt.isEmpty &&
         dots.isEmpty &&
@@ -391,6 +399,13 @@ const lamHamzaShift = -.02;
 const lamHamzaRise = -.10;
 const lamHamzaClip = .70;
 
+/// The small sin of the sakt: its size, and how high its baseline stands
+/// after a word, over a tall letter and over a short one, in font sizes.
+const saktSize = .24;
+const saktRise = .72;
+const saktOverTall = 1.05;
+const saktOverShort = .78;
+
 /// How far under the line the imala sign stands, in font sizes; under a jim.
 const imalaDrop = .20;
 
@@ -452,7 +467,9 @@ class _QuranMarkPainter extends CustomPainter {
       final imala = sign == '۪' || sign == 'ٜ';
       final kasra = HafsFontMarks._kasras.hasMatch(sign);
       final below = imala || kasra;
-      final end = sakt
+      // The sakt after a word or on a kashida: its own room; over a letter,
+      // the letter with its marks.
+      final end = sakt && (source[at] == ' ' || source[at] == 'ـ')
           ? at + 1
           : HafsFontMarks._cluster.matchAsPrefix(source, at)!.end;
       // The mim beside the hamza and the kasra under it (ٱمۡرِيِٕۭ), not across.
@@ -590,20 +607,27 @@ class _QuranMarkPainter extends CustomPainter {
             text: 'س',
             style: TextStyle(
               fontFamily: 'Hafs',
-              // Small, as the sign over a word's own sakin (ٱلۡۜأَرۡضِ).
-              fontSize: font * .28,
+              fontSize: font * saktSize,
               height: 1,
               color: color ?? style.color,
             ),
           ),
           textDirection: TextDirection.rtl,
         )..layout();
+        // After the word, in its own room; over a letter, above the letter
+        // and its sukun: a tall one (ٱلۡۜأَرۡضِ) or a short one (شَيۡۜءٍ).
+        final over = source[at];
+        final rise = over == ' ' || over == 'ـ'
+            ? saktRise
+            : 'اأإآلكطظ'.contains(over)
+            ? saktOverTall
+            : saktOverShort;
         mark.paint(
           canvas,
           Offset(
             (box.left + box.right - mark.width) / 2,
             line.baseline -
-                font * .72 -
+                font * rise -
                 mark.computeLineMetrics().single.baseline,
           ),
         );
