@@ -4,6 +4,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+/// «وَكِتَٰبِهِۦ» read in the singular, by every reader who reads it so.
+const kitabihiDescription = 'بكسر الكاف وفتح التاء وإثبات الألف (على الإفراد)';
+
 void correctReviewedFarsh(String id, Map quran, List rows) {
   // This spelling is shared by everyone who reads نِعْمَةً at 31:20.
   for (final row in rows) {
@@ -13,6 +16,33 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
         (row[4] as String).contains('ة')) {
       row[5] = 'f';
       row[6] = 'بإسكان العين وإبدال الهاء تاء مربوطة منونة بالفتح';
+    }
+  }
+  // «فَـَٔاذِنُواْ» (البقرة ٢٧٩) of Shu'ba and Hamza: the fa kept, not dropped
+  // (the user, 2026-11-18).
+  for (final row in rows) {
+    if (row[0] == 2 &&
+        row[1] == 279 &&
+        row[2] == 3 &&
+        (row[4] as String).contains('اذِنُواْ')) {
+      row[6] = 'بفتح الهمزة وإثبات الألف وكسر الذال';
+    }
+  }
+  // «وَكِتَٰبِهِۦ» (البقرة ٢٨٥، التحريم ١٢): one description for every reader
+  // who reads it so (the user, 2026-11-18).
+  for (final row in rows) {
+    if (row.length > 6 && row[5] == 'f' && row[4] == 'وَكِتَٰبِهِۦ') {
+      row[6] = kitabihiDescription;
+    }
+  }
+  // «فَنَعِمَّا، نَعِمَّا» (البقرة ٢٧١، النساء ٥٨): the nun's fatha alone, the
+  // ain's kasra Hafs's too (the user, 2026-11-18).
+  for (final row in rows) {
+    if (row.length > 6 &&
+        row[5] == 'f' &&
+        RegExp(r'^ف?نعما$')
+            .hasMatch((row[4] as String).replaceAll(RegExp('[ً-ٰ]'), ''))) {
+      row[6] = 'بفتح النون';
     }
   }
   // «ٱسۡتُحِقَّ» (المائدة ١٠٧): «وَضَمَّ اسْتُحِقَّ افْتَحْ لَحِفْصٍ وَكَسْرَهُ».

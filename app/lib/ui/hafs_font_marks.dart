@@ -22,7 +22,8 @@ class HafsFontMarks extends StatelessWidget {
   );
   static final _cluster = RegExp('[^ً-ٰٟۖ-ۭ][ً-ٰٟۖ-ۭ]*');
   static final _boundarySakt = RegExp(
-    r'ۜ([اى]?[ً-ٰٟۖ-ۭ]*)(?:(?=\s|$)|(?<=(?:^|\s)اۜ))',
+    // The kashida drawn out after it too (شَيۡۜـًٔۜــا, the user, 2026-11-18).
+    r'ۜ(ـ*[اى]?[ً-ٰٟۖ-ۭ]*)(?:(?=\s|$)|(?<=(?:^|\s)اۜ))',
   );
 
   /// Reserve a narrow inter-word anchor for boundary sakt. Source spelling
@@ -326,8 +327,10 @@ class HafsFontMarks extends StatelessWidget {
     }
     // The sakt within a word (ٱلۡۜأَرۡضِ، شَيۡۜءٍ): painted before its hamza, clear
     // of the letter's sukun and of the hamza after it, not left to the font
-    // (the user, 2026-11-17).
-    for (final m in RegExp('ۜ').allMatches(full)) {
+    // (the user, 2026-11-17). Not the sin over the sad (وَيَبۡصُۜطُ، بَصۜۡطَةٗ),
+    // the word's own letter, no sakt: the font's, larger, right over it (the
+    // user, 2026-11-18).
+    for (final m in RegExp('(?<!ص[ً-ْۡ]*)ۜ').allMatches(full)) {
       if (!sakt.containsKey(m.start)) marks[m.start] = placed[m.start].$2;
     }
     if (marks.isEmpty &&

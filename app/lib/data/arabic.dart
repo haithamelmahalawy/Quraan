@@ -74,6 +74,9 @@ String madinahScript(String text, {String? followingWord}) {
   }
   // Initial ya here is a prefix, not an intrinsically doubled letter.
   // Keep the Madinah spelling when the source marks the boundary ghunna.
+  // Khalaf's idgham without ghunna writes the nun bare before it (وَمَن
+  // يَّرۡتَدِدۡ, the user, 2026-11-18): its shadda stays.
+  if (_yartadidIdgham.hasMatch(text)) return _madaniSukun(shown);
   return _madaniSukun(shown.replaceAllMapped(_yartadid, (m) => '${m[1]}يَ'));
 }
 
@@ -113,7 +116,9 @@ final _nunEnd = RegExp(r'ن[ْۡ]([ۖ-ۭ]*)$');
 final _nunBeforeIdgham = RegExp(r'ن[ْۡ]([ۖ-ۭ]*)(?=\s+[يرملون][َُِ]*ّ)');
 
 final _naqlAlef = RegExp(r'(^|\s)ا۟');
+// The ya of «يَرۡتَدِدۡ», alone or after a nun with its sukun.
 final _yartadid = RegExp(r'(^|\s)ي[َّ]+(?=ر[ْۡ]تَدِد)');
+final _yartadidIdgham = RegExp(r'ن[ۖ-ۭ]*\s+ي[َّ]*ّ[َّ]*ر[ْۡ]تَدِد');
 // Some exports place the iqlab fatha and mim on the silent final alif.
 // Return them to the preceding letter, matching the Madinah script.
 final _iqlabOnAlif = RegExp(r'اَۢ(?=[ۖ-ۭ]*(?:\s|$))');
@@ -208,6 +213,9 @@ String withImalaSign(String word, [String? reading]) {
     if (target == null && dagger(i)) target = i;
   }
   if (target == null || target < 0) return word;
+  // The alif written as a waw with its dagger (ٱلرِّبَوٰاْ): the letter before
+  // it leaned, the ba (ٱلرِّبَ۪وٰاْ; the user, 2026-11-18).
+  if (target > 0 && base(target, 0x0648) && dagger(target)) target--;
   clusters[target].add(imalaSign.codeUnitAt(0));
   return String.fromCharCodes(clusters.expand((c) => c));
 }
@@ -606,9 +614,7 @@ String completeReadingVowels(String text, String baseline) {
             // sakin (لِي، بَيۡتِي): not Hafs's fatha (لِيَ); so within a word
             // too (ٱلۡأَوَّلِينَ for Hafs's ٱلۡأَوۡلَيَٰنِ, the user, 2026-11-14).
             final maddYa =
-                i > 0 &&
-                'يى'.contains(own[i][0]) &&
-                own[i - 1].contains('ِ');
+                i > 0 && 'يى'.contains(own[i][0]) && own[i - 1].contains('ِ');
             // The lam of ٱل before a doubled (sun) letter is silent
             // (ٱللَّهُ for Hafs's لِلَّهِ): not Hafs's kasra.
             final sunLam =

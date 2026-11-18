@@ -181,7 +181,11 @@ int _imala(
   // A word the section names once and that comes again in the ayah, a waw,
   // fa, ba or lam before it maybe (هُدٗى ... وَهُدٗى، المائدة ٤٦): leaned again,
   // as the first (the user, 2026-11-14).
-  String own(String t) => t.replaceFirst(RegExp('^[وفبل][َُِ]?'), '');
+  // Its stop sign aside (ٱلرِّبَوٰاْ ... ٱلرِّبَوٰاْۗ ... ٱلرِّبَوٰاْۚ, البقرة ٢٧٥;
+  // the user, 2026-11-18).
+  String own(String t) => t
+      .replaceFirst(RegExp('^[وفبل][َُِ]?'), '')
+      .replaceAll(RegExp('[ۖ-ۛ]'), '');
   for (final row in [...made]) {
     final (s, a, w) = (row[0] as int, row[1] as int, row[2] as int);
     final word = index[_key(s, a, w)];

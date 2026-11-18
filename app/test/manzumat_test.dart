@@ -5461,7 +5461,16 @@ void main() {
       ('idris', 71, 21, 10, 'وَوُلۡدُهُۥ', '', Poem.durrah, {156}),
       ('ishaq', 72, 20, 0, 'قَٰلَ', '', Poem.durrah, {221, 222}),
       ('idris', 72, 20, 0, 'قَٰلَ', '', Poem.durrah, {221, 222}),
-      ('abul_harith', 67, 29, 7, 'فَسَيَعۡلَمُونَ', '', Poem.shatibiyya, {1077}),
+      (
+        'abul_harith',
+        67,
+        29,
+        7,
+        'فَسَيَعۡلَمُونَ',
+        '',
+        Poem.shatibiyya,
+        {1077},
+      ),
       ('idris', 63, 4, 9, 'خُشُبٞ', 'comparison', Poem.durrah, {74, 76}),
       ('rawh', 63, 4, 9, 'خُشُبٞ', 'comparison', Poem.durrah, {74, 76}),
       ('ruways', 63, 4, 9, 'خُشُبٞ', 'comparison', Poem.durrah, {74, 76}),
@@ -8821,6 +8830,34 @@ void main() {
           expect([for (final b in r.asl) b.n], [20], reason: id);
         }
       }
+    }
+  });
+
+  // Hamza's and al-Kisa'i's «يَطَّوَّعۡ» (البقرة ١٥٨): «بِحَرْفَيْهِ يَطَّوَّعْ» and
+  // «وَفي التَّاءِ يَاءٌ شَاعَ» (the user, 2026-11-18).
+  test('Hamza and al-Kisai cite yattawwa with the bayt naming them', () {
+    for (final id in [
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+    ]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 2,
+          ayah: 158,
+          word: 18,
+          count: 1,
+          text: 'يَطَّوَّعۡ',
+          kind: VariantKind.farsh,
+          description: 'بالياء وتشديد الطاء والواو وإسكان العين',
+        ),
+        'تَطَوَّعَ',
+        2,
+        surahs,
+      );
+      expect(r.mention, {489, 490}, reason: id);
     }
   });
 }

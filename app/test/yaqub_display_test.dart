@@ -683,7 +683,14 @@ void main() {
           ink.text.replaceAll('ـ', ''),
           contains(id == null ? 'هِمُ' : 'هِمِ'),
         );
-        expect(ink.style.color, isNot(MushafColors.ink));
+        // The plural's mim alone coloured, the rest in ink (the user,
+        // 2026-11-18).
+        final coloured = [
+          for (final p in ink.parts ?? const <(String, Color?)>[])
+            if (p.$2 != null && p.$2 != MushafColors.ink) p.$1,
+        ];
+        expect(coloured, hasLength(1));
+        expect(coloured.single, startsWith('م'));
         expect(
           find.ancestor(
             of: w,

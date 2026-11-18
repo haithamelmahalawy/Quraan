@@ -127,8 +127,7 @@ void main() {
     expect(at('khallad', 2, 106, 18).where((v) => v[7] == 'sakt'), isEmpty);
     // Khalaf's idgham into a word his farsh starts with a ya (مَن يَطَّوَّعۡ
     // for «تطوع»), its letter doubled once (صَٰلِحٗا يُّؤۡتِهَا).
-    String letters(Object t) =>
-        '$t'.replaceAll(RegExp('[ً-ْٰۡ]'), '');
+    String letters(Object t) => '$t'.replaceAll(RegExp('[ً-ْٰۡ]'), '');
     final tatawwa = at(
       'khalaf_hamzah',
       2,
@@ -144,6 +143,90 @@ void main() {
       6,
     ).where((v) => v[7] == 'idgham_bila_ghunna').map((v) => '${v[4]}');
     expect(yutiha.single.split(' ').last.split('ّ'), hasLength(2));
+    // Khalaf's idgham after his farsh's word: «هُزۡؤٗا وَّٱذۡكُرُواْ», the hamza
+    // on the waw as the farsh and Khalaf al-'Ashir write it.
+    for (final (a, w) in const [(231, 24)]) {
+      final row = at(
+        'khalaf_hamzah',
+        2,
+        a,
+        w,
+      ).where((v) => v[7] == 'idgham_bila_ghunna').single;
+      expect('${row[4]}', startsWith('هُزۡؤ'));
+    }
+    // «قَالَ كَمۡ لَبِثۡتَۖ» (البقرة ٢٥٩), the first of three, merged as the
+    // others; the ya made quiet before the wasl alif bare (رَبِّي ٱلَّذِي).
+    for (final id in ['khalaf_hamzah', 'khallad', 'duri_kisai']) {
+      expect(
+        at(id, 2, 259, 24).where((v) => v[7] == 'idgham_saghir'),
+        hasLength(1),
+        reason: id,
+      );
+    }
+    expect(at('ishaq', 2, 259, 24), isEmpty);
+    // «ٱلرِّبَوٰاْ» leaned in all its places of البقرة ٢٧٥, its stop signs aside.
+    for (final id in ['khalaf_hamzah', 'duri_kisai']) {
+      for (final w in [2, 19, 24]) {
+        expect(
+          at(id, 2, 275, w).where((v) => '${v[6]}' == 'بإمالة الألف'),
+          hasLength(1),
+          reason: '$id $w',
+        );
+      }
+    }
+    // «فَنَعِمَّا» and «وَكِتَٰبِهِۦ»: one description with every reader.
+    for (final id in ['khalaf_hamzah', 'duri_kisai', 'ishaq']) {
+      expect(
+        at(id, 2, 271, 3).where((v) => v[5] == 'f').single[6],
+        'بفتح النون',
+      );
+      expect(
+        at(id, 2, 285, 12).where((v) => v[5] == 'f').single[6],
+        'بكسر الكاف وفتح التاء وإثبات الألف (على الإفراد)',
+      );
+    }
+    // «فَـَٔاذِنُواْ» (البقرة ٢٧٩): the fa kept, as Shu'ba's.
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      expect(
+        at(id, 2, 279, 3).where((v) => v[5] != 'u').single[6],
+        'بفتح الهمزة وإثبات الألف وكسر الذال',
+        reason: id,
+      );
+    }
+    // «قَالَ ٱعۡلَمۡ أَنَّ» by Hamza's farsh: Khalaf's sakt on its mim, the stop
+    // on the separated sakin's hamza for both.
+    expect(
+      at('khalaf_hamzah', 2, 259, 60).where((v) => v[7] == 'sakt').single[4],
+      'ٱعۡلَمۡۜ',
+    );
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      expect(
+        at(id, 2, 259, 61).where(
+          (v) =>
+              v[7] == 'hisham_waqf' &&
+              (v[8] as Map)['kind'] == 'الوقف على الساكن المفصول',
+        ),
+        hasLength(1),
+        reason: id,
+      );
+    }
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final rabbi = at(id, 2, 258, 15).where((v) => v[5] == 'f').single;
+      expect('${rabbi[4]}', endsWith('ي'), reason: id);
+    }
+    // «فَمَن تَطَوَّعَ خَيۡرٗا فَهُوَ» (١٨٤) as Hafs's for al-Ashab: no farsh,
+    // no idgham.
+    for (final id in [
+      'khalaf_hamzah',
+      'khallad',
+      'duri_kisai',
+      'abul_harith',
+      'ishaq',
+      'idris',
+    ]) {
+      expect(at(id, 2, 184, 19), isEmpty, reason: id);
+      expect(at(id, 2, 184, 20), isEmpty, reason: id);
+    }
     // Juz 2 against «نهج حمزة»: al-Akhfash's ya in «وَلِأُتِمَّ»; the hamza
     // dropped as the rasm in «تَبَرَّءُواْ», «رُءُوسَكُمۡ», not «رَءُوفٞ».
     for (final id in ['khalaf_hamzah', 'khallad']) {

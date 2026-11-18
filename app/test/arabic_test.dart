@@ -27,6 +27,8 @@ void main() {
     expect(madinahScript('لِيَ۬لَّا'), 'لِيَلَّا');
     expect(madinahScript('يَّرْتَدِدْ'), 'يَرۡتَدِدۡ');
     expect(madinahScript('مَنْ يَّرْتَدِدْ'), 'مَن يَرۡتَدِدۡ');
+    // Khalaf's idgham without ghunna: the nun bare, the shadda kept.
+    expect(madinahScript('وَمَن يَّرۡتَدِدۡ'), contains('يَّ'));
     expect(madinahScript('هَدْياَۢ'), 'هَدۡيَۢا');
     expect(madinahScript('قَوْلاَۢۖ'), 'قَوۡلَۢاۖ');
   });
@@ -111,6 +113,8 @@ void main() {
     expect(under('رَحۡمَةٞ'), 'رحم');
     // Already marked: unchanged.
     expect(withImalaSign('مَجۡر۪ىٰهَا'), 'مَجۡر۪ىٰهَا');
+    // The alif written as a waw with its dagger: the ba leaned.
+    expect(withImalaSign('ٱلرِّبَوٰاْ'), 'ٱلرِّبَ۪وٰاْ');
     // The alif of a final «ها» not the one leaned when another is before it
     // (أحياها: under the ya, the user, 2026-11-14).
     expect(withImalaSign('أَحۡيَاهَا'), 'أَحۡيَ۪اهَا');

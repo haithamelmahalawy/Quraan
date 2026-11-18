@@ -13,6 +13,7 @@ import 'package:qiraat_mushaf/data/waqf_hamza.dart';
 
 import 'apply_dagger_alif.dart';
 import 'apply_first_sakin.dart';
+import 'correct_reviewed_farsh.dart' show kitabihiDescription;
 import 'repeated_istifham.dart';
 import 'build_data.dart' as bd show describe, currentRiwaya;
 
@@ -582,20 +583,27 @@ Map<String, int> buildAshabUsul(
           if (index[_key(s, a, i)] case final w?)
             if (_bare(w.t).contains('ى') &&
                 !particles.contains(
-                  _bare(w.t).replaceFirst(RegExp('^[وف]'), '').replaceAll('إ', 'ا'),
+                  _bare(w.t)
+                      .replaceFirst(RegExp('^[وف]'), '')
+                      .replaceAll('إ', 'ا'),
                 ))
               w,
       ];
       if (words.length < 2) continue;
-      final first = rows.cast<List>().where(
-        (r) =>
-            r[0] == s &&
-            r[1] == a &&
-            words.any((w) => w.w == r[2]) &&
-            r[5] == 'u' &&
-            '${r[6]}'.contains('إمالة') &&
-            !(r.length > 8 && r[8] is Map && (r[8] as Map)['stopOnly'] == true),
-      ).firstOrNull;
+      final first = rows
+          .cast<List>()
+          .where(
+            (r) =>
+                r[0] == s &&
+                r[1] == a &&
+                words.any((w) => w.w == r[2]) &&
+                r[5] == 'u' &&
+                '${r[6]}'.contains('إمالة') &&
+                !(r.length > 8 &&
+                    r[8] is Map &&
+                    (r[8] as Map)['stopOnly'] == true),
+          )
+          .firstOrNull;
       if (first == null) continue;
       for (final w in words) {
         if (rows.cast<List>().any(
@@ -727,6 +735,13 @@ Map<String, int> buildAshabUsul(
             (v[8] as Map).containsKey('farshFrom')),
   );
 
+  // «فَمَن تَطَوَّعَ خَيۡرٗا فَهُوَ» (البقرة ١٨٤): al-Ashab read it as Hafs; the
+  // ya and the shadda are the first one's alone (١٥٨، «وفي يطّوّع في التا يا
+  // شاع»), the book's row here a slip (the user, 2026-11-18).
+  rows.removeWhere(
+    (v) => v[0] == 2 && v[1] == 184 && v[2] == 20 && v[5] != 'u',
+  );
+
   // The idgham without ghunna over the two words as the reader reads each
   // (the sakt of «وَٱلۡۜأَرۡضِ» kept).
   // And as his farsh reads the word (حَقّٖ وَّيَقُولُ, Hamza's «ويقول»).
@@ -767,6 +782,75 @@ Map<String, int> buildAshabUsul(
         'idgham_bila_ghunna',
         {'source': ashabSource},
       ]);
+    }
+  }
+  // A sakin his farsh ends a word with where Hafs's has a vowel, before a
+  // hamza (قَالَ ٱعۡلَمۡ أَنَّ ٱللَّهَ, Hafs's «أَعۡلَمُ»; the user, 2026-11-18):
+  // Khalaf's sakt on it, as on any separated sakin, and the stop on the
+  // hamza after it, Hamza's two narrators.
+  if (_hamza.contains(id)) {
+    final sakinEnd = RegExp(r'(ۡ|[ًࣰٌࣱٍࣲ])([اى]?[ۖ-ۛ]*)$|(ۡ)(ا[ْ۟][ۖ-ۛ]*)$');
+    final mimJam = RegExp(r'(ه[ُِ]|ك[ُ]|ت[ُ])مۡ[ۖ-ۛ]*$');
+    bool has(String k, String rule) =>
+        rows.any((v) => _key(v[0], v[1], v[2]) == k && v[7] == rule);
+    for (var i = 0; i + 1 < words.length; i++) {
+      final w = words[i], next = words[i + 1];
+      if (next.s != w.s || next.a != w.a) continue;
+      final k = _key(w.s, w.a, w.w), nk = _key(next.s, next.a, next.w);
+      // The wasl alif as Hafs writes it (ٱعۡلَمۡ, the book's «اْعْلَمْ»).
+      final own = farshOf[k]?.replaceFirstMapped(
+        RegExp('^([وف]?[َِ]?)اْ'),
+        (m) => '${m[1]}ٱ',
+      );
+      if (own == null || sakinEnd.hasMatch(w.t)) continue;
+      final end = sakinEnd.firstMatch(own);
+      if (end == null || !RegExp('^[ءأإآ]').hasMatch(read(nk))) continue;
+      if (id == 'khalaf_hamzah' && !has(k, 'sakt')) {
+        final at = end.start + (end[1] ?? end[3])!.length;
+        rows.add([
+          w.s,
+          w.a,
+          w.w,
+          1,
+          '${own.substring(0, at)}ۜ${own.substring(at)}',
+          'u',
+          'بالسكت على الساكن المفصول قبل الهمز بخلف عنه، وترك السكت هو المقدّم',
+          'sakt',
+          {
+            'source': ashabSource,
+            'ways': const ['السكت', 'ترك السكت، وهو المقدّم'],
+          },
+        ]);
+      }
+      if (!has(nk, 'hisham_waqf')) {
+        final faces = mimJam.hasMatch(own)
+            ? const [
+                'التحقيق',
+                'السكت (من سكت فله السكت، ومن لم يسكت فله التحقيق؛ ولا نقل بعد ميم الجمع)',
+              ]
+            : const [
+                'التحقيق',
+                'النقل',
+                'السكت (من سكت فله السكت والنقل، ومن لم يسكت فله التحقيق والنقل)',
+              ];
+        rows.add([
+          next.s,
+          next.a,
+          next.w,
+          1,
+          '',
+          'u',
+          'وقفًا: ${faces.join('، أو ')}',
+          'hisham_waqf',
+          {
+            'source': ashabSource,
+            'stopOnly': true,
+            'ways': faces,
+            'context': '$own ${read(nk)}',
+            'kind': 'الوقف على الساكن المفصول',
+          },
+        ]);
+      }
     }
   }
   // None where his farsh starts the word otherwise (نُعَاسٗا تَغۡشَىٰ: the ta,
@@ -916,7 +1000,43 @@ Map<String, int> buildAshabUsul(
     v[4] = hafs.replaceFirst('زُو', 'زۡؤ');
   }
   _userFarsh(id, data['variants'] as List);
-  _saktOnFarsh(data['variants'] as List);
+  // Hafs's sakin Hamza's farsh reads with a vowel (وَلِيَحۡكُمَ أَهۡلُ for
+  // «وَلۡيَحۡكُمۡ»; the user, 2026-11-18): no sakt on it, no stop as after a
+  // sakin on the hamza after it.
+  if (_hamza.contains(id)) {
+    final variants = (data['variants'] as List).cast<List>();
+    final sakinEnd = RegExp(r'(ۡ|[ًࣰٌࣱٍࣲٖٗٞ])([اى]?[ۖ-ۛ]*)$|(ۡ)(ا[ْ۟][ۖ-ۛ]*)$');
+    final voweled = <String>{
+      for (final v in variants)
+        if (v[5] == 'f' &&
+            v[3] == 1 &&
+            '${v[4]}'.isNotEmpty &&
+            sakinEnd.hasMatch(index[_key(v[0], v[1], v[2])]?.t ?? '') &&
+            !sakinEnd.hasMatch('${v[4]}'.replaceAll('ْ', 'ۡ')))
+          _key(v[0], v[1], v[2]),
+    };
+    variants.removeWhere(
+      (v) =>
+          v[7] == 'sakt' &&
+              '${v[6]}'.contains('الساكن المفصول') &&
+              voweled.contains(_key(v[0], v[1], v[2])) ||
+          v[7] == 'hisham_waqf' &&
+              (v[8] as Map)['kind'] == 'الوقف على الساكن المفصول' &&
+              voweled.contains(_key(v[0], v[1], (v[2] as int) - 1)),
+    );
+  }
+  // The ya of the idafa made quiet before a wasl alif (رَبِّي ٱلَّذِي): gone
+  // in the reading, bare in the rasm, without its sukun (the user,
+  // 2026-11-18).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] == 'u' || v[3] != 1) continue;
+    final next = index[_key(v[0], v[1], (v[2] as int) + 1)]?.t ?? '';
+    if (!next.startsWith('ٱ')) continue;
+    v[4] = '${v[4]}'.replaceFirstMapped(
+      RegExp(r'ي[ْۡ]([ۖ-ۭ]*)$'),
+      (m) => 'ي${m[1]}',
+    );
+  }
   // al-Kisa'i's «وَهۡوَ، فَهۡوَ، لَهۡيَ» its ha quiet in all the places, as
   // Qalun's: the book names but some (الأنعام ١٧، ١٨ without) (the user,
   // 2026-11-14).
@@ -2327,8 +2447,7 @@ Map<String, int> buildAshabUsul(
   // لِمَا فَصْلٌ»: no row of his there.
   if (_khalafAshir.contains(id)) {
     (data['variants'] as List).removeWhere(
-      (r) =>
-          (r as List)[0] == 32 && r[1] == 24 && r[2] == 5 && r[5] == 'f',
+      (r) => (r as List)[0] == 32 && r[1] == 24 && r[2] == 5 && r[5] == 'f',
     );
   }
   // «إِن نَّشَأۡ نَخۡسِفۡ بِهِمُ» (سبأ ٩) with the ya: each word its own row, so
@@ -2433,9 +2552,7 @@ Map<String, int> buildAshabUsul(
     void put(List row) {
       variants.removeWhere(
         (r) =>
-            order(r as List) == order(row) &&
-            r[5] == row[5] &&
-            r[7] == row[7],
+            order(r as List) == order(row) && r[5] == row[5] && r[7] == row[7],
       );
       final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
       variants.insert(at < 0 ? variants.length : at, row);
@@ -2708,10 +2825,7 @@ Map<String, int> buildAshabUsul(
     final variants = (data['variants'] as List).cast<List>();
     variants.removeWhere(
       (v) =>
-          v[0] == 58 &&
-          v[1] == 11 &&
-          (v[2] == 15 || v[2] == 16) &&
-          v[5] == 'f',
+          v[0] == 58 && v[1] == 11 && (v[2] == 15 || v[2] == 16) && v[5] == 'f',
     );
     final row = [
       58,
@@ -2830,10 +2944,7 @@ Map<String, int> buildAshabUsul(
     final variants = data['variants'] as List;
     variants.removeWhere(
       (r) =>
-          r[0] == 74 &&
-          r[1] == 33 &&
-          (r[2] == 1 || r[2] == 2) &&
-          r[5] == 'f',
+          r[0] == 74 && r[1] == 33 && (r[2] == 1 || r[2] == 2) && r[5] == 'f',
     );
     final at = variants.indexWhere(
       (r) =>
@@ -2921,7 +3032,9 @@ Map<String, int> buildAshabUsul(
         '',
         {'source': ashabSource, 'book': 'kharouf'},
       ];
-      variants.removeWhere((r) => order(r as List) == order(row) && r[5] == 'f');
+      variants.removeWhere(
+        (r) => order(r as List) == order(row) && r[5] == 'f',
+      );
       final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
       variants.insert(at < 0 ? variants.length : at, row);
     }
@@ -3146,9 +3259,7 @@ Map<String, int> buildAshabUsul(
     ];
     variants.removeWhere(
       (r) =>
-          order(r as List) == order(row) &&
-          r.length > 7 &&
-          r[7] == 'ha_kinaya',
+          order(r as List) == order(row) && r.length > 7 && r[7] == 'ha_kinaya',
     );
     final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
     variants.insert(at < 0 ? variants.length : at, row);
@@ -3214,7 +3325,8 @@ Map<String, int> buildAshabUsul(
       {'source': ashabSource, 'context': 'بَلۡۜ رَانَ'},
     ];
     variants.removeWhere(
-      (r) => order(r as List) == order(row) && r.length > 7 && r[7] == 'no_sakt',
+      (r) =>
+          order(r as List) == order(row) && r.length > 7 && r[7] == 'no_sakt',
     );
     final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
     variants.insert(at < 0 ? variants.length : at, row);
@@ -3238,7 +3350,8 @@ Map<String, int> buildAshabUsul(
       {'source': ashabSource, 'context': 'مَّرۡقَدِنَاۜۗ هَٰذَا'},
     ];
     variants.removeWhere(
-      (r) => order(r as List) == order(row) && r.length > 7 && r[7] == 'no_sakt',
+      (r) =>
+          order(r as List) == order(row) && r.length > 7 && r[7] == 'no_sakt',
     );
     final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
     variants.insert(at < 0 ? variants.length : at, row);
@@ -3471,6 +3584,20 @@ Map<String, int> buildAshabUsul(
         'hamza_hadhf',
         v[8],
       ]);
+    }
+  }
+  // Drawn on the farsh as it ends, after its last corrections (بِيُوتٍۜ, not
+  // the book's «بِيُوتًا» it is corrected from).
+  _saktOnFarsh(data['variants'] as List);
+  _idghamOnFarsh(data['variants'] as List);
+  // «وَكِتَٰبِهِۦ»: one description with every reader (the user, 2026-11-18).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] == 'f' && v[4] == 'وَكِتَٰبِهِۦ') v[6] = kitabihiDescription;
+    // «فَنَعِمَّا، نَعِمَّا»: the nun's fatha alone, the ain's kasra Hafs's too.
+    if (v[5] == 'f' &&
+        RegExp(r'^ف?نعما$')
+            .hasMatch('${v[4]}'.replaceAll(RegExp('[ً-ٰ]'), ''))) {
+      v[6] = 'بفتح النون';
     }
   }
   return counts;
@@ -3907,7 +4034,18 @@ void _saktOnFarsh(List variants) {
     final text = '${v[4]}';
     if (v[5] != 'u' || v[3] != 1 || !text.contains('ۜ')) continue;
     final own = farsh[_key(v[0], v[1], v[2])];
-    if (own == null || letters(own) == letters(text)) continue;
+    if (own == null) continue;
+    // Or its vowels another, the sakt at the word's end (بِرُبۡوَةٍۜ for
+    // Hafs's «بِرَبۡوَةٍ»; the user, 2026-11-18).
+    String vowelled(String s) => s
+        .replaceAll('ْ', 'ۡ')
+        .replaceAll(RegExp('[ۖ-ۭـ]'), '')
+        .replaceAll('ٱ', 'ا');
+    final atEnd = RegExp(r'ۜ[اى]?[ۖ-ۛ]*$').hasMatch(text);
+    if (letters(own) == letters(text) &&
+        (!atEnd || vowelled(own) == vowelled(text))) {
+      continue;
+    }
     if (RegExp(r'^(?:[وفبكل][َُِ]?)?[ٱا]لۡۜ').hasMatch(text) &&
         article.hasMatch(own)) {
       v[4] = own.replaceFirstMapped(article, (m) => '${m[1]}ۜ');
@@ -3916,10 +4054,40 @@ void _saktOnFarsh(List variants) {
     // What follows the sign in Hafs's word (the tanween's alif, a stop
     // sign): the sign before the same in the farsh's word.
     final after = text.substring(text.lastIndexOf('ۜ') + 1);
+    // At the word's end: before the tanween's alif and the stop sign of the
+    // farsh's own word (وَحُزۡنًۜا).
+    if (atEnd) {
+      v[4] = own.replaceFirstMapped(
+        RegExp(r'([اى]?[ۖ-ۛ]*)$'),
+        (m) => 'ۜ${m[1]}',
+      );
+      continue;
+    }
     v[4] = after.isNotEmpty && own.endsWith(after)
         ? '${own.substring(0, own.length - after.length)}ۜ$after'
         : RegExp(r'[ۖ-ۛ]$').hasMatch(own)
         ? '${own.substring(0, own.length - 1)}ۜ${own.substring(own.length - 1)}'
         : '$ownۜ';
+  }
+}
+
+/// Khalaf's idgham without ghunna whose first word is his farsh, its letters
+/// another than the row took (هُزۡؤٗا وَّٱذۡكُرُواْ, the hamza on the waw as the
+/// farsh's and Khalaf al-'Ashir's, not «هُزۡءًا»; the user, 2026-11-18): the
+/// farsh's word.
+void _idghamOnFarsh(List variants) {
+  String plain(String s) => s.replaceAll(RegExp('[ً-ٰۖ-ۭـ]'), '');
+  final farsh = <String, String>{
+    for (final v in variants.cast<List>())
+      if (v[5] == 'f' && v[3] == 1 && '${v[4]}'.isNotEmpty)
+        _key(v[0], v[1], v[2]): '${v[4]}',
+  };
+  for (final v in variants.cast<List>()) {
+    if (v[7] != 'idgham_bila_ghunna' || v[3] != 2) continue;
+    final parts = '${v[4]}'.split(' ');
+    if (parts.length != 2) continue;
+    final own = farsh[_key(v[0], v[1], v[2])];
+    if (own == null || plain(own) == plain(parts[0])) continue;
+    v[4] = '${own.replaceFirst(RegExp(r'ۡ$'), '')} ${parts[1]}';
   }
 }

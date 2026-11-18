@@ -132,6 +132,29 @@ void _idgham(
     };
     if (take) copy(v);
   }
+  // لَبِثۡتَ and its like where Hisham's rows have none (قَالَ كَمۡ لَبِثۡتَۖ,
+  // the first of three; the user, 2026-11-18): the tha in the ta.
+  if (!ashir) {
+    final had = {
+      for (final v in sources.hisham)
+        if (v.length > 7 &&
+            v[7] == 'idgham_saghir' &&
+            v[6] == 'بإدغام الثاء في التاء')
+          _key(v[0], v[1], v[2]),
+    };
+    for (final w in words) {
+      if (!w.t.contains('ثۡت') || had.contains(key(w))) continue;
+      add(
+        w,
+        'idgham_saghir',
+        'بإدغام الثاء في التاء',
+        text: w.t.replaceFirstMapped(
+          RegExp('ثۡت([َُِ]?)'),
+          (m) => 'ثت${m[1]}ّ',
+        ),
+      );
+    }
+  }
   // عُذتُّ، فَنَبَذتُّهَا: the dhal in the ta of the word, as اتخذتم.
   for (final w in words) {
     if (!RegExp(r'^(عذت|فنبذتها)$').hasMatch(_bare(w.t))) continue;

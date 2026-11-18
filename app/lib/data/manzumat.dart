@@ -1883,6 +1883,20 @@ class Manzumat {
         }.contains('${v.surah}:${v.ayah}:${v.word}')) {
       return {490, 491};
     }
+    // «يَطَّوَّعۡ» (البقرة ١٥٨) of Hamza and al-Kisa'i: the bayt with its
+    // sukun and its shadda and the one naming them, «وَفي التَّاءِ يَاءٌ شَاعَ»
+    // (the user, 2026-11-18).
+    if (poem == Poem.shatibiyya &&
+        const {
+          'khalaf_hamzah',
+          'khallad',
+          'abul_harith',
+          'duri_kisai',
+        }.contains(v.riwayaId) &&
+        !v.isUsul &&
+        '${v.surah}:${v.ayah}:${v.word}' == '2:158:18') {
+      return {489, 490};
+    }
     // «أَرۡجِهۡ» (الأعراف ١١١، الشعراء ٣٦): Ibn Kathir's hamza, his damma and
     // its silah, Qalun's kasra without it: «وَعى نَفَرٌ أَرْجِئْهُ بِالْهَمْزِ
     // سَاكِنا / وَفي الْهَاءِ ضَمٌّ لَفَّ دَعْوَاهُ حَرْمَلَا / وَأَسْكِنْ نَصِيراً

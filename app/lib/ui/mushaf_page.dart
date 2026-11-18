@@ -1861,6 +1861,9 @@ class _MushafPageState extends State<MushafPage>
             // whole word; the user, 2026-11-18), the word's other letters left
             // to their rules (the nun of «أَن يَّكۡفُرُواْ»).
             v.rule == 'hisham_waqf' ||
+            // The ha of the kinaya and the mim of the plural: their letter
+            // alone (عَلَيۡهُمۡ's ha; the user, 2026-11-18).
+            const {'ha_damir', 'mim_jam', 'ha_silah'}.contains(v.rule) ||
             RegExp('همز|تسهيل|صلة|إدغام|ادغام').hasMatch(v.description));
     final lexical = readings.any((v) => !v.isUsul);
     // The sakt before the hamza colours the word over any other asl
@@ -1984,8 +1987,22 @@ class _MushafPageState extends State<MushafPage>
     // alone, and the alif the tanween may stand on (مَحۡظُورًا، مَحْظُوراً).
     final tanweenColor = readings.any(_tanweenDamm) ? farshColor : null;
     if (farshColor != null && tanweenColor == null) {
+      // Two words drawn as one (Khalaf's «كَثِيرٞ وَّمَنَٰفِعُ»): the farsh's
+      // colour on its own word's letters alone (the user, 2026-11-18).
+      final farshWords = {
+        for (final v in readings)
+          if (!v.isUsul)
+            for (var k = v.word; k < v.word + v.count; k++) k,
+      };
+      var at = w;
       for (var i = 0; i < letters.length; i++) {
-        colors[i] = farshColor;
+        if (letters[i].trim().isEmpty) {
+          at++;
+          continue;
+        }
+        if (farshWords.contains(at) || !text.contains(' ')) {
+          colors[i] = farshColor;
+        }
       }
     } else if (tanweenColor != null) {
       final at = letters.lastIndexWhere(_tanweenMark.hasMatch);
@@ -2089,11 +2106,21 @@ class _MushafPageState extends State<MushafPage>
         continue;
       }
       // The ha's damma (عَلَيۡهُمۡ): the ha, in the colour of its chapter.
-      if (v.rule == 'ha_damir') {
-        mark(
-          letters.lastIndexWhere((l) => l.startsWith('ه')),
-          ReadingColors.of(v),
-        );
+      // The plural's mim (عَلَيۡهِمُ ٱلذِّلَّةُ): the mim. «الهاء الثانية
+      // والميم» (بِهِمُ ٱلۡأَسۡبَابُ): both.
+      if (const {'ha_damir', 'mim_jam', 'ha_silah'}.contains(v.rule) &&
+          !v.description.contains('صلة')) {
+        final desc = v.description;
+        final ha = v.rule != 'mim_jam' || desc.contains('الهاء');
+        final mim = v.rule == 'mim_jam' || desc.contains('والميم');
+        if (ha) {
+          final at = letters.lastIndexWhere((l) => l.startsWith('ه'));
+          if (at >= 0) mark(at, ReadingColors.of(v));
+        }
+        if (mim) {
+          final at = letters.lastIndexWhere((l) => l.startsWith('م'));
+          if (at >= 0) mark(at, ReadingColors.of(v));
+        }
         continue;
       }
       // «التقاء الساكنين»: the first quiescent's letter (قُلُ), or the
@@ -2396,6 +2423,36 @@ class _MushafPageState extends State<MushafPage>
         }
       }
     }
+    // A chain of Khalaf's idgham (بَيِّنَةٖ وَّمَن ۝ وَمَن يُّبَدِّلۡ): the piece's
+    // last word merged into the next as well, its last letter coloured (the
+    // user, 2026-11-18).
+    final spaces = letters.where((l) => l.trim().isEmpty).length;
+    if (spaces > 0) {
+      final lastWord = w + spaces;
+      final chained =
+          [
+            ..._baseAt(widget.variants, widget.settings, ayah, lastWord),
+            ..._readingsAt(
+              widget.variants,
+              widget.settings,
+              ayah,
+              lastWord,
+            ).shown,
+          ].any(
+            (v) =>
+                v.word == lastWord &&
+                v.rule == 'idgham_bila_ghunna' &&
+                widget.settings.kinds.contains(v.kind),
+          );
+      if (chained) {
+        var last = letters.length - 1;
+        while (last > 0 && RegExp(r'^[اى][ۖ-ۭ]*$').hasMatch(letters[last])) {
+          last--;
+        }
+        priority = 1;
+        mark(last, ReadingColors.idghamBilaGhunna);
+      }
+    }
     if (saktRow != null) {
       final red = ReadingColors.of(saktRow);
       for (final i in saktAt) {
@@ -2532,9 +2589,13 @@ class _MushafPageState extends State<MushafPage>
               .firstOrNull;
     if (merged != null) {
       final first = letters.first;
+      // Doubled only in the text of its own reader (Khalaf's); another's
+      // shown beside it (Khallad's رَّحِيمٞ ۝ وَقَٰتِلُوهُمۡ, the user, 2026-11-18)
+      // colours the letter as Hafs's is, unchanged, as within an ayah.
+      final own = merged.riwayaId == s.displayed;
       return [
         (
-          first.contains('ّ')
+          !own || first.contains('ّ')
               ? first
               : '${first.substring(0, 1)}ّ${first.substring(1)}',
           ReadingColors.idghamBilaGhunna,
@@ -2776,7 +2837,8 @@ class _MushafPageState extends State<MushafPage>
         ? wordBefore()
               .where(
                 (v) =>
-                    v.isSakt && RegExp(r'ۜ(?:ا[ْ۟]?)?[^ء-ي]*$').hasMatch(v.text),
+                    v.isSakt &&
+                    RegExp(r'ۜ(?:ا[ْ۟]?)?[^ء-ي]*$').hasMatch(v.text),
               )
               .toList()
         : const <Variant>[];
