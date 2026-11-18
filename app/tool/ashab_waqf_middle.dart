@@ -208,6 +208,11 @@ List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
         'تسهيلها بين بين مع القصر',
       ];
     }
+    // وَلِأُتِمَّ: eased, or al-Akhfash's ya (وَلِيُتِمَّ), as «نهج حمزة»
+    // (the user, 2026-11-18).
+    if (vowel == 'u' && pv == 'i') {
+      return const ['التحقيق', 'تسهيلها بين بين', 'إبدالها ياءً مضمومة'];
+    }
     final ease = vowel == 'a' && pv == 'u'
         ? 'إبدالها واوًا مفتوحة'
         : vowel == 'a' && pv == 'i'
@@ -262,6 +267,16 @@ List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
   // وَٱلصَّٰبِـِٔينَ، خَٰسِـِٔينَ: a hamza with no seat before the ya, eased or
   // dropped as the rasm (نهج حمزة, the user, 2026-11-17).
   if (vowel == 'i' && pv == 'i' && next == 'ي' && 'ـء'.contains(c.base)) {
+    return const ['تسهيلها بين بين', 'حذفها على الرسم'];
+  }
+  // تَبَرَّءُواْ، رُءُوسَكُمۡ: a hamza with no seat before the waw, eased or
+  // dropped as the rasm (نهج حمزة, the user, 2026-11-18); not «رَءُوفٞ»,
+  // which Hamza reads «رَءُفٞ», eased alone.
+  if (vowel == 'u' &&
+      (pv == 'a' || pv == 'u') &&
+      next == 'و' &&
+      'ـء'.contains(c.base) &&
+      !bare.contains('رءوف')) {
     return const ['تسهيلها بين بين', 'حذفها على الرسم'];
   }
   if (vowel == 'u' && pv == 'i' && next == 'و') {

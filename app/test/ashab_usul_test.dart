@@ -144,6 +144,18 @@ void main() {
       6,
     ).where((v) => v[7] == 'idgham_bila_ghunna').map((v) => '${v[4]}');
     expect(yutiha.single.split(' ').last.split('ّ'), hasLength(2));
+    // Juz 2 against «نهج حمزة»: al-Akhfash's ya in «وَلِأُتِمَّ»; the hamza
+    // dropped as the rasm in «تَبَرَّءُواْ», «رُءُوسَكُمۡ», not «رَءُوفٞ».
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      List ways(int a, int w) => at(id, 2, a, w)
+          .where((v) => v[7] == 'hisham_waqf')
+          .expand((v) => (v[8] as Map)['ways'] as List)
+          .toList();
+      expect(ways(150, 26), contains('إبدالها ياءً مضمومة'));
+      expect(ways(167, 10), contains('حذفها على الرسم'));
+      expect(ways(196, 12), contains('حذفها على الرسم'));
+      expect(ways(143, 43), isNot(contains('حذفها على الرسم')));
+    }
     // al-Kisa'i's repeated question: the statement in the second.
     expect(
       at('abul_harith', 13, 5, 7).map((v) => v[6]),
