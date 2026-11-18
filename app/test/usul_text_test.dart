@@ -11,7 +11,7 @@ void main() {
   setUpAll(() async {
     quran = await QuranRepository.load();
     variants = await VariantRepository.discover();
-    await variants.ensureLoaded(['warsh', 'qunbul', 'khalaf_hamzah']);
+    await variants.ensureLoaded(['warsh', 'qunbul', 'khalaf_hamzah', 'khallad']);
   });
 
   Variant rule(int a, int w, String id) =>
@@ -39,6 +39,39 @@ void main() {
       variants
           .at(['khalaf_hamzah'], 59, 11, 6)
           .where((v) => !v.isUsul && v.count == 2),
+      isEmpty,
+    );
+  });
+
+  // «عَلَيۡهُمۡ غَيۡرِ» and «عَلَيۡهُمۡ وَلَا» (الفاتحة ٧): no sakin after, the
+  // word alone (the user, 2026-11-18).
+  test('the ha damma with no sakin after is told alone', () {
+    for (final w in [3, 6]) {
+      final v = variants
+          .at(['khalaf_hamzah'], 1, 7, w)
+          .singleWhere((v) => v.rule == 'ha_damir');
+      expect(text(v), 'عَلَيۡهُمۡ');
+    }
+  });
+
+  // «عَظِيمٞ ۝ وَمِنَ» (البقرة ٧-٨): Khalaf's idgham without ghunna across the
+  // ayah's end, told with the waw doubled (the user, 2026-11-18).
+  test('the idgham without ghunna at an ayah end takes the next ayah', () {
+    final v = variants
+        .at(['khalaf_hamzah'], 2, 7, 11)
+        .singleWhere((v) => v.rule == 'idgham_bila_ghunna');
+    expect(v.count, 1);
+    final shown = usulReadingText(
+      v,
+      quran.ayah(2, 7),
+      variants,
+      nextAyah: quran.ayah(2, 8),
+    );
+    expect(shown.split(' ').last, startsWith('وّ'));
+    expect(
+      variants
+          .at(['khallad'], 2, 7, 11)
+          .where((v) => v.rule == 'idgham_bila_ghunna'),
       isEmpty,
     );
   });

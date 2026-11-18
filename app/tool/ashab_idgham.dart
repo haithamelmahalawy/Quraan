@@ -210,7 +210,10 @@ void _idgham(
     final nun = RegExp(r'(نۡ?|[ًࣰٌࣱٍࣲٖٗٞ][اى]?)[ۖ-ۛ]*$');
     for (var i = 0; i + 1 < words.length; i++) {
       final w = words[i], next = words[i + 1];
-      if (next.s != w.s || next.a != w.a) continue;
+      // And at an ayah's end into the next one's first word, read joined
+      // (عَظِيمٞ ۝ وَمِنَ, the user, 2026-11-18); never across two surahs.
+      if (next.s != w.s) continue;
+      final across = next.a != w.a;
       final first = next.t.substring(0, 1);
       if (first != 'و' && first != 'ي') continue;
       if (const {'36:1:0', '68:1:0'}.contains(key(w))) continue;
@@ -219,6 +222,17 @@ void _idgham(
       // Written as the full idgham (مَن يَّقُولُ، خَيۡرٗا وَّأَبۡقَىٰ), the two
       // letters named as an idgham's are, for the page to colour them.
       final what = m[1]!.startsWith('ن') ? 'النون' : 'التنوين';
+      // A row on the ayah's last word alone, the next ayah's first word
+      // doubled and coloured by the page (as Abu Ja'far's ikhfa there).
+      if (across) {
+        add(
+          w,
+          'idgham_bila_ghunna',
+          'بإدغام $what في ${_letterName[first]} بلا غنة',
+          text: '',
+        );
+        continue;
+      }
       add(
         (s: w.s, a: w.a, w: w.w, t: '${w.t} ${next.t}'),
         'idgham_bila_ghunna',

@@ -13,6 +13,12 @@ abstract final class ReadingColors {
   static Color get silah => MushafColors.tone(const Color(0xFFC62828));
   static Color get idgham => MushafColors.tone(const Color(0xFF546E7A));
   static Color get sakt => MushafColors.tone(const Color(0xFF795548));
+
+  /// The sakt before the hamza red, the idgham without ghunna orange (the
+  /// user, 2026-11-18).
+  static Color get saktHamza => MushafColors.tone(const Color(0xFFFF1744));
+  static Color get idghamBilaGhunna =>
+      MushafColors.tone(const Color(0xFFEF6C00));
   static Color get other => MushafColors.tone(const Color(0xFF455A64));
   static Color get ishmam => MushafColors.tone(const Color(0xFFAD1457));
   static Color get yaIdafa => MushafColors.tone(const Color(0xFF00838F));
@@ -66,7 +72,7 @@ abstract final class ReadingColors {
         isWarshHamzaNaql(v)) {
       return naql;
     }
-    if (v.isSakt) return sakt;
+    if (v.isSakt) return d.contains('قبل الهمز') ? saktHamza : sakt;
     if (v.isLinHamz) return MushafColors.green;
     if (isWarshRabbahuMadd(v)) return separatedMadd;
     if (const {
@@ -108,6 +114,8 @@ abstract final class ReadingColors {
     }
     if (label.contains('مد اللين المهموز')) return MushafColors.green;
     if (label == 'النقل') return naql;
+    if (label.contains('السكت قبل الهمز')) return saktHamza;
+    if (label == 'الإدغام بلا غنة') return idghamBilaGhunna;
     if (label.contains('السكت')) return sakt;
     if (label.contains('همز') || label == 'الإشمام') return hamza;
     if (label.contains('صلة')) return silah;

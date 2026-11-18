@@ -76,15 +76,55 @@ void main() {
     // Khalaf's sakt on a quiet letter before the round sukun of its alif
     // (خَلَوۡاْ إِلَىٰ); none for Khallad.
     expect(
-      at('khalaf_hamzah', 2, 14, 7)
-          .where((v) => v[7] == 'sakt')
-          .map((v) => v[4]),
+      at(
+        'khalaf_hamzah',
+        2,
+        14,
+        7,
+      ).where((v) => v[7] == 'sakt').map((v) => v[4]),
       contains('خَلَوۡۜاْ'),
     );
+    expect(at('khallad', 2, 14, 7).map((v) => v[7]), isNot(contains('sakt')));
+    // Hamza's farsh the book tells with its stop: «فَأَزَٰلَهُمَا» and
+    // «وَٱلۡأَرۡحَامِ», with the sakt by his kasra; not al-Kisa'i's.
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      expect(at(id, 2, 36, 0).where((v) => v[5] == 'f').map((v) => v[4]), [
+        'فَأَزَٰلَهُمَا',
+      ]);
+      expect(at(id, 4, 1, 22).where((v) => v[5] == 'f').map((v) => v[4]), [
+        'وَٱلۡأَرۡحَامِۚ',
+      ]);
+      expect(at(id, 4, 1, 22).where((v) => v[7] == 'sakt').map((v) => v[4]), [
+        'وَٱلۡۜأَرۡحَامِۚ',
+      ]);
+    }
+    expect(at('abul_harith', 2, 36, 0).where((v) => v[5] == 'f'), isEmpty);
+    // «أَسۡرَىٰ» told without its ya, read as Hafs's.
     expect(
-      at('khallad', 2, 14, 7).map((v) => v[7]),
-      isNot(contains('sakt')),
+      at('khalaf_hamzah', 2, 85, 16).where((v) => v[5] == 'f').map((v) => v[6]),
+      ['بفتح الهمزة وإسكان السين وحذف الألف'],
     );
+    // Every word vowelled: no «ولاخوفٌ عليهُم» (read as Hafs's but the ha),
+    // «تَرَوۡنَ» with the ta for «أو لا ترون», the wasl alif of «ٱلسَّلَمَ».
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      expect(at(id, 2, 62, 18).where((v) => v[5] == 'f'), isEmpty);
+      expect(at(id, 9, 126, 0).where((v) => v[5] == 'f'), isEmpty);
+      expect(at(id, 9, 126, 1).where((v) => v[5] == 'f').map((v) => v[4]), [
+        'تَرَوۡنَ',
+      ]);
+    }
+    for (final id in ['khalaf_hamzah', 'khallad', 'ishaq']) {
+      expect(at(id, 4, 94, 14).where((v) => v[5] == 'f').map((v) => v[4]), [
+        startsWith('ٱلس'),
+      ]);
+    }
+    // Khalaf's sakt at an ayah's end before the next one's hamza (قَدِيرٌۜ ۝
+    // أَلَمۡ); none for Khallad.
+    expect(
+      at('khalaf_hamzah', 2, 106, 18).where((v) => v[7] == 'sakt'),
+      isNotEmpty,
+    );
+    expect(at('khallad', 2, 106, 18).where((v) => v[7] == 'sakt'), isEmpty);
     // al-Kisa'i's repeated question: the statement in the second.
     expect(
       at('abul_harith', 13, 5, 7).map((v) => v[6]),
@@ -124,8 +164,10 @@ void main() {
       'التحقيق',
       'تسهيلها بين بين',
     ]);
-    expect(waqf('khalaf_hamzah', 2, 97, 4, 'الهمز المتحرك بعد متحرك')['context'],
-        contains('جَبۡرَئِيلَ'));
+    expect(
+      waqf('khalaf_hamzah', 2, 97, 4, 'الهمز المتحرك بعد متحرك')['context'],
+      contains('جَبۡرَئِيلَ'),
+    );
     expect(waqf('khallad', 2, 67, 12, 'الهمز المتحرك بعد ساكن صحيح')['ways'], [
       'نقل حركتها إلى الساكن قبلها',
       'إبدالها واوًا على الرسم',

@@ -269,7 +269,12 @@ String usulReadingText(
       !target.contains(' ')) {
     final following = reading.word + 1 < ayah.words.length ? ayah : nextAyah;
     final nextWord = following == ayah ? reading.word + 1 : 0;
-    if (following != null) {
+    // The ha damma alone where no sakin follows (عَلَيۡهُمۡ غَيۡرِ، عَلَيۡهُمۡ
+    // وَلَا): the next word only where the mim meets its sakin (the user,
+    // 2026-11-18).
+    if (following != null &&
+        (reading.rule != 'ha_damir' ||
+            following.words[nextWord].startsWith('ٱ'))) {
       final second = readingText(
         variants,
         reading.riwayaId,
@@ -278,6 +283,21 @@ String usulReadingText(
         nextWord + 1,
       );
       return madinahScript('$target $second');
+    }
+  }
+  // Khalaf's idgham without ghunna at an ayah's end (عَظِيمٞ ۝ وَمِنَ): the
+  // next ayah's first word with its letter doubled (the user, 2026-11-18).
+  if (reading.rule == 'idgham_bila_ghunna' &&
+      reading.count == 1 &&
+      !target.contains(' ') &&
+      reading.word + 1 == ayah.words.length &&
+      nextAyah != null) {
+    final second = readingText(variants, reading.riwayaId, nextAyah, 0, 1);
+    if (RegExp('^[وي]').hasMatch(second)) {
+      final doubled = second.contains('ّ', 1) && second.indexOf('ّ') < 3
+          ? second
+          : '${second.substring(0, 1)}ّ${second.substring(1)}';
+      return madinahScript('$target $doubled');
     }
   }
   // Abu Ja'far's ikhfa of the nun before kha and ghayn is of two words

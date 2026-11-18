@@ -110,7 +110,8 @@ const qiraat = <Qiraa>[
     nameAr: 'حمزة الكوفي',
     shortAr: 'حمزة',
     nameEn: 'Hamzah al-Kufi',
-    baseColor: Color(0xFFEF6C00),
+    // Gold, not the orange of the idgham without ghunna (the user, 2026-11-18).
+    baseColor: Color(0xFFB8860B),
     riwayat: [
       Riwaya(id: 'khalaf_hamzah', nameAr: 'خلف', nameEn: 'Khalaf'),
       Riwaya(id: 'khallad', nameAr: 'خلاد', nameEn: 'Khallad'),

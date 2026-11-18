@@ -409,12 +409,23 @@ class _MushafPageState extends State<MushafPage>
               [])
           .add(group);
     }
+    // «السكت قبل الهمز» then «الوقف على الهمز» after every other note, by
+    // the page's last word (the user, 2026-11-18).
+    int last(List<_UsulGroup> of) => switch (usulGuideLabel(of.first.label)) {
+      'الوقف على الهمز' => 2,
+      'السكت قبل الهمز' => 1,
+      _ => 0,
+    };
     for (final (index, of) in notesOf.values.indexed) {
       final first = of.first.items.values.first;
+      final rank = last(of);
+      final (ayah, word) = rank > 0 && words.isNotEmpty
+          ? words.last
+          : (first.ayah, first.word);
       notes.add(
         _SequentialNote(
-          first.ayah,
-          first.word,
+          ayah,
+          word,
           false,
           KeyedSubtree(
             key: ValueKey(
@@ -428,10 +439,15 @@ class _MushafPageState extends State<MushafPage>
               compact: true,
             ),
           ),
+          rank,
         ),
       );
     }
-    notes.sort((a, b) => a.position.compareTo(b.position));
+    notes.sort(
+      (a, b) => a.rank != b.rank
+          ? a.rank.compareTo(b.rank)
+          : a.position.compareTo(b.position),
+    );
     return notes;
   }
 
@@ -1842,6 +1858,10 @@ class _MushafPageState extends State<MushafPage>
             v.rule == 'ikhfa' ||
             v.rule == 'first_sakin' ||
             RegExp('همز|تسهيل|صلة|إدغام|ادغام').hasMatch(v.description));
+    // A stop on the hamza with no letter of its own (أَن: «وقفًا: التحقيق، أو
+    // السكت») leaves the word's other letters to their rules: the nun of
+    // «أَن يَّكۡفُرُواْ» merged without ghunna (the user, 2026-11-18).
+    readings.removeWhere((v) => v.rule == 'hisham_waqf' && !targeted(v));
     final lexical = readings.any((v) => !v.isUsul);
     if (readings.isEmpty ||
         readings.any((v) => v.isUsul && !targeted(v)) ||
@@ -2259,8 +2279,8 @@ class _MushafPageState extends State<MushafPage>
           while (last > 0 && RegExp(r'^[اى][ۖ-ۭ]*$').hasMatch(letters[last])) {
             last--;
           }
-          mark(last, ReadingColors.idgham);
-          mark(space + 1, ReadingColors.idgham);
+          mark(last, ReadingColors.idghamBilaGhunna);
+          mark(space + 1, ReadingColors.idghamBilaGhunna);
         } else if (w == v.word) {
           // Each word drawn apart: the first's last letter, the second's
           // first.
@@ -2268,9 +2288,9 @@ class _MushafPageState extends State<MushafPage>
           while (last > 0 && RegExp(r'^[اى][ۖ-ۭ]*$').hasMatch(letters[last])) {
             last--;
           }
-          mark(last, ReadingColors.idgham);
+          mark(last, ReadingColors.idghamBilaGhunna);
         } else {
-          mark(0, ReadingColors.idgham);
+          mark(0, ReadingColors.idghamBilaGhunna);
         }
       } else if (RegExp('إدغام|ادغام').hasMatch(d)) {
         final merged = const {'hisham', 'ibn_dhakwan'}.contains(v.riwayaId)
@@ -2386,6 +2406,32 @@ class _MushafPageState extends State<MushafPage>
       ..._readingsAt(widget.variants, s, prevAyah, prev).shown,
     ];
     final letters = lettersOf(text);
+    // Khalaf's idgham without ghunna at the ayah's end (عَظِيمٞ ۝ وَّمِنَ):
+    // the first letter doubled, in the rule's colour (the user, 2026-11-18).
+    final merged = w > 0
+        ? null
+        : before
+              .where(
+                (v) =>
+                    v.word == prev &&
+                    v.count == 1 &&
+                    v.rule == 'idgham_bila_ghunna' &&
+                    s.kinds.contains(v.kind) &&
+                    RegExp('^[وي]').hasMatch(letters.firstOrNull ?? ''),
+              )
+              .firstOrNull;
+    if (merged != null) {
+      final first = letters.first;
+      return [
+        (
+          first.contains('ّ')
+              ? first
+              : '${first.substring(0, 1)}ّ${first.substring(1)}',
+          ReadingColors.idghamBilaGhunna,
+        ),
+        for (final l in letters.skip(1)) (l, null),
+      ];
+    }
     final hidden = before
         .where(
           (v) =>
@@ -2566,12 +2612,28 @@ class _MushafPageState extends State<MushafPage>
   bool _pairGlows(Ayah ayah, int w) {
     bool pair(Variant v) =>
         usulOf(v).any((l) => l.startsWith('الهمزتان من كلمتين'));
-    List<Variant> at(int i) => i < 0 || i >= ayah.words.length
+    List<Variant> atIn(Ayah a, int i) => i < 0 || i >= a.words.length
         ? const []
         : [
-            ..._readingsAt(widget.variants, widget.settings, ayah, i).shown,
-            ...?_letterReadings(ayah, i),
+            ..._readingsAt(widget.variants, widget.settings, a, i).shown,
+            ...?_letterReadings(a, i),
           ].where((v) => v.word == i).toList();
+    List<Variant> at(int i) => atIn(ayah, i);
+    // Across an ayah's end, read joined (قَدِيرٌۜ ۝ أَلَمۡ): the last word of
+    // the ayah before, the first of the next, in the same surah.
+    final ayahBefore = w == 0 && ayah.number > 1
+        ? widget.quran.ayah(ayah.surah, ayah.number - 1)
+        : null;
+    final ayahAfter =
+        w + 1 == ayah.words.length &&
+            ayah.number < widget.quran.surah(ayah.surah).ayahCount
+        ? widget.quran.ayah(ayah.surah, ayah.number + 1)
+        : null;
+    List<Variant> wordBefore() => ayahBefore != null
+        ? atIn(ayahBefore, ayahBefore.words.length - 1)
+        : at(w - 1);
+    List<Variant> wordAfter() =>
+        ayahAfter != null ? atIn(ayahAfter, 0) : at(w + 1);
     // The pair's first word told on itself (أَوۡلِيَآءُ أُوْلَٰٓئِكَ): the word
     // before it is not of the pair.
     final next = at(w + 1)
@@ -2601,14 +2663,14 @@ class _MushafPageState extends State<MushafPage>
     // first word, the stop on the second; each glows with the other, so the
     // two glow while either asl is lit (the user, 2026-11-17).
     final saktBefore = RegExp('^[ءأإآ]').hasMatch(ayah.words[w])
-        ? at(w - 1)
+        ? wordBefore()
               .where(
                 (v) =>
                     v.isSakt && RegExp(r'ۜ(?:ا[ْ۟])?[^ء-ي]*$').hasMatch(v.text),
               )
               .toList()
         : const <Variant>[];
-    final stopAfter = at(w + 1)
+    final stopAfter = wordAfter()
         .where(
           (v) =>
               v.rule == 'hisham_waqf' &&
@@ -2641,7 +2703,16 @@ class _MushafPageState extends State<MushafPage>
         ? into
         : into == null || into.isEmpty
         ? own
-        : [(own.first.$1, into.first.$2), ...own.skip(1)];
+        : [
+            (
+              // The letter doubled by the idgham into it (وَّمِنَ).
+              into.first.$1.contains('ّ') && !own.first.$1.contains('ّ')
+                  ? into.first.$1
+                  : own.first.$1,
+              into.first.$2,
+            ),
+            ...own.skip(1),
+          ];
     final parts = hafsFont ? _stretched(shown.text, coloured, kashida) : null;
     // Kashida groups may contain several base characters. Repainting a
     // stripped hamza seat must preserve their expanded colour alignment.
@@ -4168,11 +4239,20 @@ class _LandscapeMarginState extends State<_LandscapeMargin> {
 
 /// One outer margin; the measured remainder continues below the print.
 class _SequentialNote {
-  const _SequentialNote(this.ayah, this.word, this.farsh, this.child);
+  const _SequentialNote(
+    this.ayah,
+    this.word,
+    this.farsh,
+    this.child, [
+    this.rank = 0,
+  ]);
   final Ayah ayah;
   final int word;
   final bool farsh;
   final Widget child;
+
+  /// After the others: 1 the sakt before the hamza, 2 the stop on it.
+  final int rank;
   int get position => VariantRepository.key(ayah.surah, ayah.number, word);
 }
 

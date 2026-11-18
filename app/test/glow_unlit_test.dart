@@ -92,6 +92,29 @@ void main() {
     }
   });
 
+  // «وَلَوۡ أَنَّهُمۡ ءَامَنُواْ» (البقرة ١٠٣): the word of two usul glows by
+  // the lit one, the sakt before its hamza, «الوقف على الهمز» put out (the
+  // user, 2026-11-18).
+  testWidgets('page 16 glows by the sakt before the hamza', (t) async {
+    final settings = khalaf(16);
+    final lit = await glowing(t, 16, settings);
+    String bare(String s) =>
+        s.replaceAll(RegExp('[ً-ٟۖ-ۭـ]'), '');
+    final words = lit.map(bare).toSet();
+    expect(words, contains(bare('أَنَّهُمۡ')));
+    expect(words, contains(bare('ءَامَنُواْ')));
+  });
+
+  // «قَدِيرٌ ۝ أَلَمۡ» (البقرة ١٠٦-١٠٧): the sakt across the ayah's end, the
+  // two glowing together (the user, 2026-11-18).
+  testWidgets('page 17 glows by the sakt across the ayah end', (t) async {
+    String bare(String s) =>
+        s.replaceAll(RegExp('[ً-ٟۖ-ۭـ]'), '');
+    final lit = (await glowing(t, 17, khalaf(17))).map(bare).toSet();
+    expect(lit, contains(bare('قَدِيرٌ')));
+    expect(lit, contains(bare('أَلَمۡ')));
+  });
+
   // Every asl put out: nothing glows, not even what both read alike (شَاءَ,
   // عَلَيۡهُمۡ).
   testWidgets('every asl put out, page 4 glows nowhere', (t) async {

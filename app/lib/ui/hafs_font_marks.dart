@@ -403,11 +403,17 @@ const lamHamzaClip = .70;
 /// after a word, over a tall letter and over a short one, in font sizes.
 const saktSize = .24;
 const saktRise = .72;
-const saktOverTall = 1.05;
-const saktOverShort = .78;
+const saktOverTall = 1.10;
+const saktOverShort = .84;
 
 /// Over the hamza on its alif and its vowel (ٱلۡۜأَرۡضِ).
-const saktOverHamza = 1.16;
+const saktOverHamza = 1.20;
+
+/// And moved toward that hamza, off the lam before it.
+const saktTowardHamza = .11;
+
+/// Higher over a madd on that hamza.
+const saktOverMadd = .12;
 
 /// How far the sin after a word stands clear of its last letter.
 const saktGap = .05;
@@ -629,7 +635,11 @@ class _QuranMarkPainter extends CustomPainter {
         final rise = over == ' ' || over == 'ـ'
             ? saktRise
             : 'أآ'.contains(after)
-            ? saktOverHamza
+            // And the madd over it (ٱلۡۜأٓخِرَةِ), clear of it too.
+            ? saktOverHamza +
+                  (targets.any((t) => t.$1 == end && t.$3 == 'ٓ')
+                      ? saktOverMadd
+                      : 0)
             : 'اأإآلكطظ'.contains(over) || 'اأإآلكطظ'.contains(after)
             ? saktOverTall
             : saktOverShort;
@@ -637,7 +647,10 @@ class _QuranMarkPainter extends CustomPainter {
             ? box.right - mark.width - font * saktGap
             : over == 'ـ'
             ? (box.left + box.right - mark.width) / 2
-            : box.left - mark.width / 2;
+            : box.left -
+                  mark.width / 2 -
+                  // Near the hamza, off the lam (the user, 2026-11-18).
+                  ('أإآ'.contains(after) ? font * saktTowardHamza : 0);
         mark.paint(
           canvas,
           Offset(
