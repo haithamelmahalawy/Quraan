@@ -13,16 +13,20 @@ int _waqfFinal(
 ) {
   if (!_hamza.contains(id)) return 0;
   var n = 0;
-  // A hamza after an alif with the tanween of the nasb (بِنَآءٗ، مَآءٗ، نِدَآءٗ):
-  // middle at the stop, eased bayna bayna by Hamza; Hisham reads it as Hafs, so
-  // it is no row of his to copy (the user, 2026-11-16).
-  final his = {for (final v in hisham) _key(v[0], v[1], v[2])};
+  // A hamza after an alif with the tanween of the nasb (بِنَآءٗ، مَآءٗ، نِدَآءٗ،
+  // جَزَآءَۢ بِمَا with the iqlab's mim): middle at the stop, eased bayna bayna
+  // by Hamza (the user, 2026-11-16); Hisham's row there, a final hamza of his
+  // own reading or as Hafs's, not Hamza's (نهج حمزة, 2026-11-18).
+  // Hisham's own farsh, where his stop may not be Hamza's (وِطَٰٓءً).
+  final hisFarsh = {
+    for (final v in hisham)
+      if (v.length > 5 && v[5] != 'u' && v[3] == 1 && '${v[4]}'.isNotEmpty)
+        _key(v[0], v[1], v[2]): '${v[4]}',
+  };
   final nasb = [
     for (final word in index.values)
-      if (!his.contains(_key(word.s, word.a, word.w)) &&
-          RegExp(
-            '[اٰ]ٓ?ء[ًٗ]ا?\$',
-          ).hasMatch(word.t.replaceAll(RegExp('[ۖ-ۭ]'), '')))
+      if (RegExp('[اٰ]ٓ?ء(?:[ًٗ]|َۢ|َۢ)ا?\$')
+          .hasMatch(word.t.replaceAll(RegExp('[ۖ-ۛ]'), '')))
         [
           word.s,
           word.a,
@@ -36,11 +40,19 @@ int _waqfFinal(
             'stopOnly': true,
             'ways': ['تسهيلها بين بين مع المد', 'تسهيلها بين بين مع القصر'],
             'context': word.t,
+            '_nasbOf': true,
           },
         ],
   ];
+  final nasbAt = {for (final v in nasb) _key(v[0], v[1], v[2])};
   for (final raw in [...hisham, ...nasb]) {
     if (raw.length < 9 || raw[7] != 'hisham_waqf') continue;
+    // Not Hisham's own reading there (سَوَآءٌ), told by the reader's word.
+    if (!nasb.contains(raw) &&
+        nasbAt.contains(_key(raw[0], raw[1], raw[2])) &&
+        !hisFarsh.containsKey(_key(raw[0], raw[1], raw[2]))) {
+      continue;
+    }
     // Hisham's rawm with the tawassut (the user, 2026-11-16); Hamza's as it
     // was, with the madd.
     String his(String s) =>
@@ -58,15 +70,36 @@ int _waqfFinal(
       },
     ];
     final word = index[_key(v[0], v[1], v[2])];
-    final rasm = word != null
-        ? _rasmFaces(word.t, '${v[6]}')
-        : const <String>[];
-    final hisWays = ((v[8] as Map)['ways'] as List).cast<String>();
+    // On Hisham's own word where he reads another (وَلُؤۡلُؤٖ).
+    final text = hisFarsh[_key(v[0], v[1], v[2])] ?? word?.t;
+    final rasm = text != null ? _rasmFaces(text, '${v[6]}') : const <String>[];
+    var hisWays = ((v[8] as Map)['ways'] as List).cast<String>();
+    var naql = false;
+    // تَبُوٓأَ، لَتَنُوٓأُ: the waw of the root, moved onto as well as merged,
+    // as «سُوٓءَ» (نهج حمزة; the user, 2026-11-18).
+    if (word != null &&
+        // وَجِاْيٓءَ: its ya of the root too.
+        RegExp(r'((تبو|تنو)أ|جا?يء|يضيء|تفيء)$').hasMatch(_bare(word.t)) &&
+        !hisWays.any((w) => w.contains('نقل') || w.contains('النقل'))) {
+      naql = true;
+      hisWays = [
+        ...hisWays,
+        for (final w in hisWays)
+          if (w.startsWith('إبدالها من جنس ما قبلها وإدغامه فيه مع '))
+            'نقل حركتها إلى الساكن قبلها مع ${w.substring('إبدالها من جنس ما قبلها وإدغامه فيه مع '.length)}'
+          else if (w.startsWith('الإبدال والإدغام مع '))
+            'النقل مع ${w.substring('الإبدال والإدغام مع '.length)}',
+      ];
+    }
     final ordered = word == null ? hisWays : _hamzaOrder(word.t, hisWays);
     final meta = Map<String, Object?>.from(v[8] as Map);
+    if (hisFarsh[_key(v[0], v[1], v[2])] case final t?
+        when !nasb.contains(raw)) {
+      meta['_hisFarsh'] = t;
+    }
     final kind = word == null ? null : waqfHamzaKindOfFinal(word.t);
     if (kind != null) meta['kind'] = kind;
-    if (rasm.isEmpty && identical(ordered, hisWays)) {
+    if (rasm.isEmpty && identical(ordered, hisWays) && !naql) {
       copy([...v.take(8), meta]);
     } else {
       final ways = [...ordered, ...rasm];
@@ -89,9 +122,14 @@ int _waqfFinal(
 /// qiyasi faces ([qiyasi], Hisham's wording) do not already give.
 List<String> _rasmFaces(String word, String qiyasi) {
   final t = word.replaceAll(RegExp('[ۖ-ۛ]'), '');
-  final waw = RegExp(r'ؤ[ًٌٍَُِ]?(ا[ْ۟])?$').hasMatch(t);
+  // And «ٱللُّؤۡلُوِٕ», its hamza under the waw.
+  final waw = RegExp(r'(ؤ[ًٌٍَُِٖٗٞ]?(ا[ْ۟])?|و[ٍِٖ]ٕ|وٕ[ٍِٖ]?)$').hasMatch(t);
+  // The hamza's kasra: the rawm, no ishmam (وَلُؤۡلُؤٖ، شَٰطِيِٕ).
+  final hamza = _letters(t).where(_isHamza).lastOrNull;
+  final kasra = hamza != null && RegExp('[ٍِٖ]').hasMatch(hamza.marks);
   // ئُ، وَإِيتَآيِٕ (the hamza under the ya)، نَّبَإِيْ.
-  final ya = RegExp(r'(ئ[ًٌٍَُِ]?|يٕ[ِ]?|يِٕ|إِي[ْۡ]?)$').hasMatch(t);
+  // And «ٱمۡرِيِٕۭ، ٱمۡرِيٕٖ».
+  final ya = RegExp(r'(ئ[ًٌٍَُِٖ]?|يٕ[ٍِٖ]?|ي[ٍِٖ]ٕ|إِي[ْۡ]?)ۭ?$').hasMatch(t);
   if (!waw && !ya) return const [];
   final afterAlif = qiyasi.contains('إبدالها ألفًا مع القصر');
   if (waw && afterAlif) {
@@ -130,6 +168,18 @@ List<String> _rasmFaces(String word, String qiyasi) {
       'إبدالها ياءً على الرسم مع السكون',
       'إبدالها ياءً على الرسم مع الروم',
     ];
+  }
+  if (waw && qiyasi.contains('إبدالها واوًا ساكنة')) {
+    // ٱمۡرُؤٌاْ: the waw by the rasm with the ishmam or the rawm, its sukun
+    // the qiyas's (نهج حمزة; the user, 2026-11-18).
+    return [
+      if (!kasra) 'إبدالها واوًا على الرسم مع الإشمام',
+      'إبدالها واوًا على الرسم مع الروم',
+    ];
+  }
+  if (ya && kasra && qiyasi.contains('إبدالها ياءً ساكنة')) {
+    // شَٰطِيِٕ: the ya by the rasm with the rawm (نهج حمزة).
+    return const ['إبدالها ياءً على الرسم مع الروم'];
   }
   if (ya && t.contains(RegExp('ئُ\$')) && qiyasi.contains('ياءً ساكنة')) {
     // يَسۡتَهۡزِئُ: the ya moved by the rasm, then quiet as the first face,

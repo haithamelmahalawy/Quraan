@@ -870,6 +870,34 @@ Map<String, int> buildAshabUsul(
     v[4] = _merged(read(_key(v[0], v[1], v[2])), read(after(v)));
   }
 
+  // «دَأۡبٗا» (يوسف ٤٧): Hamza with all but Hafs, the hamza quiet, which his
+  // rows lost (نهج حمزة; the user, 2026-11-18).
+  // And «سَوَآءٌ» (الحج ٢٥) with all but Hafs, its hamza with the damma.
+  for (final (s, a, w, text, how) in const [
+    (12, 47, 4, 'دَأۡبٗا', 'بإسكان الهمزة'),
+    (22, 25, 12, 'سَوَآءٌ', 'بتنوين الهمزة بالضم'),
+  ]) {
+    if (!_hamza.contains(id) ||
+        rows.any(
+          (v) => v[5] != 'u' && _key(v[0], v[1], v[2]) == _key(s, a, w),
+        )) {
+      continue;
+    }
+    rows.add([
+      s,
+      a,
+      w,
+      1,
+      text,
+      'f',
+      how,
+      '',
+      {'source': ashabSource, 'farshFrom': 'shubah'},
+    ]);
+  }
+  // The book's note on a stop read as a farsh (الأنعام ٤٢-٤٣: «في الثانية من
+  // الباسآءِ إبدال الهمزة ألفاً…»): no reading of the word.
+  rows.removeWhere((v) => v[5] == 'f' && '${v[6]}'.startsWith('في الثانية من'));
   // One farsh row a word: the first told (a chapter here) over the book's.
   final farshAt = <String>{};
   rows.removeWhere(
@@ -886,10 +914,166 @@ Map<String, int> buildAshabUsul(
     // Nor on one Hisham reads and Hamza does not, with Hafs (زَكَرِيَّا،
     // تُرۡجِي).
     if (v[7] != 'hisham_waqf') return false;
+    if ((v[8] as Map).remove('_own') == true) return false;
     final key = _key(v[0], v[1], v[2]);
     final t = farshText[key] ?? index[key]!.t;
     return !hasHamza(t);
   });
+  // Hisham's row on his own farsh (وِطَٰٓءً) where Hamza reads the hamza
+  // otherwise (وَطۡـٔٗا): not Hamza's; and the faces of a hamza with the nasb's
+  // tanween where Hamza's farsh gives it another case (وَلُؤۡلُؤٖ) (the user,
+  // 2026-11-18).
+  {
+    // The hamza and the letter before it, as read.
+    String tail(String s) {
+      final cs = _letters(
+        s
+            .replaceAll(RegExp('[ۖ-ۭـ]'), '')
+            .replaceAll('ْ', 'ۡ')
+            .replaceAll('ٗ', 'ً')
+            .replaceAll('ٞ', 'ٌ')
+            .replaceAll('ٖ', 'ٍ'),
+      );
+      while (cs.isNotEmpty &&
+          'اى'.contains(cs.last.base) &&
+          !_isHamza(cs.last)) {
+        cs.removeLast();
+      }
+      String c(_Cluster x) => _isHamza(x)
+          ? 'ء${x.marks.replaceAll(RegExp('[ٕٔ]'), '')}'
+          : '${x.base}${x.marks}';
+      return cs.skip(cs.length < 2 ? 0 : cs.length - 2).map(c).join();
+    }
+
+    final drop = <List>{};
+    // Hamza's own word (دَأۡبٗا، فَلِإِمِّهِ، ٱلۡأَيۡكَةِ، أَءِنَّكُمۡ، ٱلتَّنَآؤُشُ،
+    // ٱلسَّيِّئۡ): the faces of its hamzas as he reads them, not Hafs's (نهج
+    // حمزة; the user, 2026-11-18).
+    if (_hamza.contains(id)) {
+      final khallad = id == 'khallad';
+      final ownText = {
+        for (final v in rows)
+          if ((v[5] == 'f' || v[5] == 'h') && v[3] == 1 && '${v[4]}'.isNotEmpty)
+            _key(v[0], v[1], v[2]): '${v[4]}',
+        // His genitive «وَلُؤۡلُؤٖاْ» (الحج ٢٣، فاطر ٣٣), its row added below.
+        '22:23:18': 'وَلُؤۡلُؤٖاْ',
+        '35:33:9': 'وَلُؤۡلُؤٖاْ',
+      };
+      for (final MapEntry(key: key, value: raw) in ownText.entries) {
+        final hafs = index[key]?.t;
+        if (hafs == null || !hasHamza(raw)) continue;
+        // The book's round sukun, and its madd alif written «آ» within the
+        // word (دَكَّآءَ، يَبۡلُغَآنِّ، تُمَآسُّوهُنَّ).
+        final own = raw
+            .replaceAll('ْ', 'ۡ')
+            .replaceAll(RegExp('(?<=.)آ'), 'آ');
+        final m = _middleOf(own, khallad, finalSakin: true);
+        final was = _middleOf(hafs, khallad);
+        // A quiet final hamza of his (ٱلسَّيِّئۡ): no rawm, nor Hisham's row.
+        final quietFinal = RegExp(r'[ءأؤئٔ]ۡ[ۖ-ۭ]*$').hasMatch(own);
+        // His own final hamza where Hafs's differs (دَكَّآءَ، جَزَآءً، دُرِّيٓءٞ،
+        // لِيَسُوٓءَ).
+        final fin = tail(own) == tail(hafs) ? null : _ownFinal(own);
+        if (jsonEncode(m.faces) == jsonEncode(was.faces) &&
+            !quietFinal &&
+            fin == null) {
+          continue;
+        }
+        bool hisFinal(List v) =>
+            v[7] == 'hisham_waqf' &&
+            _key(v[0], v[1], v[2]) == key &&
+            !(v[8] as Map).containsKey('_parts') &&
+            (v[8] as Map)['kind'] != 'الوقف على الساكن المفصول';
+        if (quietFinal || fin != null) drop.addAll(rows.where(hisFinal));
+        final middle = rows.where(
+          (v) =>
+              v[7] == 'hisham_waqf' &&
+              _key(v[0], v[1], v[2]) == key &&
+              (v[8] as Map).containsKey('_parts'),
+        );
+        if (middle.isNotEmpty) {
+          for (final v in middle) {
+            if (m.faces.isEmpty) {
+              drop.add(v);
+              continue;
+            }
+            final row = _middleRow(v[0], v[1], v[2], own, m);
+            v[6] = row[6];
+            final meta = v[8] as Map
+              ..remove('_nasbAt')
+              ..addAll(row[8] as Map);
+            meta['context'] = (v[8] as Map)['context'];
+          }
+        } else if (m.faces.isNotEmpty &&
+            !rows.any(
+              (v) =>
+                  v[7] == 'hisham_waqf' &&
+                  _key(v[0], v[1], v[2]) == key &&
+                  (v[8] as Map)['kind'] != 'الوقف على الساكن المفصول' &&
+                  !drop.contains(v),
+            )) {
+          final p = key.split(':').map(int.parse).toList();
+          rows.add(_middleRow(p[0], p[1], p[2], hafs, m));
+        }
+        if (fin != null) {
+          final p = key.split(':').map(int.parse).toList();
+          rows.add([
+            p[0],
+            p[1],
+            p[2],
+            1,
+            '',
+            'u',
+            'وقفًا: ${fin.ways.join('، أو ')}',
+            'hisham_waqf',
+            {
+              'source': ashabSource,
+              'stopOnly': true,
+              'ways': fin.ways,
+              'context': own,
+              'kind': fin.kind,
+            },
+          ]);
+        }
+      }
+    }
+    for (final v in rows) {
+      if (v[7] != 'hisham_waqf') continue;
+      final meta = v[8] as Map;
+      final key = _key(v[0], v[1], v[2]);
+      // His genitive «وَلُؤۡلُؤٖاْ», its farsh row added below.
+      final own =
+          const {'22:23:18': 'وَلُؤۡلُؤٖاْ', '35:33:9': 'وَلُؤۡلُؤٖاْ'}[key] ??
+          farshText[key] ??
+          index[key]!.t;
+      final his = meta.remove('_hisFarsh');
+      // The nasb's hamza after an alif where his farsh has another case
+      // (سَوَآءٌ، الحج ٢٥).
+      if (meta.remove('_nasbOf') == true &&
+          farshText[key] != null &&
+          !RegExp('[ًٗ]|َۢ|َۢ').hasMatch(farshText[key]!)) {
+        drop.add(v);
+      }
+      if (his != null && tail('$his') != tail(own)) drop.add(v);
+      final at = meta.remove('_nasbAt');
+      if (at is int &&
+          farshText[key] != null &&
+          !RegExp('[ًٗ]').hasMatch(farshText[key]!)) {
+        final parts = [...(meta['_parts'] as List)]..removeAt(at);
+        if (parts.isEmpty) {
+          drop.add(v);
+          continue;
+        }
+        final ways = parts.length == 1
+            ? (parts.single as List).cast<String>()
+            : [_byHamza(parts.map((p) => (p as List).cast<String>()).toList())];
+        meta['_parts'] = parts;
+        meta['ways'] = ways;
+        v[6] = 'وقفًا: ${ways.join('، أو ')}';
+      }
+    }
+    rows.removeWhere(drop.contains);
+  }
   // The kind of a final hamza Hafs does not read, by the reader's word.
   for (final v in rows) {
     if (v[7] != 'hisham_waqf') continue;
@@ -4090,4 +4274,52 @@ void _idghamOnFarsh(List variants) {
     if (own == null || plain(own) == plain(parts[0])) continue;
     v[4] = '${own.replaceFirst(RegExp(r'ۡ$'), '')} ${parts[1]}';
   }
+}
+
+/// The stop on a final hamza of Hamza's own word, where his reading ends
+/// otherwise than Hafs's and no row of Hisham's tells it (نهج حمزة; the user,
+/// 2026-11-18).
+({List<String> ways, String kind})? _ownFinal(String own) {
+  final t = own.replaceAll(RegExp('[ۖ-ۭ]'), '');
+  // دَكَّآءَ: after an alif, with its fatha: the alif of three lengths.
+  if (RegExp(r'[اٰ]ٓ?ءَ$').hasMatch(t)) {
+    return (
+      ways: const [
+        'إبدالها ألفًا مع القصر',
+        'إبدالها ألفًا مع التوسط',
+        'إبدالها ألفًا مع المد',
+      ],
+      kind: 'الهمز المتطرف بعد ألف',
+    );
+  }
+  // جَزَآءً: after an alif with the nasb's tanween, middle at the stop.
+  if (RegExp(r'[اٰ]ٓ?ء[ًٗ]ا?$').hasMatch(t)) {
+    return (
+      ways: const ['تسهيلها بين بين مع المد', 'تسهيلها بين بين مع القصر'],
+      kind: 'الهمز المتوسط بعد ألف',
+    );
+  }
+  // لِيَسُوٓءَ: after the waw of the root, merged or moved onto.
+  if (RegExp(r'سُوٓ?ءَ$').hasMatch(t)) {
+    return (
+      ways: const [
+        'إبدالها من جنس ما قبلها وإدغامه فيه مع السكون المحض، وهو المقدّم',
+        'نقل حركتها إلى الساكن قبلها مع السكون المحض',
+      ],
+      kind: 'الهمز بعد واو أو ياء ساكنتين',
+    );
+  }
+  // دُرِّيٓءٞ: after an added ya, with its damma: merged, with the sukun, the
+  // rawm or the ishmam.
+  if (RegExp(r'يٓ?ء[ٌُٞ]$').hasMatch(t)) {
+    return (
+      ways: const [
+        'إبدالها من جنس ما قبلها وإدغامه فيه مع السكون المحض',
+        'الإبدال والإدغام مع الروم',
+        'الإبدال والإدغام مع الإشمام',
+      ],
+      kind: 'الهمز بعد واو أو ياء ساكنتين',
+    );
+  }
+  return null;
 }

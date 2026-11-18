@@ -35,53 +35,107 @@ int _waqfMiddle(String id, List<_Word> words, void Function(List row) put) {
   final khallad = id == 'khallad';
   var n = 0;
   for (final w in words) {
-    final cs = _letters(w.t);
-    final faces = <List<String>>[];
-    String? kind;
-    for (var k = 1; k < cs.length; k++) {
-      if (!_isHamza(cs[k])) continue;
-      // The final hamza (a silent alif after it aside): Hisham's rows; but
-      // «شَيۡـًٔا», which his rows do not tell: the naql or the merging (the
-      // guide, p3: «والنقل في ﴿شَيْءٍ﴾ و﴿شَيْئًا﴾»).
-      if (cs.sublist(k + 1).every((x) => x.base == 'ا')) {
-        if (RegExp('شَيۡ').hasMatch(w.t) && RegExp('[ًٗ]').hasMatch(w.t)) {
-          faces.add(const [
-            'نقل حركتها إلى الساكن قبلها',
-            'إبدالها من جنس ما قبلها وإدغامه فيه',
-          ]);
-          kind ??= waqfHamzaKindAt(w.t, k);
-        }
-        continue;
-      }
-      final f = _middleFaces(w.t, cs, k, khallad);
-      if (f.isEmpty) continue;
-      faces.add(f);
-      kind ??= waqfHamzaKindAt(w.t, k);
-    }
-    if (faces.isEmpty) continue;
-    // Two hamzas of a word: each with its own faces, told hamza by hamza.
-    final ways = faces.length == 1 ? faces.single : [_byHamza(faces)];
-    put([
-      w.s,
-      w.a,
-      w.w,
-      1,
-      '',
-      'u',
-      'وقفًا: ${ways.join('، أو ')}',
-      'hisham_waqf',
-      {
-        'source': ashabSource,
-        'stopOnly': true,
-        'ways': ways,
-        'context': w.t,
-        'kind': kind,
-        '_parts': faces,
-      },
-    ]);
+    final m = _middleOf(w.t, khallad);
+    if (m.faces.isEmpty) continue;
+    put(_middleRow(w.s, w.a, w.w, w.t, m));
     n++;
   }
   return n;
+}
+
+typedef _Middle = ({List<List<String>> faces, String? kind, int? nasbAt});
+
+/// The stop row of [m], the faces of the hamzas of [text].
+List _middleRow(int s, int a, int w, String text, _Middle m) {
+  // Two hamzas of a word: each with its own faces, told hamza by hamza.
+  final ways = m.faces.length == 1 ? m.faces.single : [_byHamza(m.faces)];
+  return [
+    s,
+    a,
+    w,
+    1,
+    '',
+    'u',
+    'وقفًا: ${ways.join('، أو ')}',
+    'hisham_waqf',
+    {
+      'source': ashabSource,
+      'stopOnly': true,
+      'ways': ways,
+      'context': text,
+      'kind': m.kind,
+      '_parts': m.faces,
+      '_nasbAt': ?m.nasbAt,
+    },
+  ];
+}
+
+/// The faces of the hamzas of [text] not at its head nor its end (the end's
+/// are Hisham's rows), and its kind. [finalSakin]: a final quiet hamza too
+/// (Hamza's own «ٱلسَّيِّئۡ», which no row of Hisham's tells).
+_Middle _middleOf(String text, bool khallad, {bool finalSakin = false}) {
+  final cs = _letters(text);
+  final faces = <List<String>>[];
+  String? kind;
+  int? nasbAt;
+  for (var k = 1; k < cs.length; k++) {
+    if (!_isHamza(cs[k])) continue;
+    // The final hamza (a silent alif after it aside): Hisham's rows; but
+    // «شَيۡـًٔا», which his rows do not tell: the naql or the merging (the
+    // guide, p3: «والنقل في ﴿شَيْءٍ﴾ و﴿شَيْئًا﴾»).
+    // The rasm's silent letters after it (نَّبَإِيْ) as the alif.
+    if (cs
+        .sublist(k + 1)
+        .every(
+          (x) =>
+              x.base == 'ا' ||
+              'وي'.contains(x.base) && RegExp('[ْ۟]').hasMatch(x.marks),
+        )) {
+      if (RegExp('شَيۡ').hasMatch(text) && RegExp('[ًٗ]').hasMatch(text)) {
+        faces.add(const [
+          'نقل حركتها إلى الساكن قبلها',
+          'إبدالها من جنس ما قبلها وإدغامه فيه',
+        ]);
+        kind ??= waqfHamzaKindAt(text, k);
+        continue;
+      }
+      // With the tanween of the nasb and its alif (جُزۡءٗا، خَطَـٔٗا، سُوٓءٗا،
+      // هَنِيٓـٔٗا), not after an alif (told apart): a middle hamza at the
+      // stop, by its divisions (نهج حمزة; the user, 2026-11-18).
+      final before = cs[k - 1];
+      // Or its fatha and the iqlab's mim (هَنِيٓـَٔۢا).
+      final nasb =
+          (RegExp('[ًٗ]').hasMatch(cs[k].marks) ||
+              cs[k].marks.contains('َ') && cs[k].marks.contains('ۢ')) &&
+          k + 1 < cs.length &&
+          before.base != 'ا' &&
+          !before.marks.contains('ٰ');
+      // Its fatha before a read alif (رَءَا، تَبَوَّءَا، تَرَٰٓءَا): middle
+      // too (نهج حمزة; the user, 2026-11-18).
+      final fatha =
+          cs[k].marks.contains('َ') &&
+          k + 1 < cs.length &&
+          !RegExp('[ْۡ۟]').hasMatch(cs[k + 1].marks);
+      final quiet =
+          finalSakin &&
+          k + 1 == cs.length &&
+          RegExp('[ْۡ]').hasMatch(cs[k].marks);
+      if (nasb || fatha || quiet) {
+        final f = _middleFaces(text, cs, k, khallad);
+        if (f.isNotEmpty) {
+          if (nasb) nasbAt = faces.length;
+          faces.add(f);
+          kind ??= waqfHamzaKindAt(text, k);
+        }
+      }
+      continue;
+    }
+    final f = _middleFaces(text, cs, k, khallad);
+    if (f.isEmpty) continue;
+    faces.add(f);
+    kind ??= waqfHamzaKindAt(text, k);
+  }
+  return (faces: faces, kind: kind, nasbAt: nasbAt);
 }
 
 const _lamNote = 'من سكت فله السكت والنقل، ومن لم يسكت فله النقل';
@@ -101,7 +155,8 @@ int _waqfOwn(String id, List<_Word> words, void Function(List row) put) {
     ),
     (
       RegExp('جِبۡرِيل'),
-      (String t) => t.replaceFirst('جِبۡرِيل', 'جَبۡرَئِيل').replaceAll('ـ', ''),
+      (String t) =>
+          t.replaceFirst('جِبۡرِيل', 'جَبۡرَئِيل').replaceAll('ـ', ''),
       'الهمز المتحرك بعد متحرك',
       const ['تسهيلها بين بين'],
     ),
@@ -131,6 +186,8 @@ int _waqfOwn(String id, List<_Word> words, void Function(List row) put) {
           'ways': ways,
           'context': text(w.t).replaceAll(RegExp('[ۖ-ۛ]'), ''),
           'kind': kind,
+          // His own hamza, kept where his farsh comes later (التحريم ٤).
+          '_own': true,
         },
       ]);
       n++;
@@ -141,6 +198,18 @@ int _waqfOwn(String id, List<_Word> words, void Function(List row) put) {
 
 /// The faces of the hamza at [k] of the word [cs], not its first letter.
 List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
+  // The rasm's silent alif before it (مِاْئَةَ، مِاْئَتَيۡنِ): after the letter
+  // before that, the ya of the kasra (نهج حمزة; the user, 2026-11-18).
+  if (k >= 2 &&
+      cs[k - 1].base == 'ا' &&
+      RegExp('[ْ۟]').hasMatch(cs[k - 1].marks)) {
+    return _middleFaces(
+      word,
+      [...cs.sublist(0, k - 1), ...cs.sublist(k)],
+      k - 1,
+      khallad,
+    );
+  }
   final c = cs[k], before = cs[k - 1];
   final vowel = _vowelOf(c);
   final bare = cs
@@ -149,7 +218,11 @@ List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
       .replaceAll(RegExp('[ٱأإؤئآ]'), 'ء')
       .replaceAll('ـ', '');
   const quietMark = '[ْۡ]';
-  // After «أل»: the sakt and the naql.
+  // After «أل»: the sakt and the naql; «لۡـَٔيۡكَةِ» too, the article's alif
+  // not written (نهج حمزة; the user, 2026-11-18).
+  if (k == 1 && before.base == 'ل' && RegExp('[ْۡ]').hasMatch(before.marks)) {
+    return const ['النقل', 'السكت ($_lamNote)'];
+  }
   if (before.base == 'ل' &&
       k >= 2 &&
       (cs[k - 2].base == 'ٱ' ||
@@ -254,6 +327,8 @@ List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
     return [
       'نقل حركتها إلى الساكن قبلها',
       if (c.base == 'أ') 'إبدالها ألفًا على الرسم',
+      // كُفۡؤٗا: the waw of the rasm (نهج حمزة).
+      if (c.base == 'ؤ') 'إبدالها واوًا على الرسم',
     ];
   }
   // After a moved letter: the nine forms.
@@ -285,9 +360,10 @@ List<String> _middleFaces(String word, List<_Cluster> cs, int k, bool khallad) {
     // guide tells al-Dani did not take it, against the rasm.
     return const ['تسهيلها بين بين', 'حذفها', 'إبدالها ياءً مضمومة'];
   }
-  if (khallad && vowel == 'u' && pv == 'i' && c.base == 'ئ') {
-    // سَنُقۡرِئُكَ: al-Akhfash's ya, which the rasm writes.
-    return const ['تسهيلها بين بين', 'إبدالها ياءً مضمومة على مذهب الأخفش'];
+  if (vowel == 'u' && pv == 'i' && c.base == 'ئ') {
+    // سَنُقۡرِئُكَ، أُنَبِّئُكُم: al-Akhfash's ya, which the rasm writes, for
+    // both narrators as «نهج حمزة» (the user, 2026-11-18).
+    return const ['تسهيلها بين بين', 'إبدالها ياءً مضمومة'];
   }
   return const ['تسهيلها بين بين'];
 }

@@ -174,6 +174,52 @@ void main() {
         );
       }
     }
+    // The stop on the hamza against «نهج حمزة», juz 3 to 30: one word of each
+    // pattern, for both narrators.
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      List ways(int s, int a, int w) => [
+        for (final v in at(id, s, a, w))
+          if (v[7] == 'hisham_waqf' &&
+              (v[8] as Map)['kind'] != 'الوقف على الساكن المفصول')
+            ...((v[8] as Map)['ways'] as List),
+      ];
+      // مِاْئَةَ: the silent alif aside, the ya of the kasra.
+      expect(ways(2, 259, 18), ['إبدالها ياءً مفتوحة'], reason: id);
+      // هَنِيٓـٔٗا، جُزۡءٗا، خَطَـٔٗا: middle at the stop.
+      expect(ways(4, 4, 12), ['إبدالها من جنس ما قبلها وإدغامه فيه']);
+      expect(ways(2, 260, 29), ['نقل حركتها إلى الساكن قبلها']);
+      expect(ways(4, 92, 7), ['تسهيلها بين بين']);
+      // جَزَآءَۢ: after an alif with the nasb, as «بِنَآءٗ».
+      expect(ways(5, 38, 4), [
+        'تسهيلها بين بين مع المد',
+        'تسهيلها بين بين مع القصر',
+      ]);
+      // يُنَبِّئُكُم: al-Akhfash's ya for both.
+      expect(ways(9, 94, 26), contains('إبدالها ياءً مضمومة'), reason: id);
+      // سَأَصۡرِفُ: the future's sin added; not «سَأَلۡتَهُمۡ».
+      expect(ways(7, 146, 0), ['التحقيق', 'تسهيلها بين بين']);
+      expect(ways(9, 65, 1), ['تسهيلها بين بين']);
+      // رَءَا: its fatha before the read alif, middle.
+      expect(ways(6, 76, 4), ['تسهيلها بين بين']);
+      // أَئِمَّةٗ: of the root, eased alone.
+      expect(ways(9, 12, 10), ['تسهيلها بين بين']);
+      // ٱمۡرُؤٌاْ: the waw of the rasm with the ishmam and the rawm.
+      expect(ways(4, 176, 7), contains('إبدالها واوًا على الرسم مع الإشمام'));
+      // تَبُوٓأَ: the waw of the root, moved onto too.
+      expect(
+        ways(5, 29, 3),
+        contains('نقل حركتها إلى الساكن قبلها مع السكون المحض'),
+      );
+      // Hamza's own reading: دَكَّآءَ، سَوَآءٌ (الحج ٢٥) against «سَوَآءٗ»
+      // (الجاثية ٢١)، وَجَبۡرَئِيلُ، وَطۡـٔٗا with Hisham's «وِطَآءً» no more.
+      expect(ways(7, 143, 28), hasLength(3));
+      expect(ways(22, 25, 12), hasLength(5));
+      expect(ways(45, 21, 11), hasLength(2));
+      expect(ways(66, 4, 14), ['تسهيلها بين بين']);
+      expect(ways(73, 6, 5), ['نقل حركتها إلى الساكن قبلها']);
+      // يَبۡلُغَآنِّ: no hamza of his.
+      expect(ways(17, 23, 9), isEmpty);
+    }
     // «فَنَعِمَّا» and «وَكِتَٰبِهِۦ»: one description with every reader.
     for (final id in ['khalaf_hamzah', 'duri_kisai', 'ishaq']) {
       expect(

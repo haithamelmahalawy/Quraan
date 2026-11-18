@@ -66,7 +66,11 @@ bool _notRoot(List<_Letter> cs) {
   // فِئَةٞ، فِئَتَيۡنِ: the fa of the root, with its kasra; the added fa is opened
   // (فَأَتَمَّهُنَّ، فَأَتَىٰ).
   if (RegExp('^(فءة|فءت)').hasMatch(bare)) return _vowelOf(cs[0]) != 'i';
-  return !RegExp('^(سء|سا|فءاد|بءيس|بءس(?!م)|لءلء|كءس)').hasMatch(bare);
+  // The sin of «سَأَلَ» of the root, not the future's (سَـَٔاوِيٓ، سَأُصۡرِفُ،
+  // سَأُلۡقِي); the ba before «إِسۡحَٰق» added, not «بَأۡس»'s (نهج حمزة; the
+  // user, 2026-11-18).
+  return !RegExp('^(سءل(?!قي)|سا|فءاد|بءيس|بءس(?!م|حق)|لءلء|كءس|ءءمة)')
+      .hasMatch(bare);
 }
 
 /// The hamza at the letter [k] of [word] made a middle one by a letter added
