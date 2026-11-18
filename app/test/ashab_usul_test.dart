@@ -125,6 +125,25 @@ void main() {
       isNotEmpty,
     );
     expect(at('khallad', 2, 106, 18).where((v) => v[7] == 'sakt'), isEmpty);
+    // Khalaf's idgham into a word his farsh starts with a ya (مَن يَطَّوَّعۡ
+    // for «تطوع»), its letter doubled once (صَٰلِحٗا يُّؤۡتِهَا).
+    String letters(Object t) =>
+        '$t'.replaceAll(RegExp('[ً-ْٰۡ]'), '');
+    final tatawwa = at(
+      'khalaf_hamzah',
+      2,
+      158,
+      17,
+    ).where((v) => v[7] == 'idgham_bila_ghunna').map((v) => '${v[4]}');
+    expect(tatawwa.map(letters), ['ومن يطوع']);
+    expect(tatawwa.single.split(' ').last, startsWith('يّ'));
+    final yutiha = at(
+      'khalaf_hamzah',
+      33,
+      31,
+      6,
+    ).where((v) => v[7] == 'idgham_bila_ghunna').map((v) => '${v[4]}');
+    expect(yutiha.single.split(' ').last.split('ّ'), hasLength(2));
     // al-Kisa'i's repeated question: the statement in the second.
     expect(
       at('abul_harith', 13, 5, 7).map((v) => v[6]),

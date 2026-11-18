@@ -19,6 +19,10 @@ abstract final class ReadingColors {
   static Color get saktHamza => MushafColors.tone(const Color(0xFFFF1744));
   static Color get idghamBilaGhunna =>
       MushafColors.tone(const Color(0xFFEF6C00));
+
+  /// Ha al-kinaya vivid and apart from the sakt's red (the user,
+  /// 2026-11-18).
+  static Color get haKinaya => MushafColors.tone(const Color(0xFF00B0FF));
   static Color get other => MushafColors.tone(const Color(0xFF455A64));
   static Color get ishmam => MushafColors.tone(const Color(0xFFAD1457));
   static Color get yaIdafa => MushafColors.tone(const Color(0xFF00838F));
@@ -106,7 +110,8 @@ abstract final class ReadingColors {
     if (label == 'المد المتصل') return connectedMadd;
     if (label == 'المد المنفصل') return separatedMadd;
     if (label == 'الإدغام الكبير') return kabirIdgham;
-    if (label == 'هاء الكناية' || label == 'ميم الجمع') return silah;
+    if (label == 'هاء الكناية') return haKinaya;
+    if (label == 'ميم الجمع') return silah;
     if (label == 'ياءات الزوائد' ||
         label == 'مد أنا' ||
         label == 'إمالة هاء التأنيث') {
@@ -134,6 +139,11 @@ abstract final class ReadingColors {
     if (readings.isEmpty) return null;
     final farsh = readings.where((v) => !v.isUsul).toList();
     final relevant = farsh.isEmpty ? readings : farsh;
+    // The sakt before the hamza first among the usul (the user, 2026-11-18).
+    if (farsh.isEmpty &&
+        readings.any((v) => v.isSakt && v.description.contains('قبل الهمز'))) {
+      return saktHamza;
+    }
     final colors = relevant.map(of).toSet();
     return colors.length == 1 ? colors.single : MushafColors.multi;
   }

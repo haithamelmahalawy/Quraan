@@ -26,7 +26,8 @@ const _letterName = {
 /// letter doubled, as Hisham's rows write them (وَلَقَد جَّآءَكُم).
 String _merged(String first, String second) =>
     '${first.replaceFirst(RegExp(r'ۡ$'), '')} '
-    '${second.substring(0, 1)}ّ${second.substring(1)}';
+    // Its first letter doubled once (the book's يُّؤۡتِهَآ has it already).
+    '${RegExp('^.[ًٌٍَُِْ]*ّ').hasMatch(second) ? second : '${second.substring(0, 1)}ّ${second.substring(1)}'}';
 
 typedef _Add = void Function(
   _Word w,

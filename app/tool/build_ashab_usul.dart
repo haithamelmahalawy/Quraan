@@ -736,6 +736,39 @@ Map<String, int> buildAshabUsul(
         _key(v[0], v[1], v[2]): '${v[4]}',
   };
   String read(String k) => farshOf[k] ?? textAt[k] ?? index[k]!.t;
+  // Khalaf's idgham into a word his farsh starts with a ya or a waw where
+  // Hafs's does not (مَن يَطَّوَّعۡ for «تطوع»; the user, 2026-11-18).
+  if (id == 'khalaf_hamzah') {
+    final nun = RegExp(r'(نۡ?|[ًࣰٌࣱٍࣲٖٗٞ][اى]?)[ۖ-ۛ]*$');
+    final told = {
+      for (final v in rows)
+        if (v[7] == 'idgham_bila_ghunna') _key(v[0], v[1], v[2]),
+    };
+    for (var i = 0; i + 1 < words.length; i++) {
+      final w = words[i], next = words[i + 1];
+      if (next.s != w.s) continue;
+      final k = _key(w.s, w.a, w.w), nk = _key(next.s, next.a, next.w);
+      final own = farshOf[nk];
+      if (own == null || told.contains(k)) continue;
+      if (RegExp('^[وي]').hasMatch(next.t) || !RegExp('^[وي]').hasMatch(own)) {
+        continue;
+      }
+      final m = nun.firstMatch(read(k));
+      if (m == null) continue;
+      final what = m[1]!.startsWith('ن') ? 'النون' : 'التنوين';
+      rows.add([
+        w.s,
+        w.a,
+        w.w,
+        next.a == w.a ? 2 : 1,
+        '',
+        'u',
+        'بإدغام $what في ${_letterName[own.substring(0, 1)]} بلا غنة',
+        'idgham_bila_ghunna',
+        {'source': ashabSource},
+      ]);
+    }
+  }
   // None where his farsh starts the word otherwise (نُعَاسٗا تَغۡشَىٰ: the ta,
   // the tanween hidden before it).
   // The word after: the next ayah's first for a row on an ayah's last word

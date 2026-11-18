@@ -1857,14 +1857,19 @@ class _MushafPageState extends State<MushafPage>
             isWarshAnaMadd(v) ||
             v.rule == 'ikhfa' ||
             v.rule == 'first_sakin' ||
+            // The stop on the hamza: its hamza alone (يَأۡمُرُكُم، not the
+            // whole word; the user, 2026-11-18), the word's other letters left
+            // to their rules (the nun of «أَن يَّكۡفُرُواْ»).
+            v.rule == 'hisham_waqf' ||
             RegExp('همز|تسهيل|صلة|إدغام|ادغام').hasMatch(v.description));
-    // A stop on the hamza with no letter of its own (أَن: «وقفًا: التحقيق، أو
-    // السكت») leaves the word's other letters to their rules: the nun of
-    // «أَن يَّكۡفُرُواْ» merged without ghunna (the user, 2026-11-18).
-    readings.removeWhere((v) => v.rule == 'hisham_waqf' && !targeted(v));
     final lexical = readings.any((v) => !v.isUsul);
+    // The sakt before the hamza colours the word over any other asl
+    // (عَلَيۡهُمۡۜ with its ha's damma; the user, 2026-11-18).
+    final sakt = readings.any(
+      (v) => v.isUsul && v.isSakt && v.description.contains('قبل الهمز'),
+    );
     if (readings.isEmpty ||
-        readings.any((v) => v.isUsul && !targeted(v)) ||
+        !sakt && readings.any((v) => v.isUsul && !targeted(v)) ||
         // A farsh word alone is coloured whole; with a rule of its own
         // (نُوتِيهِمُ: its ibdal; وَٱلنَّبِيٓـِٕۧنَ: its badal) the rule's letter
         // takes the rule's colour, the rest the farsh colour.
@@ -1989,6 +1994,41 @@ class _MushafPageState extends State<MushafPage>
         colors[i] = tanweenColor;
       }
     }
+    // The sakt before the hamza (the user, 2026-11-18): its letters alone in
+    // red, over any other rule. Within the word (ٱلۡۜأَرۡضِ، شَيۡۜءٍ), the
+    // quiet letter and the hamza after it; at its end (عَذَابٌۜ، خَلَوۡاْۜ), the
+    // last letter, the next word colouring its hamza. The rest keeps the
+    // colour of its own rule, or the ink.
+    final saktRow = readings
+        .where(
+          (v) => v.isUsul && v.isSakt && v.description.contains('قبل الهمز'),
+        )
+        .firstOrNull;
+    final saktAt = <int>{};
+    if (saktRow != null) {
+      // Where the sign stands: in the shown text, or the row's own.
+      var signed = letters;
+      if (!text.contains('ۜ')) {
+        final own = lettersOf(saktRow.text);
+        if (own.length == letters.length) signed = own;
+      }
+      for (final (i, l) in signed.indexed) {
+        if (!l.contains('ۜ')) continue;
+        // The round sukun's alif or the tanween's (خَلَوۡاْۜ، عِوَجَاۜ): the
+        // letter before it.
+        final alif = l.startsWith('ا') && i > 0;
+        saktAt.add(alif ? i - 1 : i);
+        if (alif) saktAt.add(i);
+        // The tanween's alif after the sign (قَلِيلًۜا): with its letter.
+        if (i + 2 == signed.length && signed[i + 1].startsWith('ا')) {
+          saktAt.add(i + 1);
+        }
+        if (i + 1 < signed.length &&
+            RegExp('^[ءأإآؤئ]|^ـ?ٔ').hasMatch(signed[i + 1])) {
+          saktAt.add(i + 1);
+        }
+      }
+    }
     var priority = 0;
     (int, Color)? zaida;
     // The eased hamza's dot after a naql's alif (اَ۟لَٰهٞ): apart from the alif.
@@ -2028,6 +2068,32 @@ class _MushafPageState extends State<MushafPage>
             if (!letters[i].startsWith('ا')) mark(i, MushafColors.green);
           }
         }
+        continue;
+      }
+      // The sakt's letters told above, after every other rule.
+      if (identical(v, saktRow)) continue;
+      // The stop on the hamza: the hamza it falls on. After a separated
+      // sakin (بَلۡ أَحۡيَآءٌ) the word's first; else every hamza after it
+      // (يَأۡمُرُكُم، وَٱلۡأَرۡضِ، ٱلسَّمَآءِ، أُوْلَٰٓئِكَ's second).
+      if (v.rule == 'hisham_waqf') {
+        final hamza = RegExp('^ـ?[ءأإآؤئ]|ٔ|ٕ');
+        if (v.usulKind == 'الوقف على الساكن المفصول') {
+          if (letters.isNotEmpty && hamza.hasMatch(letters.first)) {
+            mark(0, ReadingColors.of(v));
+          }
+        } else {
+          for (var i = 1; i < letters.length; i++) {
+            if (hamza.hasMatch(letters[i])) mark(i, ReadingColors.of(v));
+          }
+        }
+        continue;
+      }
+      // The ha's damma (عَلَيۡهُمۡ): the ha, in the colour of its chapter.
+      if (v.rule == 'ha_damir') {
+        mark(
+          letters.lastIndexWhere((l) => l.startsWith('ه')),
+          ReadingColors.of(v),
+        );
         continue;
       }
       // «التقاء الساكنين»: the first quiescent's letter (قُلُ), or the
@@ -2267,7 +2333,10 @@ class _MushafPageState extends State<MushafPage>
       if (d.contains('صلة')) {
         final base = d.contains('ميم') || d.contains('الميم') ? 'م' : 'ه';
         final at = letters.lastIndexWhere((l) => l.startsWith(base));
-        mark(at < 0 ? null : at, ReadingColors.silah);
+        mark(
+          at < 0 ? null : at,
+          base == 'ه' ? ReadingColors.haKinaya : ReadingColors.silah,
+        );
       }
       if (v.rule == 'idgham_bila_ghunna') {
         // Khalaf's idgham without ghunna (مَن يَّقُولُ، غِشَٰوَةٞ وَّلَهُمۡ): the
@@ -2327,6 +2396,12 @@ class _MushafPageState extends State<MushafPage>
         }
       }
     }
+    if (saktRow != null) {
+      final red = ReadingColors.of(saktRow);
+      for (final i in saktAt) {
+        colors[i] = red;
+      }
+    }
     if (colors.isEmpty && zaida == null && smallWaw == null) return null;
     // The displayed narrator owns overlapping letters. Within that narrator,
     // badal retains its agreed priority over naql independently of row order.
@@ -2376,6 +2451,41 @@ class _MushafPageState extends State<MushafPage>
   /// The sakin the ha damma before meets, in its colour: the wasl alif and
   /// the lam of «ٱل» (ٱلَّذِينَ), or the wasl alif and the letter with the sukun
   /// (ٱثۡنَيۡنِ).
+  /// The sakt at the end of the word before (عَذَابٌۜ أَلِيمٌ، قَدِيرٌۜ ۝
+  /// أَلَمۡ): this word's hamza in its colour, over the stop's (the user,
+  /// 2026-11-18).
+  Color? _saktInto(Ayah ayah, int w, String text) {
+    if (!RegExp('^[ءأإآ]').hasMatch(text)) return null;
+    final prevAyah = w > 0
+        ? ayah
+        : ayah.number > 1
+        ? widget.quran.ayah(ayah.surah, ayah.number - 1)
+        : null;
+    if (prevAyah == null) return null;
+    final prev = w > 0 ? w - 1 : prevAyah.words.length - 1;
+    final s = widget.settings;
+    final sakt =
+        [
+              ..._baseAt(
+                widget.variants,
+                s,
+                prevAyah,
+                prev,
+              ).where((v) => v.isUsul),
+              ..._readingsAt(widget.variants, s, prevAyah, prev).shown,
+            ]
+            .where(
+              (v) =>
+                  v.word == prev &&
+                  v.isSakt &&
+                  v.description.contains('قبل الهمز') &&
+                  s.kinds.contains(v.kind) &&
+                  RegExp(r'ۜ(?:ا[ْ۟]?)?[^ء-ي]*$').hasMatch(v.text),
+            )
+            .firstOrNull;
+    return sakt == null ? null : ReadingColors.of(sakt);
+  }
+
   List<(String, Color?)>? _haDamirInto(Ayah ayah, int w, String text) {
     final ha = _haDamirBefore(ayah, w);
     if (ha == null) return null;
@@ -2666,7 +2776,7 @@ class _MushafPageState extends State<MushafPage>
         ? wordBefore()
               .where(
                 (v) =>
-                    v.isSakt && RegExp(r'ۜ(?:ا[ْ۟])?[^ء-ي]*$').hasMatch(v.text),
+                    v.isSakt && RegExp(r'ۜ(?:ا[ْ۟]?)?[^ء-ي]*$').hasMatch(v.text),
               )
               .toList()
         : const <Variant>[];
@@ -2699,7 +2809,8 @@ class _MushafPageState extends State<MushafPage>
         hafsFont && (own == null || (own.isNotEmpty && own.first.$2 == null))
         ? _idghamInto(ayah, w, shown.text) ?? _haDamirInto(ayah, w, shown.text)
         : null;
-    final coloured = own == null
+    final saktInto = hafsFont ? _saktInto(ayah, w, shown.text) : null;
+    final joined = own == null
         ? into
         : into == null || into.isEmpty
         ? own
@@ -2712,6 +2823,16 @@ class _MushafPageState extends State<MushafPage>
               into.first.$2,
             ),
             ...own.skip(1),
+          ];
+    // The hamza after a sakt at the word before's end, in the sakt's red.
+    final coloured = saktInto == null
+        ? joined
+        : [
+            for (final (i, l)
+                in (joined ??
+                        [for (final l in lettersOf(shown.text)) (l, null)])
+                    .indexed)
+              (l.$1, i == 0 ? saktInto : l.$2),
           ];
     final parts = hafsFont ? _stretched(shown.text, coloured, kashida) : null;
     // Kashida groups may contain several base characters. Repainting a
