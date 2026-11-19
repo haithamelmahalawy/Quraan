@@ -119,6 +119,10 @@ void main() {
     // (أحياها: under the ya, the user, 2026-11-14).
     expect(withImalaSign('أَحۡيَاهَا'), 'أَحۡيَ۪اهَا');
     expect(withImalaSign('ضُحَىٰهَا'), 'ضُحَ۪ىٰهَا');
+    // Not the tanween's alif nor the plural's silent one (النساء ٩, the
+    // user, 2026-11-19): under the ain and the kha.
+    expect(withImalaSign('ضِعَٰفًا'), 'ضِعَٰ۪فًا');
+    expect(withImalaSign('خَافُواْ'), 'خَ۪افُواْ');
   });
 
   test('tarqiq distinguishes fathatan/dammatan from shared kasratan', () {

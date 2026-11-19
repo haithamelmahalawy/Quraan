@@ -1102,7 +1102,16 @@ class _JamScreenState extends State<JamScreen> {
     final kept = _cited[key];
     if (kept != null) return kept;
     final poems = _poems, book = _book;
-    if (poems == null || book == null || r.differences.isEmpty) {
+    if (poems == null || book == null) {
+      return (numbers: const <int, int>{}, groups: const []);
+    }
+    // A farsh of the seven whose word the Durrah tells too: its bayt for the
+    // Durrah's readers, whether they read with the seven there or not, the
+    // seven's cited from the Shatibiyya alone (the user, 2026-11-18).
+    final sevenFarsh = r.riwayat.any((id) => Poem.of(id) == Poem.durrah)
+        ? jamDurrahOfSeven(ayah, widget.variants)
+        : const <int, Set<int>>{};
+    if (r.differences.isEmpty && sevenFarsh.isEmpty) {
       return (numbers: const <int, int>{}, groups: const []);
     }
     final names = [for (final s in widget.quran.surahs) s.nameAr];
@@ -1120,8 +1129,13 @@ class _JamScreenState extends State<JamScreen> {
             names,
             entries: book.at(ayah.surah, ayah.number, w),
           );
-          // The Durrah's asl first, where it is silent on Abu Ja'far.
-          for (final b in ref.asl) {
+          // The Durrah's asl first, where it is silent on Abu Ja'far; not
+          // for a rule of the usul read with one of the seven, the Durrah
+          // cited for a word of farsh alone (القربى، اليتامى under Hamza's
+          // reading, the user, 2026-11-19).
+          final usulOfSeven =
+              v.kind == VariantKind.usul && Poem.of(r.lead) != Poem.durrah;
+          for (final b in usulOfSeven ? const <Bayt>[] : ref.asl) {
             (bayts['${Poem.durrah.name}:${b.n}'] ??= (
               poem: Poem.durrah,
               bayt: b,
@@ -1130,8 +1144,25 @@ class _JamScreenState extends State<JamScreen> {
           }
           for (final b in ref.verses) {
             if (!ref.mention.contains(b.n)) continue;
+            if (usulOfSeven &&
+                ref.poem == Poem.durrah &&
+                (b.n == 7 || b.n == 8)) {
+              continue;
+            }
             (bayts['${ref.poem.name}:${b.n}'] ??= (
               poem: ref.poem,
+              bayt: b,
+              words: <int>{},
+            )).words.add(w);
+          }
+        }
+      }
+      if (Poem.of(id) == Poem.durrah) {
+        for (final MapEntry(key: w, value: ns) in sevenFarsh.entries) {
+          for (final b in poems.verses(Poem.durrah)) {
+            if (!ns.contains(b.n)) continue;
+            (bayts['${Poem.durrah.name}:${b.n}'] ??= (
+              poem: Poem.durrah,
               bayt: b,
               words: <int>{},
             )).words.add(w);

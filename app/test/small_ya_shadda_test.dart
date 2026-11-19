@@ -17,7 +17,18 @@ void main() {
     expect(HafsFontMarks.needsAdjustment(word), isTrue);
     expect(shaddaOverSmallYaLift, lessThan(0));
     // Not where a shadda has no small ya with it.
-    expect(HafsFontMarks.needsAdjustment('ٱللَّهِ'), isFalse);
+    expect(HafsFontMarks.needsAdjustment('ٱللَّهُ'), isFalse);
+  });
+
+  // «وَّلِلَّهِ» (النساء ١٣١-١٣٢), drawn in the Hafs font for Khalaf's idgham:
+  // the font cuts the ha's kasra short against its foot (the user, 2026-11-19).
+  test('the kasra under the ha of the Name is drawn apart, whole', () {
+    for (final name in ['لِلَّهِ', 'وَّلِلَّهِ', 'ٱللَّهِ']) {
+      expect(HafsFontMarks.needsAdjustment(name), isTrue, reason: name);
+    }
+    // Not the Name with its damma or fatha, nor drawn out to its ha.
+    expect(HafsFontMarks.needsAdjustment('ٱللَّهَ'), isFalse);
+    expect(HafsFontMarks.needsAdjustment('ٱللَّـهِ'), isFalse);
   });
 
   test(

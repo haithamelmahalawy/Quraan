@@ -208,6 +208,24 @@ String withImalaSign(String word, [String? reading]) {
     ];
     if (earlier.isNotEmpty) from -= 2;
   }
+  // The alif of the nasb's tanween is no long alif: the one before it is
+  // leaned (ضِعَٰ۪فًا: under the ain, not the fa, the user, 2026-11-19).
+  if (from >= 2 &&
+      base(from, 0x0627) &&
+      (clusters[from - 1].contains(0x064B) ||
+          clusters[from - 1].contains(0x0657) ||
+          clusters[from].contains(0x064B) ||
+          clusters[from].contains(0x0657))) {
+    from -= 1;
+  }
+  // Nor the silent alif after the plural's waw (خَ۪افُواْ: under the kha,
+  // not the waw, the user, 2026-11-19).
+  if (from >= 2 &&
+      base(from, 0x0627) &&
+      base(from - 1, 0x0648) &&
+      (clusters[from].contains(0x0652) || clusters[from].contains(0x06DF))) {
+    from -= 1;
+  }
   for (var i = from; i >= 0 && target == null; i--) {
     if (base(i, 0x0627) && i > 0) target = i - 1;
     if (target == null && dagger(i)) target = i;

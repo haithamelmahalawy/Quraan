@@ -1,5 +1,6 @@
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
+import 'manzumat.dart';
 import 'variant_repository.dart';
 
 /// The twenty riwayat of the ten, in their order: Qalun first, Idris last.
@@ -98,3 +99,24 @@ String _wordOf(String hafs, List<Variant> rows) {
 
 /// A word's letters and marks, without the stops' signs over it.
 String _plain(String text) => text.replaceAll(RegExp('[ۖ-ۜ۩‏]'), '');
+
+/// The words of [ayah] where a reader of the seven has a farsh that the
+/// Durrah tells too, with that bayt's numbers: cited for the Durrah's readers
+/// whether they read with the seven there or not, the seven's cited from the
+/// Shatibiyya alone (the user, 2026-11-18).
+Map<int, Set<int>> jamDurrahOfSeven(Ayah ayah, VariantRepository variants) {
+  final seven = [
+    for (final id in jamOrder)
+      if (id != hafsId && Poem.of(id) == Poem.shatibiyya) id,
+  ];
+  return {
+    for (var w = 0; w < ayah.words.length; w++)
+      if (Manzumat.durrahBesideSeven(ayah.surah, ayah.number, w, ayah.words[w])
+          case final d
+          when d.isNotEmpty &&
+              variants
+                  .at(seven, ayah.surah, ayah.number, w)
+                  .any((v) => v.word == w && !v.isUsul && !v.stopOnly))
+        w: d,
+  };
+}

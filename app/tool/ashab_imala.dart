@@ -222,6 +222,25 @@ int _imala(
     ]);
     n++;
   }
+  // «وَمَأۡوَىٰهُ» where the book's section leaves it out (المائدة ٧٢،
+  // الأنفال ١٦): leaned as «مأوى» in its other places (the user, 2026-11-18).
+  for (final word in index.values) {
+    if (!RegExp('مأوى').hasMatch(_bare(word.t))) continue;
+    final key = _key(word.s, word.a, word.w);
+    if (done.contains('$key:true') || !done.add('$key:false')) continue;
+    put([
+      word.s,
+      word.a,
+      word.w,
+      1,
+      '',
+      'u',
+      'بإمالة الألف',
+      '',
+      {'source': ashabSource},
+    ]);
+    n++;
+  }
   // al-Duri's «ٱلۡكَٰفِرِينَ» in all its places, the second of an ayah too,
   // which the book's section names once (وَلَن يَجۡعَلَ ٱللَّهُ لِلۡكَٰفِرِينَ،
   // النساء ١٤١) (the user, 2026-11-14).

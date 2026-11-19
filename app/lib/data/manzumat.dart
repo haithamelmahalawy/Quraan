@@ -161,13 +161,43 @@ class Manzumat {
     ].join('|');
     final kept = _references.remove(key);
     if (kept != null) return _references[key] = kept;
-    final found = _referenceOf(
+    var found = _referenceOf(
       reading,
       hafs,
       surah,
       surahNames,
       entries: entries,
     );
+    // A Durrah reader's word of the seven's farsh: the Durrah's bayt of it
+    // too, where not already cited (the user, 2026-11-18).
+    if (Poem.of(reading.riwayaId) == Poem.durrah &&
+        reading.kind != VariantKind.usul) {
+      final told = {
+        if (found.poem == Poem.durrah) ...found.mention,
+        for (final b in found.asl) b.n,
+      };
+      final more = durrahBesideSeven(
+        reading.surah,
+        reading.ayah,
+        reading.word,
+        hafs,
+      ).difference(told);
+      if (more.isNotEmpty) {
+        found = (
+          poem: found.poem,
+          chapter: found.chapter,
+          verses: found.verses,
+          mention: found.mention,
+          fromBook: found.fromBook,
+          bookExplanation: found.bookExplanation,
+          asl: [
+            for (final b in verses(Poem.durrah))
+              if (more.contains(b.n)) b,
+            ...found.asl,
+          ],
+        );
+      }
+    }
     _references[key] = found;
     if (_references.length > referencesKept) {
       _references.remove(_references.keys.first);
@@ -319,242 +349,9 @@ class Manzumat {
     // the Shatibiyya, Hamza's, with the Durrah's two (the user, 2026-11-14).
     final khalaf = qiraaOf(reading.riwayaId).id == 'khalaf';
     final beside = _durrahBesideShatibiyya[_at(reading)];
-    // A Shatibiyya reader's word whose Durrah bayt tells Khalaf al-'Ashir's
-    // apart from it: that bayt too, under the Shatibiyya's (the user,
-    // 2026-11-15).
-    // «ءَآمَنتُم»: every riwaya's, the Durrah's «ءَآمَنْتُم اَخْبِرْ طِبْ» (24)
-    // under the Shatibiyya's (the user, 2026-11-15).
-    final withKhalaf = poem == Poem.shatibiyya && _aamantum(reading)
-        ? const {24}
-        // «بُيُوت» in every place: the Durrah's «بُيُوتَ اضْمُمًا» (77) under the
-        // Shatibiyya's for all who break its ba (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              _buyut.contains(_at(reading))
-        ? const {77}
-        // «نَحۡشُرُهُمۡ» (الفرقان ١٧): the Durrah's «وَنَحْشُرُ يَا حُزْ إِذْ» (172)
-        // under the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {'25:17:1', '25:74:7'}.contains(_at(reading))
-        ? const {172}
-        // «أَرۡجِهِۦ» (الأعراف ١١١، الشعراء ٣٦) of al-Kisa'i: the Durrah's
-        // «وَبِالْقَصْرِ طُفْ وَأَرْ / جِهِ بِنْ وَأَشْبِعْ جُدْ» (20) under the
-        // Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              qiraaOf(reading.riwayaId).id == 'kisai' &&
-              const {'7:111:1', '26:36:1'}.contains(_at(reading))
-        ? const {20}
-        // «أَلَا يَسۡجُدُواْ» (النمل ٢٥) of al-Kisa'i: the Durrah's «وَإِذْ طَابَ قُلْ
-        // أَلَا» (174), Abu Ja'far's and Ruways's, under the Shatibiyya's (the
-        // user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              qiraaOf(reading.riwayaId).id == 'kisai' &&
-              _at(reading) == '27:25:0'
-        ? const {174}
-        // «يُصَدِّقۡنِيٓ» (القصص ٣٤) of al-Kisa'i: the Durrah's «وَيُصَدِّقْ فِه»
-        // (176) under the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              qiraaOf(reading.riwayaId).id == 'kisai' &&
-              _at(reading) == '28:34:9'
-        ? const {176}
-        // «لَخُسِفَ» (القصص ٨٢) of Hamza and al-Kisa'i: the Durrah's «وَسَمِّ خُسِفْ»
-        // (177) under the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '28:82:20'
-        ? const {177}
-        // «أَءِنَّكُمۡ» (العنكبوت ٢٨) of Hamza and al-Kisa'i: the Durrah's (25، 26)
-        // under the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '29:28:4'
-        ? const {25, 26}
-        // «لَنُنجِيَنَّهُۥ» and «مُنجُوكَ» (العنكبوت ٣٢، ٣٣) of Hamza and al-Kisa'i:
-        // the Durrah's (106، 107) under the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              const {'29:32:9', '29:33:16'}.contains(_at(reading))
-        ? const {106, 107}
-        // «وَثَمُودٗا» (العنكبوت ٣٨) of al-Kisa'i: the Durrah's (132) under the
-        // Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              qiraaOf(reading.riwayaId).id == 'kisai' &&
-              _at(reading) == '29:38:1'
-        ? const {132}
-        // «لَنُثۡوِيَنَّهُم» (العنكبوت ٥٨) of Hamza and al-Kisa'i: the Durrah's (30)
-        // under the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '29:58:4'
-        ? const {30}
-        // «لِمَا صَبَرُواْ» (السجدة ٢٤) of Hamza and al-Kisa'i: the Durrah's (181)
-        // under the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '32:24:5'
-        ? const {181}
-        // «أُذِنَ» (سبأ ٢٣) of Hamza and al-Kisa'i: the Durrah's (186) under the
-        // Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '34:23:6'
-        ? const {186}
-        // «ٱلۡعِيُونِ» of Hamza and al-Kisa'i: the Durrah's «... جُيُوبِ شُيُوخًا فِدْ»
-        // (102), Khalaf al-'Ashir with the damma, under the Shatibiyya's (the
-        // user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              reading.description == 'بكسر العين' &&
-              reading.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '').contains('عيون')
-        ? const {102}
-        // «نَنۡكُسۡهُ» (يس ٦٨) of al-Kisa'i: the Durrah's (192) under the
-        // Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              qiraaOf(reading.riwayaId).id == 'kisai' &&
-              _at(reading) == '36:68:2'
-        ? const {192}
-        // «عِبَٰدَهُۥ» (الزمر ٣٦) of Hamza and al-Kisa'i: the Durrah's (197) under
-        // the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '39:36:3'
-        ? const {197}
-        // «يَظۡهَرَ ... ٱلۡفَسَادُ» (غافر ٢٦) of Hamza and al-Kisa'i: the Durrah's
-        // (199) under the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              const {'40:26:14', '40:26:17'}.contains(_at(reading))
-        ? const {199}
-        // «يَبۡشُرُ» (الشورى ٢٣) of Hamza and al-Kisa'i: the Durrah's «يُبَشِّرُ
-        // كُلاًّ فِدْ» (87) with «يُبَشِّرُ فِي حِمًى» (201) (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '42:23:2'
-        ? const {87, 201}
-        // «أَفَتَمۡرُونَهُۥ» (النجم ١٢) of Hamza and al-Kisa'i: the Durrah's «تَمْرُونَهُ
-        // حُمْ» (212) under the Shatibiyya's (the user, 2026-11-17).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '53:12:0'
-        ? const {212}
-        // «تُؤۡمِنُونَ» (الجاثية ٦) of Hamza and al-Kisa'i: the Durrah's (205) under
-        // the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '45:6:11'
-        ? const {205}
-        // «يَصُدُّونَ» (الزخرف ٥٧) of al-Kisa'i: the Durrah's (203) under the
-        // Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              qiraaOf(reading.riwayaId).id == 'kisai' &&
-              _at(reading) == '43:57:8'
-        ? const {203}
-        // «وُلۡدٞ» (الزخرف ٨١) of Hamza and al-Kisa'i: the Durrah's «وَفُزْ وَلَدًا لاَ
-        // نُوْحَ فَافْتَحْ» (156), Khalaf al-'Ashir with the fatha (the user,
-        // 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '43:81:4'
-        ? const {156}
-        // «يَكَادُ» (الشورى ٥) of al-Kisa'i: the Durrah's «... يَكَادُ أَنْـ / ـنِثِ»
-        // (156) under the Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              qiraaOf(reading.riwayaId).id == 'kisai' &&
-              _at(reading) == '42:5:0'
-        ? const {156}
-        // «شِيُوخٗا» (غافر ٦٧) of Hamza and al-Kisa'i: the Durrah's «... جُيُوبِ
-        // شُيُوخًا فِدْ» (102), Khalaf al-'Ashir with the damma (the user,
-        // 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              const {
-                'hamzah',
-                'kisai',
-              }.contains(qiraaOf(reading.riwayaId).id) &&
-              _at(reading) == '40:67:19'
-        ? const {102}
-        // «يَرۡجِعُونَ» (القصص ٣٩) of al-Kisa'i: the Durrah's (63، 64) under the
-        // Shatibiyya's (the user, 2026-11-16).
-        : poem == Poem.shatibiyya &&
-              !reading.isUsul &&
-              qiraaOf(reading.riwayaId).id == 'kisai' &&
-              _at(reading) == '28:39:11'
-        ? const {63, 64}
-        : poem == Poem.shatibiyya &&
-              const {
-                'hamzah',
-                'kisai',
-                'abu_amr',
-                'nafi',
-              }.contains(qiraaOf(reading.riwayaId).id)
-        ? _durrahOnKhalafToo(reading, hafs)
-        : const <int>{};
-    final asl = withKhalaf.isNotEmpty
-        ? [
-            for (final b in verses(Poem.durrah))
-              if (withKhalaf.contains(b.n)) b,
-          ]
-        : !abuJafar && !khalaf
+    // A Shatibiyya reader's word is cited from the Shatibiyya alone, the
+    // Durrah's bayt left to the Durrah's readers (the user, 2026-11-18).
+    final asl = !abuJafar && !khalaf
         ? const <Bayt>[]
         : khalaf
         ? durrahAsl
@@ -660,51 +457,80 @@ class Manzumat {
 
   static String _at(Variant v) => '${v.surah}:${v.ayah}:${v.word}';
 
-  /// The Durrah's bayts cited beside the Shatibiyya's for Hamza's and
-  /// al-Kisa'i's words, Khalaf al-'Ashir parting from them there:
-  /// «أُمَّهَٰتِكُمۡ», «أُمِّ كُلاًّ كَحَفْصِ فُقْ» (94); «يُبَشِّرُ», «يُبَشِّرُ
-  /// كُلاًّ فِدْ» (87) (the user, 2026-11-15).
-  static Set<int> _durrahOnKhalafToo(Variant v, String hafs) {
-    if (v.isUsul) return const {};
-    final bare = hafs.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '');
-    // Hamza's and al-Kisa'i's alone: Nafi' and Abu 'Amr read these as Hafs.
-    final ashab = const {'hamzah', 'kisai'}.contains(qiraaOf(v.riwayaId).id);
-    if (ashab && bare.startsWith('أمهت')) return const {94};
-    // «أُمِّهَا»، «أُمِّ»، «فَلِأُمِّهِ» with the hamza broken: the Durrah's «أُمِّ
-    // كُلاًّ كَحَفْصِ فُقْ» (94) (the user, 2026-11-16).
-    if (ashab &&
-        v.description == 'بكسر الهمزة' &&
-        const {'4:11:40', '4:11:46', '28:59:8', '43:4:2'}.contains(_at(v))) {
-      return const {94};
-    }
-    if (ashab && RegExp(r'^[وفل]?[ينت]بشر').hasMatch(bare)) return const {87};
-    // «وَحَرَٰمٌ» (الأنبياء ٩٥): the Durrah's «حَرَامٌ فَشَا» (163), Khalaf al-'Ashir
-    // parting from his asl (the user, 2026-11-15).
-    if (ashab && _at(v) == '21:95:0') return const {163};
-    // «إِنَّهُمۡ هُمُ ٱلۡفَآئِزُونَ» (المؤمنون ١١١): the Durrah's «وَإِنَّهُمُ افْتَحْ فِدْ»
-    // (168), Khalaf al-'Ashir opening it (the user, 2026-11-16).
-    if (ashab && _at(v) == '23:111:5') return const {168};
-    // «وَيَتَّقۡهِ» (النور ٥٢): the Durrah's «كَيَتَّقْهِ وَامْدُدْ جُدْ وَسَكِّنْ بِهِ» (19)
-    // (the user, 2026-11-16).
-    if (ashab && _at(v) == '24:52:6') return const {19};
-    // al-Kisa'i's «أَرَيۡتَ», its hamza dropped: the Durrah's «وَسَهِّلَا /
-    // أَرَيْتَ وَإِسْرَائِيلَ كَائِنْ وَمَدَّ أُدْ» (33-34) (the user, 2026-11-15).
-    if (_kisaiAraita(v)) return const {33, 34};
-    // «أُفِّ» (الإسراء ٢٣، الأنبياء ٦٧، الأحقاف ١٧): the Durrah's «وَأُفِّ افْتَحَنْ
-    // حَقًّا» (145) (the user, 2026-11-15).
-    if (const {'17:23:18', '21:67:0', '46:17:3'}.contains(_at(v))) {
-      return const {145};
-    }
-    // «يَكَادُ» (مريم ٩٠) with the ya: the Durrah's «... فَافْتَحْ يَكَادُ أَنْ / نِثِ»
-    // (156), Abu Ja'far parting from Nafi' there (the user, 2026-11-15).
-    if (_at(v) == '19:90:0') return const {156};
-    // «يَرِثۡنِي وَيَرِثۡ» (مريم ٦) quiet: the Durrah's «يَرِثْ رَفْعُ حُزْ» (153),
-    // Ya'qub parting from his asl there (the user, 2026-11-15).
-    if (v.surah == 19 && v.ayah == 6 && RegExp(r'^و?يرث').hasMatch(bare)) {
+  /// The Durrah's bayts of a word where a reader of the seven has a farsh,
+  /// cited for the Durrah's readers there, whether they read with him or not
+  /// (Khalaf al-'Ashir's «يُبَشِّرُ» as Hafs's), never under the seven's (the
+  /// user, 2026-11-18; earlier under the Shatibiyya's, 2026-11-15 to 17).
+  /// [hafs] is Hafs's word at [word].
+  static Set<int> durrahBesideSeven(
+    int surah,
+    int ayah,
+    int word,
+    String hafs,
+  ) {
+    final at = '$surah:$ayah:$word';
+    final bare = _letters(hafs);
+    final fixed = _durrahBesideSevenAt[at];
+    if (fixed != null) return fixed;
+    if (_buyut.contains(at)) return const {77};
+    // «ٱلۡعِيُونِ»، «شِيُوخٗا»: «... جُيُوبِ شُيُوخًا فِدْ».
+    if (bare.contains('عيون')) return const {102};
+    // «أُمَّهَٰتِكُمۡ»، «أُمِّ كُلاًّ كَحَفْصِ فُقْ».
+    if (bare.startsWith('امهت')) return const {94};
+    // «يُبَشِّرُ كُلاًّ فِدْ».
+    if (RegExp(r'^[وفل]?[ينت]بشر(?!ي$|وهن)').hasMatch(bare)) return const {87};
+    // «أَرَءَيۡتَ» of the question: «وَسَهِّلَا / أَرَيْتَ ...».
+    if (RegExp(r'^[وف]?اف?رءيت').hasMatch(bare)) return const {33, 34};
+    // «يَرِثُنِي وَيَرِثُ» (مريم ٦): «يَرِثْ رَفْعُ حُزْ».
+    if (surah == 19 && ayah == 6 && RegExp(r'^و?يرث').hasMatch(bare)) {
       return const {153};
     }
     return const {};
   }
+
+  static const _durrahBesideSevenAt = {
+    '3:39:7': {86},
+    '4:11:40': {94},
+    '4:11:46': {94},
+    '28:59:8': {94},
+    '43:4:2': {94},
+    '7:123:2': {24},
+    '20:71:1': {24},
+    '26:49:1': {24},
+    '25:17:1': {172},
+    '25:74:7': {172},
+    '7:111:1': {20},
+    '26:36:1': {20},
+    '27:25:0': {174},
+    '28:34:9': {176},
+    '28:82:20': {177},
+    '29:28:4': {25, 26},
+    '29:32:9': {106, 107},
+    '29:33:16': {106, 107},
+    '29:38:1': {132},
+    '29:58:4': {30},
+    '32:24:5': {181},
+    '34:23:6': {186},
+    '36:68:2': {192},
+    '39:36:3': {197},
+    '40:26:14': {199},
+    '40:26:17': {199},
+    '40:67:19': {102},
+    '42:5:0': {156},
+    '42:23:2': {87, 201},
+    '43:57:8': {203},
+    '43:81:4': {156},
+    '45:6:11': {205},
+    '53:12:0': {212},
+    '28:39:11': {63, 64},
+    '21:95:0': {163},
+    '23:111:5': {168},
+    '24:52:6': {19},
+    '17:23:18': {145},
+    '21:67:0': {145},
+    '46:17:3': {145},
+    '19:90:0': {156},
+  };
 
   /// [v] as Qalun's: Abu Ja'far's reading where the Durrah leaves him to Nafi'.
   static Variant _asQalun(Variant v) => _as(v, 'qalun');
@@ -1569,8 +1395,8 @@ class Manzumat {
     // «أُمَّهَٰتِكُمۡ» (النحل ٧٨، النور ٦١، الزمر ٦، النجم ٣٢): «وَفِي أُمًّ مَعْ فِي
     // أُمِّهَا فَلأُمِّهِ لَدَى الْوَصْلِ ضَمُّ الهَمْزِ بِالْكَسْرِ شَمْلَلَا / وَفي
     // أُمَّهَاتِ النَّحْلِ وَالنُّورِ وَالزُّمَرْ مَعَ النَّجْمِ شَافٍ وَاكْسِرِ الْمِيمَ
-    // فَيْصَلَا» (590-591); the Durrah's «... أُمِّ كُلاًّ كَحَفْصِ فُقْ» (94) beside
-    // them, [_durrahOnKhalafToo] (the user, 2026-11-15).
+    // فَيْصَلَا» (590-591); the Durrah's «... أُمِّ كُلاًّ كَحَفْصِ فُقْ» (94) (the user,
+    // 2026-11-15).
     if (poem == Poem.shatibiyya &&
         !v.isUsul &&
         hafs.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '').startsWith('أمهت')) {
@@ -1882,6 +1708,14 @@ class Manzumat {
           '35:9:3',
         }.contains('${v.surah}:${v.ayah}:${v.word}')) {
       return {490, 491};
+    }
+    // «إِنَّ ٱللَّهَ يُبَشِّرُكَ» (آل عمران ٣٩) of Ibn 'Amir and Hamza: «وَمِنْ
+    // بَعْدُ أَنَّ اللهَ يُكْسَرُ فِي كِلَا» (the user, 2026-11-18).
+    if (poem == Poem.shatibiyya &&
+        const {'ibn_amir', 'hamzah'}.contains(qiraaOf(v.riwayaId).id) &&
+        !v.isUsul &&
+        '${v.surah}:${v.ayah}:${v.word}' == '3:39:7') {
+      return {554};
     }
     // «يَطَّوَّعۡ» (البقرة ١٥٨) of Hamza and al-Kisa'i: the bayt with its
     // sukun and its shadda and the one naming them, «وَفي التَّاءِ يَاءٌ شَاعَ»

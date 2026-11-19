@@ -7003,7 +7003,7 @@ void main() {
         final r = manzumat.referenceOf(v, 'أُمَّهَٰتِكُمۡ', s, surahs);
         expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
         expect(r.mention, {590, 591}, reason: '$id $s:$a');
-        expect([for (final b in r.asl) b.n], [94], reason: '$id $s:$a');
+        expect(r.asl, isEmpty, reason: '$id $s:$a');
       }
     }
     for (final id in ['rawh', 'ishaq']) {
@@ -7018,8 +7018,9 @@ void main() {
   });
 
   // «وَيُبَشِّرُ» (الإسراء ٩) light for Hamza and al-Kisa'i: the Durrah's «يُبَشِّرُ
-  // كُلاًّ فِدْ» (87) beside the Shatibiyya's (the user, 2026-11-15).
-  test('yabshuru cites the Durrah\'s 87 beside the Shatibiyya', () async {
+  // كُلاًّ فِدْ» (87) no more: the seven cite the Shatibiyya alone (the user,
+  // 2026-11-18).
+  test('yabshuru of Hamza and al-Kisai cites the Shatibiyya alone', () async {
     final variants = await VariantRepository.discover();
     await variants.ensureLoaded(['duri_kisai', 'khalaf_hamzah']);
     for (final id in ['duri_kisai', 'khalaf_hamzah']) {
@@ -7030,7 +7031,7 @@ void main() {
       expect(v.text, 'وَيَبۡشُرُ', reason: id);
       final r = manzumat.referenceOf(v, 'وَيُبَشِّرُ', 17, surahs);
       expect(r.poem, Poem.shatibiyya, reason: id);
-      expect([for (final b in r.asl) b.n], [87], reason: id);
+      expect(r.asl, isEmpty, reason: id);
       expect(r.mention, {555}, reason: id);
     }
   });
@@ -7159,7 +7160,7 @@ void main() {
         final r = manzumat.referenceOf(v, hafs, s, surahs);
         expect(r.poem, Poem.shatibiyya, reason: '$id $s:$a');
         expect(r.mention, {638}, reason: '$id $s:$a');
-        expect([for (final b in r.asl) b.n], [33, 34], reason: '$id $s:$a');
+        expect(r.asl, isEmpty, reason: '$id $s:$a');
         seen++;
       }
     }
@@ -7212,7 +7213,7 @@ void main() {
       final r = manzumat.referenceOf(v, hafs, 19, surahs);
       expect(r.poem, Poem.shatibiyya, reason: '$id $w');
       expect(r.mention, {860}, reason: '$id $w');
-      expect([for (final b in r.asl) b.n], [153], reason: '$id $w');
+      expect(r.asl, isEmpty, reason: '$id $w');
     }
   });
 
@@ -7262,7 +7263,7 @@ void main() {
       );
       expect(r.poem, Poem.shatibiyya, reason: id);
       expect(r.mention, {868}, reason: id);
-      expect([for (final b in r.asl) b.n], [156], reason: id);
+      expect(r.asl, isEmpty, reason: id);
     }
     // Qalun's «يُبَشِّرُ» of al-Shura, as Hafs's: no bayt of Khalaf's beside it.
     final shura = manzumat.referenceOf(
@@ -7318,7 +7319,13 @@ void main() {
       );
       expect(r.poem, Poem.shatibiyya, reason: id);
       expect(r.mention, {189, 190, 191}, reason: id);
-      expect([for (final b in r.asl) b.n], [24], reason: id);
+      // The Durrah's «ءَآمَنْتُم اَخْبِرْ طِبْ» (24) for its readers alone (the
+      // user, 2026-11-18).
+      expect(
+        [for (final b in r.asl) b.n],
+        Poem.of(id) == Poem.durrah ? contains(24) : isEmpty,
+        reason: id,
+      );
     }
   });
 
@@ -7364,7 +7371,7 @@ void main() {
         final durrah = id == 'ishaq' || id == 'ruways';
         expect(r.mention, durrah ? {145} : {818}, reason: '$id $s:$a');
         if (id == 'duri_kisai') {
-          expect([for (final b in r.asl) b.n], [145], reason: '$id $s:$a');
+          expect(r.asl, isEmpty, reason: '$id $s:$a');
         }
       }
     }
@@ -7397,7 +7404,7 @@ void main() {
         entries: book.at(21, 95, 0),
       );
       expect(r.poem, Poem.shatibiyya, reason: id);
-      expect([for (final b in r.asl) b.n], [163], reason: id);
+      expect(r.asl, isEmpty, reason: id);
     }
   });
 
@@ -7488,7 +7495,7 @@ void main() {
         entries: book.at(23, 111, 5),
       );
       expect(r.mention, {910}, reason: id);
-      expect([for (final b in r.asl) b.n], [168], reason: id);
+      expect(r.asl, isEmpty, reason: id);
     }
   });
 
@@ -7534,7 +7541,7 @@ void main() {
           expect(r.mention, {77}, reason: '$id $s:$a:$w');
         } else {
           expect(r.mention, {503}, reason: '$id $s:$a:$w');
-          expect([for (final b in r.asl) b.n], [77], reason: '$id $s:$a:$w');
+          expect(r.asl, isEmpty, reason: '$id $s:$a:$w');
         }
       }
     }
@@ -7562,7 +7569,7 @@ void main() {
         expect(r.poem, Poem.durrah, reason: id);
         expect(r.mention, {19}, reason: id);
       } else {
-        expect([for (final b in r.asl) b.n], [19], reason: id);
+        expect(r.asl, isEmpty, reason: id);
       }
     }
   });
@@ -7591,7 +7598,7 @@ void main() {
         expect(r.mention, {172}, reason: id);
       } else {
         expect(r.mention, {921}, reason: id);
-        expect([for (final b in r.asl) b.n], [172], reason: id);
+        expect(r.asl, isEmpty, reason: id);
       }
     }
   });
@@ -7631,7 +7638,7 @@ void main() {
         expect(r.mention, {172}, reason: id);
       } else {
         expect(r.mention, {925}, reason: id);
-        expect([for (final b in r.asl) b.n], [172], reason: id);
+        expect(r.asl, isEmpty, reason: id);
       }
     }
   });
@@ -7704,7 +7711,7 @@ void main() {
         entries: book.at(27, 25, 0),
       );
       expect(r.mention, {934, 935}, reason: id);
-      expect([for (final b in r.asl) b.n], [174], reason: id);
+      expect(r.asl, isEmpty, reason: id);
     }
   });
 
@@ -7726,7 +7733,7 @@ void main() {
       );
       if (id == 'duri_kisai') {
         expect(r.mention, {948}, reason: id);
-        expect([for (final b in r.asl) b.n], [176], reason: id);
+        expect(r.asl, isEmpty, reason: id);
       } else {
         expect(r.poem, Poem.durrah, reason: id);
         expect(r.mention, {176}, reason: id);
@@ -7752,7 +7759,7 @@ void main() {
       );
       if (id == 'duri_kisai') {
         expect(r.mention, {949}, reason: id);
-        expect([for (final b in r.asl) b.n], [63, 64], reason: id);
+        expect(r.asl, isEmpty, reason: id);
       } else {
         expect(r.poem, Poem.durrah, reason: id);
         expect(r.mention, {63, 64}, reason: id);
@@ -7778,7 +7785,7 @@ void main() {
           entries: book.at(s, a, w),
         );
         expect(r.mention, contains(590), reason: '$id $s:$a');
-        expect([for (final b in r.asl) b.n], [94], reason: '$id $s:$a');
+        expect(r.asl, isEmpty, reason: '$id $s:$a');
       }
     }
   });
@@ -7804,11 +7811,7 @@ void main() {
         expect(r.mention, {177}, reason: id);
       } else {
         expect(r.mention, {950}, reason: id);
-        expect(
-          [for (final b in r.asl) b.n],
-          id == 'shubah' ? isEmpty : [177],
-          reason: id,
-        );
+        expect([for (final b in r.asl) b.n], isEmpty, reason: id);
       }
     }
   });
@@ -7867,7 +7870,7 @@ void main() {
           expect(r.mention, {25, 26}, reason: id);
         } else {
           expect(r.mention, {789, 790, 791, 792, 793}, reason: id);
-          expect([for (final b in r.asl) b.n], [25, 26], reason: id);
+          expect(r.asl, isEmpty, reason: id);
         }
       }
     },
@@ -7900,7 +7903,7 @@ void main() {
           expect(r.mention, durrah, reason: '$id $a');
         } else {
           expect(r.mention, shatibi, reason: '$id $a');
-          expect({for (final b in r.asl) b.n}, durrah, reason: '$id $a');
+          expect(r.asl, isEmpty, reason: '$id $a');
         }
       }
     }
@@ -7935,7 +7938,7 @@ void main() {
         expect(r.mention, {30}, reason: id);
       } else {
         expect(r.mention, {956}, reason: id);
-        expect([for (final b in r.asl) b.n], [30], reason: id);
+        expect(r.asl, isEmpty, reason: id);
       }
     }
   });
@@ -8059,7 +8062,7 @@ void main() {
         expect(r.mention, {181}, reason: id);
       } else {
         expect(r.mention, {964}, reason: id);
-        expect([for (final b in r.asl) b.n], [181], reason: id);
+        expect(r.asl, isEmpty, reason: id);
       }
     }
     for (final id in ['duri_kisai', 'khalaf_hamzah', 'idris']) {
@@ -8121,7 +8124,7 @@ void main() {
       if (id == 'idris') {
         expect(r.mention, {186}, reason: id);
       } else {
-        expect([for (final b in r.asl) b.n], [186], reason: id);
+        expect(r.asl, isEmpty, reason: id);
       }
     }
   });
@@ -8348,7 +8351,7 @@ void main() {
         if (id == 'idris') {
           expect(r.mention, {199}, reason: '$id $w');
         } else {
-          expect([for (final b in r.asl) b.n], [199], reason: '$id $w');
+          expect(r.asl, isEmpty, reason: '$id $w');
         }
       }
     }
@@ -8417,22 +8420,19 @@ void main() {
         .at(['duri_kisai'], 42, 5, 0)
         .where((v) => v.word == 0 && !v.isUsul)
         .single;
-    expect(
-      [
-        for (final b
-            in manzumat
-                .referenceOf(
-                  yakadu,
-                  'تَكَادُ',
-                  42,
-                  surahs,
-                  entries: book.at(42, 5, 0),
-                )
-                .asl)
-          b.n,
-      ],
-      [156],
-    );
+    expect([
+      for (final b
+          in manzumat
+              .referenceOf(
+                yakadu,
+                'تَكَادُ',
+                42,
+                surahs,
+                entries: book.at(42, 5, 0),
+              )
+              .asl)
+        b.n,
+    ], isEmpty);
   });
 
   test(
@@ -8513,7 +8513,7 @@ void main() {
       if (id == 'idris') {
         expect(r.mention, {205});
       } else {
-        expect([for (final b in r.asl) b.n], [205]);
+        expect(r.asl, isEmpty);
       }
     }
   });
@@ -8632,7 +8632,7 @@ void main() {
         expect(r.mention, {212}, reason: id);
       } else {
         expect(r.mention, contains(1050), reason: id);
-        expect([for (final b in r.asl) b.n], [212], reason: id);
+        expect(r.asl, isEmpty, reason: id);
       }
     }
   });
@@ -8658,7 +8658,7 @@ void main() {
               .asl)
         b.n,
     ];
-    expect(asl(at('duri_kisai', 57, 8)), [203]);
+    expect(asl(at('duri_kisai', 57, 8)), isEmpty);
     expect(
       manzumat
           .referenceOf(
@@ -8671,8 +8671,8 @@ void main() {
           .mention,
       {203},
     );
-    expect(asl(at('duri_kisai', 81, 4)), [156]);
-    expect(asl(at('khalaf_hamzah', 81, 4)), [156]);
+    expect(asl(at('duri_kisai', 81, 4)), isEmpty);
+    expect(asl(at('khalaf_hamzah', 81, 4)), isEmpty);
   });
 
   test('yabshuru of al-Shura cites the Durrah\'s 87 and 201', () async {
@@ -8691,7 +8691,7 @@ void main() {
         surahs,
         entries: book.at(42, 23, 2),
       );
-      expect([for (final b in r.asl) b.n], [87, 201], reason: id);
+      expect(r.asl, isEmpty, reason: id);
     }
   });
 
@@ -8722,7 +8722,7 @@ void main() {
         entries: book.at(40, 67, 19),
       );
       expect(r.mention, {628}, reason: id);
-      expect([for (final b in r.asl) b.n], [102], reason: id);
+      expect(r.asl, isEmpty, reason: id);
     }
   });
 
@@ -8766,7 +8766,7 @@ void main() {
       if (id == 'idris') {
         expect(r.mention, {197}, reason: id);
       } else {
-        expect([for (final b in r.asl) b.n], [197], reason: id);
+        expect(r.asl, isEmpty, reason: id);
       }
       expect(
         variants
@@ -8827,7 +8827,7 @@ void main() {
           expect(r.mention, {20}, reason: id);
         } else {
           expect(r.mention, {166, 167}, reason: id);
-          expect([for (final b in r.asl) b.n], [20], reason: id);
+          expect(r.asl, isEmpty, reason: id);
         }
       }
     }
@@ -8858,6 +8858,58 @@ void main() {
         surahs,
       );
       expect(r.mention, {489, 490}, reason: id);
+    }
+  });
+
+  // «إِنَّ ٱللَّهَ يُبَشِّرُكَ» (آل عمران ٣٩) of Ibn 'Amir and Hamza: «وَمِنْ بَعْدُ
+  // أَنَّ اللهَ يُكْسَرُ فِي كِلَا», the Shatibiyya alone (the user, 2026-11-18).
+  test('inna Allah yubashshiruk cites 554 alone', () {
+    for (final id in ['khalaf_hamzah', 'khallad', 'hisham', 'ibn_dhakwan']) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 3,
+          ayah: 39,
+          word: 7,
+          count: 1,
+          text: 'إِنَّ',
+          kind: VariantKind.farsh,
+          description: 'بكسر الهمزة',
+        ),
+        'أَنَّ',
+        3,
+        surahs,
+      );
+      expect(r.mention, {554}, reason: id);
+      expect(r.asl, isEmpty, reason: id);
+    }
+  });
+
+  // «سَيُكۡتَبُ ... وَقَتۡلُهُمُ ... وَيَقُولُ» (آل عمران ١٨١) of Hamza: one bayt,
+  // «سَنَكْتُبُ يَاءٌ ضُمَّ مَعْ فَتْحِ ضَمِّهِ / وَقَتْلَ ارْفَعُوا مَعْ يَا نَقُولُ
+  // فَيَكْمُلَا» (581) (the user, 2026-11-18).
+  test('sayuktabu, qatluhum and yaqulu cite 581', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['khalaf_hamzah', 'khallad']);
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      for (final (w, hafs) in [
+        (11, 'سَنَكۡتُبُ'),
+        (14, 'وَقَتۡلَهُمُ'),
+        (18, 'وَنَقُولُ'),
+      ]) {
+        final v = variants
+            .at([id], 3, 181, w)
+            .where((v) => v.word == w && !v.isUsul)
+            .single;
+        final r = manzumat.referenceOf(
+          v,
+          hafs,
+          3,
+          surahs,
+          entries: book.at(3, 181, w),
+        );
+        expect(r.mention, {581}, reason: '$id $w');
+      }
     }
   });
 }

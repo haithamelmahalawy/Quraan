@@ -77,6 +77,15 @@ class HafsFontMarks extends StatelessWidget {
           cluster.contains('۪') &&
           _kasras.hasMatch(cluster);
 
+  /// The kasra under the ha of the Name after its doubled lam (لِلَّهِ،
+  /// بِٱللَّهِ): the font sets it against the ha's foot, cut short; it is
+  /// drawn apart, whole, under it (the user, 2026-11-19).
+  static bool _kasraUnderNameHa(String cluster, String? previous) =>
+      cluster.startsWith('ه') &&
+      cluster.contains('ِ') &&
+      (previous?.startsWith('ل') ?? false) &&
+      previous!.contains('ّ');
+
   /// The iqlab mim drawn apart: the low one always, the high one only over
   /// a letter with a kasra (ءَايَٰتِۢ), whose anchor the font then moves into
   /// the letter. Over a letter without a vowel (مِنۢ، أَنۢبِئۡهُم) the font
@@ -194,6 +203,7 @@ class HafsFontMarks extends StatelessWidget {
           _lowerImala(cluster) ||
           _lowSeen(cluster) ||
           _kasraUnderHamza(cluster) ||
+          _kasraUnderNameHa(cluster, previous) ||
           _waqfOverTanween(cluster) ||
           _waqfOverMadd(cluster) ||
           _naqlFatha(cluster) ||
@@ -274,7 +284,7 @@ class HafsFontMarks extends StatelessWidget {
         final markAt = full.indexOf('ۣ', m.start);
         marks[markAt] = placed[markAt].$2;
       }
-      if (_kasraUnderHamza(m[0]!)) {
+      if (_kasraUnderHamza(m[0]!) || _kasraUnderNameHa(m[0]!, previous)) {
         final markAt = full.indexOf(_kasras, m.start);
         marks[markAt] = placed[markAt].$2;
       }
@@ -420,6 +430,12 @@ const saktOverMadd = .12;
 
 /// How far the sin after a word stands clear of its last letter.
 const saktGap = .05;
+
+/// How far the kasra under the ha of the Name stands, in font sizes.
+const nameHaKasraDrop = .08;
+
+/// And how far right of the ha's middle, in font sizes.
+const nameHaKasraShift = .07;
 
 /// How far under the line the imala sign stands, in font sizes; under a jim.
 const imalaDrop = .20;
@@ -747,6 +763,8 @@ class _QuranMarkPainter extends CustomPainter {
                 // past the fatha of the letter before.
                 : dagger && source.startsWith('ى', at)
                 ? font * .12
+                : kasra && source.startsWith('ه', at)
+                ? -font * nameHaKasraShift
                 : 0),
         line.baseline -
             mark.computeLineMetrics().single.baseline +
@@ -785,6 +803,9 @@ class _QuranMarkPainter extends CustomPainter {
                     // The hamza hangs lower under the waw's tail.
                     ? (source.startsWith('و', at)
                           ? .50
+                          // Under the ha of the Name, clear of its foot.
+                          : source.startsWith('ه', at)
+                          ? nameHaKasraDrop
                           // Under the tasheel dot on its tooth (أَىِ۪مَّةَ).
                           : source.startsWith('ى', at)
                           ? .30

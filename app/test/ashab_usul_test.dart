@@ -559,4 +559,167 @@ void main() {
       }
     },
   );
+
+  // «يُؤَدِّهۡ» (آل عمران ٧٥) the farsh alike for Khalaf and Khallad, one row
+  // in the hamesh; Khalaf's sakt on its own row, the stop on «إِلَيۡكَ» for
+  // both (the user, 2026-11-18).
+  test('yu\'addih quiet alike for Hamza\'s narrators, the sakt apart', () {
+    List<List> at(String id, int w) => [
+      for (final v in (load(id)['variants'] as List).cast<List>())
+        if (v[0] == 3 && v[1] == 75 && v[2] == w) v,
+    ];
+    for (final w in [7, 15]) {
+      for (final id in ['khalaf_hamzah', 'khallad']) {
+        final farsh = at(id, w).where((v) => v[5] == 'f').single;
+        expect(
+          farsh[4],
+          at('khallad', w).where((v) => v[5] == 'f').single[4],
+          reason: '$id $w',
+        );
+        expect('${farsh[4]}', endsWith('هۡ'), reason: '$id $w');
+        expect(farsh[6], 'بإسكان الهاء', reason: '$id $w');
+        expect(
+          at(id, w + 1).where((v) => v[7] == 'hisham_waqf'),
+          hasLength(1),
+          reason: '$id $w',
+        );
+      }
+      expect(
+        at('khalaf_hamzah', w).where((v) => v[7] == 'sakt').single[4],
+        '${at('khallad', w).where((v) => v[5] == 'f').single[4]}ۜ',
+      );
+    }
+  });
+
+  // «وَمَن يُّرِد ثَّوَابَ» (آل عمران ١٤٥): Khalaf's idgham without ghunna into
+  // «يُرِد», its dal bare, merged into the tha, as Khallad's (the user,
+  // 2026-11-18).
+  test('man yurid thawab: the dal bare in the chain of Khalaf', () {
+    for (final w in [10, 16]) {
+      final row = [
+        for (final v
+            in (load('khalaf_hamzah')['variants'] as List).cast<List>())
+          if (v[0] == 3 &&
+              v[1] == 145 &&
+              v[2] == w &&
+              v[7] == 'idgham_bila_ghunna')
+            v,
+      ].single;
+      expect(
+        '${row[4]}'.replaceAll(RegExp('[ً-ْۡ]'), ''),
+        endsWith('يرد'),
+        reason: '$w',
+      );
+      expect('${row[4]}', isNot(endsWith('ۡ')), reason: '$w');
+    }
+  });
+
+  // «فِيهِمۡ ... وَيُزَكِّيهِمۡ» (آل عمران ١٦٤) as Hafs's for Hamza, Ya'qub's
+  // alone; «عَلَيۡهُمۡ» between them his (the user, 2026-11-18).
+  test('fihim and yuzakkihim as Hafs for Hamza, alayhum his', () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final rows = [
+        for (final v in (load(id)['variants'] as List).cast<List>())
+          if (v[0] == 3 && v[1] == 164 && v[3] == 1 && '${v[4]}'.isNotEmpty) v,
+      ];
+      expect(rows.where((v) => v[2] == 7 || v[2] == 14), isEmpty, reason: id);
+      expect(
+        rows.where((v) => v[2] == 12 && v[7] == 'ha_damir'),
+        hasLength(1),
+        reason: id,
+      );
+    }
+  });
+
+  // «سَيُكۡتَبُ» (آل عمران ١٨١) its ya with the damma (the user, 2026-11-18).
+  test('sayuktabu told with its ya and its damma', () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final row = [
+        for (final v in (load(id)['variants'] as List).cast<List>())
+          if (v[0] == 3 && v[1] == 181 && v[2] == 11 && v[5] == 'f') v,
+      ].single;
+      expect(row[6], 'بالياء وضمها وفتح التاء', reason: id);
+    }
+  });
+
+  // «يَحۡسِبُهُمُ» (البقرة ٢٧٣) of Khalaf al-'Ashir and al-Kisa'i: the farsh
+  // alone, no plural's mim where the ha is Hafs's (the user, 2026-11-18).
+  test('yahsibuhum the farsh alone, no mim of the plural', () {
+    for (final id in ['ishaq', 'idris', 'duri_kisai', 'abul_harith']) {
+      final rows = [
+        for (final v in (load(id)['variants'] as List).cast<List>())
+          if (v[0] == 2 && v[1] == 273 && v[2] == 11) v,
+      ];
+      expect(rows.where((v) => v[7] == 'mim_jam'), isEmpty, reason: id);
+      expect(
+        rows.where((v) => v[5] == 'f').single[4],
+        contains('حۡسِ'),
+        reason: id,
+      );
+    }
+  });
+
+  // «يُوصِي» (النساء ١٢): «بكسر الصاد وإسكان الياء», no alif told, for every
+  // reader who reads it so (the user, 2026-11-18).
+  test('yusi told without the alif for every reader', () {
+    final dir = Directory('assets/data/qiraat');
+    var seen = 0;
+    for (final f in dir.listSync().whereType<File>()) {
+      if (!f.path.endsWith('.json')) continue;
+      final data = jsonDecode(f.readAsStringSync()) as Map;
+      for (final v in (data['variants'] as List).cast<List>()) {
+        if (v[0] == 4 && v[1] == 12 && v[2] == 76 && v[5] == 'f') {
+          expect(v[6], 'بكسر الصاد وإسكان الياء', reason: f.path);
+          seen++;
+        }
+      }
+    }
+    expect(seen, 14);
+  });
+
+  // The alif maqsura before a sakin leaned at the stop alone (يَتَٰمَى
+  // ٱلنِّسَآءِ، يَغۡشَى ٱلنَّاسَ، بِعِيسَى ٱبۡنِ), «رَءَا ٱلۡقَمَرَ» and «جَآءَهَا»
+  // not; «مَأۡوَىٰ» leaned in all its places (the user, 2026-11-18).
+  test('imala before a sakin at the stop alone; mawa everywhere', () {
+    const ashab = [
+      'khalaf_hamzah',
+      'khallad',
+      'duri_kisai',
+      'abul_harith',
+      'ishaq',
+      'idris',
+    ];
+    for (final id in ashab) {
+      List<List> at(int s, int a, int w) => [
+        for (final v in (load(id)['variants'] as List).cast<List>())
+          if (v[0] == s &&
+              v[1] == a &&
+              v[2] == w &&
+              '${v[6]}'.contains('إمالة'))
+            v,
+      ];
+      for (final (s, a, w) in [(4, 127, 13), (44, 11, 0), (57, 27, 6)]) {
+        final row = at(s, a, w).single;
+        expect(row[6], 'بإمالة الألف وقفًا', reason: '$id $s:$a');
+        expect((row[8] as Map)['stopOnly'], isTrue, reason: '$id $s:$a');
+      }
+      for (final (s, a, w) in [(5, 72, 27), (8, 16, 16), (3, 162, 9)]) {
+        expect(at(s, a, w).single[6], 'بإمالة الألف', reason: '$id $s:$a');
+      }
+      for (final (s, a, w) in [(36, 13, 6), (7, 43, 21)]) {
+        expect(
+          at(s, a, w).where((v) => (v[8] as Map)['stopOnly'] == true),
+          isEmpty,
+          reason: '$id $s:$a',
+        );
+      }
+      final awwalin = [
+        for (final v in (load(id)['variants'] as List).cast<List>())
+          if (v[0] == 5 && v[1] == 107 && v[2] == 13 && v[5] == 'f') v,
+      ];
+      for (final v in awwalin) {
+        expect('${v[6]}', isNot(contains('سكت')), reason: id);
+      }
+    }
+  });
 }

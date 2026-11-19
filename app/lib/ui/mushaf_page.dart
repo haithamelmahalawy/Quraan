@@ -1717,8 +1717,22 @@ class _MushafPageState extends State<MushafPage>
     }
     // The riwaya shown in place of Hafs: its reading takes the place of the
     // Hafs word(s).
+    final first = base.where((v) => v.canReplaceText).firstOrNull;
+    // The farsh drawn with Khalaf's sakt on it, its own row without the sign
+    // so the hamesh tells it with Khallad's (يُؤَدِّهۡۜ; the user, 2026-11-18).
     final v =
-        base.where((v) => v.canReplaceText).firstOrNull ??
+        (first != null && first.word == w && first.kind == VariantKind.farsh
+            ? base
+                  .where(
+                    (r) =>
+                        r.word == w &&
+                        r.isSakt &&
+                        r.canReplaceText &&
+                        r.text.replaceAll('ۜ', '') == first.text,
+                  )
+                  .firstOrNull
+            : null) ??
+        first ??
         // Their separated madd short, written without Hafs's sign (يُؤَدِّهِۦ
         // إِلَيۡكَ، مَا أُوتِيتُمۡ): no colour nor note, the word as it is read.
         (_ashabSilah.contains(s.displayed)
@@ -1817,9 +1831,38 @@ class _MushafPageState extends State<MushafPage>
   /// silah readings keep both colours instead of a comparison rawi's colour.
   List<Variant>? _letterReadings(Ayah ayah, int w) {
     final s = widget.settings;
-    final base = _baseAt(widget.variants, s, ayah, w);
+    final own = _baseAt(widget.variants, s, ayah, w);
+    // Two words drawn as one by Khalaf's idgham (أَن يُّغَلَّ): the farsh of
+    // the second too, in its colour on its letters (the user, 2026-11-18).
+    final joined = own.any(
+      (v) =>
+          v.word == w &&
+          v.count == 2 &&
+          v.rule == 'idgham_bila_ghunna' &&
+          v.canReplaceText,
+    );
+    final base = own;
+    final next = joined && w + 1 < ayah.words.length
+        ? [
+            ..._readingsAt(
+              widget.variants,
+              s,
+              ayah,
+              w + 1,
+            ).shown.where((v) => v.word == w + 1 && !v.isUsul),
+            // And its own imala (وَلِيّٗا وَّكَفَىٰ: the fa green under its
+            // sign, the user, 2026-11-19).
+            ..._baseAt(
+              widget.variants,
+              s,
+              ayah,
+              w + 1,
+            ).where((v) => v.word == w + 1 && _ownImala([v], w + 1) != null),
+          ]
+        : const <Variant>[];
     final readings =
         [
+              ...next,
               // And the shown riwaya's own farsh read with imala (يَٰبُشۡرٰ۪يَ).
               ...base.where(
                 (v) =>
@@ -1835,7 +1878,8 @@ class _MushafPageState extends State<MushafPage>
                   (v.word == w ||
                       _shadedFarsh(v) ||
                       // The next word's first letter of Khalaf's idgham.
-                      v.rule == 'idgham_bila_ghunna') &&
+                      v.rule == 'idgham_bila_ghunna' ||
+                      next.contains(v)) &&
                   !v.isMarginNote &&
                   !isRoutineMadd(v) &&
                   showYaqubMimExample(v, ayah.words[v.word]) &&
@@ -2849,7 +2893,22 @@ class _MushafPageState extends State<MushafPage>
               v.usulKind == 'الوقف على الساكن المفصول',
         )
         .toList();
+    // Khalaf's idgham without ghunna at the ayah's end (مَّفۡرُوضٗا ۝
+    // وَلَأُضِلَّنَّهُمۡ): the word merged into glows with the one told on
+    // (the user, 2026-11-19).
+    final idghamBefore =
+        ayahBefore != null && RegExp('^[وي]').hasMatch(ayah.words[w])
+        ? wordBefore()
+              .where(
+                (v) =>
+                    v.rule == 'idgham_bila_ghunna' &&
+                    v.count == 1 &&
+                    v.word == ayahBefore.words.length - 1,
+              )
+              .toList()
+        : const <Variant>[];
     if (saktBefore.isNotEmpty && _glows(saktBefore) ||
+        idghamBefore.isNotEmpty && _glows(idghamBefore) ||
         stopAfter.isNotEmpty && _glows(stopAfter)) {
       return true;
     }

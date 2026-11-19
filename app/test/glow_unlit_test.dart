@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
@@ -115,6 +116,16 @@ void main() {
     expect(lit, contains(bare('أَلَمۡ')));
   });
 
+  // «مَّفۡرُوضٗا ۝ وَلَأُضِلَّنَّهُمۡ» (النساء ١١٨-١١٩): Khalaf's idgham without
+  // ghunna across the ayah's end, the two glowing together (the user,
+  // 2026-11-19).
+  testWidgets('page 97 glows by the idgham across the ayah end', (t) async {
+    String bare(String s) => s.replaceAll(RegExp('[ً-ٟۖ-ۭـ]'), '');
+    final lit = (await glowing(t, 97, khalaf(97))).map(bare).toSet();
+    expect(lit, contains(bare('مَّفۡرُوضٗا')));
+    expect(lit, contains(bare('وَلَأُضِلَّنَّهُمۡ')));
+  });
+
   // Every asl put out: nothing glows, not even what both read alike (شَاءَ,
   // عَلَيۡهُمۡ).
   testWidgets('every asl put out, page 4 glows nowhere', (t) async {
@@ -154,5 +165,41 @@ void main() {
     final space = kathir.indexWhere((p) => p.$1.trim().isEmpty);
     expect(kathir.skip(space + 2).every((p) => p.$2 == null), isTrue);
     expect(kathir.first.$2, isNotNull);
+  });
+
+  // Page 71 of Khalaf (the user, 2026-11-18): «أَن يُّغَلَّ» drawn as one, the
+  // ya in the idgham's colour, the rest of his farsh «يُغَلَّ» in the colour of
+  // the difference.
+  testWidgets('Khalaf idgham into his farsh colours the farsh', (t) async {
+    List<(String, Color?)> parts(String key) =>
+        t.widget<InkText>(find.byKey(ValueKey('word:$key'))).parts!;
+    await glowing(t, 71, khalaf(71));
+    final yughall = parts('3:161:3');
+    final space = yughall.indexWhere((p) => p.$1.trim().isEmpty);
+    expect(yughall[space + 1].$2, ReadingColors.idghamBilaGhunna);
+    final rest = yughall.skip(space + 2).where((p) => p.$1.trim().isNotEmpty);
+    expect(rest, isNotEmpty);
+    expect(
+      rest.every((p) => p.$2 != null && p.$2 != ReadingColors.idghamBilaGhunna),
+      isTrue,
+    );
+  });
+
+  // Page 86 of Khalaf (the user, 2026-11-19): «وَلِيّٗا وَّكَفَىٰ» drawn as one,
+  // the waw in the idgham's colour, the fa of «كَفَىٰ» in the imala's under
+  // its sign.
+  testWidgets('Khalaf idgham into a word of imala colours its letter', (
+    t,
+  ) async {
+    List<(String, Color?)> parts(String key) =>
+        t.widget<InkText>(find.byKey(ValueKey('word:$key'))).parts!;
+    await glowing(t, 86, khalaf(86));
+    final kafa = parts('4:45:5');
+    final space = kafa.indexWhere((p) => p.$1.trim().isEmpty);
+    expect(kafa[space + 1].$2, ReadingColors.idghamBilaGhunna);
+    final fa = kafa.skip(space + 1).firstWhere((p) => p.$1.contains('ف'));
+    expect(fa.$1, contains(imalaSign));
+    expect(fa.$2, isNotNull);
+    expect(fa.$2, isNot(ReadingColors.idghamBilaGhunna));
   });
 }

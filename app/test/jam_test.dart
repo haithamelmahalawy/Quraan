@@ -61,6 +61,21 @@ void main() {
     }
   });
 
+  // The seven's farsh that the Durrah tells too: its bayt for the Durrah's
+  // readers, Khalaf al-'Ashir's «أَنَّ ٱللَّهَ يُبَشِّرُكَ» as Hafs's (آل عمران ٣٩),
+  // not «يَٰبُشۡرَىٰ» (يوسف ١٩) nor «أُمَّهَٰتُكُمۡ» where none of the seven
+  // differs (النساء ٢٣) (the user, 2026-11-18).
+  test('the Durrah\'s bayt of a word of the seven\'s farsh', () {
+    expect(jamDurrahOfSeven(quran.ayah(3, 39), variants), {
+      7: {86},
+      9: {87},
+    });
+    expect(jamDurrahOfSeven(quran.ayah(40, 67), variants)[19], {102});
+    expect(jamDurrahOfSeven(quran.ayah(12, 19), variants), isEmpty);
+    expect(jamDurrahOfSeven(quran.ayah(4, 23), variants), isEmpty);
+    expect(jamReadings(quran.ayah(3, 39), variants).first.riwayat, isNotEmpty);
+  });
+
   test('مالك يوم الدين: the readers of «مَٰلِكِ» told apart from «مَلِكِ»', () {
     final ayah = quran.page(1).firstWhere((a) => a.surah == 1 && a.number == 4);
     final readings = jamReadings(ayah, variants);
@@ -509,5 +524,48 @@ void main() {
     expect(player.continuous, isFalse);
     await t.pumpWidget(const SizedBox());
     expect(player.continuous, before);
+  });
+
+  testWidgets('no Durrah witness under a reading of the seven for its usul', (
+    t,
+  ) async {
+    t.view.physicalSize = const Size(500, 2400);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      MaterialApp(
+        theme: buildTheme(MushafPalette.light),
+        home: JamScreen(quran: quran, variants: variants, page: 78),
+      ),
+    );
+    for (
+      var i = 0;
+      i < 100 && find.byKey(const ValueKey('jam-lead')).evaluate().isEmpty;
+      i++
+    ) {
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await t.pump();
+    }
+    // النساء ٨: Khallad's imala of «ٱلۡقُرۡبَىٰ وَٱلۡيَتَٰمَىٰ», Khalaf al-'Ashir
+    // with him; the Durrah's «لِثَانٍ ...» and «وَرَمْزُهُمُ ...» not under it
+    // (the user, 2026-11-19).
+    await t.tap(find.byKey(const ValueKey('jam-ayah-1')));
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey('jam-board-khallad')));
+    for (var i = 0; i < 10; i++) {
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await t.pump();
+    }
+    expect(find.text('خلاد عن حمزة'), findsWidgets);
+    final texts = [
+      for (final e in find.byType(RichText).evaluate())
+        (e.widget as RichText).text.toPlainText(),
+    ];
+    expect(texts.where((s) => s.contains('الدرة')), isEmpty);
+    await t.pumpWidget(const SizedBox());
   });
 }
