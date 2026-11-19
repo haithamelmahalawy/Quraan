@@ -229,6 +229,12 @@ class Manzumat {
                 qiraaOf(reading.riwayaId).id == 'abu_jafar' ||
             _yaqubShatibiyya(reading) != null ||
             _khalafFatathabbatu(reading) ||
+            // A Durrah reader's «قَد» merged, the Durrah silent: his asl's
+            // bayt, after the Durrah's two.
+            (_idghamQad(reading, hafs) ||
+                    _idghamTa(reading, hafs) ||
+                    _raaaAnam(reading).isNotEmpty) &&
+                Poem.of(reading.riwayaId) == Poem.durrah ||
             (_idghamDhal(reading, hafs) ||
                     // Not «كُفُؤًا» (الإخلاص ٤), told in the Durrah:
                     // «وَكُفْؤًا سُكُونُ الْفَاءِ حِصْنٌ».
@@ -554,6 +560,8 @@ class Manzumat {
     stopText: v.stopText,
     marginText: v.marginText,
     ownWays: v.ownWays,
+    bandOnly: v.bandOnly,
+    noBand: v.noBand,
     omission: v.omission,
     usulText: v.usulText,
     usulWays: v.usulWays,
@@ -977,6 +985,59 @@ class Manzumat {
       RegExp('خَذۡ?ت').hasMatch('${v.text} $hafs') &&
       !const {'ruways', 'rawh'}.contains(v.riwayaId);
 
+  /// The dal of «قَدۡ» merged (قَد ضَّلَلۡتُ، لَقَد جَّآءَكُمۡ): «ذِكْرُ دَالِ قَدْ»,
+  /// «وَقَدْ سَحَبَتْ ذَيْلاً ضَفَا ظَلَّ زَرْنَبٌ ... فَاظْهَرَهَا نَجْمٌ بَدَا دَلَّ
+  /// وَاضِحاً» (the user, 2026-11-19). Its own text or [hafs]'s words.
+  static bool _idghamQad(Variant v, [String hafs = '']) =>
+      v.rule == 'idgham_saghir' &&
+      RegExp(r'^[وف]?ل?قد$').hasMatch(
+        _letters((v.text.isNotEmpty ? v.text : hafs).split(' ').first),
+      ) &&
+      ((v.text.isNotEmpty ? v.text : hafs).contains(' ') ||
+          v.description.contains('الدال'));
+
+  /// The ta of the feminine merged (حَمَلَت ظُّهُورُهُمَآ، أَنۢبَتَت سَّبۡعَ):
+  /// «ذِكْرُ تَاءِ التَّأْنِيثِ», «وَأَبْدَتْ سَنَا ثَغْرٍ صَفَتْ زُرْقُ ظَلْمِهِ ...
+  /// فَإِظْهَارُهُ دُرٌّ نَمَتْهُ بُدُورُهُ» (the user, 2026-11-19). The verb's quiet
+  /// ta, not the plural's with its kasra (وَٱلصَّٰٓفَّٰتِ صَفّٗا), before its six
+  /// letters; Warsh's row of the ta's word alone by its wording.
+  static bool _idghamTa(Variant v, [String hafs = '']) {
+    if (v.rule != 'idgham_saghir') return false;
+    final words = (v.text.isNotEmpty ? v.text : hafs).split(' ');
+    if (words.length >= 2) {
+      return RegExp(r'ت[ْۡ]?[ۖ-ۭ]*$').hasMatch(words[0]) &&
+          RegExp('^[ثجزسصظ]').hasMatch(_letters(words[1]));
+    }
+    return RegExp('إدغام التاء في (الثاء|الجيم|الزاي|السين|الصاد|الظاء)')
+        .hasMatch(v.description);
+  }
+
+  /// Hamza's ishmam of the sad of «صِرَٰط» in all its places, Khallad's in
+  /// the first: «وَالصَّادُ زَاياً اشِمَّهَا لَدَى خَلَفٍ وَاشْمِمْ لِخَلاَّدِ الاَوَّلَا»
+  /// (the user, 2026-11-19); «وَأَنَّ اكْسِرُوا شَرْعًا وَبِالْخِفِّ كُمِّلَا» alone for
+  /// «وَأَنَّ هَٰذَا صِرَٰطِي» (الأنعام ١٥٣).
+  static Set<int> _hamzaSirat(Variant v, [String hafs = '']) =>
+      v.rule == 'ishmam_sad' &&
+          const {'khalaf_hamzah', 'khallad'}.contains(v.riwayaId) &&
+          _letters(v.text.isNotEmpty ? v.text : hafs).contains('صرط')
+      ? const {109}
+      : v.surah == 6 && v.ayah == 153 && v.word == 0 && !v.isUsul
+      ? const {677}
+      : const {};
+
+  /// «رَءَا كَوۡكَبٗا» (الأنعام ٧٦): «وَحَرْفَيْ رَأَى كُلاًّ أَمِلْ مُزْنَ صُحْبَةٍ»;
+  /// «رَءَا ٱلۡقَمَرَ، رَءَا ٱلشَّمۡسَ» (٧٧، ٧٨): «وَقَبلَ السُّكُونِ الرَّا أَمِلْ فِي صَفاَ
+  /// يَدٍ ...» and «وَقِفْ فِيهِ كَالأُولَى ...» (the user, 2026-11-19). Warsh's
+  /// taqlil is told in its chapter.
+  static Set<int> _raaaAnam(Variant v) =>
+      v.surah != 6 || v.riwayaId == 'warsh' || !v.description.contains('إمالة')
+      ? const {}
+      : v.ayah == 76 && v.word == 4
+      ? const {646}
+      : (v.ayah == 77 || v.ayah == 78) && v.word == 1
+      ? const {648, 649}
+      : const {};
+
   /// Nafi''s hamza of «ٱلنَّبِيٓءُ» and its bab: «وَجَمْعاً وَفَرْداً فِي النَّبِيءِ
   /// وَفي النُّبُوءَةِ الْهَمْزَ كُلٌّ غَيْرَ نَافِعٍ ابْدَلاَ»; without it in
   /// «ٱلصَّٰبِـِٔينَ»: «وَفي الصَّابِئِينَ الْهَمْزُ وَالصَّابِئُونَ خُذْ», and Abu
@@ -1277,6 +1338,11 @@ class Manzumat {
   Set<int> _reviewedVerses(Poem poem, Variant v, String hafs) {
     // al-Kisa'i's «أَرَيۡتَ» of the question, before any other place's rule.
     if (poem == Poem.shatibiyya && _kisaiAraita(v)) return {638};
+    // Hamza's ishmam of «صِرَٰط» and «وَإِنَّ» (الأنعام ١٥٣), their bayts alone,
+    // not the book's quotations beside them (the user, 2026-11-19).
+    if (poem == Poem.shatibiyya && _hamzaSirat(v, hafs).isNotEmpty) {
+      return _hamzaSirat(v, hafs);
+    }
     // «ٱلَّٰٓـِٔي» (الأحزاب ٤، المجادلة ٢، الطلاق ٤): «وَبِالْهَمْزِ كُلُّ اللاَّءِ
     // وَالْياَءِ بَعْدَهُ ذَكَا وَبِيَاءٍ سَاكِنٍ حَجَّ هُمَّلَا / وَكَالْيَاءِ مَكْسُوراً
     // لِوَرْشٍ وَعَنْهُمَا وَقِفْ مُسْكِناً وَالْهَمْزُ زَاكِيهِ بُجِّلَا»; Abu Ja'far's
@@ -3122,6 +3188,14 @@ class Manzumat {
       return {36};
     }
     if (poem == Poem.shatibiyya && _idghamDhal(v, hafs)) return {283};
+    if (poem == Poem.shatibiyya && _idghamQad(v, hafs)) return {262, 263};
+    if (poem == Poem.shatibiyya && _idghamTa(v, hafs)) return {266, 267};
+    if (poem == Poem.shatibiyya && _hamzaSirat(v, hafs).isNotEmpty) {
+      return _hamzaSirat(v, hafs);
+    }
+    if (poem == Poem.shatibiyya && _raaaAnam(v).isNotEmpty) {
+      return _raaaAnam(v);
+    }
     final nafi = _nafiHamza(poem, v);
     if (nafi.isNotEmpty) return nafi;
     // Al-Bazzi's «فَلِمَهۡ» and the four with it: «وَفِيمَهْ وَمِمَّهْ قِفْ وَعَمَّهْ
@@ -3300,6 +3374,10 @@ class Manzumat {
           RegExp(r'^مل$|لا?ن$').hasMatch(_letters(v.text)))
         {36},
       if (poem == Poem.shatibiyya && _idghamDhal(v, hafs)) {283},
+      if (poem == Poem.shatibiyya && _idghamQad(v, hafs)) {262, 263},
+      if (poem == Poem.shatibiyya && _idghamTa(v, hafs)) {266, 267},
+      if (poem == Poem.shatibiyya) _hamzaSirat(v, hafs),
+      if (poem == Poem.shatibiyya) _raaaAnam(v),
       _nafiHamza(poem, v),
     ]) {
       if (own.isNotEmpty) {

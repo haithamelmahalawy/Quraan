@@ -66,7 +66,17 @@ class Variant {
     this.usulWays = const [],
     this.usulKind = '',
     this.hamesh = false,
+    this.bandOnly = false,
+    this.noBand = false,
   });
+
+  /// Told in the usul below the page alone (رَءَا كَوۡكَبٗا، الأنعام ٧٦, the two
+  /// words): never drawn, coloured nor in the hamesh (the user, 2026-11-19).
+  final bool bandOnly;
+
+  /// Colours its letters but is not told in the usul below the page, a row
+  /// of [bandOnly] telling it there.
+  final bool noBand;
 
   final String riwayaId;
   final int surah;
@@ -238,6 +248,8 @@ class Variant {
     usulWays: usulWays,
     usulKind: usulKind,
     hamesh: hamesh,
+    bandOnly: bandOnly,
+    noBand: noBand,
   );
 
   /// A reading with imala (or taqlil, the lesser imala).

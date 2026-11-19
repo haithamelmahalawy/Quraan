@@ -8885,6 +8885,88 @@ void main() {
     }
   });
 
+  // The dal of «قَدۡ» merged (قَد ضَّلَلۡتُ، الأنعام ٥٦): «ذِكْرُ دَالِ قَدْ»'s
+  // «وَقَدْ سَحَبَتْ ذَيْلاً ...» and «فَاظْهَرَهَا نَجْمٌ ...»; Khalaf al-'Ashir's
+  // after the Durrah's two (the user, 2026-11-19).
+  test('the idgham of qad cites its chapter', () {
+    Reference qad(
+      String id,
+      String text, [
+      String description = '',
+      String hafs = 'قَدۡ ضَلَلۡتُ',
+    ]) => manzumat.referenceOf(
+      Variant(
+        riwayaId: id,
+        surah: 6,
+        ayah: 56,
+        word: 14,
+        count: text.contains(' ') ? 2 : 1,
+        text: text,
+        kind: VariantKind.usul,
+        description: description,
+        rule: 'idgham_saghir',
+      ),
+      hafs,
+      6,
+      surahs,
+    );
+    for (final id in ['khalaf_hamzah', 'khallad', 'duri_kisai', 'hisham']) {
+      for (final text in [
+        'قَد ضَّلَلۡتُ',
+        'وَلَقَد جَّآءَكُم',
+        'لَّقَد سَّمِعَ',
+      ]) {
+        final r = qad(id, text);
+        expect(r.chapter, 'ذِكْرُ دَالِ قَدْ', reason: '$id $text');
+        expect(r.mention, {262, 263}, reason: '$id $text');
+      }
+    }
+    // Warsh's, the dal's word alone.
+    expect(qad('warsh', '', 'بإدغام الدال في الضاد').mention, {262, 263});
+    // The ta of the feminine (حَمَلَت ظُّهُورُهُمَآ، الأنعام ١٤٦): «وَأَبْدَتْ سَنَا
+    // ثَغْرٍ ...» and «فَإِظْهَارُهُ دُرٌّ ...»; not the plural's with its kasra.
+    expect(qad('khalaf_hamzah', 'حَمَلَت ظُّهُورُهُمَآ').mention, {266, 267});
+    expect(qad('warsh', '', 'بإدغام التاء في الظاء', 'حَمَلَتۡ').mention, {
+      266,
+      267,
+    });
+    expect(
+      qad('khalaf_hamzah', 'وَٱلصَّٰٓفَّٰتِ صَّفّٗا').mention,
+      isNot(contains(266)),
+    );
+    final ishaq = qad('ishaq', 'قَد ضَّلَلۡتُ');
+    expect(ishaq.mention, {262, 263});
+    expect(ishaq.asl.map((b) => b.n), [7, 8]);
+  });
+
+  // «رَءَا كَوۡكَبٗا» (الأنعام ٧٦) with «وَحَرْفَيْ رَأَى كُلاًّ أَمِلْ ...»; «رَءَا
+  // ٱلۡقَمَرَ، رَءَا ٱلشَّمۡسَ» with «وَقَبلَ السُّكُونِ الرَّا ...» and «وَقِفْ فِيهِ
+  // كَالأُولَى ...» (the user, 2026-11-19).
+  test('raa of al-An\'am cites its bayts', () {
+    Reference raa(String id, int ayah, int word) => manzumat.referenceOf(
+      Variant(
+        riwayaId: id,
+        surah: 6,
+        ayah: ayah,
+        word: word,
+        count: 1,
+        text: 'رَ۪ءَ۪ا',
+        kind: VariantKind.usul,
+        description: 'بإمالة الراء والهمزة وقفًا',
+      ),
+      'رَءَا',
+      6,
+      surahs,
+    );
+    for (final id in ['ibn_dhakwan', 'shubah', 'khalaf_hamzah', 'duri_kisai']) {
+      expect(raa(id, 76, 4).mention, {646}, reason: id);
+      expect(raa(id, 77, 1).mention, {648, 649}, reason: id);
+      expect(raa(id, 78, 1).mention, {648, 649}, reason: id);
+    }
+    expect(raa('ishaq', 77, 1).poem, Poem.shatibiyya);
+    expect(raa('ishaq', 77, 1).asl.map((b) => b.n), [7, 8]);
+  });
+
   // «سَيُكۡتَبُ ... وَقَتۡلُهُمُ ... وَيَقُولُ» (آل عمران ١٨١) of Hamza: one bayt,
   // «سَنَكْتُبُ يَاءٌ ضُمَّ مَعْ فَتْحِ ضَمِّهِ / وَقَتْلَ ارْفَعُوا مَعْ يَا نَقُولُ
   // فَيَكْمُلَا» (581) (the user, 2026-11-18).

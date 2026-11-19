@@ -107,7 +107,24 @@ class VariantRepository {
     final k = key(surah, ayah, word);
     for (final id in riwayaIds) {
       final list = _loaded[id]?[k];
-      if (list != null) yield* list;
+      if (list != null) yield* list.where((v) => !v.bandOnly);
+    }
+  }
+
+  /// What the usul below the page tell of the word: its readings without
+  /// those told there by a row of their own ([Variant.noBand]), with those
+  /// told there alone ([Variant.bandOnly]).
+  Iterable<Variant> forBand(
+    Iterable<String> riwayaIds,
+    int surah,
+    int ayah,
+    int word,
+  ) sync* {
+    yield* at(riwayaIds, surah, ayah, word).where((v) => !v.noBand);
+    final k = key(surah, ayah, word);
+    for (final id in riwayaIds) {
+      final list = _loaded[id]?[k];
+      if (list != null) yield* list.where((v) => v.bandOnly);
     }
   }
 
@@ -116,7 +133,11 @@ class VariantRepository {
     final list = _loaded[riwayaId];
     if (list == null) return const [];
     final keys = list.keys.toList()..sort();
-    return {for (final k in keys) ...list[k]!}.toList();
+    return {
+      for (final k in keys)
+        for (final v in list[k]!)
+          if (!v.bandOnly) v,
+    }.toList();
   }
 
   static int key(int surah, int ayah, int word) =>
@@ -259,6 +280,8 @@ Map<int, List<Variant>> _index((String, String, String?, String?) input) {
       ownWays: v.length > 8 && (v[8] as Map)['ownWays'] == true,
       omission: v.length > 8 && (v[8] as Map)['omission'] == true,
       hamesh: v.length > 8 && (v[8] as Map)['hamesh'] == true,
+      bandOnly: v.length > 8 && (v[8] as Map)['bandOnly'] == true,
+      noBand: v.length > 8 && (v[8] as Map)['noBand'] == true,
       usulText: v.length > 8 ? (v[8] as Map)['context'] as String? ?? '' : '',
       usulWays: v.length > 8
           ? ((v[8] as Map)['ways'] as List? ?? const []).cast<String>()

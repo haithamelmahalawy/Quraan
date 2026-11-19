@@ -716,6 +716,105 @@ void main() {
     }
   });
 
+  // «تَوَفَّٰ۪هُ، ٱسۡتَهۡوَٰ۪هُ» (الأنعام ٦١، ٧١) of Hamza: the dagger alif, the
+  // imala sign, told «بإبدال التاء ألفًا مدية مع الإمالة», and leaned among
+  // the usul (the user, 2026-11-19).
+  test('tawaffahu and istahwahu with the dagger alif and leaned', () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final variants = (load(id)['variants'] as List).cast<List>();
+      for (final (s, a, w, text) in const [
+        (6, 61, 12, 'تَوَفَّٰ۪هُ'),
+        (6, 71, 18, 'ٱسۡتَهۡوَٰ۪هُ'),
+      ]) {
+        final rows = [
+          for (final v in variants)
+            if (v[0] == s && v[1] == a && v[2] == w) v,
+        ];
+        final farsh = rows.singleWhere((v) => v[5] == 'f');
+        expect(farsh[4], text, reason: '$id $s:$a');
+        expect(farsh[6], 'بإبدال التاء ألفًا مدية مع الإمالة');
+        expect(
+          rows.where((v) => v[5] == 'u' && v[6] == 'بإمالة الألف'),
+          hasLength(1),
+          reason: '$id $s:$a',
+        );
+      }
+    }
+  });
+
+  // «رَءَا كَوۡكَبٗا، رَءَا ٱلۡقَمَرَ، رَءَا ٱلشَّمۡسَ» (الأنعام ٧٦-٧٨) in the usul
+  // below the page with the word after them (the user, 2026-11-19): a row
+  // of their own there, none in the hamesh.
+  test('raa of al-An\'am told below the page', () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'duri_kisai',
+      'abul_harith',
+      'ishaq',
+      'idris',
+    ]) {
+      final rows = (load(id)['variants'] as List).cast<List>();
+      List note(int a, int w) => rows.singleWhere(
+        (v) =>
+            v[0] == 6 &&
+            v[1] == a &&
+            v[2] == w &&
+            v.length > 8 &&
+            (v[8] as Map)['bandOnly'] == true,
+      );
+      expect(
+        rows.where(
+          (v) =>
+              v[0] == 6 &&
+              (v[1] as int) >= 76 &&
+              (v[1] as int) <= 78 &&
+              v.length > 8 &&
+              (v[8] as Map)['hamesh'] == true,
+        ),
+        isEmpty,
+        reason: id,
+      );
+      expect(note(76, 4)[4], 'رَ۪ءَ۪ا كَوۡكَبٗاۖ', reason: id);
+      expect(note(76, 4)[6], 'بإمالة الهمزة والراء وقفًا ووصلًا');
+      final kisai = id.contains('kisai') || id == 'abul_harith';
+      for (final (a, next) in [(77, 'ٱلۡقَمَرَ'), (78, 'ٱلشَّمۡسَ')]) {
+        expect(note(a, 1)[4], endsWith(next), reason: '$id $a');
+        expect(
+          note(a, 1)[6],
+          kisai
+              ? 'بإمالة الراء والهمزة وقفًا'
+              : 'بإمالة الراء فقط وصلًا وبإمالة الراء والهمزة وقفًا',
+          reason: '$id $a',
+        );
+      }
+    }
+  });
+
+  // «رِسَالَٰتِهِۦ» (الأنعام ١٢٤) as Ruways's, its ha with the kasra; «وَإِنَّ»
+  // (١٥٣) without the book's faces of «صِرَٰطِي» (the user, 2026-11-19).
+  test('risalatihi as Ruways and wa-inna told alone', () {
+    for (final id in ['khalaf_hamzah', 'khallad', 'duri_kisai', 'ishaq']) {
+      final rows = (load(id)['variants'] as List).cast<List>();
+      List farsh(int a, int w) => rows.singleWhere(
+        (v) => v[0] == 6 && v[1] == a && v[2] == w && v[5] == 'f',
+      );
+      expect(farsh(124, 17)[4], 'رِسَالَٰتِهِۦ', reason: id);
+      expect((farsh(153, 0)[8] as Map)['ownWays'], isTrue, reason: id);
+      // «يَأۡتِيَهُمُ» (١٥٨) as al-Nahl's: «بالياء», its second ya opened.
+      expect(farsh(158, 4)[4], 'يَأۡتِيَهُمُ', reason: id);
+      expect(farsh(158, 4)[6], 'بالياء', reason: id);
+    }
+    // Khalaf's idgham into it takes its ya's fatha; his sakt of «يُؤَدِّهۡۜ» kept.
+    final khalaf = (load('khalaf_hamzah')['variants'] as List).cast<List>();
+    String idgham(int s, int a, int w) => khalaf.singleWhere(
+      (v) =>
+          v[0] == s && v[1] == a && v[2] == w && v[7] == 'idgham_bila_ghunna',
+    )[4];
+    expect(idgham(6, 158, 3), endsWith('أۡتِيَهُمُ'));
+    expect(idgham(3, 75, 6), endsWith('ۜ'));
+  });
+
   test('imala before a sakin at the stop alone; mawa everywhere', () {
     const ashab = [
       'khalaf_hamzah',

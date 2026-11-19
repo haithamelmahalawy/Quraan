@@ -2129,6 +2129,17 @@ class _MushafPageState extends State<MushafPage>
     // طُغۡيَٰنِهِمۡ), where the sign would go: that letter alone coloured, as
     // the qaf of a reading's ishmam (the user, 2026-11-12).
     Iterable<int> imalaLetters(Variant v) {
+      // A stop's own imala, its letters by its own text (رَ۪ءَ۪ا ٱلۡقَمَرَ: the
+      // hamza too, beside the joining's ra; the user, 2026-11-19).
+      final own = v.stopOnly && v.text.contains(imalaSign)
+          ? lettersOf(v.text)
+          : null;
+      if (own != null && own.length == letters.length) {
+        return [
+          for (final (i, l) in own.indexed)
+            if (l.contains(imalaSign)) i,
+        ];
+      }
       final signed = text.contains(imalaSign)
           ? letters
           : lettersOf(withImalaSign(text, v.text));
@@ -3544,7 +3555,7 @@ List<_UsulGroup> _usulNotes(
     // Equal rule descriptions can still have different written examples
     // (e.g. Warsh's extended mim silah versus Ibn Kathir's). Do not use
     // the main text's comparison filter to choose the margin examples.
-    for (final v in variants.at(
+    for (final v in variants.forBand(
       {...s.selected, ?s.displayed},
       ayah.surah,
       ayah.number,

@@ -3823,6 +3823,7 @@ Map<String, int> buildAshabUsul(
   _saktOnFarsh(data['variants'] as List);
   _idghamOnFarsh(data['variants'] as List);
   _idghamIntoYaIdafa(data['variants'] as List);
+  _raaaKawkab(id, data['variants'] as List);
   _idghamChain(data['variants'] as List);
   // The plural's mim told only where the reader's ha before it is not
   // Hafs's: «يَحۡسَبُهُمُ» (البقرة ٢٧٣) is Hafs's own, its mim no rule, the
@@ -3879,6 +3880,61 @@ void _userFarsh(String id, List variants) {
   // 2026-11-14); the book's quotation, its small alif left out, told a ya
   // quiet and an alif gone.
   if (at(4, 42, 7) case final v?) v[6] = 'بفتح التاء وبإمالة الواو';
+  // «رِسَالَٰتِهِۦ» (الأنعام ١٢٤) in the plural, its ha with the kasra, written
+  // as Ruways's for every reader of it (the user, 2026-11-19).
+  if (at(6, 124, 17) case final v?) v[4] = 'رِسَالَٰتِهِۦ';
+  // «أَن يَأۡتِيَهُمُ ٱلۡمَلَٰٓئِكَةُ» (الأنعام ١٥٨) as in al-Nahl 33: «بالياء», its
+  // second ya with the fatha (the user, 2026-11-19).
+  if (at(6, 158, 4) case final v?) {
+    v[4] = 'يَأۡتِيَهُمُ';
+    v[6] = 'بالياء';
+  }
+  // «وَإِنَّ هَٰذَا صِرَٰطِي» (الأنعام ١٥٣): «بكسر الهمزة» alone, one row for
+  // Khalaf and Khallad; the book's two faces are of the ishmam of «صِرَٰطِي»,
+  // told in its usul (the user, 2026-11-19).
+  if (at(6, 153, 0) case final v?) {
+    v[8] = {...(v.length > 8 ? v[8] as Map : const {}), 'ownWays': true};
+  }
+  // Hamza's «تَوَفَّٰهُ، ٱسۡتَهۡوَٰهُ» (الأنعام ٦١، ٧١): the ta made a madd alif,
+  // the dagger one, not in the word's body (the user, 2026-11-19).
+  if (hamza.contains(id)) {
+    for (final (s, a, w, text) in const [
+      (6, 61, 12, 'تَوَفَّٰ۪هُ'),
+      (6, 71, 18, 'ٱسۡتَهۡوَٰ۪هُ'),
+    ]) {
+      if (at(s, a, w) case final v?) {
+        v[4] = text;
+        v[6] = 'بإبدال التاء ألفًا مدية مع الإمالة';
+      }
+      // And leaned, the dot under the fa and the waw.
+      final leaned = variants.cast<List>().any(
+        (v) =>
+            v[0] == s &&
+            v[1] == a &&
+            v[2] == w &&
+            v[5] == 'u' &&
+            '${v[6]}'.contains('إمالة'),
+      );
+      if (!leaned) {
+        final i = variants.cast<List>().indexWhere(
+          (v) =>
+              (v[0] as int) * 1000000 + (v[1] as int) * 1000 + (v[2] as int) >
+              s * 1000000 + a * 1000 + w,
+        );
+        variants.insert(i < 0 ? variants.length : i, [
+          s,
+          a,
+          w,
+          1,
+          '',
+          'u',
+          'بإمالة الألف',
+          '',
+          {'source': ashabSource},
+        ]);
+      }
+    }
+  }
   // «فَتَثَبَّتُواْ» for «فَتَبَيَّنُواْ» (النساء ٩٤ مرتين، الحجرات ٦), Hamza's,
   // al-Kisa'i's and Khalaf al-'Ashir's; the book tells it in al-Hujurat
   // alone, and without its wording (the user, 2026-11-14). Hafs's word, its
@@ -4373,7 +4429,9 @@ void _idghamOnFarsh(List variants) {
 void _idghamIntoYaIdafa(List variants) {
   final ya = <String, String>{
     for (final v in variants.cast<List>())
-      if (v[7] == 'ya_idafa' && v[3] == 1 && '${v[4]}'.isNotEmpty)
+      if ((v[7] == 'ya_idafa' || v[5] == 'f') &&
+          v[3] == 1 &&
+          '${v[4]}'.isNotEmpty)
         _key(v[0], v[1], v[2]): '${v[4]}',
   };
   final cluster = RegExp('^.[ً-ٰ]*');
@@ -4384,8 +4442,101 @@ void _idghamIntoYaIdafa(List variants) {
     final own = ya[_key(v[0], v[1], (v[2] as int) + 1)];
     if (own == null) continue;
     final first = cluster.firstMatch(parts[1])![0]!;
-    final rest = own.substring(cluster.firstMatch(own)![0]!.length);
+    var rest = own.substring(cluster.firstMatch(own)![0]!.length);
+    // Its sakt kept (بِقِنطَارٖ يُّؤَدِّهۡۜ).
+    if (parts[1].endsWith('ۜ') && !rest.endsWith('ۜ')) rest = '$restۜ';
     v[4] = '${parts[0]} $first$rest';
+  }
+}
+
+/// «رَءَا كَوۡكَبٗا، رَءَا ٱلۡقَمَرَ، رَءَا ٱلشَّمۡسَ» (الأنعام ٧٦-٧٨), told in the
+/// hamesh (the user, 2026-11-19): before the kaf, the two words, the ra and
+/// the hamza leaned in joining and at the stop; before the quiet letter,
+/// the ra alone in joining (Hamza, Khalaf al-'Ashir), the two at the stop
+/// (al-Kisa'i at the stop alone), its hamza coloured without the sign.
+void _raaaKawkab(String id, List variants) {
+  final rows = variants.cast<List>();
+  int order(List r) =>
+      (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+  bool at(List r, int a, int w) => r[0] == 6 && r[1] == a && r[2] == w;
+  bool leaned(List r) => r[5] == 'u' && '${r[6]}'.contains('إمالة');
+  bool flagged(List r) =>
+      r.length > 8 &&
+      ((r[8] as Map)['hamesh'] == true || (r[8] as Map)['bandOnly'] == true);
+  void insert(List row) {
+    final i = rows.lastIndexWhere((r) => order(r) <= order(row));
+    variants.insert(i + 1, row);
+  }
+
+  // The rows coloured, told below the page by a row of the two words.
+  void colourOnly(List r) {
+    while (r.length < 8) {
+      r.add('');
+    }
+    if (r.length < 9) r.add(<String, Object?>{});
+    r[8] = {...(r[8] as Map), 'noBand': true};
+  }
+
+  const both = 'بإمالة الهمزة والراء وقفًا ووصلًا';
+  const joined = 'بإمالة الراء فقط وصلًا وبإمالة الراء والهمزة وقفًا';
+  const stopped = 'بإمالة الراء والهمزة وقفًا';
+  rows.removeWhere((r) => at(r, 76, 4) && leaned(r));
+  final kawkab = [
+    6,
+    76,
+    4,
+    1,
+    'رَ۪ءَ۪ا',
+    'u',
+    both,
+    '',
+    {'source': ashabSource},
+  ];
+  colourOnly(kawkab);
+  insert(kawkab);
+  insert([
+    6,
+    76,
+    4,
+    1,
+    'رَ۪ءَ۪ا كَوۡكَبٗاۖ',
+    'u',
+    both,
+    '',
+    {'source': ashabSource, 'bandOnly': true},
+  ]);
+  for (final (a, next) in const [(77, 'ٱلۡقَمَرَ'), (78, 'ٱلشَّمۡسَ')]) {
+    rows.removeWhere((r) => at(r, a, 1) && leaned(r) && flagged(r));
+    for (final r in rows.where((r) => at(r, a, 1) && leaned(r))) {
+      final stop = r.length > 8 && (r[8] as Map)['stopOnly'] == true;
+      if (!stop) r[6] = 'بإمالة الراء فقط وصلًا';
+      colourOnly(r);
+    }
+    insert(
+      _kisai.contains(id)
+          ? [
+              6,
+              a,
+              1,
+              1,
+              'رَءَا $next',
+              'u',
+              stopped,
+              '',
+              {'source': ashabSource, 'bandOnly': true, 'stopOnly': true},
+            ]
+          : [
+              6,
+              a,
+              1,
+              1,
+              'رَ۪ءَا $next',
+              'u',
+              joined,
+              '',
+              {'source': ashabSource, 'bandOnly': true},
+            ],
+    );
   }
 }
 
