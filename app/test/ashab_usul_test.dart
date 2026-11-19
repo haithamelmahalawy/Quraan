@@ -680,6 +680,42 @@ void main() {
   // The alif maqsura before a sakin leaned at the stop alone (يَتَٰمَى
   // ٱلنِّسَآءِ، يَغۡشَى ٱلنَّاسَ، بِعِيسَى ٱبۡنِ), «رَءَا ٱلۡقَمَرَ» and «جَآءَهَا»
   // not; «مَأۡوَىٰ» leaned in all its places (the user, 2026-11-18).
+  // «بِبَاسِطٖ يَدِيَ إِلَيۡكَ» (المائدة ٢٨): Khalaf's idgham into the ya of the
+  // idafa he reads quiet, written as Khallad's (the user, 2026-11-19).
+  test('Khalaf idgham into his ya of the idafa takes its rasm', () {
+    List at(String id, int s, int a, int w, String rule) => [
+      for (final v in (load(id)['variants'] as List).cast<List>())
+        if (v[0] == s && v[1] == a && v[2] == w && v[7] == rule) v,
+    ].single;
+    final yadi = at('khallad', 5, 28, 8, 'ya_idafa')[4] as String;
+    expect(yadi, 'يَدِيٓ');
+    final row = at('khalaf_hamzah', 5, 28, 7, 'idgham_bila_ghunna');
+    final second = (row[4] as String).split(' ').last;
+    expect(second, endsWith(yadi.substring(2)));
+    expect(second, contains('ّ'));
+    // «وَلِي نَعۡجَةٞ» (ص ٢٣) quiet so.
+    expect(
+      (at('khalaf_hamzah', 38, 23, 6, 'idgham_bila_ghunna')[4] as String)
+          .endsWith('لِي'),
+      isTrue,
+    );
+  });
+
+  // «هُزۡؤٗا»: «بإسكان الزاي وبالهمز» for all who read it so (the user,
+  // 2026-11-19).
+  test('huzuwan told with its zay quiet and with the hamza', () {
+    for (final id in ['khalaf_hamzah', 'khallad', 'ishaq', 'idris']) {
+      final rows = [
+        for (final v in (load(id)['variants'] as List).cast<List>())
+          if (v[5] == 'f' && '${v[4]}'.contains('زۡؤ')) v,
+      ];
+      expect(rows.length, 11, reason: id);
+      for (final v in rows) {
+        expect(v[6], 'بإسكان الزاي وبالهمز', reason: '$id ${v[0]}:${v[1]}');
+      }
+    }
+  });
+
   test('imala before a sakin at the stop alone; mawa everywhere', () {
     const ashab = [
       'khalaf_hamzah',
@@ -703,7 +739,19 @@ void main() {
         expect(row[6], 'بإمالة الألف وقفًا', reason: '$id $s:$a');
         expect((row[8] as Map)['stopOnly'], isTrue, reason: '$id $s:$a');
       }
-      for (final (s, a, w) in [(5, 72, 27), (8, 16, 16), (3, 162, 9)]) {
+      // «وَمَأۡوَىٰهُ»، and «وَءَاتَىٰكُم» (المائدة ٢٠، إبراهيم ٣٤; the user,
+      // 2026-11-19).
+      for (final (s, a, w) in [
+        (5, 72, 27),
+        (8, 16, 16),
+        (3, 162, 9),
+        (5, 20, 15),
+        (14, 34, 0),
+        (11, 28, 9),
+        (11, 63, 9),
+        (19, 30, 4),
+        (27, 36, 7),
+      ]) {
         expect(at(s, a, w).single[6], 'بإمالة الألف', reason: '$id $s:$a');
       }
       for (final (s, a, w) in [(36, 13, 6), (7, 43, 21)]) {

@@ -202,4 +202,39 @@ void main() {
     expect(fa.$2, isNotNull);
     expect(fa.$2, isNot(ReadingColors.idghamBilaGhunna));
   });
+
+  // «جَمِيعٗا وَّلَقَد جَّآءَتۡهُمۡ» (المائدة ٣٢): the chain's last word with its
+  // imala sign under the jim; «وَرَحۡمَةٗ وَّبُشۡرَىٰ» (النحل ٨٩): drawn on its own
+  // in the chain, «رَحۡمَة» not coloured by the imala of «بُشۡرَىٰ» (the user,
+  // 2026-11-19).
+  testWidgets('Khalaf idgham chains keep each word its own imala', (t) async {
+    InkText ink(String key) =>
+        t.widget<InkText>(find.byKey(ValueKey('word:$key')));
+    String text(InkText i) => i.parts?.map((p) => p.$1).join() ?? i.text;
+    await glowing(t, 113, khalaf(113));
+    expect(text(ink('5:32:28')), contains(imalaSign));
+    await glowing(t, 277, khalaf(277));
+    expect(text(ink('16:89:22')), contains(imalaSign));
+    final rahma = ink('16:89:21').parts!;
+    expect(
+      rahma.every(
+        (p) => p.$2 == null || p.$2 == ReadingColors.idghamBilaGhunna,
+      ),
+      isTrue,
+    );
+  });
+
+  // Hafs shown, page 130 (the user, 2026-11-19): «فِتۡنَتُهُمۡ» of Hamza's farsh
+  // «يَكُن فِتۡنَتَهُمۡ» in the farsh colour, its mim in the sakt's red.
+  testWidgets('a word of a two-word farsh coloured beside its sakt', (t) async {
+    await glowing(t, 130, khalaf(130)..displayed = 'hafs');
+    final parts = t
+        .widget<InkText>(find.byKey(const ValueKey('word:6:23:3')))
+        .parts!
+        .where((p) => p.$1.trim().isNotEmpty)
+        .toList();
+    expect(parts.first.$2, isNotNull);
+    expect(parts.first.$2, isNot(ReadingColors.saktHamza));
+    expect(parts.last.$2, ReadingColors.saktHamza);
+  });
 }

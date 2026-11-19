@@ -225,7 +225,10 @@ int _imala(
   // «وَمَأۡوَىٰهُ» where the book's section leaves it out (المائدة ٧٢،
   // الأنفال ١٦): leaned as «مأوى» in its other places (the user, 2026-11-18).
   for (final word in index.values) {
-    if (!RegExp('مأوى').hasMatch(_bare(word.t))) continue;
+    // And «وَءَاتَىٰكُم» (المائدة ٢٠، إبراهيم ٣٤) as «ءَاتَىٰكُمۡ» in its other
+    // places, the dot under the ta; «وَءَاتَىٰنِي» (هود ٢٨، ٦٣) and «ءَاتَىٰنِيَ»
+    // (مريم ٣٠، النمل ٣٦) for all (the user, 2026-11-19).
+    if (!RegExp(r'مأوى|ءاتىكم|ءاتىني?$').hasMatch(_bare(word.t))) continue;
     final key = _key(word.s, word.a, word.w);
     if (done.contains('$key:true') || !done.add('$key:false')) continue;
     put([

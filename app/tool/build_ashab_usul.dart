@@ -1209,6 +1209,9 @@ Map<String, int> buildAshabUsul(
       continue;
     }
     v[4] = hafs.replaceFirst('زُو', 'زۡؤ');
+    // Told «بإسكان الزاي وبالهمز», as «كُفۡؤٗا»'s «بإسكان الفاء وبالهمز», for all
+    // who read it so (the user, 2026-11-19).
+    if (v[6] == 'بإسكان الزاي والهمز') v[6] = 'بإسكان الزاي وبالهمز';
   }
   _userFarsh(id, data['variants'] as List);
   // Hafs's sakin Hamza's farsh reads with a vowel (وَلِيَحۡكُمَ أَهۡلُ for
@@ -3819,6 +3822,7 @@ Map<String, int> buildAshabUsul(
   // the book's «بِيُوتًا» it is corrected from).
   _saktOnFarsh(data['variants'] as List);
   _idghamOnFarsh(data['variants'] as List);
+  _idghamIntoYaIdafa(data['variants'] as List);
   _idghamChain(data['variants'] as List);
   // The plural's mim told only where the reader's ha before it is not
   // Hafs's: «يَحۡسَبُهُمُ» (البقرة ٢٧٣) is Hafs's own, its mim no rule, the
@@ -4360,6 +4364,28 @@ void _idghamOnFarsh(List variants) {
     final own = farsh[_key(v[0], v[1], v[2])];
     if (own == null || plain(own) == plain(parts[0])) continue;
     v[4] = '${own.replaceFirst(RegExp(r'ۡ$'), '')} ${parts[1]}';
+  }
+}
+
+/// Khalaf's idgham without ghunna into a word whose ya of the idafa he reads
+/// otherwise than Hafs (بِبَاسِطٖ يَّدِيٓ إِلَيۡكَ، المائدة ٢٨): the second word
+/// as his own row writes it, as Khallad's (the user, 2026-11-19).
+void _idghamIntoYaIdafa(List variants) {
+  final ya = <String, String>{
+    for (final v in variants.cast<List>())
+      if (v[7] == 'ya_idafa' && v[3] == 1 && '${v[4]}'.isNotEmpty)
+        _key(v[0], v[1], v[2]): '${v[4]}',
+  };
+  final cluster = RegExp('^.[ً-ٰ]*');
+  for (final v in variants.cast<List>()) {
+    if (v[7] != 'idgham_bila_ghunna' || v[3] != 2) continue;
+    final parts = '${v[4]}'.split(' ');
+    if (parts.length != 2) continue;
+    final own = ya[_key(v[0], v[1], (v[2] as int) + 1)];
+    if (own == null) continue;
+    final first = cluster.firstMatch(parts[1])![0]!;
+    final rest = own.substring(cluster.firstMatch(own)![0]!.length);
+    v[4] = '${parts[0]} $first$rest';
   }
 }
 

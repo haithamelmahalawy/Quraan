@@ -1755,7 +1755,18 @@ class _MushafPageState extends State<MushafPage>
               r.word + r.count - 1 < w,
         );
         if (drawnBefore && parts.length == v.count) {
-          return (text: parts[w - v.word], font: 'Hafs');
+          // Its own imala sign too (جَمِيعٗا وَّلَقَد جَّ۪آءَتۡهُمۡ, the user,
+          // 2026-11-19).
+          final imala = _ownImala(base, w);
+          return (
+            text: imala == null
+                ? parts[w - v.word]
+                : withImalaSign(
+                    parts[w - v.word],
+                    imala.text.isEmpty ? null : imala.text,
+                  ),
+            font: 'Hafs',
+          );
         }
       }
       if (v.word != w || v.text.isEmpty) return null;
@@ -1851,13 +1862,17 @@ class _MushafPageState extends State<MushafPage>
               w + 1,
             ).shown.where((v) => v.word == w + 1 && !v.isUsul),
             // And its own imala (وَلِيّٗا وَّكَفَىٰ: the fa green under its
-            // sign, the user, 2026-11-19).
-            ..._baseAt(
-              widget.variants,
-              s,
-              ayah,
-              w + 1,
-            ).where((v) => v.word == w + 1 && _ownImala([v], w + 1) != null),
+            // sign, the user, 2026-11-19), where the two are drawn as one; not
+            // in a chain, the second drawn on its own (وَرَحۡمَةٗ وَّبُشۡرَىٰ).
+            if ((_writtenDisplayWord(ayah, w, qcf: false)?.text ?? '').contains(
+              ' ',
+            ))
+              ..._baseAt(
+                widget.variants,
+                s,
+                ayah,
+                w + 1,
+              ).where((v) => v.word == w + 1 && _ownImala([v], w + 1) != null),
           ]
         : const <Variant>[];
     final readings =
@@ -1877,6 +1892,11 @@ class _MushafPageState extends State<MushafPage>
               (v) =>
                   (v.word == w ||
                       _shadedFarsh(v) ||
+                      // A farsh of two words over this one, drawn apart
+                      // (تَكُن فِتۡنَتُهُمۡ for Hamza's «يَكُن فِتۡنَتَهُمۡ»): its
+                      // letters in the farsh colour beside the sakt (the user,
+                      // 2026-11-19).
+                      !v.isUsul && v.word < w && v.word + v.count > w ||
                       // The next word's first letter of Khalaf's idgham.
                       v.rule == 'idgham_bila_ghunna' ||
                       next.contains(v)) &&
