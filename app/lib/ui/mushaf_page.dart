@@ -204,6 +204,9 @@ class HameshEntry {
   final String hafs;
   final Color color;
   final List<Variant> readings;
+
+  /// The places on the page read alike, told on this one (معًا، جميعًا).
+  int together = 1;
 }
 
 class _MushafPageState extends State<MushafPage>
@@ -394,6 +397,12 @@ class _MushafPageState extends State<MushafPage>
             '${item.replacement}';
         final existing = group.items.putIfAbsent(key, () => item);
         if (existing != item) {
+          // Another place read alike by the same readers (معًا، جميعًا).
+          if ((existing.ayah, existing.word) != (item.ayah, item.word) &&
+              existing.riwayat.length == item.riwayat.length &&
+              existing.riwayat.containsAll(item.riwayat)) {
+            existing.spots.addAll(item.spots);
+          }
           existing.riwayat.addAll(item.riwayat);
           existing.readings.addAll(item.readings);
         }
@@ -1867,12 +1876,22 @@ class _MushafPageState extends State<MushafPage>
             if ((_writtenDisplayWord(ayah, w, qcf: false)?.text ?? '').contains(
               ' ',
             ))
-              ..._baseAt(
-                widget.variants,
-                s,
-                ayah,
-                w + 1,
-              ).where((v) => v.word == w + 1 && _ownImala([v], w + 1) != null),
+              ..._baseAt(widget.variants, s, ayah, w + 1).where(
+                (v) =>
+                    v.word == w + 1 &&
+                    (_ownImala([v], w + 1) != null ||
+                        // And its ishmam (مُكَآءٗ وَّتَصۡدِيَةٗ: the sad in the
+                        // ishmam's colour, the user, 2026-11-20), its sakt
+                        // (وَّمَتَٰعٌۜ) and its ha's damma (وُّجُوهِهُمُ).
+                        v.isUsul &&
+                            const {
+                              'ishmam_sad',
+                              'ishmam',
+                              'sakt',
+                              'ha_damir',
+                            }.contains(v.rule) &&
+                            !v.stopOnly),
+              ),
           ]
         : const <Variant>[];
     final readings =
@@ -2017,7 +2036,11 @@ class _MushafPageState extends State<MushafPage>
             .firstOrNull;
 
   (int, String)? _easedHamzaAt(Ayah ayah, int w, String drawn) =>
-      _ashabSilah.contains(widget.settings.displayed)
+      _ashabSilah.contains(widget.settings.displayed) ||
+          // Another reader's eased hamza on its seat with the same mark
+          // (أبو عمرو «أَٰئِ۬نَّكُمۡ», the user, 2026-11-20).
+          !const {'ruways', 'warsh'}.contains(widget.settings.displayed) &&
+              RegExp('[ءؤئ][َُِ]?۬').hasMatch(drawn)
       ? _easedHamzaDot(
           drawn,
           ayah.words[w],
@@ -3191,7 +3214,7 @@ class _MushafPageState extends State<MushafPage>
     // Every word opens its readings (or its ayah); held, its ayah.
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => widget.onWordTap(ayah, w),
+      onTap: () => widget.onWordTap(ayah, _tappedWord(ayah, w)),
       onLongPress: widget.onAyahWordTap != null
           ? () => widget.onAyahWordTap!(ayah, w)
           : widget.onAyahTap == null
@@ -3199,6 +3222,22 @@ class _MushafPageState extends State<MushafPage>
           : () => widget.onAyahTap!(ayah),
       child: word,
     );
+  }
+
+  /// The word whose readings a touch on word [w] opens: the second of two
+  /// drawn as one by Khalaf's idgham where it has a farsh (مِّن وِّلَٰيَتِهِم:
+  /// «بكسر الواو» with its bayt, the idgham beside it, the user, 2026-11-20);
+  /// its readings hold the idgham's row too.
+  int _tappedWord(Ayah ayah, int w) {
+    if (w + 1 >= ayah.words.length ||
+        !(_writtenDisplayWord(ayah, w, qcf: false)?.text ?? '').contains(' ')) {
+      return w;
+    }
+    final s = widget.settings;
+    final farsh = widget.variants
+        .at({...s.selected, ?s.displayed}, ayah.surah, ayah.number, w + 1)
+        .any((v) => v.word == w + 1 && !v.isUsul);
+    return farsh ? w + 1 : w;
   }
 
   /// A note of the hamesh tapped: where its readings are stated in the
@@ -3270,20 +3309,20 @@ class _MushafPageState extends State<MushafPage>
   List<HameshEntry> _hameshEntries(List<Ayah> ayahs) {
     final lines = widget.quran.lines(widget.page);
     final entries = _entriesOf(ayahs, widget.variants, widget.settings);
-    if (lines == null) return entries;
+    if (lines == null) return _togetherEntries(entries);
     final here = {
       for (final l in lines)
         if (l is TextLine)
           for (final (a, w) in l.words)
             VariantRepository.key(a.surah, a.number, w),
     };
-    return [
+    return _togetherEntries([
       for (final e in entries)
         if (here.contains(
           VariantRepository.key(e.ayah.surah, e.ayah.number, e.word),
         ))
           e,
-    ];
+    ]);
   }
 
   TapGestureRecognizer _recognizer(Ayah ayah, int word) {
@@ -3670,6 +3709,7 @@ List<_UsulGroup> _usulNotes(
         );
         item.riwayat.add(v.riwayaId);
         item.readings.add(v);
+        item.spots.add(VariantRepository.key(ayah.surah, ayah.number, w));
       }
     }
   }
@@ -3859,6 +3899,77 @@ class _UsulItem {
   final riwayat = <String>{};
   final readings = <Variant>[];
   final ways = <String>{};
+
+  /// The places it stands for, read alike (معًا، جميعًا).
+  late final spots = {VariantRepository.key(ayah.surah, ayah.number, word)};
+}
+
+/// A word without its pause signs, its rasm and vowels as they are.
+String _withoutPause(String text) => text.replaceAll(RegExp('[ۖ-ۛ]'), '');
+
+/// «(معًا)» after a word told in two places alike, «(جميعًا)» in more, in
+/// brackets (the user, 2026-11-20).
+String togetherNote(int places) => switch (places) {
+  < 2 => '',
+  2 => ' (معًا)',
+  _ => ' (جميعًا)',
+};
+
+/// A word as it is told alike: its first letter's shadda aside, the idgham of
+/// the word before it (لَبِثتَّ ... بَل لَّبِثتَّ, البقرة ٢٥٩, the user,
+/// 2026-11-20).
+String _toldAlike(String text) => _withoutPause(text)
+    .replaceFirstMapped(
+      RegExp('^([^ً-ْٰۡ])([ً-ِۡ]*)ّ'),
+      (m) => '${m[1]}${m[2]}',
+    )
+    // The shadda before its vowel, however the marks were typed.
+    .replaceAllMapped(RegExp('([ً-ِ])ّ'), (m) => 'ّ${m[1]}');
+
+/// [items] each told once, with how many places read it alike: the same
+/// word, the same readers, the same rule and wording (هَدَىٰنَا ... هَدَىٰنَا،
+/// الأعراف ٤٣, the user, 2026-11-20).
+List<(_UsulItem, int)> _together(Iterable<_UsulItem> items) {
+  final out = <String, (_UsulItem, Set<int>)>{};
+  for (final i in items) {
+    final key = [
+      _toldAlike(i.text),
+      i.stopOnly,
+      i.replacement == null ? null : _toldAlike(i.replacement!),
+      (i.riwayat.toList()..sort()).join(','),
+      ({
+        for (final v in i.readings)
+          '${v.riwayaId}=${v.rule}=${v.description}=${v.usulWays.join('|')}',
+      }.toList()..sort()).join(';'),
+      (i.ways.toList()..sort()).join(';'),
+    ].join('#');
+    (out[key] ??= (i, {})).$2.addAll(i.spots);
+  }
+  return [for (final (i, spots) in out.values) (i, spots.length)];
+}
+
+/// The hamesh's notes each told once, a word read alike in several places
+/// on its first with «معًا» or «جميعًا»: the same word and the same readings
+/// (the user, 2026-11-20).
+List<HameshEntry> _togetherEntries(List<HameshEntry> entries) {
+  final out = <String, HameshEntry>{};
+  for (final e in entries) {
+    final key = [
+      _withoutPause(e.hafs),
+      ({
+        for (final v in e.readings)
+          '${v.riwayaId}=${v.kind.name}=${_withoutPause(v.text)}='
+              '${v.description}=${v.count}',
+      }.toList()..sort()).join(';'),
+    ].join('#');
+    final seen = out[key];
+    if (seen == null) {
+      out[key] = e;
+    } else {
+      seen.together++;
+    }
+  }
+  return out.values.toList();
 }
 
 /// Hamesh entries of [ayahs] in page order: one per word where a reading
@@ -5145,13 +5256,14 @@ class _UsulBox extends StatelessWidget {
     Widget wordsOf(_UsulGroup g, List<_UsulItem> items) => Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        for (final (n, i) in items.indexed) ...[
+        for (final (n, (i, places)) in _together(items).indexed) ...[
           if (n > 0)
             Text(
               '، ',
               style: TextStyle(fontSize: 9 * scale, color: g.color),
             ),
           _item(g, i, named: false),
+          if (places > 1) _togetherText(g, i, places),
         ],
       ],
     );
@@ -5265,13 +5377,14 @@ class _UsulBox extends StatelessWidget {
               Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  for (final (n, i) in items.indexed) ...[
+                  for (final (n, (i, places)) in _together(items).indexed) ...[
                     if (n > 0)
                       Text(
                         '، ',
                         style: TextStyle(fontSize: 9 * scale, color: g.color),
                       ),
                     _item(g, i, named: false),
+                    if (places > 1) _togetherText(g, i, places),
                   ],
                   Text(
                     ' (${readersAr(readers, const [])})',
@@ -5321,6 +5434,18 @@ class _UsulBox extends StatelessWidget {
       return _riwayaRank(a.$2.first).compareTo(_riwayaRank(b.$2.first));
     });
   }
+
+  Widget _togetherText(_UsulGroup g, _UsulItem i, int places) => Text(
+    togetherNote(places),
+    key: ValueKey(
+      'usul-together:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:$places',
+    ),
+    style: TextStyle(
+      fontSize: 9 * scale,
+      fontWeight: FontWeight.w600,
+      color: g.color,
+    ),
+  );
 
   Widget _item(_UsulGroup g, _UsulItem i, {bool named = true}) => InkWell(
     key: ValueKey(
@@ -5674,6 +5799,13 @@ class _EntryView extends StatelessWidget {
                                 label.copyWith(color: MushafColors.frame),
                                 quran,
                               ),
+                            if (e.together > 1)
+                              TextSpan(
+                                text: togetherNote(e.together),
+                                style: label.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             if (certified) tick,
                           ],
                         ),
@@ -5747,6 +5879,11 @@ class _EntryView extends StatelessWidget {
                           g.description,
                           label.copyWith(color: MushafColors.frame),
                           reading * 13 / 17,
+                        ),
+                      if (e.together > 1)
+                        TextSpan(
+                          text: togetherNote(e.together),
+                          style: label.copyWith(fontWeight: FontWeight.w600),
                         ),
                       ?tick,
                     ],

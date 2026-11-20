@@ -71,6 +71,7 @@ void main() {
       texts.any((t) => t.contains('الصغير') && t.contains('هشام')),
       isTrue,
     );
-    expect(texts, contains('ابن ذكوان'));
+    // The reader first, then a colon and his reading (the user, 2026-11-20).
+    expect(texts.any((t) => t.startsWith('ابن ذكوان: ')), isTrue);
   });
 }

@@ -146,6 +146,15 @@ class KharoufReadingText extends StatelessWidget {
       child: Text.rich(
         TextSpan(
           children: [
+            // The reader first, then his reading (the user, 2026-11-20:
+            // «ابن ذكوان بخلف: الفتح في عمران حيث وقع هو المقدم أداء»).
+            if (all.isNotEmpty)
+              TextSpan(
+                text: '$all: ',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             if (r.text.isNotEmpty)
               TextSpan(
                 text: '${r.text}  ',
@@ -158,17 +167,21 @@ class KharoufReadingText extends StatelessWidget {
             if (r.how.isNotEmpty)
               TextSpan(text: '${r.how} ', style: theme.textTheme.bodyMedium),
             // The book's word on the riwayat shown, not on the others.
-            for (final (note, ids) in r.notes)
+            for (final (i, (note, ids)) in r.notes.indexed)
               if (ids.any(riwayat.contains))
-                TextSpan(text: '، $note ', style: theme.textTheme.bodyMedium),
+                TextSpan(
+                  text:
+                      r.how.isEmpty &&
+                          r.text.isEmpty &&
+                          !r.notes
+                              .take(i)
+                              .any((n) => n.$2.any(riwayat.contains))
+                      ? '$note '
+                      : '، $note ',
+                  style: theme.textTheme.bodyMedium,
+                ),
             if (r.taqlil)
               TextSpan(text: 'بالتقليل ', style: theme.textTheme.bodyMedium),
-            TextSpan(
-              text: all,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
             if (r.stopOnly && !r.how.startsWith('وقفاً'))
               TextSpan(
                 text: ' (وقفاً لا وصلاً)',

@@ -8888,6 +8888,37 @@ void main() {
   // The dal of «قَدۡ» merged (قَد ضَّلَلۡتُ، الأنعام ٥٦): «ذِكْرُ دَالِ قَدْ»'s
   // «وَقَدْ سَحَبَتْ ذَيْلاً ...» and «فَاظْهَرَهَا نَجْمٌ ...»; Khalaf al-'Ashir's
   // after the Durrah's two (the user, 2026-11-19).
+  // «أُورِثۡتُمُوهَا» merged (الأعراف ٤٣، الزخرف ٧٢): «... وَأُورِثْتُمُوا حَـ / لَا
+  // لَهُ شَرْعُهُ ...», usul or farsh (the user, 2026-11-20).
+  test('the idgham of urithtumuha cites 279 and 280', () {
+    for (final (id, kind) in const [
+      ('khalaf_hamzah', VariantKind.usul),
+      ('duri_kisai', VariantKind.usul),
+      ('hisham', VariantKind.usul),
+      ('duri_abuamr', VariantKind.farsh),
+      ('susi', VariantKind.farsh),
+    ]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 7,
+          ayah: 43,
+          word: 32,
+          count: 1,
+          text: 'أُورِثتُّمُوهَا',
+          kind: kind,
+          description: 'بإدغام الثاء في التاء',
+          rule: kind == VariantKind.usul ? 'idgham_saghir' : '',
+        ),
+        'أُورِثۡتُمُوهَا',
+        7,
+        surahs,
+      );
+      expect(r.chapter, 'بَابُ حُرُوفٍ قَرُبَتْ مَخَارِجُهَا', reason: id);
+      expect(r.mention, {279, 280}, reason: id);
+    }
+  });
+
   test('the idgham of qad cites its chapter', () {
     Reference qad(
       String id,
@@ -8937,6 +8968,41 @@ void main() {
     final ishaq = qad('ishaq', 'قَد ضَّلَلۡتُ');
     expect(ishaq.mention, {262, 263});
     expect(ishaq.asl.map((b) => b.n), [7, 8]);
+    // «إِذۡ», «هَلۡ» and «بَلۡ», «لَبِثۡتَ» from their chapters (the user,
+    // 2026-11-20).
+    for (final id in ['khalaf_hamzah', 'khallad', 'duri_kisai', 'hisham']) {
+      final idh = qad(id, 'إِذ تَّبَرَّأَ');
+      expect(idh.chapter, 'ذِكْرُ ذَالِ إِذْ', reason: id);
+      expect(idh.mention, {259, 260, 261}, reason: id);
+      expect(qad(id, 'وَإِذ جَّعَلۡنَا').mention, {259, 260, 261});
+      final hal = qad(id, 'هَل تَّنقِمُونَ');
+      expect(hal.chapter, 'ذِكْرُ لامِ هَلْ وَبَلْ', reason: id);
+      expect(hal.mention, {270, 271, 272, 273}, reason: id);
+      expect(qad(id, 'بَل طَّبَعَ').mention, {270, 271, 272, 273});
+      expect(qad(id, 'لَبِثتَّ', 'بإدغام الثاء في التاء').mention, {282});
+    }
+    // Khalaf's idgham without the ghunna: «وَفِي الْوَاوِ وَالْيَا دُونَهَا خَلَفٌ
+    // تَلَا».
+    final ghunna = manzumat.referenceOf(
+      Variant(
+        riwayaId: 'khalaf_hamzah',
+        surah: 2,
+        ayah: 19,
+        word: 6,
+        count: 2,
+        text: 'ظُلُمَٰتٞ وَّرَعۡدٞ',
+        kind: VariantKind.usul,
+        description: 'بإدغام التنوين في الواو بلا غنة',
+        rule: 'idgham_bila_ghunna',
+      ),
+      'ظُلُمَٰتٞ وَرَعۡدٞ',
+      2,
+      surahs,
+    );
+    expect(ghunna.mention, {287});
+    final idris = qad('idris', 'إِذ تَّبَرَّأَ');
+    expect(idris.mention, {259, 260, 261});
+    expect(idris.asl.map((b) => b.n), [7, 8]);
   });
 
   // «رَءَا كَوۡكَبٗا» (الأنعام ٧٦) with «وَحَرْفَيْ رَأَى كُلاًّ أَمِلْ ...»; «رَءَا

@@ -194,7 +194,8 @@ List<String> _rasmFaces(String word, String qiyasi) {
 
 /// The final hamza after a waw or ya of the root, or the lin of «شيء»: the
 /// naql and the merging both, the naql first for Khalaf and the merging for
-/// Khallad (the guide). Hisham's rows tell «سوء» with the merging alone.
+/// Khallad (the guide). Hisham's rows tell «سوء» with both, unordered (the
+/// user, 2026-11-20).
 List<String> _hamzaOrder(String word, List<String> ways) {
   final bare = _letters(word)
       .map((x) => _isHamza(x) && x.base != 'ٱ' ? 'ء' : x.base)

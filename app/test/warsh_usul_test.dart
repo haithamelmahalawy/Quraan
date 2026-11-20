@@ -1707,7 +1707,10 @@ void main() {
         ..compareHafs = true
         ..displayed = 'warsh',
     );
-    expect(find.text(' (له الفتح والتقليل والتقليل مقدم)'), findsNWidgets(10));
+    // «ضُحَىٰهَا» twice on the page, told once with «معًا» (the user,
+    // 2026-11-20).
+    expect(find.text(' (له الفتح والتقليل والتقليل مقدم)'), findsNWidgets(9));
+    expect(find.text(' (معًا)'), findsWidgets);
     await page(
       t,
       595,
@@ -2535,7 +2538,9 @@ void main() {
   testWidgets('page 2 footer explicitly labels stopping taqlil', (t) async {
     await page(t, 2);
     expect(find.text('التقليل:'), findsOneWidget);
-    expect(find.text(' (وقفًا فقط)'), findsNWidgets(2));
+    // «هُدٗى» (٢، ٥) read alike, told once with «معًا» (the user, 2026-11-20).
+    expect(find.text(' (وقفًا فقط)'), findsOneWidget);
+    expect(find.text(' (معًا)'), findsWidgets);
     expect(t.takeException(), isNull);
   });
 

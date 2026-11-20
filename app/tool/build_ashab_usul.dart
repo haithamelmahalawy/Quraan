@@ -1571,6 +1571,31 @@ Map<String, int> buildAshabUsul(
       variants.insert(at < 0 ? variants.length : at, row);
     }
   }
+  // «وَقَالَتۡ أُولَىٰهُمۡ» (الأعراف ٣٩) leaned for Hamza, al-Kisa'i and Khalaf
+  // al-'Ashir as its «لِأُولَىٰهُمۡ» of ٣٨; the book is silent there (the user,
+  // 2026-11-20).
+  {
+    final variants = data['variants'] as List;
+    int order(List r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
+    final row = [
+      7,
+      39,
+      1,
+      1,
+      '',
+      'u',
+      'بإمالة الألف',
+      '',
+      {'source': ashabSource},
+    ];
+    if (!variants.cast<List>().any(
+      (r) => order(r) == order(row) && '${r[6]}'.startsWith('بإمالة الألف'),
+    )) {
+      final at = variants.cast<List>().indexWhere((r) => order(r) > order(row));
+      variants.insert(at < 0 ? variants.length : at, row);
+    }
+  }
   // «مَا نَرَىٰكَ ... وَمَا نَرَىٰكَ ... وَمَا نَرَىٰ» هود ٢٧: the book's imala a
   // word early, on «مَا»; on «نَرَىٰ» each, once (the user, 2026-11-14).
   {
@@ -3844,7 +3869,35 @@ Map<String, int> buildAshabUsul(
             .hasMatch('${v[4]}'.replaceAll(RegExp('[ً-ٰ]'), ''))) {
       v[6] = 'بفتح النون';
     }
+    // «دَكَّآءَ» (الأعراف ١٤٣): one description for all who read it so (the
+    // user, 2026-11-20).
+    if (v[5] == 'f' && v[0] == 7 && v[1] == 143 && v[4] == 'دَكَّآءَ') {
+      v[6] = 'بفتح الكاف دون التنوين مع زيادة الهمزة';
+    }
   }
+  // The question's second hamza where Hafs tells (الأعراف ٨١، ١١٣، العنكبوت
+  // ٢٨): on its nabra for every reader, as Rawh's and Ruways's «أَئِنَّكُمۡ»
+  // (the user, 2026-11-20).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] != 'u' &&
+        const {
+          '7:81:0',
+          '7:113:4',
+          '29:28:4',
+        }.contains('${v[0]}:${v[1]}:${v[2]}')) {
+      v[4] = '${v[4]}'.replaceFirst('أَءِ', 'أَئِ');
+    }
+  }
+  // Khalaf's «دَكَّآءَ» without tanween: nothing to merge into the waw of
+  // «وَخَرَّ».
+  (data['variants'] as List).removeWhere(
+    (v) =>
+        v is List &&
+        v[0] == 7 &&
+        v[1] == 143 &&
+        v[2] == 28 &&
+        v[7] == 'idgham_bila_ghunna',
+  );
   return counts;
 }
 
@@ -3888,6 +3941,14 @@ void _userFarsh(String id, List variants) {
   if (at(6, 158, 4) case final v?) {
     v[4] = 'يَأۡتِيَهُمُ';
     v[6] = 'بالياء';
+  }
+  // Hamza's «ءَاتَىٰنِي ٱلۡكِتَٰبَ» (مريم ٣٠) in the rasm, its ya of the idafa
+  // quiet and bare before the wasl alif, as «رَبِّي ٱلۡفَوَٰحِشَ» (the user,
+  // 2026-11-20); the book's «آتانِي» had no description.
+  if (at(19, 30, 4) case final v? when hamza.contains(id)) {
+    v[4] = 'ءَاتَىٰنِي';
+    v[6] = 'بإسكان الياء';
+    (v[8] as Map).remove('vocalizationSource');
   }
   // «وَإِنَّ هَٰذَا صِرَٰطِي» (الأنعام ١٥٣): «بكسر الهمزة» alone, one row for
   // Khalaf and Khallad; the book's two faces are of the ishmam of «صِرَٰطِي»,
@@ -4237,6 +4298,26 @@ void _userFarsh(String id, List variants) {
       {
         'source': ashabSource,
         'ways': ['الصاد، وهو المقدّم', 'السين'],
+      },
+    ]);
+  }
+  // Khallad's «بَصۜۡطَةٗ» (الأعراف ٦٩) with his khulf, the sin and the sad, in
+  // the hamesh, drawn as Hafs's with the small sin over the sad (the user,
+  // 2026-11-20).
+  if (id == 'khallad') {
+    put([
+      7,
+      69,
+      21,
+      1,
+      'بَصۜۡطَةٗۖ',
+      'f',
+      'بخلف عنه، بالوجهين: السين والصاد',
+      '',
+      {
+        'source': ashabSource,
+        'hamesh': true,
+        'ways': ['السين', 'الصاد'],
       },
     ]);
   }

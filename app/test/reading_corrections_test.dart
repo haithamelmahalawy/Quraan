@@ -299,7 +299,8 @@ void main() {
   test('inna lamughramun describes only the added interrogative hamza', () {
     final v = shubah.at(['shubah'], 56, 66, 0).single;
     expect(quran.pageOf(56, 66), 536);
-    expect(v.text, 'أَءِنَّا');
+    // On its nabra (the user, 2026-11-20).
+    expect(v.text, 'أَئِنَّا');
     expect(v.shownDescription, 'بزيادة همزة استفهام');
     expect(v.kind, VariantKind.farsh);
     expect(v.certified, isTrue);

@@ -421,7 +421,7 @@ Map<String, int> correctWarshUsul(
         'naql',
         [
           'بنقل حركة الهمزة إلى اللام',
-          if (how.contains('التقليل')) 'بالتقليل',
+          if (how.contains('التقليل')) _taqlil(how),
           if (how.contains('الإمالة')) 'بالإمالة',
         ].join('، '),
         context: w.text,
@@ -436,7 +436,7 @@ Map<String, int> correctWarshUsul(
         [
           'بنقل حركة الهمزة إلى الساكن قبلها وصلاً',
           if (how.contains('صلة ميم الجمع')) 'بصلة ميم الجمع',
-          if (how.contains('التقليل')) 'بالتقليل',
+          if (how.contains('التقليل')) _taqlil(how),
           if (how.contains('الإمالة')) 'بالإمالة',
           if (how.contains('الإدغام')) 'بالإدغام',
         ].join('، '),
@@ -504,7 +504,7 @@ Map<String, int> correctWarshUsul(
           refined,
           if (how.contains('صلة ميم الجمع')) 'بصلة ميم الجمع',
           if (how.contains('الإدغام')) 'بالإدغام',
-          if (how.contains('التقليل')) 'بالتقليل',
+          if (how.contains('التقليل')) _taqlil(how),
           if (how.contains('الإمالة')) 'بالإمالة',
         ].join('، '),
         context: w.text,
@@ -810,6 +810,11 @@ bool _farshBeforeEnd(String hafs, String own) {
   }
   return false;
 }
+
+/// The taqlil told with the naql, its other face kept where it was told
+/// (أُولَىٰهُمۡ الأعراف ٣٩ «بالتقليل بخلف», the user, 2026-11-20).
+String _taqlil(String how) =>
+    how.contains('بالتقليل بخلف') ? 'بالتقليل بخلف' : 'بالتقليل';
 
 bool _hamza(String cluster) =>
     cluster.isNotEmpty &&

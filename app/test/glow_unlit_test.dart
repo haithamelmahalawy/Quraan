@@ -237,4 +237,21 @@ void main() {
     expect(parts.first.$2, isNot(ReadingColors.saktHamza));
     expect(parts.last.$2, ReadingColors.saktHamza);
   });
+
+  // «مُكَآءٗ وَّتَصۡدِيَةٗ» (الأنفال ٣٥) drawn as one by Khalaf's idgham: the sad
+  // in the ishmam's colour as Khallad's (the user, 2026-11-20); the sakt
+  // (وَّمَتَٰعٌۜ) and the ha's damma (وُّجُوهِهُمُ) of the second word too.
+  testWidgets('Khalaf idgham into a word of ishmam colours its sad', (t) async {
+    Color? colorOf(String key, String letter) => t
+        .widget<InkText>(find.byKey(ValueKey('word:$key')))
+        .parts!
+        .firstWhere((p) => p.$1.startsWith(letter))
+        .$2;
+    await glowing(t, 181, khalaf(181));
+    expect(colorOf('8:35:6', 'ص'), ReadingColors.ishmam);
+    await glowing(t, 6, khalaf(6));
+    expect(colorOf('2:36:15', 'ع'), ReadingColors.saktHamza);
+    await glowing(t, 325, khalaf(325));
+    expect(colorOf('21:39:7', 'هُ'), isNotNull);
+  });
 }

@@ -36,6 +36,120 @@ void main() {
       if (v[0] == s && v[1] == a && v[2] == w) v,
   ];
 
+  test("Hisham's stop on a hamza after a waw or ya of the root: the naql too", () {
+    // «سُوٓءَ ٱلۡعَذَابِ» (البقرة ٤٩) moved onto as well as merged, as Hamza's
+    // (التوثيق للتسهيل; the user, 2026-11-20); «بَرِيٓءٞ» merged alone.
+    final suu = at(
+      'hisham',
+      2,
+      49,
+      6,
+    ).singleWhere((v) => v[7] == 'hisham_waqf');
+    expect((suu[8] as Map)['ways'], [
+      'إبدالها من جنس ما قبلها وإدغامه فيه مع السكون المحض',
+      'نقل حركتها إلى الساكن قبلها مع السكون المحض',
+    ]);
+    final bari = at(
+      'hisham',
+      6,
+      19,
+      34,
+    ).singleWhere((v) => v[7] == 'hisham_waqf');
+    expect(
+      ((bari[8] as Map)['ways'] as List).any((w) => '$w'.contains('نقل')),
+      isFalse,
+    );
+  });
+
+  test("the book's «وعلى كل» told once after the two faces of «شيء»", () {
+    // «بِكُلِّ شَيۡءٍ» (البقرة ٢٣١): the naql and the merging, then the sukun
+    // and the rawm once, no ishmam with the kasra (the user, 2026-11-20).
+    List faces(String at) => [
+      for (final f
+          in ((book['entries'] as List).firstWhere(
+                (e) => '${e[0]}:${e[1]}:${e[2]}' == at,
+              ) as List)[5]
+              as List)
+        if (f[4] == true) f[3],
+    ];
+    expect(faces('2:231:43'), [
+      'النقل ـ نقل حركة الهمزة إلى الساكن قبلها مع حذف الهمزة، ثم تسكن الياء للوقف',
+      'الإدغام ـ إبدال الهمزة ياء وإدغام ما قبلها فيها',
+      'وعلى كلٍّ: السكون المحض والرَّوم',
+    ]);
+    // شَيۡءٞ with the damma: the ishmam too; شَيۡـٔٗا: none after the alif.
+    expect(
+      faces('2:178:19').last,
+      'وعلى كلٍّ: السكون المحض، والرَّوم، والإشمام',
+    );
+    expect(faces('2:216:9').any((h) => '$h'.contains('وعلى كل')), isFalse);
+    // «وَزَادَهُۥ» and «وَزَادَكُمۡ»: Ibn Dhakwan's dispute told by him first,
+    // and in the hamesh «بخلف» beside his row of the imala (the user,
+    // 2026-11-20).
+    for (final (key, s, a, w) in [
+      ('2:247:30', 2, 247, 30),
+      ('7:69:18', 7, 69, 18),
+      ('3:173:10', 3, 173, 10),
+      ('72:6:9', 72, 6, 9),
+    ]) {
+      final r =
+          ((book['entries'] as List).firstWhere(
+                (e) => '${e[0]}:${e[1]}:${e[2]}' == key && e[4] == 'mumal',
+              ) as List)[5]
+              as List;
+      expect(r.last, [
+        '',
+        [],
+        ['ibn_dhakwan'],
+        'بالإمالة والفتح، والإمالة أرجح أداء',
+        false,
+        false,
+        [],
+      ]);
+      final rows = at('ibn_dhakwan', s, a, w);
+      expect(rows.map((v) => v[6]), [
+        'بإمالة الألف بخلف عنه، والإمالة هي المقدّمة',
+        'بخلف',
+      ]);
+      expect((rows.last[8] as Map)['hamesh'], isTrue);
+    }
+    // The ishmam with the damma alone, never with the kasra (لِشَاْيۡءٍ).
+    expect(faces('18:23:2').last, 'وعلى كلٍّ: السكون المحض والرَّوم');
+    // «عمران» and «المحراب» of Ibn Dhakwan in the hamesh, each by its own
+    // word: the fath first in «عمران», the imala in the nasb «المحراب», the
+    // imala alone in the jarr (the user, 2026-11-20).
+    String hamesh(int s, int a, int w) => at(
+      'ibn_dhakwan',
+      s,
+      a,
+      w,
+    ).singleWhere((v) => v.length > 8 && (v[8] as Map)['hamesh'] == true)[6];
+    expect(hamesh(3, 33, 8), 'بخلف، والفتح هو المقدّم أداءً');
+    expect(hamesh(3, 37, 13), 'بخلف، والإمالة هي المقدّمة أداءً');
+    expect(hamesh(3, 39, 6), 'بالإمالة قولًا واحدًا');
+    expect(hamesh(19, 11, 4), 'بالإمالة قولًا واحدًا');
+    List entry(String key, String section) => ((book['entries'] as List).where(
+      (e) => '${e[0]}:${e[1]}:${e[2]}' == key && e[4] == section,
+    )).toList();
+    expect(
+      (entry('3:37:13', 'mumal').single[5] as List).single[3],
+      'الإمالة في «المحراب» هي المقدمة أداء',
+    );
+    // «في المحراب إنّ الله» (آل عمران ٣٩): three lines, no «الممال».
+    expect(entry('3:39:6', 'mumal'), isEmpty);
+    // What Hafs reads alike untold: «تُكۡفَرُوهُ» (آل عمران ١١٥) «بالتاء» without
+    // the ha's shortness, «يَحۡسَبَنَّ» (١٨٨) «بالياء» without the sin's fatha
+    // (the user, 2026-11-20).
+    for (final id in const ['hisham', 'ibn_dhakwan']) {
+      expect(at(id, 3, 115, 5).single[6], 'بالتاء');
+      expect(at(id, 3, 188, 1).single[6], 'بالياء');
+    }
+    expect(
+      [for (final g in entry('3:39:5', 'farsh').single[5] as List) g[3]],
+      ['', '(بالإمالة في «المحراب» قولًا واحدًا)', ''],
+    );
+  });
+
   test('the chapters of the guide, each for its readers', () {
     // «الصراط» for Khalaf everywhere, for Khallad in al-Fatiha alone.
     expect(
@@ -337,7 +451,7 @@ void main() {
     expect(waqf('khallad', 2, 31, 9, 'الهمز المتحرك بعد متحرك'), isNotEmpty);
     // «شيء» and «شَيۡـًٔا»: one faces for both narrators, neither first.
     for (final id in const ['khalaf_hamzah', 'khallad']) {
-      expect(waqf(id, 2, 48, 7, 'الوقف على «شيء» و«شيئًا»')['ways'], [
+      expect(waqf(id, 2, 48, 7, 'الهمز بعد واو أو ياء ساكنتين')['ways'], [
         'نقل حركتها إلى الساكن قبلها',
         'إبدالها من جنس ما قبلها وإدغامه فيه',
       ]);
@@ -813,6 +927,167 @@ void main() {
     )[4];
     expect(idgham(6, 158, 3), endsWith('أۡتِيَهُمُ'));
     expect(idgham(3, 75, 6), endsWith('ۜ'));
+  });
+
+  // Hamza's «ءَاتَىٰنِي ٱلۡكِتَٰبَ» (مريم ٣٠) in the rasm, its ya quiet (the user,
+  // 2026-11-20).
+  test('atani of Maryam in the rasm', () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final row = (load(id)['variants'] as List).cast<List>().singleWhere(
+        (v) => v[0] == 19 && v[1] == 30 && v[2] == 4 && v[5] == 'f',
+      );
+      expect(row[4], 'ءَاتَىٰنِي', reason: id);
+      expect(row[6], 'بإسكان الياء', reason: id);
+      expect((row[8] as Map).containsKey('vocalizationSource'), isFalse);
+    }
+  });
+
+  // «وَقَالَتۡ أُولَىٰهُمۡ» (الأعراف ٣٩) leaned as «لِأُولَىٰهُمۡ» of ٣٨; Warsh's
+  // taqlil of both with its other face (the user, 2026-11-20).
+  test('ulahum of al-A\'raf 39 leaned for al-Ashab, Warsh with his khulf', () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'duri_kisai',
+      'abul_harith',
+      'ishaq',
+      'idris',
+    ]) {
+      for (final (a, w) in const [(38, 25), (39, 1)]) {
+        expect(
+          (load(id)['variants'] as List).cast<List>().where(
+            (v) =>
+                v[0] == 7 &&
+                v[1] == a &&
+                v[2] == w &&
+                v[5] == 'u' &&
+                v[6] == 'بإمالة الألف',
+          ),
+          hasLength(1),
+          reason: '$id 7:$a',
+        );
+      }
+    }
+    for (final (a, w) in const [(38, 25), (39, 1)]) {
+      expect(
+        (load('warsh')['variants'] as List).cast<List>().where(
+          (v) =>
+              v[0] == 7 &&
+              v[1] == a &&
+              v[2] == w &&
+              '${v[6]}'.endsWith('بالتقليل بخلف'),
+        ),
+        hasLength(1),
+        reason: 'warsh 7:$a',
+      );
+    }
+  });
+
+  // «بَصۜۡطَةٗ» (الأعراف ٦٩): al-Kisa'i's sad drawn alike for all who read
+  // it; Ibn Dhakwan's and Khallad's khulf in the hamesh, Hafs's word with
+  // the small sin (the user, 2026-11-20).
+  test('bastatan of al-A\'raf 69', () {
+    List row(String id) =>
+        (load(id)['variants'] as List).cast<List>().singleWhere(
+          (v) => v[0] == 7 && v[1] == 69 && v[2] == 21 && v[5] == 'f',
+        );
+    for (final id in [
+      'qalun',
+      'warsh',
+      'bazzi',
+      'shubah',
+      'duri_kisai',
+      'abul_harith',
+      'rawh',
+      'ibn_wardan',
+      'ibn_jammaz',
+    ]) {
+      expect(row(id)[4], 'بَصۡطَةٗۖ', reason: id);
+      expect(row(id)[6], 'بالصاد', reason: id);
+    }
+    for (final id in ['ibn_dhakwan', 'khallad']) {
+      expect(row(id)[4], 'بَصۜۡطَةٗۖ', reason: id);
+      expect(row(id)[6], 'بخلف عنه، بالوجهين: السين والصاد', reason: id);
+      expect((row(id)[8] as Map)['hamesh'], isTrue, reason: id);
+      expect((row(id)[8] as Map)['ways'], ['السين', 'الصاد'], reason: id);
+    }
+  });
+
+  // The question's second hamza where Hafs tells (الأعراف ٨١، ١١٣، العنكبوت
+  // ٢٨): on its nabra for every reader, as Rawh's and Ruways's «أَئِنَّكُمۡ»;
+  // the eased one its dot, the idkhal the dagger alif (the user, 2026-11-20).
+  test('the question\'s second hamza on its nabra', () {
+    String text(String id, int s, int a, int w) =>
+        (load(id)['variants'] as List).cast<List>().singleWhere(
+          (v) => v[0] == s && v[1] == a && v[2] == w && v[5] != 'u',
+        )[4];
+    // Built from code points, the marks in the order the data keeps them.
+    String of(List<int> codes) => String.fromCharCodes(codes);
+    final hamzas = of([0x623, 0x64e, 0x626, 0x650]);
+    final kum =
+        '$hamzas${of([0x646, 0x651, 0x64e, 0x643, 0x64f, 0x645, 0x6e1])}';
+    final inna = '$hamzas${of([0x646, 0x651, 0x64e])}';
+    String idkhal(String s) => s.replaceFirst(of([0x64e]), of([0x64e, 0x670]));
+    String eased(String s) => s.replaceFirst(of([0x650]), of([0x650, 0x6ec]));
+    const ashab = [
+      'khalaf_hamzah',
+      'khallad',
+      'duri_kisai',
+      'abul_harith',
+      'ishaq',
+      'idris',
+    ];
+    for (final (s, a, w, base, readers) in [
+      (7, 113, 4, inna, [...ashab, 'shubah', 'ibn_dhakwan', 'rawh']),
+      (7, 81, 0, kum, [...ashab, 'shubah', 'ibn_dhakwan', 'rawh', 'ruways']),
+      (29, 28, 4, kum, [...ashab, 'shubah']),
+    ]) {
+      for (final id in readers) {
+        expect(text(id, s, a, w), base, reason: '$id $s:$a');
+      }
+      for (final id in ['duri_abuamr', 'susi']) {
+        expect(text(id, s, a, w), eased(idkhal(base)), reason: '$id $s:$a');
+      }
+    }
+    expect(text('hisham', 7, 113, 4), idkhal(inna));
+    expect(text('hisham', 7, 81, 0), idkhal(kum));
+    // Ruways's tasheel told by its own row, as in ٨١.
+    expect(text('ruways', 7, 113, 4), inna);
+    for (final id in ['bazzi', 'qunbul']) {
+      expect(
+        text(id, 7, 81, 0),
+        eased(kum).replaceFirst(
+          RegExp('${of([0x645, 0x6e1])}\$'),
+          of([0x645, 0x64f, 0x6e5]),
+        ),
+        reason: id,
+      );
+    }
+  });
+
+  // «دَكَّآءَ» (الأعراف ١٤٣): one description for all who read it so; no
+  // tanween, so none of Khalaf's idgham into «وَخَرَّ» (the user, 2026-11-20).
+  test('dakkaa of al-A\'raf 143', () {
+    for (final id in const [
+      'khalaf_hamzah',
+      'khallad',
+      'duri_kisai',
+      'abul_harith',
+      'ishaq',
+      'idris',
+    ]) {
+      final rows = (load(id)['variants'] as List).cast<List>().where(
+        (v) => v[0] == 7 && v[1] == 143 && v[2] == 28,
+      );
+      final farsh = rows.singleWhere((v) => v[5] == 'f');
+      expect(farsh[4], 'دَكَّآءَ', reason: id);
+      expect(farsh[6], 'بفتح الكاف دون التنوين مع زيادة الهمزة', reason: id);
+      expect(
+        rows.where((v) => v[7] == 'idgham_bila_ghunna'),
+        isEmpty,
+        reason: id,
+      );
+    }
   });
 
   test('imala before a sakin at the stop alone; mawa everywhere', () {

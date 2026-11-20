@@ -75,6 +75,83 @@ void main() {
     });
   }
 
+  // A word read alike in two places told once with «معًا», in more with
+  // «جميعًا»: «هَدَىٰنَا» (الأعراف ٤٣) in the usul, «ٱلۡبُيُوتَ» (البقرة ١٨٩)
+  // in the hamesh (the user, 2026-11-20).
+  testWidgets('a word read alike twice is told once with maan', (t) async {
+    addTearDown(t.view.reset);
+    t.view.physicalSize = const Size(900, 1400);
+    t.view.devicePixelRatio = 1;
+    expect(togetherNote(1), '');
+    expect(togetherNote(2), ' (معًا)');
+    expect(togetherNote(3), ' (جميعًا)');
+    Future<void> page(int page, Set<String> ids, String? shown) async {
+      final variants = VariantRepository(ids);
+      await t.runAsync(() => variants.ensureLoaded(ids));
+      await t.pumpWidget(
+        MaterialApp(
+          theme: buildTheme(MushafPalette.light),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: MushafPage(
+                page: page,
+                quran: quran,
+                variants: variants,
+                mutashabihat: mutashabihat,
+                settings: ReaderSettings.memory(selected: ids)
+                  ..page = page
+                  ..displayed = shown
+                  ..qcfFont = false,
+                onWordTap: (_, _) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pump();
+    }
+
+    // «لَبِثتَّ» and «بَل لَّبِثتَّ» (البقرة ٢٥٩) alike, the lam's shadda of the
+    // idgham before aside; «لَبِثتُّ» alone (the user, 2026-11-20).
+    await page(43, {'ibn_dhakwan'}, 'ibn_dhakwan');
+    expect(
+      find.byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            (w.key! as ValueKey<String>).value.startsWith('usul-together:') &&
+            (w.key! as ValueKey<String>).value.endsWith(':2:259:24:2'),
+      ),
+      findsOneWidget,
+    );
+
+    await page(155, {'khalaf_hamzah'}, 'khalaf_hamzah');
+    expect(
+      find.byKey(const ValueKey('usul-together:الإمالة:7:43:14:2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        const ValueKey('usul-reference:الإمالة:7:43:21:khalaf_hamzah'),
+      ),
+      findsNothing,
+    );
+    await page(29, {'khalaf_hamzah', 'shubah', 'qalun'}, null);
+    final buyut = find.byKey(const ValueKey('margin-reference:2:189:12'));
+    expect(buyut, findsOneWidget);
+    expect(
+      find.descendant(
+        of: buyut,
+        matching: find.textContaining('معًا', findRichText: true),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('margin-reference:2:189:20')),
+      findsNothing,
+    );
+  });
+
   test('the first of two sakins tells its letter, joined', () {
     expect(
       firstSakinNote('بضم نون التنوين وصلاً لالتقاء الساكنين'),
@@ -105,6 +182,30 @@ void main() {
       farsh,
       compared,
     ]);
+    // Khalaf's idgham over the farsh's word (مِّن وِّلَٰيَتِهِم، الأنفال ٧٢): the
+    // farsh's witness alone (the user, 2026-11-20).
+    const idgham = Variant(
+      riwayaId: 'khalaf_hamzah',
+      surah: 8,
+      ayah: 72,
+      word: 23,
+      count: 2,
+      text: 'مِّن وِّلَٰيَتِهِم',
+      kind: VariantKind.usul,
+      description: 'بإدغام النون في الواو بلا غنة',
+      rule: 'idgham_bila_ghunna',
+    );
+    const wilaya = Variant(
+      riwayaId: 'khalaf_hamzah',
+      surah: 8,
+      ayah: 72,
+      word: 24,
+      count: 1,
+      text: 'وِلَٰيَتِهِم',
+      kind: VariantKind.farsh,
+      description: 'بكسر الواو',
+    );
+    expect(citedReadings([idgham, wilaya]), [wilaya]);
   });
 
   test("Ibn Wardan's «مِلُ» is told in the naql, not the hamza", () {

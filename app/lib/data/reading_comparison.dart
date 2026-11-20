@@ -422,9 +422,14 @@ List<Variant> citedReadings(List<Variant> readings) {
     for (final v in readings)
       if (farsh(v)) v.word,
   };
+  // An asl over two words, one of them a farsh (Khalaf's «مِّن وِّلَٰيَتِهِم»
+  // with «بكسر الواو»): the farsh's witness alone (the user, 2026-11-20).
+  bool overFarsh(Variant v) =>
+      [for (var w = v.word; w < v.word + v.count; w++) w]
+          .any(withFarsh.contains);
   return [
     for (final v in readings)
-      if (!v.isUsul || !withFarsh.contains(v.word)) v,
+      if (!v.isUsul || !overFarsh(v)) v,
   ];
 }
 

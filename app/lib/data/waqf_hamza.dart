@@ -8,7 +8,6 @@ library;
 const waqfHamzaKinds = [
   'الوقف على لام التعريف',
   'الوقف على الساكن المفصول',
-  'الوقف على «شيء» و«شيئًا»',
   'الهمز الساكن',
   'الهمز المتحرك بعد ساكن صحيح',
   'الهمز المتوسط بعد ألف',
@@ -85,7 +84,6 @@ String waqfHamzaKindAt(String word, int k) {
   final c = cs[k];
   final before = k > 0 ? cs[k - 1] : null;
   final last = cs.sublist(k + 1).every((x) => x.base == 'ا');
-  final bare = _bare(cs);
   if (before == null) return 'الوقف على الساكن المفصول';
   if (before.base == 'ل' &&
       k >= 2 &&
@@ -96,7 +94,6 @@ String waqfHamzaKindAt(String word, int k) {
       _vowelOf(before) == '') {
     return 'الوقف على لام التعريف';
   }
-  if (RegExp('شيء').hasMatch(bare)) return 'الوقف على «شيء» و«شيئًا»';
   if (_vowelOf(c) == '' && c.base != 'آ' && !last) return 'الهمز الساكن';
   if (_prefixed(cs, k)) return 'الهمز المتوسط بحرف زائد';
   if (before.base == 'ا' || before.base == 'آ' || before.marks.contains('ٰ')) {

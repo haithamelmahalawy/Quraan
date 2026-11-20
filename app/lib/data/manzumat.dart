@@ -233,6 +233,8 @@ class Manzumat {
             // bayt, after the Durrah's two.
             (_idghamQad(reading, hafs) ||
                     _idghamTa(reading, hafs) ||
+                    _idghamIdh(reading, hafs) ||
+                    _idghamHalBal(reading, hafs) ||
                     _raaaAnam(reading).isNotEmpty) &&
                 Poem.of(reading.riwayaId) == Poem.durrah ||
             (_idghamDhal(reading, hafs) ||
@@ -996,6 +998,36 @@ class Manzumat {
       ((v.text.isNotEmpty ? v.text : hafs).contains(' ') ||
           v.description.contains('الدال'));
 
+  /// The dhal of «إِذۡ» merged (إِذ تَّبَرَّأَ، وَإِذ جَّعَلۡنَا): «ذِكْرُ ذَالِ إِذْ»,
+  /// «نَعَمْ إِذْ تَمَشَّتْ زَيْنَبٌ ...» to «وَأَدْغَمَ ضَنْكاً ...» (the user,
+  /// 2026-11-20).
+  static bool _idghamIdh(Variant v, [String hafs = '']) {
+    if (v.rule != 'idgham_saghir') return false;
+    final text = v.text.isNotEmpty ? v.text : hafs;
+    return RegExp(r'^[وف]?اذ$').hasMatch(_letters(text.split(' ').first)) &&
+        (text.contains(' ') || v.description.contains('الذال'));
+  }
+
+  /// The lam of «هَلۡ» and «بَلۡ» merged (هَل تَّنقِمُونَ، بَل طَّبَعَ): «ذِكْرُ لامِ
+  /// هَلْ وَبَلْ», «أَلاَ بَلْ وَهَلْ تَرْوِي ...» to «وَأَظْهِرْ لَدَى وَاعٍ ...» (the
+  /// user, 2026-11-20).
+  static bool _idghamHalBal(Variant v, [String hafs = '']) {
+    // Not «بَلۡۜ رَانَ», Hafs's sakt, told with «وَالْبَاقُونَ لاَ سَكْتَ».
+    if (v.rule != 'idgham_saghir' || v.surah == 83 && v.ayah == 14) {
+      return false;
+    }
+    final text = v.text.isNotEmpty ? v.text : hafs;
+    return RegExp(r'^[وف]?(هل|بل)$')
+            .hasMatch(_letters(text.split(' ').first)) &&
+        (text.contains(' ') || v.description.contains('اللام'));
+  }
+
+  /// «لَبِثۡتَ، لَبِثۡتُمۡ» merged: «ثَوَابَ لَبِثْتَ الْفَرْدَ وَالجَمْعُ وَصَّلَا»
+  /// (the user, 2026-11-20).
+  static bool _idghamLabith(Variant v, [String hafs = '']) =>
+      v.rule == 'idgham_saghir' &&
+      _letters(v.text.isNotEmpty ? v.text : hafs).contains('لبث');
+
   /// The ta of the feminine merged (حَمَلَت ظُّهُورُهُمَآ، أَنۢبَتَت سَّبۡعَ):
   /// «ذِكْرُ تَاءِ التَّأْنِيثِ», «وَأَبْدَتْ سَنَا ثَغْرٍ صَفَتْ زُرْقُ ظَلْمِهِ ...
   /// فَإِظْهَارُهُ دُرٌّ نَمَتْهُ بُدُورُهُ» (the user, 2026-11-19). The verb's quiet
@@ -1350,6 +1382,14 @@ class Manzumat {
     // اللاَّءِ هَا أَنْتُمْ وَحَقِّقْهُمَا حَلَا».
     if (v.rule == 'hamza_mutatarrif') {
       return poem == Poem.durrah ? {33, 34} : {965, 966};
+    }
+    // «أُورِثۡتُمُوهَا» (الأعراف ٤٣، الزخرف ٧٢) merged, for every riwaya that
+    // reads it so: «... وَأُورِثْتُمُوا حَـ / لَا لَهُ شَرْعُهُ ...» (the user,
+    // 2026-11-20).
+    if (poem == Poem.shatibiyya &&
+        v.description.contains('إدغام') &&
+        _letters(v.text.isNotEmpty ? v.text : hafs).contains('ورثتموها')) {
+      return {279, 280};
     }
     // «التقاء الساكنين», all its places (فَمَنِ ٱضۡطُرَّ، قُلِ ٱدۡعُواْ،
     // مَحۡظُورًا ٱنظُرۡ), for every riwaya that reads it so: «وَضَمُّكَ أَولَى
@@ -3190,6 +3230,17 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _idghamDhal(v, hafs)) return {283};
     if (poem == Poem.shatibiyya && _idghamQad(v, hafs)) return {262, 263};
     if (poem == Poem.shatibiyya && _idghamTa(v, hafs)) return {266, 267};
+    if (poem == Poem.shatibiyya && _idghamIdh(v, hafs)) return {259, 260, 261};
+    if (poem == Poem.shatibiyya && _idghamHalBal(v, hafs)) {
+      return {270, 271, 272, 273};
+    }
+    if (poem == Poem.shatibiyya && _idghamLabith(v, hafs)) return {282};
+    // Khalaf's idgham of the nun and the tanween in the waw and the ya
+    // without the ghunna: «وَفِي الْوَاوِ وَالْيَا دُونَهَا خَلَفٌ تَلَا» (the
+    // user, 2026-11-20).
+    if (poem == Poem.shatibiyya && v.rule == 'idgham_bila_ghunna') {
+      return {287};
+    }
     if (poem == Poem.shatibiyya && _hamzaSirat(v, hafs).isNotEmpty) {
       return _hamzaSirat(v, hafs);
     }
@@ -3376,6 +3427,10 @@ class Manzumat {
       if (poem == Poem.shatibiyya && _idghamDhal(v, hafs)) {283},
       if (poem == Poem.shatibiyya && _idghamQad(v, hafs)) {262, 263},
       if (poem == Poem.shatibiyya && _idghamTa(v, hafs)) {266, 267},
+      if (poem == Poem.shatibiyya && _idghamIdh(v, hafs)) {259},
+      if (poem == Poem.shatibiyya && _idghamHalBal(v, hafs)) {270},
+      if (poem == Poem.shatibiyya && _idghamLabith(v, hafs)) {282},
+      if (poem == Poem.shatibiyya && v.rule == 'idgham_bila_ghunna') {287},
       if (poem == Poem.shatibiyya) _hamzaSirat(v, hafs),
       if (poem == Poem.shatibiyya) _raaaAnam(v),
       _nafiHamza(poem, v),
