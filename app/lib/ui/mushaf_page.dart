@@ -2997,11 +2997,14 @@ class _MushafPageState extends State<MushafPage>
         before.isNotEmpty && _glows(before);
   }
 
-  Widget _word(Ayah ayah, int w, double fontSize, [int kashida = 0]) {
+  Widget _word(Ayah ayah, int w, double pageSize, [int kashida = 0]) {
     final m = _mark(ayah, w);
     final shown = _display(ayah, w)!;
     // Not the page glyphs of the Madinah print: letters to colour and draw out.
     final hafsFont = !shown.font.startsWith('QCF_');
+    // Among the print's words a little smaller, with every sign drawn on it
+    // (the sakt's, the hamza's) at its own size, in its place.
+    final fontSize = hafsFont && _pageQcf ? pageSize * hafsInPrint : pageSize;
     final own = hafsFont
         ? _waslDamm(ayah, w, shown.text) ?? _letterParts(ayah, w, shown.text)
         : null;
@@ -3064,7 +3067,7 @@ class _MushafPageState extends State<MushafPage>
     Widget ink(String drawn, [int? hiddenHamza]) {
       final style = TextStyle(
         fontFamily: shown.font,
-        fontSize: hafsFont && _pageQcf ? fontSize * hafsInPrint : fontSize,
+        fontSize: fontSize,
         height: 1,
         color: coloured != null
             ? MushafColors.ink
