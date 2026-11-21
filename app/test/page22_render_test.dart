@@ -72,7 +72,9 @@ void main() {
         (w) =>
             w is InkText && (w.style.fontFamily?.startsWith('QCF_') ?? false),
       );
-      expect(engraved, findsNothing);
+      // The print's words where Hafs's are drawn, the editable font only
+      // for Warsh's (the user, 2026-11-21: the two mixed).
+      expect(engraved, findsWidgets);
       await expectLater(
         find.byType(MushafPage),
         matchesGoldenFile('goldens/p22_hafs_warsh_qcf.png'),
@@ -113,8 +115,13 @@ void main() {
       await t.pumpAndSettle();
       final marker = find.byKey(const ValueKey('partition:2:142'));
       expect(marker, findsOneWidget, reason: '$id');
+      // Hafs alone in the print's words, the ۞ its word's own (the user,
+      // 2026-11-21): the name told by the word, no marker drawn again.
+      final w = t.widget(marker);
       expect(
-        PartitionMarker.label(t.widget<PartitionMarker>(marker).ayah),
+        w is PartitionMarker
+            ? PartitionMarker.label(w.ayah)
+            : (w as Tooltip).message,
         'بداية الجزء 2',
       );
       expect(t.takeException(), isNull, reason: '$id');
@@ -129,14 +136,21 @@ void main() {
           )
           .toList();
       expect(words, isNotEmpty);
-      expect(words.map((w) => w.style.fontFamily).toSet(), {
-        'Hafs',
-      }, reason: '$id');
-      expect(
-        words.map((w) => w.style.fontSize).toSet(),
-        hasLength(1),
-        reason: '$id',
-      );
+      // The print's words, the editable font for a word with a reading of
+      // its own, a little smaller (the user, 2026-11-21).
+      final fonts = words.map((w) => w.style.fontFamily).toSet();
+      expect(fonts.difference({'QCF_P22', 'Hafs'}), isEmpty, reason: '$id');
+      if (id == null) expect(fonts, {'QCF_P22'});
+      for (final font in fonts) {
+        expect(
+          words
+              .where((w) => w.style.fontFamily == font)
+              .map((w) => w.style.fontSize)
+              .toSet(),
+          hasLength(1),
+          reason: '$id $font',
+        );
+      }
     }
   });
   testWidgets('engraved QCF words still use a single fill pass', (t) async {

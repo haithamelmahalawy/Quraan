@@ -93,6 +93,16 @@ int _imala(
             if (_imalaStem(index[_key(s, a, i)]!.t) == _imalaStem(word.t) &&
                 done.add('${_key(s, a, i)}:$stop'))
               i,
+        // Another word the book names with it in the ayah («جاء» معاً،
+        // «شاء», يونس ٤٩: شَآءَ before جَآءَ, the user, 2026-11-21).
+        for (final m in RegExp('«([^»]+)»').allMatches('${g[3]}'))
+          if (_imalaStem(m[1]!) != _imalaStem(word.t))
+            for (var i = 0; index.containsKey(_key(s, a, i)); i++)
+              if (_imalaStem(index[_key(s, a, i)]!.t)
+                          .replaceFirst(RegExp('^[وف]'), '') ==
+                      _imalaStem(m[1]!) &&
+                  done.add('${_key(s, a, i)}:$stop'))
+                i,
       ];
       // Ibn Dhakwan's row where he reads it alike, by the same name.
       final his = (ibnDhakwan[_key(s, a, w)] ?? const <List>[])

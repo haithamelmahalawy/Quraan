@@ -110,7 +110,10 @@ void main() {
       expect(rows.map((v) => v[6]), [
         'بإمالة الألف بخلف عنه، والإمالة هي المقدّمة',
       ]);
-      expect((rows.single[8] as Map)['bandNote'], 'بخلف عنه');
+      expect(
+        (rows.single[8] as Map)['bandNote'],
+        'بخلف عنه، والإمالة هي المقدّمة أداءً',
+      );
     }
     // The ishmam with the damma alone, never with the kasra (لِشَاْيۡءٍ).
     expect(faces('18:23:2').last, 'وعلى كلٍّ: السكون المحض والرَّوم');
@@ -123,10 +126,11 @@ void main() {
     String hamesh(int s, int a, int w) =>
         (at('ibn_dhakwan', s, a, w).single[8] as Map)['bandNote'];
     expect(hamesh(3, 33, 8), 'بخلف عنه، والفتح هو المقدّم أداءً');
-    expect(hamesh(3, 37, 13), 'بخلف عنه');
+    expect(hamesh(3, 37, 13), 'بخلف عنه، والإمالة هي المقدّمة أداءً');
     // «حِمَارِكَ» (البقرة ٢٥٩) and every disputed imala of his alike: «بخلف
     // عنه» in the usul, both faces in the book's note (the user, 2026-11-21).
-    expect(hamesh(2, 259, 44), 'بخلف عنه');
+    // The face preferred told there too, as the book (the user, 2026-11-21).
+    expect(hamesh(2, 259, 44), 'بخلف عنه، والإمالة هي المقدّمة أداءً');
     expect(
       (entry('2:259:44', 'mumal').single[5] as List).singleWhere(
         (f) => (f[2] as List).contains('ibn_dhakwan'),

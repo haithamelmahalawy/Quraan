@@ -41,6 +41,10 @@ class MushafLines extends StatelessWidget {
     this.marker,
     this.wordMarker,
     this.wordGap,
+    this.basmala,
+    this.hafsScale = 1,
+    this.partitionBand,
+    this.partitionRight = true,
     this.height,
     this.onTapNearest,
   });
@@ -57,6 +61,74 @@ class MushafLines extends StatelessWidget {
 
   /// Defaults to the Hafs word in the Hafs font.
   final WordDisplay? display;
+
+  /// The basmala's text and font; defaults to al-Fatiha's in the Hafs font.
+  final ({String text, String font})? basmala;
+
+  /// The size of a word in the Hafs font among the print's words, to the
+  /// page's (its word builder draws it so).
+  final double hafsScale;
+
+  /// The width of the frame's band beside the lines: where a quarter
+  /// starts, its name («ربع الحزب ٣») is written in it, at the line, on the
+  /// page's outer side ([partitionRight]) as printed (the user, 2026-11-21).
+  /// None when null (full screen, no bands at the sides).
+  final double? partitionBand;
+  final bool partitionRight;
+
+  /// The name of the quarter that starts on [line], if one does.
+  static String? partitionOn(MushafLine line) {
+    if (line is! TextLine) return null;
+    for (final (a, w) in line.words) {
+      if (w == 0 && (a.rubStart != null || a.juzStart)) {
+        return PartitionMarker.label(a)
+            .replaceFirst('بداية ', '')
+            .replaceAllMapped(
+              RegExp('[0-9]'),
+              (m) => String.fromCharCode(0x0660 + int.parse(m[0]!)),
+            );
+      }
+    }
+    return null;
+  }
+
+  Widget _partition(String label, double lineHeight) {
+    final band = partitionBand!;
+    return Positioned(
+      top: 0,
+      bottom: 0,
+      width: band,
+      right: partitionRight ? -band : null,
+      left: partitionRight ? null : -band,
+      child: Center(
+        child: RotatedBox(
+          quarterTurns: partitionRight ? 1 : 3,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Container(
+              key: ValueKey('partition-label:$label'),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: MushafColors.page,
+                border: Border.all(color: MushafColors.gold, width: 0.8),
+                borderRadius: BorderRadius.circular(band),
+              ),
+              child: Text(
+                label,
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  fontFamily: 'Hafs',
+                  fontSize: band * 0.62,
+                  height: 1.2,
+                  color: MushafColors.green,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   /// The ayah-end ornament; defaults to the number in the Hafs font.
   final ({String text, String font})? Function(Ayah ayah)? marker;
@@ -129,32 +201,50 @@ class MushafLines extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (final line in lines)
-              SizedBox(
-                height: lineHeight * line.span,
-                child: switch (line) {
-                  SurahNameLine(:final surah) => SurahBanner(
-                    title: 'سورة ${quran.surah(surah).nameAr}',
-                    fontSize: fontSize * 0.95,
-                    height: null,
-                  ),
-                  BasmalaLine() => Center(
-                    child: InkText(
-                      quran.basmala,
-                      style: _style(fontSize, 'Hafs'),
+              _withPartition(
+                line,
+                lineHeight,
+                SizedBox(
+                  height: lineHeight * line.span,
+                  child: switch (line) {
+                    SurahNameLine(:final surah) => SurahBanner(
+                      title: 'سورة ${quran.surah(surah).nameAr}',
+                      fontSize: fontSize * 0.95,
+                      height: null,
                     ),
-                  ),
-                  TextLine(:final words, centered: final short) => _textLine(
-                    words,
-                    fontSize,
-                    constraints.maxWidth,
-                    short,
-                    line,
-                  ),
-                },
+                    BasmalaLine() => Center(
+                      child: InkText(
+                        basmala?.text ?? quran.basmala,
+                        // The print's glyphs are drawn smaller than its text's.
+                        style: _style(
+                          basmala == null ? fontSize : fontSize * 1.15,
+                          basmala?.font ?? 'Hafs',
+                        ),
+                      ),
+                    ),
+                    TextLine(:final words, centered: final short) => _textLine(
+                      words,
+                      fontSize,
+                      constraints.maxWidth,
+                      short,
+                      line,
+                    ),
+                  },
+                ),
               ),
           ],
         );
       },
+    );
+  }
+
+  /// [child], with the name of the quarter starting on [line] in the band.
+  Widget _withPartition(MushafLine line, double lineHeight, Widget child) {
+    final label = partitionBand == null ? null : partitionOn(line);
+    if (label == null) return child;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [child, _partition(label, lineHeight)],
     );
   }
 
@@ -301,7 +391,15 @@ class MushafLines extends StatelessWidget {
     );
     if (!shown) return marker;
     Widget word = wordBuilder(ayah, w, fontSize, kashida);
-    if (w == 0 && (ayah.rubStart != null || ayah.juzStart)) {
+    // The print's word carries its own ۞: told, not drawn again.
+    final printed = _show(ayah, w)!.font.startsWith('QCF_');
+    if (w == 0 && (ayah.rubStart != null || ayah.juzStart) && printed) {
+      word = Tooltip(
+        key: ValueKey('partition:${ayah.surah}:${ayah.number}'),
+        message: PartitionMarker.label(ayah),
+        child: word,
+      );
+    } else if (w == 0 && (ayah.rubStart != null || ayah.juzStart)) {
       word = Row(
         mainAxisSize: MainAxisSize.min,
         textDirection: TextDirection.rtl,
@@ -350,9 +448,14 @@ class MushafLines extends StatelessWidget {
     for (final (ayah, i) in words) {
       final shown = _show(ayah, i);
       if (shown != null) {
-        w += _measure(shown.text, shown.font);
+        w +=
+            _measure(shown.text, shown.font) *
+            (shown.font == 'Hafs' ? hafsScale : 1);
         w += (wordGap?.call(ayah, i) ?? 0) * _probe;
-        if (i == 0 && (ayah.rubStart != null || ayah.juzStart)) {
+        // The print's word has its ۞ in it.
+        if (i == 0 &&
+            (ayah.rubStart != null || ayah.juzStart) &&
+            !shown.font.startsWith('QCF_')) {
           w += _measure('۞', 'Hafs') * .8;
         }
         font ??= shown.font;

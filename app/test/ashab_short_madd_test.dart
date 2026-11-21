@@ -125,6 +125,32 @@ void main() {
       findsOneWidget,
     );
 
+    // Ibn Dhakwan's «شَآءَ» thrice on p42 (البقرة ٢٥٣، ٢٥٣، ٢٥٥), «جميعًا»
+    // (the user, 2026-11-21).
+    await page(42, {'ibn_dhakwan'}, 'ibn_dhakwan');
+    expect(
+      find.byKey(const ValueKey('usul-together:الإمالة:2:253:22:3')),
+      findsOneWidget,
+    );
+    const shaa = {'ibn_dhakwan', 'khalaf_hamzah', 'khallad', 'ishaq', 'idris'};
+    final loaded = VariantRepository(shaa);
+    await t.runAsync(() => loaded.ensureLoaded(shaa));
+    List<Variant> variants0(String id, int s, int a, int w) =>
+        loaded.at([id], s, a, w).toList();
+    for (final (s, a, w) in const [(18, 29, 8), (10, 49, 9)]) {
+      expect(
+        variants0('ibn_dhakwan', s, a, w).any((v) => v.isImala),
+        isTrue,
+        reason: '$s:$a:$w',
+      );
+    }
+    for (final id in const ['khalaf_hamzah', 'khallad', 'ishaq', 'idris']) {
+      expect(
+        variants0(id, 10, 49, 9).any((v) => v.isImala),
+        isTrue,
+        reason: id,
+      );
+    }
     await page(155, {'khalaf_hamzah'}, 'khalaf_hamzah');
     expect(
       find.byKey(const ValueKey('usul-together:الإمالة:7:43:14:2')),

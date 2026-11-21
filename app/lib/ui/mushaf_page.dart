@@ -232,6 +232,24 @@ class _MushafPageState extends State<MushafPage>
   bool _pinching = false;
   bool _pageQcf = false;
 
+  /// A word in the editable font among the print's words is drawn this much
+  /// smaller, its letters as large as theirs.
+  static const hafsInPrint = 0.9;
+
+  /// The basmala of a surah's head in the print's calligraphy: al-Fatiha's
+  /// first ayah in the first page's font (the user, 2026-11-21), when the
+  /// page is drawn so and that font is ready.
+  ({String text, String font})? get _basmala {
+    if (!_pageQcf || !QcfFonts.instance.isReady(1)) return null;
+    final first = widget.quran.page(1).first;
+    final glyphs = first.glyphs;
+    if (glyphs == null) return null;
+    return (
+      text: glyphs.where((g) => g.isNotEmpty).join(' '),
+      font: QcfFonts.family(1),
+    );
+  }
+
   bool get _showFarshMargins =>
       widget.showHamesh &&
       (widget.settings.mode == DisplayMode.hamesh ||
@@ -283,17 +301,10 @@ class _MushafPageState extends State<MushafPage>
     // The riwayat or their data may have changed since the last build.
     _readingsMemo.clear();
     final ayahs = widget.quran.page(widget.page);
-    // Page glyphs and the editable Hafs font have different visual scales.
-    // If one word needs editable letters, use that font for the whole page.
-    _pageQcf =
-        widget.qcf &&
-        !_nativeNumbering &&
-        ayahs.every(
-          (ayah) => ayah.words.indexed.every((entry) {
-            final shown = _displayWord(ayah, entry.$1, qcf: true);
-            return shown == null || shown.font.startsWith('QCF_');
-          }),
-        );
+    // The print's words wherever a word is Hafs's own, the editable font
+    // only for a word with a reading or a sign of its own (the user,
+    // 2026-11-21: the two mixed, the page in the print's calligraphy).
+    _pageQcf = widget.qcf && !_nativeNumbering;
     final s = widget.settings;
     final narrow = MediaQuery.sizeOf(context).width < 600;
 
@@ -539,6 +550,10 @@ class _MushafPageState extends State<MushafPage>
                   onTapNearest: widget.onWordTap,
                   display: _display,
                   marker: _marker,
+                  basmala: _basmala,
+                  hafsScale: _pageQcf ? hafsInPrint : 1,
+                  partitionBand: OrnamentFrame.sideInset(true, _opening),
+                  partitionRight: widget.quran.isRightPage(widget.page),
                   wordMarker: _nativeNumbering ? _wordMarker : null,
                   wordGap: _wordGap,
                   height: textHeight,
@@ -806,6 +821,8 @@ class _MushafPageState extends State<MushafPage>
       onTapNearest: widget.onWordTap,
       display: _display,
       marker: _marker,
+      basmala: _basmala,
+      hafsScale: _pageQcf ? hafsInPrint : 1,
       wordMarker: _nativeNumbering ? _wordMarker : null,
       wordGap: _wordGap,
     ).metrics(textWidth);
@@ -872,6 +889,12 @@ class _MushafPageState extends State<MushafPage>
                       onTapNearest: widget.onWordTap,
                       display: _display,
                       marker: _marker,
+                      basmala: _basmala,
+                      hafsScale: _pageQcf ? hafsInPrint : 1,
+                      partitionBand: sides
+                          ? OrnamentFrame.sideInset(sides, _opening)
+                          : null,
+                      partitionRight: widget.quran.isRightPage(widget.page),
                       wordMarker: _nativeNumbering ? _wordMarker : null,
                       wordGap: _wordGap,
                       height: textHeight,
@@ -1144,6 +1167,10 @@ class _MushafPageState extends State<MushafPage>
       onTapNearest: widget.onWordTap,
       display: _display,
       marker: _marker,
+      basmala: _basmala,
+      hafsScale: _pageQcf ? hafsInPrint : 1,
+      partitionBand: sides ? OrnamentFrame.sideInset(sides, _opening) : null,
+      partitionRight: widget.quran.isRightPage(widget.page),
       wordMarker: _nativeNumbering ? _wordMarker : null,
       wordGap: _wordGap,
       height: textHeight,
@@ -1820,9 +1847,9 @@ class _MushafPageState extends State<MushafPage>
         font: 'Hafs',
       );
     }
-    final glyph = qcf && !(w == 0 && (ayah.rubStart != null || ayah.juzStart))
-        ? (ayah.glyphs?[w])
-        : null;
+    // The first word of a quarter with its ۞, as printed (the user,
+    // 2026-11-21): the marker beside it is then not drawn again.
+    final glyph = qcf ? (ayah.glyphs?[w]) : null;
     // Drawn with the word before.
     if (glyph != null && glyph.isEmpty) return null;
     // The sign is the shown riwaya's own: a riwaya of the hamesh shades the
@@ -3037,7 +3064,7 @@ class _MushafPageState extends State<MushafPage>
     Widget ink(String drawn, [int? hiddenHamza]) {
       final style = TextStyle(
         fontFamily: shown.font,
-        fontSize: fontSize,
+        fontSize: hafsFont && _pageQcf ? fontSize * hafsInPrint : fontSize,
         height: 1,
         color: coloured != null
             ? MushafColors.ink
