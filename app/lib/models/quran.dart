@@ -68,7 +68,13 @@ class Variant {
     this.hamesh = false,
     this.bandOnly = false,
     this.noBand = false,
+    this.bandNote = '',
   });
+
+  /// A word on the reading told beside the word in the usul below the page,
+  /// under its chapter (Ibn Dhakwan's «وَزَادَهُۥ (بخلف)», the user,
+  /// 2026-11-21), not in the hamesh of the farsh.
+  final String bandNote;
 
   /// Told in the usul below the page alone (رَءَا كَوۡكَبٗا، الأنعام ٧٦, the two
   /// words): never drawn, coloured nor in the hamesh (the user, 2026-11-19).
@@ -250,6 +256,7 @@ class Variant {
     hamesh: hamesh,
     bandOnly: bandOnly,
     noBand: noBand,
+    bandNote: bandNote,
   );
 
   /// A reading with imala (or taqlil, the lesser imala).

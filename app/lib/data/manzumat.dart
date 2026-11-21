@@ -564,6 +564,7 @@ class Manzumat {
     ownWays: v.ownWays,
     bandOnly: v.bandOnly,
     noBand: v.noBand,
+    bandNote: v.bandNote,
     omission: v.omission,
     usulText: v.usulText,
     usulWays: v.usulWays,

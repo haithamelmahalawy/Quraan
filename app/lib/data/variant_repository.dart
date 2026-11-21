@@ -282,6 +282,7 @@ Map<int, List<Variant>> _index((String, String, String?, String?) input) {
       hamesh: v.length > 8 && (v[8] as Map)['hamesh'] == true,
       bandOnly: v.length > 8 && (v[8] as Map)['bandOnly'] == true,
       noBand: v.length > 8 && (v[8] as Map)['noBand'] == true,
+      bandNote: v.length > 8 ? (v[8] as Map)['bandNote'] as String? ?? '' : '',
       usulText: v.length > 8 ? (v[8] as Map)['context'] as String? ?? '' : '',
       usulWays: v.length > 8
           ? ((v[8] as Map)['ways'] as List? ?? const []).cast<String>()

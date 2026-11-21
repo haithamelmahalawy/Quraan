@@ -172,6 +172,9 @@ int _imala(
             if (stop) 'stopOnly': true,
             if (khulf) 'ways': [taqlil ? 'التقليل' : 'الإمالة', 'الفتح'],
             if (khulf) 'ownWays': true,
+            // Told beside the word in the usul (حِمَارِكَ (بخلف عنه), the
+            // user, 2026-11-21); not the ha of every stop.
+            if (khulf && !ha) 'bandNote': 'بخلف عنه',
           },
         ]);
         n++;

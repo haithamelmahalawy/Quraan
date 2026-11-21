@@ -84,8 +84,8 @@ void main() {
     );
     expect(faces('2:216:9').any((h) => '$h'.contains('وعلى كل')), isFalse);
     // «وَزَادَهُۥ» and «وَزَادَكُمۡ»: Ibn Dhakwan's dispute told by him first,
-    // and in the hamesh «بخلف» beside his row of the imala (the user,
-    // 2026-11-20).
+    // and «بخلف» beside his word in the usul, under the imala, not in the
+    // hamesh (the user, 2026-11-20, 2026-11-21).
     for (final (key, s, a, w) in [
       ('2:247:30', 2, 247, 30),
       ('7:69:18', 7, 69, 18),
@@ -101,7 +101,7 @@ void main() {
         '',
         [],
         ['ibn_dhakwan'],
-        'بالإمالة والفتح، والإمالة أرجح أداء',
+        'بالإمالة والفتح، والراجح الإمالة',
         false,
         false,
         [],
@@ -109,31 +109,41 @@ void main() {
       final rows = at('ibn_dhakwan', s, a, w);
       expect(rows.map((v) => v[6]), [
         'بإمالة الألف بخلف عنه، والإمالة هي المقدّمة',
-        'بخلف',
       ]);
-      expect((rows.last[8] as Map)['hamesh'], isTrue);
+      expect((rows.single[8] as Map)['bandNote'], 'بخلف عنه');
     }
     // The ishmam with the damma alone, never with the kasra (لِشَاْيۡءٍ).
     expect(faces('18:23:2').last, 'وعلى كلٍّ: السكون المحض والرَّوم');
-    // «عمران» and «المحراب» of Ibn Dhakwan in the hamesh, each by its own
+    // «عمران» and «المحراب» of Ibn Dhakwan in the usul, each by its own
     // word: the fath first in «عمران», the imala in the nasb «المحراب», the
     // imala alone in the jarr (the user, 2026-11-20).
-    String hamesh(int s, int a, int w) => at(
-      'ibn_dhakwan',
-      s,
-      a,
-      w,
-    ).singleWhere((v) => v.length > 8 && (v[8] as Map)['hamesh'] == true)[6];
-    expect(hamesh(3, 33, 8), 'بخلف، والفتح هو المقدّم أداءً');
-    expect(hamesh(3, 37, 13), 'بخلف، والإمالة هي المقدّمة أداءً');
-    expect(hamesh(3, 39, 6), 'بالإمالة قولًا واحدًا');
-    expect(hamesh(19, 11, 4), 'بالإمالة قولًا واحدًا');
     List entry(String key, String section) => ((book['entries'] as List).where(
       (e) => '${e[0]}:${e[1]}:${e[2]}' == key && e[4] == section,
     )).toList();
+    String hamesh(int s, int a, int w) =>
+        (at('ibn_dhakwan', s, a, w).single[8] as Map)['bandNote'];
+    expect(hamesh(3, 33, 8), 'بخلف عنه، والفتح هو المقدّم أداءً');
+    expect(hamesh(3, 37, 13), 'بخلف عنه');
+    // «حِمَارِكَ» (البقرة ٢٥٩) and every disputed imala of his alike: «بخلف
+    // عنه» in the usul, both faces in the book's note (the user, 2026-11-21).
+    expect(hamesh(2, 259, 44), 'بخلف عنه');
+    expect(
+      (entry('2:259:44', 'mumal').single[5] as List).singleWhere(
+        (f) => (f[2] as List).contains('ibn_dhakwan'),
+      )[3],
+      'بالإمالة والفتح، والراجح الإمالة',
+    );
+    expect(
+      (entry('3:33:8', 'mumal').single[5] as List).singleWhere(
+        (f) => (f[2] as List).contains('ibn_dhakwan'),
+      )[3],
+      'بالإمالة والفتح، والراجح الفتح',
+    );
+    expect(hamesh(3, 39, 6), 'بالإمالة قولًا واحدًا');
+    expect(hamesh(19, 11, 4), 'بالإمالة قولًا واحدًا');
     expect(
       (entry('3:37:13', 'mumal').single[5] as List).single[3],
-      'الإمالة في «المحراب» هي المقدمة أداء',
+      'بالإمالة والفتح، والراجح الإمالة',
     );
     // «في المحراب إنّ الله» (آل عمران ٣٩): three lines, no «الممال».
     expect(entry('3:39:6', 'mumal'), isEmpty);

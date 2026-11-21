@@ -83,8 +83,15 @@ class KharoufSection extends StatelessWidget {
                       style: theme.textTheme.labelMedium,
                     ),
                   ),
-                for (final r in _mine(e))
-                  KharoufReadingText(reading: r, riwayat: riwayat),
+                for (final (i, r) in _mine(e).indexed)
+                  KharoufReadingText(
+                    reading: r,
+                    riwayat: riwayat,
+                    showReader:
+                        i == 0 ||
+                        KharoufReadingText.readerOf(_mine(e)[i - 1], riwayat) !=
+                            KharoufReadingText.readerOf(r, riwayat),
+                  ),
                 for (final v in showVerses ? e.verses : <String>[])
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
@@ -128,19 +135,28 @@ class KharoufReadingText extends StatelessWidget {
     super.key,
     required this.reading,
     required this.riwayat,
+    this.showReader = true,
   });
 
   final KharoufReading reading;
   final Set<String> riwayat;
 
+  /// Whether the reader is named: only on the first of his lines, the ones
+  /// after it with the same reader left bare until another comes (the user,
+  /// 2026-11-21).
+  final bool showReader;
+
+  /// The readers of [r] among [riwayat], as the line names them.
+  static String readerOf(KharoufReading r, Set<String> riwayat) => readersAr(
+    r.riwayat.where(riwayat.contains).toList(),
+    r.disputed.where(riwayat.contains).toList(),
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final r = reading;
-    final all = readersAr(
-      r.riwayat.where(riwayat.contains).toList(),
-      r.disputed.where(riwayat.contains).toList(),
-    );
+    final all = showReader ? readerOf(r, riwayat) : '';
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Text.rich(

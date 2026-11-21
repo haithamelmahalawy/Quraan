@@ -150,6 +150,41 @@ void main() {
       find.byKey(const ValueKey('margin-reference:2:189:20')),
       findsNothing,
     );
+    // Told together only when alike in everything: «إِبۡرَٰهَٰمَ» alone,
+    // «إِبۡرَٰهَٰمُ» twice «(معًا)» right after the word; Ibn Amir's two riwayat
+    // one line, the dispute of one told (البقرة ٢٥٨, the user, 2026-11-21).
+    await page(43, {'hisham', 'ibn_dhakwan'}, null);
+    String lineOf(String key) => t
+        .widgetList<RichText>(
+          find.descendant(
+            of: find.byKey(ValueKey('margin-reference:$key')),
+            matching: find.byType(RichText),
+          ),
+        )
+        .map((r) => r.text.toPlainText())
+        .firstWhere((l) => l.contains('ابن عامر'));
+    expect(lineOf('2:258:5'), isNot(contains('معًا')));
+    expect(lineOf('2:258:5'), contains('بخلف عن ابن ذكوان'));
+    final line = lineOf('2:258:14');
+    expect(line, startsWith('ابن عامر: '));
+    expect(line.indexOf('(معًا)'), lessThan(line.indexOf('بفتح الهاء')));
+    expect(
+      find.byKey(const ValueKey('margin-reference:2:258:24')),
+      findsNothing,
+    );
+    // «زَكَرِيَّآءُ» (آل عمران ٣٧) twice, «معًا».
+    await page(54, {'hisham', 'ibn_dhakwan'}, null);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('margin-reference:3:37:8')),
+        matching: find.textContaining('معًا', findRichText: true),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('margin-reference:3:37:12')),
+      findsNothing,
+    );
   });
 
   test('the first of two sakins tells its letter, joined', () {

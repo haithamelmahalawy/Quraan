@@ -3917,13 +3917,16 @@ String togetherNote(int places) => switch (places) {
 
 /// A word as it is told alike: its first letter's shadda aside, the idgham of
 /// the word before it (لَبِثتَّ ... بَل لَّبِثتَّ, البقرة ٢٥٩, the user,
-/// 2026-11-20).
+/// 2026-11-20); the shadda before its vowel and the sukun as one sign,
+/// however the marks were typed. Nothing else: a word told together must be
+/// alike in everything, its last vowel too (إِبۡرَٰهَٰمَ apart from
+/// إِبۡرَٰهَٰمُ, the user, 2026-11-21).
 String _toldAlike(String text) => _withoutPause(text)
+    .replaceAll('ْ', 'ۡ')
     .replaceFirstMapped(
       RegExp('^([^ً-ْٰۡ])([ً-ِۡ]*)ّ'),
       (m) => '${m[1]}${m[2]}',
     )
-    // The shadda before its vowel, however the marks were typed.
     .replaceAllMapped(RegExp('([ً-ِ])ّ'), (m) => 'ّ${m[1]}');
 
 /// [items] each told once, with how many places read it alike: the same
@@ -3955,10 +3958,10 @@ List<HameshEntry> _togetherEntries(List<HameshEntry> entries) {
   final out = <String, HameshEntry>{};
   for (final e in entries) {
     final key = [
-      _withoutPause(e.hafs),
+      _toldAlike(e.hafs),
       ({
         for (final v in e.readings)
-          '${v.riwayaId}=${v.kind.name}=${_withoutPause(v.text)}='
+          '${v.riwayaId}=${v.kind.name}=${_toldAlike(v.text)}='
               '${v.description}=${v.count}',
       }.toList()..sort()).join(';'),
     ].join('#');
@@ -5262,8 +5265,7 @@ class _UsulBox extends StatelessWidget {
               '، ',
               style: TextStyle(fontSize: 9 * scale, color: g.color),
             ),
-          _item(g, i, named: false),
-          if (places > 1) _togetherText(g, i, places),
+          _item(g, i, named: false, places: places),
         ],
       ],
     );
@@ -5383,8 +5385,7 @@ class _UsulBox extends StatelessWidget {
                         '، ',
                         style: TextStyle(fontSize: 9 * scale, color: g.color),
                       ),
-                    _item(g, i, named: false),
-                    if (places > 1) _togetherText(g, i, places),
+                    _item(g, i, named: false, places: places),
                   ],
                   Text(
                     ' (${readersAr(readers, const [])})',
@@ -5447,7 +5448,12 @@ class _UsulBox extends StatelessWidget {
     ),
   );
 
-  Widget _item(_UsulGroup g, _UsulItem i, {bool named = true}) => InkWell(
+  Widget _item(
+    _UsulGroup g,
+    _UsulItem i, {
+    bool named = true,
+    int places = 1,
+  }) => InkWell(
     key: ValueKey(
       'usul-reference:${g.label}:${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.riwayat.join(',')}'
       // A word told twice, in joining and at the stop (Hamza's «رَ۪ءَا
@@ -5459,6 +5465,9 @@ class _UsulBox extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _usulWord(i, g.color),
+        // Right after the word, before what is told of it (عِمۡرَٰنَ (معًا)
+        // (بخلف عنه), the user, 2026-11-21).
+        if (places > 1) _togetherText(g, i, places),
         // How the ya is read (يَدِي: بإسكان ياء الإضافة).
         // With more told of the word, its own wording (تَأۡمُرُوٓنِّيَ: بفتح الياء
         // وتشديد النون مع المد المشبع).
@@ -5525,6 +5534,15 @@ class _UsulBox extends StatelessWidget {
         for (final v in i.readings.where((v) => v.fathPreferred))
           Text(
             ' (${v.description})',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
+        // Told beside the word, under its chapter (وَزَادَهُۥ (بخلف)).
+        for (final d in {
+          for (final v in i.readings)
+            if (v.bandNote.isNotEmpty) v.bandNote,
+        })
+          Text(
+            ' ($d)',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
         // Warsh's taqlil of يُجَٰزِيٓ, read with another face.
@@ -5791,21 +5809,22 @@ class _EntryView extends StatelessWidget {
                             TextSpan(text: ': ', style: label),
                             if (g.text.isNotEmpty ||
                                 g.description.isEmpty ||
-                                g.imala)
+                                g.imala) ...[
                               _wordSpan(g, e, reading),
+                              // Right after the word (إِبۡرَٰهَٰمَ (جميعًا), the
+                              // user, 2026-11-21).
+                              ?_togetherSpan(e, label),
+                            ],
                             if (g.description.isNotEmpty)
                               _descriptionSpan(
                                 g.description,
                                 label.copyWith(color: MushafColors.frame),
                                 quran,
                               ),
-                            if (e.together > 1)
-                              TextSpan(
-                                text: togetherNote(e.together),
-                                style: label.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                            if (!(g.text.isNotEmpty ||
+                                g.description.isEmpty ||
+                                g.imala))
+                              ?_togetherSpan(e, label),
                             if (certified) tick,
                           ],
                         ),
@@ -5817,6 +5836,15 @@ class _EntryView extends StatelessWidget {
       ),
     );
   }
+
+  /// «(معًا)» or «(جميعًا)» of a note told for several places, null for one.
+  static InlineSpan? _togetherSpan(HameshEntry e, TextStyle label) =>
+      e.together > 1
+      ? TextSpan(
+          text: '${togetherNote(e.together)} ',
+          style: label.copyWith(fontWeight: FontWeight.w600),
+        )
+      : null;
 
   /// The line under a note, parting it from the next place: plainer than the
   /// faint one between the readers of one word.
@@ -5872,19 +5900,22 @@ class _EntryView extends StatelessWidget {
                 Text.rich(
                   TextSpan(
                     children: [
-                      if (g.text.isNotEmpty || g.description.isEmpty || g.imala)
+                      if (g.text.isNotEmpty ||
+                          g.description.isEmpty ||
+                          g.imala) ...[
                         _wordSpan(g, e, reading),
+                        ?_togetherSpan(e, label),
+                      ],
                       if (g.description.isNotEmpty)
                         _descriptionSpan(
                           g.description,
                           label.copyWith(color: MushafColors.frame),
                           reading * 13 / 17,
                         ),
-                      if (e.together > 1)
-                        TextSpan(
-                          text: togetherNote(e.together),
-                          style: label.copyWith(fontWeight: FontWeight.w600),
-                        ),
+                      if (!(g.text.isNotEmpty ||
+                          g.description.isEmpty ||
+                          g.imala))
+                        ?_togetherSpan(e, label),
                       ?tick,
                     ],
                   ),
@@ -6124,7 +6155,38 @@ class _EntryView extends StatelessWidget {
                     ? _brief(m.$2) == _brief(mine.first.$2)
                     : true),
           );
-      if (sameReading) {
+      // Read alike but one of the two with a dispute (Ibn Amir's
+      // «إِبۡرَٰهَٰمَ»: هشام، وابن ذكوان بخلف عنه): one line, the dispute told of
+      // its riwaya (the user, 2026-11-21).
+      const khulf = '، بخلف عنه';
+      final disputed =
+          !sameReading &&
+              mine.length == 2 &&
+              q.riwayat.length == 2 &&
+              mine[0].$2.text == mine[1].$2.text &&
+              mine[0].$2.text.isNotEmpty
+          ? mine
+                .where(
+                  (m) =>
+                      _brief(m.$2).endsWith(khulf) &&
+                      mine.any(
+                        (o) =>
+                            o != m && '${_brief(o.$2)}$khulf' == _brief(m.$2),
+                      ),
+                )
+                .firstOrNull
+          : null;
+      if (disputed != null) {
+        final (r, v) = disputed;
+        add(q.shortAr, q.color, r.fontFamily ?? 'Hafs', v);
+        final group = byRiwaya[v.riwayaId]!;
+        final brief = _brief(v);
+        group.description =
+            '${brief.substring(0, brief.length - khulf.length)}، بخلف عن ${r.nameAr}';
+        for (final (_, o) in mine) {
+          byRiwaya[o.riwayaId] = group;
+        }
+      } else if (sameReading) {
         final (r, v) = mine.first;
         add(q.shortAr, q.color, r.fontFamily ?? 'Hafs', v);
         for (final (_, o) in mine) {

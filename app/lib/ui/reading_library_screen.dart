@@ -540,6 +540,12 @@ class _TasheelLibraryScreenState extends State<TasheelLibraryScreen> {
               }
               final note = notes[i - 1];
               final e = note.entry;
+              final mine = [
+                for (final r in e.readings)
+                  if (r.riwayat.any(selected.contains) ||
+                      r.disputed.any(selected.contains))
+                    r,
+              ];
               return Card(
                 key: ObjectKey(note),
                 child: ExpansionTile(
@@ -557,10 +563,18 @@ class _TasheelLibraryScreenState extends State<TasheelLibraryScreen> {
                   childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (final r in e.readings)
-                      if (r.riwayat.any(selected.contains) ||
-                          r.disputed.any(selected.contains))
-                        KharoufReadingText(reading: r, riwayat: selected),
+                    for (final (i, r) in mine.indexed)
+                      KharoufReadingText(
+                        reading: r,
+                        riwayat: selected,
+                        showReader:
+                            i == 0 ||
+                            KharoufReadingText.readerOf(
+                                  mine[i - 1],
+                                  selected,
+                                ) !=
+                                KharoufReadingText.readerOf(r, selected),
+                      ),
                     if (e.verses.isNotEmpty) ...[
                       const Divider(),
                       const Text('الأبيات المستشهد بها في الكتاب'),
