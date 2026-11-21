@@ -603,16 +603,24 @@ class InkText extends StatelessWidget {
     final color = style.color ?? MushafColors.ink;
     // QCF glyphs already contain the complete engraved word. A second
     // stroked pass can corrupt their cached glyph masks on GPU backends.
+    // Made firmer by its own shadows around it, as firm as the editable
+    // font's outlined words beside them (the user, 2026-11-21: one
+    // thickness on the page). Not the engine's bold, which hollows the
+    // print's layered glyphs.
     if (style.fontFamily?.startsWith('QCF_') ?? false) {
+      final d = weight(style.fontSize ?? 14) * firmness / 2;
+      final printed = style.copyWith(
+        color: color,
+        shadows: [
+          for (final (x, y) in const [(1, 0), (-1, 0), (0, 1), (0, -1)])
+            Shadow(color: color, offset: Offset(x * d, y * d)),
+        ],
+      );
       return parts == null
-          ? Text(
-              text,
-              textDirection: TextDirection.rtl,
-              style: style.copyWith(color: color),
-            )
+          ? Text(text, textDirection: TextDirection.rtl, style: printed)
           : Text.rich(
               TextSpan(
-                style: style.copyWith(color: color),
+                style: printed,
                 children: [
                   for (final (s, c) in parts)
                     TextSpan(

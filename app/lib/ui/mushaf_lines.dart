@@ -304,6 +304,30 @@ class MushafLines extends StatelessWidget {
     return _NearestTap(words: shown, onTap: tap, child: row);
   }
 
+  /// How far to move a word drawn in [font] at [size] on a line of
+  /// [pageSize], so that its baseline falls where the Hafs font's does at
+  /// the page's size (the user, 2026-11-21: the print's glyphs and the
+  /// editable font's on one line, neither higher nor lower). Each word's box
+  /// is centred on its line; with a height of one, its baseline is at its
+  /// font's ascent. None for the Hafs font at the page's size.
+  static double baselineShift(String font, double size, double pageSize) {
+    final ascent = _ascent.putIfAbsent(font, () {
+      final painter = TextPainter(
+        text: TextSpan(text: 'ب', style: _style(_probe, font)),
+        textDirection: TextDirection.rtl,
+      )..layout();
+      final a =
+          painter.computeDistanceToActualBaseline(TextBaseline.alphabetic) /
+          _probe;
+      painter.dispose();
+      return a;
+    });
+    final hafs = _ascent.putIfAbsent('Hafs', () => 2 / 3);
+    return (hafs - 0.5) * pageSize - (ascent - 0.5) * size;
+  }
+
+  static final _ascent = <String, double>{};
+
   /// How many kashidas each word of a justified line takes (by its index in
   /// [words]): the room the line leaves at [fontSize] is filled by drawing
   /// out the joins of its longest words in the Hafs font, as the print
@@ -384,10 +408,14 @@ class MushafLines extends StatelessWidget {
     final end = _endOn(line, ayah, w);
     final closes = end != null;
     if (!shown && !closes) return null;
-    final marker = InkText(
-      end?.text ?? '',
-      style: _style(fontSize, end?.font ?? 'Hafs'),
-      firmness: 0.35,
+    final markerFont = end?.font ?? 'Hafs';
+    final marker = Transform.translate(
+      offset: Offset(0, baselineShift(markerFont, fontSize, fontSize)),
+      child: InkText(
+        end?.text ?? '',
+        style: _style(fontSize, markerFont),
+        firmness: 0.35,
+      ),
     );
     if (!shown) return marker;
     Widget word = wordBuilder(ayah, w, fontSize, kashida);

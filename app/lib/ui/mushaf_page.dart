@@ -233,8 +233,9 @@ class _MushafPageState extends State<MushafPage>
   bool _pageQcf = false;
 
   /// A word in the editable font among the print's words is drawn this much
-  /// smaller, its letters as large as theirs.
-  static const hafsInPrint = 0.9;
+  /// larger, its letters as large as theirs: the print's are about a tenth
+  /// larger at one size (measured on six pages, the height ×1.10–1.15).
+  static const hafsInPrint = 1.1;
 
   /// The basmala of a surah's head in the print's calligraphy: al-Fatiha's
   /// first ayah in the first page's font (the user, 2026-11-21), when the
@@ -2997,12 +2998,25 @@ class _MushafPageState extends State<MushafPage>
         before.isNotEmpty && _glows(before);
   }
 
+  /// A word on its printed line, on the line's one baseline whatever its
+  /// font and size (the user, 2026-11-21).
   Widget _word(Ayah ayah, int w, double pageSize, [int kashida = 0]) {
+    final shown = _display(ayah, w)!;
+    final hafsFont = !shown.font.startsWith('QCF_');
+    final size = hafsFont && _pageQcf ? pageSize * hafsInPrint : pageSize;
+    final shift = MushafLines.baselineShift(shown.font, size, pageSize);
+    final word = _drawnWord(ayah, w, pageSize, kashida);
+    return shift == 0
+        ? word
+        : Transform.translate(offset: Offset(0, shift), child: word);
+  }
+
+  Widget _drawnWord(Ayah ayah, int w, double pageSize, [int kashida = 0]) {
     final m = _mark(ayah, w);
     final shown = _display(ayah, w)!;
     // Not the page glyphs of the Madinah print: letters to colour and draw out.
     final hafsFont = !shown.font.startsWith('QCF_');
-    // Among the print's words a little smaller, with every sign drawn on it
+    // Among the print's words as large as theirs, with every sign drawn on it
     // (the sakt's, the hamza's) at its own size, in its place.
     final fontSize = hafsFont && _pageQcf ? pageSize * hafsInPrint : pageSize;
     final own = hafsFont
