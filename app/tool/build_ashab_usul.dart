@@ -3379,6 +3379,13 @@ Map<String, int> buildAshabUsul(
       v[6] = 'بفتح التاء وإسكان الميم وحذف الألف';
     }
   }
+  // «وَوَٰعَدتُّكُمۡ» (طه ٨٠): the alif after the waw kept, the one before the
+  // kaf gone with the nun (the user, 2026-11-22).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 20 && v[1] == 80 && v[2] == 6 && v[5] == 'f') {
+      v[6] = 'بالتاء وحذف الألف الثانية قبل الكاف';
+    }
+  }
   // «قَوَارِيرٗا» (الإنسان ١٥) with its tanween for al-Kisa'i and Khalaf
   // al-'Ashir, and the second (١٦) for al-Kisa'i, as Shu'ba's (the user,
   // 2026-11-17).

@@ -3655,16 +3655,21 @@ List<_UsulGroup> _usulNotes(
     // Equal rule descriptions can still have different written examples
     // (e.g. Warsh's extended mim silah versus Ibn Kathir's). Do not use
     // the main text's comparison filter to choose the margin examples.
-    for (final v in variants.forBand(
-      {...s.selected, ?s.displayed},
-      ayah.surah,
-      ayah.number,
+    for (final v in irkabTold(
+      variants.forBand(
+        {...s.selected, ?s.displayed},
+        ayah.surah,
+        ayah.number,
+        w,
+      ),
+      ayah,
       w,
+      s,
     )) {
       if (!s.kinds.contains(v.kind) ||
           v.word != w ||
           v.inHamesh ||
-          v.riwayaId == hafsId ||
+          v.riwayaId == hafsId && v.bandNote != 'بالإدغام' ||
           isRoutineMadd(v) ||
           !showYaqubMimExample(v, ayah.words[w]) ||
           // A ya read unlike Hafs told for all who read it, the shown
@@ -3770,7 +3775,11 @@ List<_UsulGroup> _usulNotes(
         );
         item.riwayat.add(v.riwayaId);
         item.readings.add(v);
-        item.spots.add(VariantRepository.key(ayah.surah, ayah.number, w));
+        // «كٓهيعٓصٓ ذِّكۡرُ» one place, though over two ayat: no «(معًا)» (the
+        // user, 2026-11-22).
+        if (!kafDhikr) {
+          item.spots.add(VariantRepository.key(ayah.surah, ayah.number, w));
+        }
       }
     }
   }
@@ -3784,6 +3793,71 @@ List<_UsulGroup> _usulNotes(
   return [
     for (final at in const [0, 1, 2])
       ...groups.values.where((g) => last(g) == at),
+  ];
+}
+
+/// «ٱرۡكَب مَّعَنَا» (هود ٤٢) under the idgham: where the chosen readers
+/// differ in it, every one of them told, «(بالإظهار)» or «(بالإدغام)», Hafs
+/// too; where they agree, not told at all. This word alone, not a rule for
+/// the others (the user, 2026-11-22).
+@visibleForTesting
+Iterable<Variant> irkabTold(
+  Iterable<Variant> rows,
+  Ayah ayah,
+  int w,
+  ReaderSettings s,
+) {
+  if (ayah.surah != 11 || ayah.number != 42 || w != 13) return rows;
+  bool irkab(Variant v) => v.word == 13 && v.rule == 'idgham_saghir';
+  final list = rows.toList();
+  final own = list.where(irkab).toList();
+  // Hafs among them when his text is the page's or he is compared.
+  final hafs = s.displayed == null || s.compareHafs;
+  final chosen = {...s.selected, ?s.displayed}..remove(hafsId);
+  String face(Variant? v) =>
+      v == null || v.description == 'بإدغام الباء في الميم'
+      ? 'idgham'
+      : v.description == 'بالإظهار'
+      ? 'izhar'
+      : 'both';
+  final faces = {
+    for (final id in chosen)
+      face(own.where((v) => v.riwayaId == id).firstOrNull),
+    if (hafs) 'idgham',
+  };
+  final rest = list.where((v) => !irkab(v));
+  if (faces.length < 2 && !faces.contains('both')) return rest;
+  Variant told(Variant v, String note) => Variant(
+    riwayaId: v.riwayaId,
+    surah: v.surah,
+    ayah: v.ayah,
+    word: v.word,
+    count: v.count,
+    text: v.text,
+    kind: v.kind,
+    description: v.description,
+    rule: v.rule,
+    certified: v.certified,
+    usulWays: v.usulWays,
+    usulKind: v.usulKind,
+    bandNote: note,
+  );
+  return [
+    ...rest,
+    for (final v in own) face(v) == 'idgham' ? told(v, 'بالإدغام') : v,
+    if (hafs)
+      Variant(
+        riwayaId: hafsId,
+        surah: 11,
+        ayah: 42,
+        word: 13,
+        count: 2,
+        text: 'ٱرۡكَب مَّعَنَا',
+        kind: VariantKind.usul,
+        description: 'بإدغام الباء في الميم',
+        rule: 'idgham_saghir',
+        bandNote: 'بالإدغام',
+      ),
   ];
 }
 
@@ -3942,6 +4016,24 @@ List<(String, String?)> _descriptionsOf(List<Variant> readings) {
   for (final v in readings) {
     if (v.shownDescription.isEmpty) continue;
     (by[v.shownDescription] ??= []).add(v.riwayaId);
+  }
+  return [
+    for (final MapEntry(key: d, value: ids) in by.entries)
+      (d, by.length > 1 ? readersAr(ids, const []) : null),
+  ];
+}
+
+/// When the ha of the pronoun is read with the damma (ha_damir): «وصلًا فقط»
+/// where it follows the mim before a sakin, «وصلًا ووقفًا» where it is the
+/// reader's own; with its readers when they differ.
+List<(String, String?)> _haDamirNotes(List<Variant> readings) {
+  final by = <String, List<String>>{};
+  for (final v in readings) {
+    if (v.rule != 'ha_damir') continue;
+    final d = v.description.contains('قبل الساكن')
+        ? 'وصلًا فقط'
+        : 'وصلًا ووقفًا';
+    (by[d] ??= []).add(v.riwayaId);
   }
   return [
     for (final MapEntry(key: d, value: ids) in by.entries)
@@ -5604,6 +5696,15 @@ class _UsulBox extends StatelessWidget {
         })
           Text(
             ' ($d)',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
+        // The ha of the pronoun with the damma: in joining only where the
+        // sakin after it brings it (يُرِيهُمُ ٱللَّهُ, «وَقِفْ لِلْكُلِّ بِالْكَسْرِ»),
+        // in joining and at the stop where the reader's own (عَلَيۡهُمۡ); by
+        // each reader where they differ (the user, 2026-11-22).
+        for (final (d, readers) in _haDamirNotes(i.readings))
+          Text(
+            readers == null ? ' ($d)' : ' ($d: $readers)',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
         // Warsh's taqlil of يُجَٰزِيٓ, read with another face.

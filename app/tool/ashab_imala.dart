@@ -38,7 +38,15 @@ int _imala(
     if (span.isEmpty) continue;
     String bare(_Word x) => _bare(x.t);
     final word =
-        span.where((x) => RegExp(r'ى$').hasMatch(bare(x))).firstOrNull ??
+        // Never «إِلَىٰ، عَلَىٰ، حَتَّىٰ، لَدَى»: «إِلَىٰ مُوسَىٰٓ» (طه ٧٧) leans
+        // موسى alone (the user, 2026-11-22).
+        span
+            .where(
+              (x) =>
+                  RegExp(r'ى$').hasMatch(bare(x)) &&
+                  !RegExp(r'^[وف]?(إلى|على|حتى|لدى)$').hasMatch(bare(x)),
+            )
+            .firstOrNull ??
         span
             .where(
               (x) =>
