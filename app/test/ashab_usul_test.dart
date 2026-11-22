@@ -905,6 +905,8 @@ void main() {
       );
       expect(note(76, 4)[4], 'رَ۪ءَ۪ا كَوۡكَبٗاۖ', reason: id);
       expect(note(76, 4)[6], 'بإمالة الهمزة والراء وقفًا ووصلًا');
+      // Told beside the words in the band (the user, 2026-11-21).
+      expect((note(76, 4)[8] as Map)['bandNote'], note(76, 4)[6]);
       final kisai = id.contains('kisai') || id == 'abul_harith';
       for (final (a, next) in [(77, 'ٱلۡقَمَرَ'), (78, 'ٱلشَّمۡسَ')]) {
         expect(note(a, 1)[4], endsWith(next), reason: '$id $a');
@@ -912,7 +914,7 @@ void main() {
           note(a, 1)[6],
           kisai
               ? 'بإمالة الراء والهمزة وقفًا'
-              : 'بإمالة الراء فقط وصلًا وبإمالة الراء والهمزة وقفًا',
+              : 'بإمالة الهمزة والراء وقفًا، وإمالة الراء فقط وصلًا',
           reason: '$id $a',
         );
       }

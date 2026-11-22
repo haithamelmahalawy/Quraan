@@ -1611,8 +1611,8 @@ Map<String, int> buildAshabUsul(
     variants.removeWhere((r) => leaned(r as List) && !seen.add(r[2] as int));
   }
   // «ٱرۡكَب مَّعَنَا» هود ٤٢: al-Kisa'i's idgham in the usul, as Hafs's; Khalaf's
-  // and Khalaf al-'Ashir's izhar in the hamesh, «كَمَا ضاَعَ ... / وَفِي ارْكَبْ فَشَا
-  // أَلَا»; Khallad's two faces kept (the user, 2026-11-14).
+  // and Khalaf al-'Ashir's izhar in the usul too (the user, 2026-11-21; till
+  // then in the hamesh); Khallad's two faces kept (2026-11-14).
   {
     final variants = data['variants'] as List;
     bool here(List r) => r[0] == 11 && r[1] == 42 && r[2] == 13;
@@ -1628,16 +1628,18 @@ Map<String, int> buildAshabUsul(
         'idgham_saghir',
         {'source': ashabSource},
       ],
+      // Their izhar in the usul under the idgham, the words shaded, no
+      // hamesh row (the user, 2026-11-21).
       'khalaf_hamzah' || 'ishaq' || 'idris' => [
         11,
         42,
         13,
         2,
         'ٱرۡكَبۡ مَعَنَا',
-        'f',
+        'u',
         'بالإظهار',
-        '',
-        {'source': ashabSource, 'hamesh': true},
+        'idgham_saghir',
+        {'source': ashabSource, 'bandNote': 'بالإظهار'},
       ],
       _ => null,
     };
@@ -4559,7 +4561,8 @@ void _raaaKawkab(String id, List variants) {
   }
 
   const both = 'بإمالة الهمزة والراء وقفًا ووصلًا';
-  const joined = 'بإمالة الراء فقط وصلًا وبإمالة الراء والهمزة وقفًا';
+  // As the user words it (2026-11-21), told beside the words in the band.
+  const joined = 'بإمالة الهمزة والراء وقفًا، وإمالة الراء فقط وصلًا';
   const stopped = 'بإمالة الراء والهمزة وقفًا';
   rows.removeWhere((r) => at(r, 76, 4) && leaned(r));
   final kawkab = [
@@ -4584,7 +4587,7 @@ void _raaaKawkab(String id, List variants) {
     'u',
     both,
     '',
-    {'source': ashabSource, 'bandOnly': true},
+    {'source': ashabSource, 'bandOnly': true, 'bandNote': both},
   ]);
   for (final (a, next) in const [(77, 'ٱلۡقَمَرَ'), (78, 'ٱلشَّمۡسَ')]) {
     rows.removeWhere((r) => at(r, a, 1) && leaned(r) && flagged(r));
@@ -4604,7 +4607,12 @@ void _raaaKawkab(String id, List variants) {
               'u',
               stopped,
               '',
-              {'source': ashabSource, 'bandOnly': true, 'stopOnly': true},
+              {
+                'source': ashabSource,
+                'bandOnly': true,
+                'stopOnly': true,
+                'bandNote': stopped,
+              },
             ]
           : [
               6,
@@ -4615,7 +4623,7 @@ void _raaaKawkab(String id, List variants) {
               'u',
               joined,
               '',
-              {'source': ashabSource, 'bandOnly': true},
+              {'source': ashabSource, 'bandOnly': true, 'bandNote': joined},
             ],
     );
   }

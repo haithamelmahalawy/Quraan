@@ -440,6 +440,13 @@ const nameHaKasraShift = .07;
 /// How far under the line the imala sign stands, in font sizes; under a jim.
 const imalaDrop = .20;
 
+/// How far right of its box the imala sign stands under a dal before a final
+/// ya, in font sizes (ٱلۡهُدَ۪ىٰ).
+const imalaDalBeforeYa = .08;
+
+/// How far under the line the imala sign stands under that dal.
+const imalaDalBeforeYaDrop = .08;
+
 /// The small sin under the sad (ٱلۡمُصَۣيۡطِرُونَ): its size, how far under the
 /// line its baseline stands, and how far right of the sad's middle, in font
 /// sizes.
@@ -740,6 +747,13 @@ class _QuranMarkPainter extends CustomPainter {
             mark.width / 2 -
             (besideHamza
                 ? font * .20
+                // Under the dal before a final ya (ٱلۡهُدَ۪ىٰ, هُد۪ٗى): its
+                // box shares the ya's sweep, the sign under the dal itself
+                // (the user, 2026-11-21).
+                : imala &&
+                      'دذ'.contains(source[at]) &&
+                      source.startsWith('ى', end)
+                ? -font * imalaDalBeforeYa
                 // The low mim under a ra with its kasra (جُدُرِۭ): to its left,
                 // clear of the kasra.
                 : low && RegExp('[رز]').hasMatch(source[at])
@@ -792,6 +806,11 @@ class _QuranMarkPainter extends CustomPainter {
                           ? .56
                           // Under the jim's dot (جَ۪آءَتۡهُمُ), a dotted ya's
                           // dots (دِيَ۪ارِكُمۡ).
+                          // Up under the dal, off the final ya's sweep below it
+                          // (ٱلۡهُدَ۪ىٰ, the user, 2026-11-21).
+                          : 'دذ'.contains(source[at]) &&
+                                source.startsWith('ى', end)
+                          ? imalaDalBeforeYaDrop
                           : source.startsWith('ج', at)
                           ? imalaUnderJim
                           : source.startsWith('ي', at)

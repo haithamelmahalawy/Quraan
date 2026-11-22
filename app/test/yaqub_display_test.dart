@@ -1307,7 +1307,13 @@ void main() {
       final text = t.widget<InkText>(word(2, 7, 6)).text;
       expect(text, contains('ىٰ'));
       expect(text, isNot(contains('ٓ')));
-      expect(t.widget<InkText>(word(2, 6, 3)).text, contains('ٓ'));
+      // سواء, Hafs's own: the print's glyph, its madd with it (the user,
+      // 2026-11-21: the print's words with Yaqub's own numbering too).
+      final same = t.widget<InkText>(word(2, 6, 3));
+      expect(
+        same.style.fontFamily!.startsWith('QCF_') || same.text.contains('ٓ'),
+        isTrue,
+      );
       expect(t.takeException(), isNull);
     }
   });

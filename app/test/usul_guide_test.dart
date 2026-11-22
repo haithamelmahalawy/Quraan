@@ -250,8 +250,9 @@ void main() {
     // Its 95 and the 29 of the second hamza changed; تشاء أنت is told once.
     expect(lin['الهمزتان من كلمتين'], hasLength(124));
     expect(kinds('الهمز المفرد').where((k) => k.contains('  ')), isEmpty);
-    // With the 18 of «اتخذتم، أخذتم» (إدغام الذال في التاء).
-    expect(lin['الإدغام'], hasLength(39));
+    // With the 18 of «اتخذتم، أخذتم» (إدغام الذال في التاء), and «ٱرۡكَبۡ
+    // مَعَنَا» by izhar (the user, 2026-11-21).
+    expect(lin['الإدغام'], hasLength(40));
     // With «عِوَجٗا قَيِّمٗا» (الكهف ١-٢) (the user, 2026-11-15).
     expect(lin['ترك السكت'], hasLength(5));
     expect(lin['النقل'], hasLength(3541));

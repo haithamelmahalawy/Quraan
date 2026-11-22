@@ -304,29 +304,11 @@ class MushafLines extends StatelessWidget {
     return _NearestTap(words: shown, onTap: tap, child: row);
   }
 
-  /// How far to move a word drawn in [font] at [size] on a line of
-  /// [pageSize], so that its baseline falls where the Hafs font's does at
-  /// the page's size (the user, 2026-11-21: the print's glyphs and the
-  /// editable font's on one line, neither higher nor lower). Each word's box
-  /// is centred on its line; with a height of one, its baseline is at its
-  /// font's ascent. None for the Hafs font at the page's size.
-  static double baselineShift(String font, double size, double pageSize) {
-    final ascent = _ascent.putIfAbsent(font, () {
-      final painter = TextPainter(
-        text: TextSpan(text: 'ب', style: _style(_probe, font)),
-        textDirection: TextDirection.rtl,
-      )..layout();
-      final a =
-          painter.computeDistanceToActualBaseline(TextBaseline.alphabetic) /
-          _probe;
-      painter.dispose();
-      return a;
-    });
-    final hafs = _ascent.putIfAbsent('Hafs', () => 2 / 3);
-    return (hafs - 0.5) * pageSize - (ascent - 0.5) * size;
-  }
-
-  static final _ascent = <String, double>{};
+  /// A word or an ayah's end on a line of [pageSize], its baseline the
+  /// line's one (the user, 2026-11-21: the print's glyphs and the editable
+  /// font's neither higher nor lower), where the print's glyphs fall.
+  static Widget onLine(Widget child, double pageSize) =>
+      OnBaseline(height: pageSize, baseline: pageSize * 0.85, child: child);
 
   /// How many kashidas each word of a justified line takes (by its index in
   /// [words]): the room the line leaves at [fontSize] is filled by drawing
@@ -347,9 +329,14 @@ class MushafLines extends StatelessWidget {
     for (final (i, (ayah, w)) in words.indexed) {
       final shown = _show(ayah, w);
       if (shown != null) {
-        natural += _measure(shown.text, shown.font) * scale;
+        // The editable font's words drawn larger among the print's.
+        final printed = shown.font.startsWith('QCF_');
+        natural +=
+            _measure(shown.text, shown.font) *
+            scale *
+            (printed ? 1 : hafsScale);
         natural += (wordGap?.call(ayah, w) ?? 0) * fontSize;
-        if (w == 0 && (ayah.rubStart != null || ayah.juzStart)) {
+        if (w == 0 && (ayah.rubStart != null || ayah.juzStart) && !printed) {
           natural += _measure('۞', 'Hafs') * .8 * scale;
         }
         items++;
@@ -374,7 +361,8 @@ class MushafLines extends StatelessWidget {
     if (slots.isEmpty) return const {};
     // Words keep at least a narrow space between them.
     natural += math.max(0, items - 1) * fontSize * 0.18;
-    final tatweelWidth = _measure(tatweel, stretchFont ?? 'Hafs') * scale;
+    final tatweelWidth =
+        _measure(tatweel, stretchFont ?? 'Hafs') * scale * hafsScale;
     if (tatweelWidth <= 0) return const {};
     var count = ((width * 0.985 - natural) / tatweelWidth).floor();
     if (count <= 0) return const {};
@@ -409,14 +397,13 @@ class MushafLines extends StatelessWidget {
     final closes = end != null;
     if (!shown && !closes) return null;
     final markerFont = end?.font ?? 'Hafs';
-    final marker = Transform.translate(
-      offset: Offset(0, baselineShift(markerFont, fontSize, fontSize)),
-      child: InkText(
-        end?.text ?? '',
-        style: _style(fontSize, markerFont),
-        firmness: 0.35,
-      ),
+    final endText = InkText(
+      end?.text ?? '',
+      style: _style(fontSize, markerFont),
+      firmness: 0.35,
     );
+    // On the print's pages, on the words' one baseline.
+    final marker = hafsScale == 1 ? endText : onLine(endText, fontSize);
     if (!shown) return marker;
     Widget word = wordBuilder(ayah, w, fontSize, kashida);
     // The print's word carries its own ۞: told, not drawn again.
@@ -478,7 +465,7 @@ class MushafLines extends StatelessWidget {
       if (shown != null) {
         w +=
             _measure(shown.text, shown.font) *
-            (shown.font == 'Hafs' ? hafsScale : 1);
+            (shown.font.startsWith('QCF_') ? 1 : hafsScale);
         w += (wordGap?.call(ayah, i) ?? 0) * _probe;
         // The print's word has its ۞ in it.
         if (i == 0 &&
@@ -588,3 +575,110 @@ String _ayahMarker(int n) => n
     .split('')
     .map((d) => String.fromCharCode(0x0660 + int.parse(d)))
     .join();
+
+/// A word on its line's one baseline, [baseline] from the top of a box
+/// [height] high, whatever its font and size (the user, 2026-11-21: the
+/// print's glyphs and the editable font's on one line, neither higher nor
+/// lower). Its own baseline is its first text's as laid out, not one guessed
+/// from the font's metrics.
+class OnBaseline extends SingleChildRenderObjectWidget {
+  const OnBaseline({
+    super.key,
+    required this.height,
+    required this.baseline,
+    super.child,
+  });
+
+  final double height;
+  final double baseline;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      RenderOnBaseline(height, baseline);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    RenderOnBaseline renderObject,
+  ) => renderObject
+    ..height = height
+    ..baseline = baseline;
+}
+
+class RenderOnBaseline extends RenderShiftedBox {
+  RenderOnBaseline(this._height, this._baseline) : super(null);
+
+  double _height;
+  set height(double v) {
+    if (v == _height) return;
+    _height = v;
+    markNeedsLayout();
+  }
+
+  double _baseline;
+  set baseline(double v) {
+    if (v == _baseline) return;
+    _baseline = v;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.constrain(Size(0, _height));
+      return;
+    }
+    child.layout(
+      BoxConstraints(maxWidth: constraints.maxWidth),
+      parentUsesSize: true,
+    );
+    final own =
+        child.getDistanceToBaseline(TextBaseline.alphabetic, onlyReal: true) ??
+        child.size.height * 2 / 3;
+    (child.parentData! as BoxParentData).offset = Offset(0, _baseline - own);
+    size = constraints.constrain(Size(child.size.width, _height));
+  }
+
+  @override
+  double? computeDistanceToActualBaseline(TextBaseline baseline) => _baseline;
+
+  @override
+  double computeMinIntrinsicWidth(double height) =>
+      child?.getMinIntrinsicWidth(double.infinity) ?? 0;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      child?.getMaxIntrinsicWidth(double.infinity) ?? 0;
+
+  @override
+  double computeMinIntrinsicHeight(double width) => _height;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => _height;
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    final w =
+        child
+            ?.getDryLayout(BoxConstraints(maxWidth: constraints.maxWidth))
+            .width ??
+        0;
+    return constraints.constrain(Size(w, _height));
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    // The letters drawn above or below the box are the word's too.
+    final child = this.child;
+    if (child == null) return false;
+    final offset = (child.parentData! as BoxParentData).offset;
+    final hit = result.addWithPaintOffset(
+      offset: offset,
+      position: position,
+      hitTest: (r, p) => child.hitTest(r, position: p),
+    );
+    if (hit) result.add(BoxHitTestEntry(this, position));
+    return hit;
+  }
+}

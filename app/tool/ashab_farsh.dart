@@ -335,7 +335,7 @@ _FarshCounts _farsh(
         withKhulf(
           _says(how) && runs.length == 1
               ? how
-              : _orBook(bd.describe(hafsRun, text), how),
+              : _orBook(_eachWord(hafsRun, text), how),
         ),
         '',
         {'source': ashabSource, 'book': 'kharouf', 'vocalizationSource': own},
@@ -433,4 +433,23 @@ String _polish(String text, String hafs) {
   }
 
   return [for (var i = 0; i < ours.length; i++) one(ours[i], his[i])].join(' ');
+}
+
+/// Each word told apart when the reading changes more than one
+/// (فَيُقۡتَلُونَ وَيَقۡتُلُونَ: «الأولى بضم الياء وفتح التاء، والثانية بفتح
+/// الياء وضم التاء», the user, 2026-11-21); else the run told as one.
+String _eachWord(String hafs, String text) {
+  final a = hafs.split(' '), b = text.split(' ');
+  final whole = bd.describe(hafs, text);
+  if (a.length < 2 || a.length != b.length) return whole;
+  final told = [for (var i = 0; i < a.length; i++) bd.describe(a[i], b[i])];
+  final changed = told.where((t) => t.isNotEmpty).toList();
+  // Alike in each (سَيُغۡلَبُونَ وَيُحۡشَرُونَ: بالياء): told once.
+  if (changed.length < 2 || changed.toSet().length == 1) return whole;
+  const ordinals = ['الأولى', 'الثانية', 'الثالثة', 'الرابعة'];
+  if (told.length > ordinals.length) return whole;
+  return [
+    for (final (i, t) in told.indexed)
+      if (t.isNotEmpty) '${i == 0 ? '' : 'و'}${ordinals[i]} $t',
+  ].join('، ');
 }

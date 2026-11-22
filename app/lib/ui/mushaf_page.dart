@@ -304,8 +304,10 @@ class _MushafPageState extends State<MushafPage>
     final ayahs = widget.quran.page(widget.page);
     // The print's words wherever a word is Hafs's own, the editable font
     // only for a word with a reading or a sign of its own (the user,
-    // 2026-11-21: the two mixed, the page in the print's calligraphy).
-    _pageQcf = widget.qcf && !_nativeNumbering;
+    // 2026-11-21: the two mixed, the page in the print's calligraphy), a
+    // riwaya counting its ayat otherwise too (Hisham's, the user,
+    // 2026-11-21): its own numbers at its own ends, the words the print's.
+    _pageQcf = widget.qcf;
     final s = widget.settings;
     final narrow = MediaQuery.sizeOf(context).width < 600;
 
@@ -1715,6 +1717,10 @@ class _MushafPageState extends State<MushafPage>
     );
   }
 
+  /// A word as typed, its final ya with or without dots one letter (فِى، فِي).
+  static String _typedAlike(String word) =>
+      word.replaceAll(RegExp('ى(?!ٰ)'), 'ي');
+
   ({String text, String font})? _writtenDisplayWord(
     Ayah ayah,
     int w, {
@@ -1739,6 +1745,26 @@ class _MushafPageState extends State<MushafPage>
         .firstOrNull;
     if (source != null && last != null && last.text.isNotEmpty) {
       return (text: last.text, font: 'Hafs');
+    }
+    // A word of the riwaya's own text read as Hafs's, no reading on it: the
+    // print's glyph (the user, 2026-11-21: Warsh's page too in the Madinah
+    // print, the editable font only where it differs).
+    final glyph = qcf ? (ayah.glyphs?[w]) : null;
+    if (source != null &&
+        glyph != null &&
+        glyph.isNotEmpty &&
+        // Not a glyph drawn for two words.
+        (w + 1 >= ayah.words.length || ayah.glyphs![w + 1].isNotEmpty) &&
+        source.isNotEmpty &&
+        _typedAlike(source) == _typedAlike(ayah.words[w]) &&
+        !base.any((v) => v.word <= w && w < v.word + v.count) &&
+        _ownImala(base, w) == null &&
+        _replacementAt(ayah, w) == null &&
+        _letterReadings(ayah, w) == null &&
+        _waslDammColor(ayah, w) == null &&
+        !(w > 0 && _waslDammColor(ayah, w - 1) != null) &&
+        _haDamirBefore(ayah, w) == null) {
+      return (text: glyph, font: QcfFonts.family(widget.page));
     }
     if (source != null) {
       final marked = base
@@ -1848,9 +1874,6 @@ class _MushafPageState extends State<MushafPage>
         font: 'Hafs',
       );
     }
-    // The first word of a quarter with its ۞, as printed (the user,
-    // 2026-11-21): the marker beside it is then not drawn again.
-    final glyph = qcf ? (ayah.glyphs?[w]) : null;
     // Drawn with the word before.
     if (glyph != null && glyph.isEmpty) return null;
     // The sign is the shown riwaya's own: a riwaya of the hamesh shades the
@@ -3001,14 +3024,8 @@ class _MushafPageState extends State<MushafPage>
   /// A word on its printed line, on the line's one baseline whatever its
   /// font and size (the user, 2026-11-21).
   Widget _word(Ayah ayah, int w, double pageSize, [int kashida = 0]) {
-    final shown = _display(ayah, w)!;
-    final hafsFont = !shown.font.startsWith('QCF_');
-    final size = hafsFont && _pageQcf ? pageSize * hafsInPrint : pageSize;
-    final shift = MushafLines.baselineShift(shown.font, size, pageSize);
     final word = _drawnWord(ayah, w, pageSize, kashida);
-    return shift == 0
-        ? word
-        : Transform.translate(offset: Offset(0, shift), child: word);
+    return _pageQcf ? MushafLines.onLine(word, pageSize) : word;
   }
 
   Widget _drawnWord(Ayah ayah, int w, double pageSize, [int kashida = 0]) {

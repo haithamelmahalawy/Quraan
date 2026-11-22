@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qiraat_mushaf/services/qcf_fonts.dart';
 import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/audio_numbering.dart';
 import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
@@ -66,7 +67,7 @@ void main() {
             variants: variants,
             mutashabihat: mutashabihat,
             settings: settings,
-            qcf: true,
+            qcf: QcfFonts.instance.isReady(number),
             onWordTap: (_, _) {},
             onAyahWordTap: onHold,
           ),
