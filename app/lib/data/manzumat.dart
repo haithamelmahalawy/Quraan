@@ -228,6 +228,7 @@ class Manzumat {
             _durrahBesideShatibiyya.containsKey(_at(reading)) &&
                 qiraaOf(reading.riwayaId).id == 'abu_jafar' ||
             _yaqubShatibiyya(reading) != null ||
+            reading.riwayaId == 'ruways' && _kafirin(reading, hafs) ||
             _khalafFatathabbatu(reading) ||
             // A Durrah reader's «قَد» merged, the Durrah silent: his asl's
             // bayt, after the Durrah's two.
@@ -270,7 +271,24 @@ class Manzumat {
             r.disputed.contains(reading.riwayaId),
       );
       if (mine.isEmpty) continue;
-      final ids = {for (final quote in e.verses) ...quotedVerses(poem, quote)};
+      // A quote found in several bayts («الْغَيْبُ شَايَعَ دُخْلُلَا»): those of
+      // the surah's own chapter when it has one (يَعۡبُدُونَ، البقرة ٨٣: 463
+      // alone, the user, 2026-11-22).
+      final own = reading.isUsul
+          ? null
+          : _surahChapter(poem, surah, surahNames);
+      Set<int> narrowed(Set<int> found) {
+        if (found.length < 2 || own == null) return found;
+        final mine = {
+          for (final b in verses(poem))
+            if (found.contains(b.n) && b.chapter == own) b.n,
+        };
+        return mine.isEmpty ? found : mine;
+      }
+
+      final ids = {
+        for (final quote in e.verses) ...narrowed(quotedVerses(poem, quote)),
+      };
       for (final b in verses(poem).where(
         (b) =>
             ids.contains(b.n) &&
@@ -1368,7 +1386,122 @@ class Manzumat {
 
   /// The verses reviewed word by word, each as the reviewer named it: they
   /// stand before a chapter's rule and before what the book quotes.
+  /// Hamza's and al-Kisa'i's imala of the alif from a ya (هُدٗى، ٱلۡهُدَىٰ،
+  /// مُوسَىٰ، ٱلدُّنۡيَا), told by «وَحَمۡزَةُ مِنْهُمْ وَالْكِسَائِيُّ بَعْدَهُ ...» to
+  /// «... وَفِي أَلِفِ التَّأْنِيثِ فِي الْكُلِّ مَيَّلَا» (291-293) alone (the user,
+  /// 2026-11-22). Not the words with a bayt of their own (أَنَّىٰ، مَتَىٰ، عَسَى،
+  /// بَلَىٰ، al-Kisa'i's alone, those of the waw).
+  static bool _dhawatYa(Poem poem, Variant v, String hafs) {
+    if (poem != Poem.shatibiyya ||
+        !const {
+          'khalaf_hamzah',
+          'khallad',
+          'abul_harith',
+          'duri_kisai',
+        }.contains(v.riwayaId) ||
+        !v.isImala ||
+        !v.description.startsWith('بإمالة الألف')) {
+      return false;
+    }
+    final word = (v.text.isNotEmpty ? v.text : hafs)
+        .replaceAll(RegExp('[أإآٱ]'), 'ا')
+        .replaceAll(RegExp('[^ء-ي]'), '');
+    final final_ =
+        RegExp(r'ى(ه|ها|هم|هما|هن|ك|كم|كما|كن|نا|ني)?$').hasMatch(word) ||
+        RegExp(r'^[وفبل]*(ال)?(دنيا|عليا)$').hasMatch(word) ||
+        // «فَأَحۡيَٰكُمۡ» and its like, al-Kisa'i's (the user, 2026-11-22).
+        RegExp(r'^[وف]*[اني]حيا?(كم|ها|هم|ه|نا)?$').hasMatch(word);
+    if (!final_) return false;
+    final letters = _letters(word);
+    return !RegExp(
+      r'^[وفا]*(اني|متي|عسي|بلي|رءي|ريي|مرضات|خطاي|محي|تقات|'
+      r'هداني|انساني|عصاني|اوصاني|اتاني|تلاها|طحاها|سجي|دحاها|ضحاها|'
+      r'الضحي|الربو|القوي)',
+    ).hasMatch(letters);
+  }
+
+  /// An alif, then the word's last ra with its kasra, a pronoun maybe after
+  /// it (أَبۡصَٰرِهِمۡ، ٱلنَّارِ، حِمَارِكَ، بِقِنطَارٖ); not two ras (ٱلۡأَبۡرَارِ).
+  static bool _finalKasraRa(String hafs) {
+    final w = hafs
+        .replaceAll(RegExp('[ۡۖ-ۜ۟ـّ]'), '')
+        .replaceAll('ٖ', 'ٍ')
+        .replaceAll(RegExp('[ٱأإآ]'), 'ا');
+    if (RegExp('ر.*[اٰ]ر').hasMatch(w)) return false;
+    return RegExp(
+      r'[اٰ]ر[ٍِ](ه[ِ]?|ه[ِ]?ا|ه[ِ]?م[ِ]?|ه[ِ]?م[ِ]?ا|ه[ِ]?ن[َّ]*|ك[َُِ]?|ك[ُ]?م|ن[َ]?ا|ي)?$',
+    ).hasMatch(w.replaceAll(RegExp(r'[ًٌَُْ]$'), ''));
+  }
+
+  /// The imala (Warsh's taqlil) of «كَٰفِرِينَ، ٱلۡكَٰفِرِينَ» with the ya, told in
+  /// the Shatibiyya, Ruways's too.
+  static bool _kafirin(Variant v, String hafs) =>
+      const {
+        'duri_abuamr',
+        'susi',
+        'duri_kisai',
+        'ruways',
+        'warsh',
+      }.contains(v.riwayaId) &&
+      v.isImala &&
+      RegExp(r'^[وفبل]*(ال)?كا?فرين$').hasMatch(_letters(hafs));
+
   Set<int> _reviewedVerses(Poem poem, Variant v, String hafs) {
+    // «وَرُؤيَاكَ مَعْ مَثْوَايَ عَنْهُ لِحَفْصِهِمْ وَمَحْيَايَ مِشْكَاةٍ هُدَايَ قَدِ
+    // انجَلَا» (305), its words for all who lean them (the user, 2026-11-22).
+    if (poem == Poem.shatibiyya &&
+        v.isImala &&
+        !v.description.contains('تقليل') &&
+        RegExp(r'^[وفبلك]*(رءياك|رءيك|مثواي|محياي|مشكوة|مشكاة|هداي)$')
+            .hasMatch(_letters(hafs))) {
+      return {305};
+    }
+    // «خَطَٰيَٰكُمۡ» and its like: «... أَتَى وَخَطَايَا مِثْلُهُ مُتَقَبَّلَا» (299)
+    // (the user, 2026-11-22).
+    if (poem == Poem.shatibiyya &&
+        v.isImala &&
+        !v.description.contains('تقليل') &&
+        RegExp(r'^[وفبل]*خطيا?(كم|هم|نا)?$').hasMatch(_letters(hafs))) {
+      return {299};
+    }
+    // «وَمَحْيَاهُمُو أَيْضًا ...» (300).
+    if (poem == Poem.shatibiyya &&
+        v.isImala &&
+        RegExp(r'^[وفبل]*محياهم$').hasMatch(_letters(hafs))) {
+      return {300};
+    }
+    if (_dhawatYa(poem, v, hafs)) return {291, 292, 293};
+    // «كَٰفِرِينَ، ٱلۡكَٰفِرِينَ» with the ya: «وَمَعْ كَافِرِينَ الْكَافِرِينَ بِيَائِهِ
+    // وَهَارٍ رَوَى مُرْوٍ بِخُلْفٍ صَدٍ حَلَا» (323), for Abu 'Amr, al-Duri 'an
+    // al-Kisa'i and Ruways; Warsh's taqlil with «وَوَرْشٌ جَمِيعَ الْبَابِ» (324)
+    // (the user, 2026-11-22).
+    if (_kafirin(v, hafs)) {
+      return v.riwayaId == 'warsh' ? {323, 324} : {323};
+    }
+    // The alif before a final ra with its kasra (أَبۡصَٰرِهِمۡ، ٱلنَّارِ، دِيَٰرِهِمۡ):
+    // «وَفِي أَلِفَاتٍ قَبْلَ رَا طَرَفٍ أَتَتْ بِكَسْرٍ أَمِلْ تُدْعَى حَمِيداً وَتُقْبَلَا
+    // / كَأَبْصَارِهِمْ ...» (321-322) for Abu 'Amr and al-Duri 'an al-Kisa'i;
+    // Warsh's taqlil with «وَوَرْشٌ جَمِيعَ الْبَابِ كَانَ مُقَلِّلَا» (324) (the user,
+    // 2026-11-22).
+    if (poem == Poem.shatibiyya &&
+        const {
+          'duri_abuamr',
+          'susi',
+          'duri_kisai',
+          'warsh',
+        }.contains(v.riwayaId) &&
+        v.isImala &&
+        _finalKasraRa(hafs)) {
+      return v.riwayaId == 'warsh' ? {321, 322, 324} : {321, 322};
+    }
+    // al-Kisa'i's feminine ha at the stop, every word: «بَابُ مَذْهَبِ الْكِسَائِيِّ
+    // فِي إِمَالَةِ هَاءِ التَّأْنِيثِ فِي الْوَقْفِ» whole (339-342) (the user,
+    // 2026-11-22).
+    if (poem == Poem.shatibiyya &&
+        const {'duri_kisai', 'abul_harith'}.contains(v.riwayaId) &&
+        v.rule == 'imala_ha') {
+      return {339, 340, 341, 342};
+    }
     // al-Kisa'i's «أَرَيۡتَ» of the question, before any other place's rule.
     if (poem == Poem.shatibiyya && _kisaiAraita(v)) return {638};
     // Hamza's ishmam of «صِرَٰط» and «وَإِنَّ» (الأنعام ١٥٣), their bayts alone,

@@ -2190,6 +2190,8 @@ class _MushafPageState extends State<MushafPage>
     Color? easedDot;
     // رَبَّهُۥٓ: the small waw and the madd sign, apart from the ha.
     Color? smallWaw;
+    // The ishmam's dot over its letter.
+    final ishmamAt = <int, Color>{};
     void mark(int? i, Color color, {bool badal = false}) {
       if (i == null || i < 0 || i >= letters.length) return;
       final rank = priority * 2 + (badal ? 1 : 0);
@@ -2302,6 +2304,12 @@ class _MushafPageState extends State<MushafPage>
             ? 0
             : kasra;
         mark(at, ReadingColors.of(v));
+        // Its sign, a dot over the letter, as the imala's under it, only in
+        // the text of the riwaya that reads it; another's ishmam, told in the
+        // hamesh, is its colour alone (the user, 2026-11-22).
+        if (at >= 0 && v.riwayaId == widget.settings.displayed) {
+          ishmamAt[at] = ReadingColors.of(v);
+        }
         continue;
       }
       if (v.rule == 'ya_zaida') {
@@ -2613,7 +2621,10 @@ class _MushafPageState extends State<MushafPage>
     // badal retains its agreed priority over naql independently of row order.
     return [
       for (final (i, l) in letters.indexed)
-        if (i == zaida?.$1) ...[
+        if (ishmamAt.containsKey(i)) ...[
+          (l, colors[i]),
+          (ishmamSign, ishmamAt[i]),
+        ] else if (i == zaida?.$1) ...[
           (l.substring(0, l.indexOf('ۦ')), colors[i]),
           (l.substring(l.indexOf('ۦ')), zaida!.$2),
         ] else if (smallWaw != null && l.contains('\u06e5')) ...[

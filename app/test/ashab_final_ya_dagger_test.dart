@@ -828,7 +828,7 @@ void main() {
                       as Map)['variants']
                   as List)
               .cast<List>();
-      for (final k in const ['12:10:8', '12:15:23']) {
+      for (final k in const ['12:10:8', '12:15:7']) {
         expect(
           {
             for (final v in rows)

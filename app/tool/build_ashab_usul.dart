@@ -1678,14 +1678,14 @@ Map<String, int> buildAshabUsul(
       variants.insert(at < 0 ? variants.length : at, row);
     }
   }
-  // al-Kisa'i's «غَيَٰبَتِ» (يوسف ١٠، ١٥): stopped on with the ha as the rasm's
+  // al-Kisa'i's «غَيَٰبَتِ» (يوسف ١٠، ١٥؛ the second its 8th word, not 24th): stopped on with the ha as the rasm's
   // open ta, «غَيَٰبَهۡ», and leaned there, its ba of «فجثت زينب»
   // (the user, 2026-11-14).
   if (_kisai.contains(id)) {
     final variants = data['variants'] as List;
     int order(List r) =>
         (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
-    for (final (s, a, w) in const [(12, 10, 8), (12, 15, 23)]) {
+    for (final (s, a, w) in const [(12, 10, 8), (12, 15, 7)]) {
       for (final row in [
         [
           s,

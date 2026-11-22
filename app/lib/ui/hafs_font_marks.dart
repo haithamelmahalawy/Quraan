@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+/// The ishmam's sign put after its letter in a word's parts: a dot painted
+/// over the letter, clear of its marks, in the ishmam's colour (the user,
+/// 2026-11-22). A mark no Quran text uses, never drawn by the font.
+const ishmamSign = 'ٚ';
+
 /// Repairs the Hafs font's anchors without changing the source Quran text.
 /// The Maghribi fathatan glyph and stacked dagger-alif/madd need different
 /// anchors in this font. Iqlab mim is anchored independently so it cannot
@@ -192,6 +197,7 @@ class HafsFontMarks extends StatelessWidget {
       // The sakt within a word (ٱلۡۜأَرۡضِ), painted clear of the letter's marks.
       text.contains('ۜ') ||
       _tanween.hasMatch(text) ||
+      text.contains(ishmamSign) ||
       _needsClusterAdjustment(text);
 
   static bool _needsClusterAdjustment(String text) {
@@ -282,6 +288,10 @@ class HafsFontMarks extends StatelessWidget {
       }
       if (_lowSeen(m[0]!)) {
         final markAt = full.indexOf('ۣ', m.start);
+        marks[markAt] = placed[markAt].$2;
+      }
+      if (m[0]!.contains(ishmamSign)) {
+        final markAt = full.indexOf(ishmamSign, m.start);
         marks[markAt] = placed[markAt].$2;
       }
       if (_kasraUnderHamza(m[0]!) || _kasraUnderNameHa(m[0]!, previous)) {
@@ -437,6 +447,15 @@ const nameHaKasraDrop = .08;
 /// And how far right of the ha's middle, in font sizes.
 const nameHaKasraShift = .07;
 
+/// The ishmam's dot over its letter: its radius, and how high its centre
+/// stands over the line, in font sizes: over a short letter, one with dots
+/// above, a tall one, and higher over a vowel, shadda or sukun above it.
+const ishmamRadius = .065;
+const ishmamOverShort = .76;
+const ishmamOverDots = .80;
+const ishmamOverTall = 1.08;
+const ishmamOverMark = .30;
+
 /// How far under the line the imala sign stands, in font sizes; under a jim.
 const imalaDrop = .20;
 
@@ -526,6 +545,26 @@ class _QuranMarkPainter extends CustomPainter {
       final line = text.computeLineMetrics().firstWhere(
         (l) => l.baseline >= box.top && l.baseline <= box.bottom,
       );
+      if (sign == ishmamSign) {
+        final cluster = source.substring(at, end);
+        final tall = RegExp('^[اأإآلكطظ]').hasMatch(cluster);
+        final dotted = RegExp('^[قغضفنتثشخذزظ]').hasMatch(cluster);
+        // Over the vowel, shadda or sukun above the letter too.
+        final marked = RegExp('[َُّْٰۡٓ]').hasMatch(cluster);
+        final rise =
+            (tall
+                ? ishmamOverTall
+                : dotted
+                ? ishmamOverDots
+                : ishmamOverShort) +
+            (marked ? ishmamOverMark : 0);
+        canvas.drawCircle(
+          Offset((box.left + box.right) / 2, line.baseline - font * rise),
+          font * ishmamRadius,
+          Paint()..color = color ?? style.color ?? Colors.black,
+        );
+        continue;
+      }
       if (sign == '•') {
         canvas.drawCircle(
           Offset((box.left + box.right) / 2, line.baseline - font * .10),
