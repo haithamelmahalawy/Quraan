@@ -1435,7 +1435,13 @@ Map<String, int> buildAshabUsul(
       }
       final word = index[_key(v[0], v[1], v[2])]?.t ?? '';
       final next = index[_key(v[0], v[1], (v[2] as int) + 1)]?.t ?? '';
-      if (!_bare(word).endsWith('ى') || !next.startsWith('ٱ')) continue;
+      // Or with the tanween (هُدٗى، مُّسَمّٗى، قُرٗى، طُوًى): leaned at the stop
+      // alone, no sign drawn (the user, 2026-11-23).
+      final tanween = RegExp('[ًٗ]ى[ۖ-ۜ]*\$')
+          .hasMatch(word.replaceAll('ّ', ''));
+      if (!tanween && (!_bare(word).endsWith('ى') || !next.startsWith('ٱ'))) {
+        continue;
+      }
       const khulf = ' بخلف عنه';
       final how = '${v[6]}';
       v[6] = how.endsWith(khulf)
@@ -3364,6 +3370,60 @@ Map<String, int> buildAshabUsul(
       v[6] = 'بالياء';
     }
   }
+  // «جَآءَنَا» (الزخرف ٣٨) read singular, as Hafs: not Ibn Dhakwan's dual
+  // «جَآءَٰنَا» its imala was taken from (the user, 2026-11-23).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 43 &&
+        v[1] == 38 &&
+        v[2] == 2 &&
+        v[5] == 'u' &&
+        '${v[6]}'.contains('إمالة')) {
+      v[4] = 'جَ۪آءَنَا';
+      v[6] = 'بإمالة الألف';
+    }
+  }
+  // «تُمَٰٓسُّوهُنَّ» (البقرة ٢٣٦، ٢٣٧، الأحزاب ٤٩) (the user, 2026-11-23).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] == 'f' &&
+        v[6] == 'بضم التاء وتشديد السين مع المد المشبع' &&
+        '${v[4]}'.contains('تُمَٰٓسُّوهُنَّ')) {
+      v[6] = 'بضم التاء وإضافة ألف بمد مشبع بعد الميم';
+    }
+  }
+  // «أَئِنَّكُمۡ» (العنكبوت ٢٨): the added hamza of the question alone, its two
+  // hamzas told in their usul (the user, 2026-11-23).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 29 &&
+        v[1] == 28 &&
+        v[2] == 4 &&
+        v[5] == 'f' &&
+        v[6] == 'بزيادة همزة استفهام مع تحقيق الهمزتين بلا إدخال') {
+      v[6] = 'بزيادة همزة استفهام';
+    }
+  }
+  // «ءَاتِيكَ» (النمل ٣٩، ٤٠): the alif after the hamza leaned, its sign under
+  // the hamza (the user, 2026-11-23).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 27 &&
+        (v[1] == 39 && v[2] == 5 || v[1] == 40 && v[2] == 7) &&
+        v[5] == 'u' &&
+        '${v[6]}'.contains('إمالة')) {
+      v[4] = 'ءَ۪اتِيكَ';
+    }
+  }
+  // «وَيَخۡلُدۡ فِيهِۦ مُهَانًا» (الفرقان ٦٩) without the silah: under هاء الكناية,
+  // as Ya'qub's, not a farsh (the user, 2026-11-23).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[0] == 25 && v[1] == 69 && v[2] == 6 && v[5] == 'f') {
+      v[5] = 'u';
+      v[6] = 'دون صلة';
+      if (v.length > 7) {
+        v[7] = 'ha_silah';
+      } else {
+        v.add('ha_silah');
+      }
+    }
+  }
   // «بَٰلِغٌ أَمۡرَهُۥ» (الطلاق ٣): the ha raised after the fatha, told by its
   // tanween and ra alone (the user, 2026-11-17).
   for (final v in (data['variants'] as List).cast<List>()) {
@@ -3858,6 +3918,7 @@ Map<String, int> buildAshabUsul(
   _idghamOnFarsh(data['variants'] as List);
   _idghamIntoYaIdafa(data['variants'] as List);
   _raaaKawkab(id, data['variants'] as List);
+  _taraaa(id, data['variants'] as List);
   _idghamChain(data['variants'] as List);
   // The plural's mim told only where the reader's ha before it is not
   // Hafs's: «يَحۡسَبُهُمُ» (البقرة ٢٧٣) is Hafs's own, its mim no rule, the
@@ -4537,6 +4598,42 @@ void _idghamIntoYaIdafa(List variants) {
     if (parts[1].endsWith('ۜ') && !rest.endsWith('ۜ')) rest = '$restۜ';
     v[4] = '${parts[0]} $first$rest';
   }
+}
+
+/// «تَرَٰٓءَا ٱلۡجَمۡعَانِ» (الشعراء ٦١) for Hamza and Khalaf al-'Ashir: told once
+/// under the imala, «بإمالة الراء والهمزة وقفًا، والراء فقط وصلًا», its two rows
+/// (the stop's and the joining's) coloured alone (the user, 2026-11-23).
+void _taraaa(String id, List variants) {
+  if (!_hamza.contains(id) && !_khalafAshir.contains(id)) return;
+  final rows = variants.cast<List>();
+  bool here(List r) =>
+      r[0] == 26 &&
+      r[1] == 61 &&
+      r[2] == 1 &&
+      r[5] == 'u' &&
+      '${r[6]}'.contains('إمالة');
+  final leaned = rows.where(here).toList();
+  if (leaned.isEmpty) return;
+  for (final r in leaned) {
+    while (r.length < 8) {
+      r.add('');
+    }
+    if (r.length < 9) r.add(<String, Object?>{});
+    r[8] = {...(r[8] as Map), 'noBand': true};
+  }
+  const joined = 'بإمالة الراء والهمزة وقفًا، والراء فقط وصلًا';
+  final at = rows.indexOf(leaned.last);
+  variants.insert(at + 1, [
+    26,
+    61,
+    1,
+    1,
+    'تَرَٰ۪ٓءَا',
+    'u',
+    joined,
+    '',
+    {'source': ashabSource, 'bandOnly': true, 'bandNote': joined},
+  ]);
 }
 
 /// «رَءَا كَوۡكَبٗا، رَءَا ٱلۡقَمَرَ، رَءَا ٱلشَّمۡسَ» (الأنعام ٧٦-٧٨), told in the

@@ -250,6 +250,11 @@ int _imala(
     // places, the dot under the ta; «وَءَاتَىٰنِي» (هود ٢٨، ٦٣) and «ءَاتَىٰنِيَ»
     // (مريم ٣٠، النمل ٣٦) for all (the user, 2026-11-19).
     if (!RegExp(r'مأوى|ءاتىكم|ءاتىني?$').hasMatch(_bare(word.t))) continue;
+    // Not Hamza's nor Khalaf al-'Ashir's «ءَاتَىٰنِ» (النمل ٣٦): its ya dropped
+    // alone, no imala (the user, 2026-11-23); al-Kisa'i's leaned.
+    if (word.s == 27 && word.a == 36 && word.w == 7 && !_kisai.contains(id)) {
+      continue;
+    }
     final key = _key(word.s, word.a, word.w);
     if (done.contains('$key:true') || !done.add('$key:false')) continue;
     put([

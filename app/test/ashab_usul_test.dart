@@ -565,7 +565,7 @@ void main() {
       for (final (s, a, w) in [(2, 236, 8), (2, 237, 5), (33, 49, 11)]) {
         expect(
           farsh(id, s, a)[w],
-          'تُمَٰٓسُّوهُنَّ|بضم التاء وتشديد السين مع المد المشبع',
+          'تُمَٰٓسُّوهُنَّ|بضم التاء وإضافة ألف بمد مشبع بعد الميم',
           reason: '$id $s:$a',
         );
       }
@@ -1140,10 +1140,18 @@ void main() {
         (11, 28, 9),
         (11, 63, 9),
         (19, 30, 4),
-        (27, 36, 7),
       ]) {
         expect(at(s, a, w).single[6], 'بإمالة الألف', reason: '$id $s:$a');
       }
+      // «ءَاتَىٰنِ» (النمل ٣٦): al-Kisa'i's alone leaned; Hamza's and Khalaf
+      // al-'Ashir's its ya dropped, no imala (the user, 2026-11-23).
+      expect(
+        at(27, 36, 7),
+        const {'duri_kisai', 'abul_harith'}.contains(id)
+            ? hasLength(1)
+            : isEmpty,
+        reason: id,
+      );
       for (final (s, a, w) in [(36, 13, 6), (7, 43, 21)]) {
         expect(
           at(s, a, w).where((v) => (v[8] as Map)['stopOnly'] == true),

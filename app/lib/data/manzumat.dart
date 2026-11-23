@@ -1470,6 +1470,69 @@ class Manzumat {
         RegExp(r'^[وفبل]*محياهم$').hasMatch(_letters(hafs))) {
       return {300};
     }
+    // «أَحۡيَا» and its forms (فَأَحۡيَٰكُمۡ، أَحۡيَاهَا): «وَلَكِنَّ أَحْيَا عَنْهُمَا
+    // بَعْدَ وَاوِهِ وَفِيمَا سِوَاهُ لِلْكِسَائِيِّ مُيِّلَا» (298) alone (the user,
+    // 2026-11-23).
+    if (poem == Poem.shatibiyya &&
+        const {
+          'khalaf_hamzah',
+          'khallad',
+          'abul_harith',
+          'duri_kisai',
+        }.contains(v.riwayaId) &&
+        v.isImala &&
+        RegExp(r'^[وف]*احيا?(كم|ها|هم|ه|نا)?$').hasMatch(
+          hafs
+              .replaceAll(RegExp('[أإآٱ]'), 'ا')
+              .replaceAll(RegExp('[^ء-ي]'), ''),
+        )) {
+      return {298};
+    }
+    if (poem == Poem.shatibiyya &&
+        const {
+          'khalaf_hamzah',
+          'khallad',
+          'abul_harith',
+          'duri_kisai',
+        }.contains(v.riwayaId) &&
+        v.isImala &&
+        v.description.startsWith('بإمالة الألف')) {
+      final letters = hafs
+          .replaceAll(RegExp('[أإآٱ]'), 'ا')
+          .replaceAll(RegExp('[^ء-ي]'), '');
+      // The alif after a ra (أُسَٰرَىٰ، بُشۡرَىٰ، ٱشۡتَرَىٰهُ، ٱلۡقُرَىٰ): «وَمَا بَعْدَ رَاءٍ
+      // شَاعَ حُكْمًا ...» (311) (the user, 2026-11-23).
+      if (RegExp(r'ر[ىا](ه|ها|هم|هما|كم|نا|ك)?$').hasMatch(letters)) {
+        return {311};
+      }
+      // فَعۡلَى، فُعۡلَى، فِعۡلَى (ٱلدُّنۡيَا، ٱلۡحُسۡنَىٰ، ٱلۡقُرۡبَىٰ، ٱلۡمَوۡتَىٰ، إِحۡدَى):
+      // «وَكَيْفَ جَرَتْ فَعْلَى فَفِيهَا وُجُودُهَا ...» (294) (the user,
+      // 2026-11-23).
+      final m = RegExp(
+        r'^(?:[وفبلك][َِ])?(?:ٱلۡ?|لِلۡ?)?([^ً-ٰ])([َُِ])([^ً-ٰ])ۡ([^ً-ٰ])َ(?:ىٰ?|ا)$',
+      ).firstMatch(hafs.replaceAll(RegExp('[ّٓۖ-ۜ]'), ''));
+      if (m != null) {
+        final stem = '${m[1]}${m[3]}${m[4]}';
+        // «ٱلرُّءۡيَا», by its own bayt: «وَرُءْيَايَ وَالرُّءْيَا ...» (299).
+        if (stem == 'رءي') return {299};
+        final fala = m[2] == 'َ'
+            ? const {
+                'موت',
+                'سلو',
+                'تقو',
+                'صرع',
+                'مرض',
+                'قتل',
+                'نجو',
+                'دعو',
+              }.contains(stem)
+            // Not a verb's passive (يُتۡلَىٰ، تُدۡعَىٰ، نُؤۡتَىٰ).
+            : !(m[2] == 'ُ' && 'يتن'.contains(m[1]!)) &&
+                  // «كِلۡتَا», told by its own bayt.
+                  stem != 'كلت';
+        if (fala) return {294};
+      }
+    }
     if (_dhawatYa(poem, v, hafs)) return {291, 292, 293};
     // «كَٰفِرِينَ، ٱلۡكَٰفِرِينَ» with the ya: «وَمَعْ كَافِرِينَ الْكَافِرِينَ بِيَائِهِ
     // وَهَارٍ رَوَى مُرْوٍ بِخُلْفٍ صَدٍ حَلَا» (323), for Abu 'Amr, al-Duri 'an
@@ -1875,7 +1938,7 @@ class Manzumat {
         .hasMatch(v.text.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), ''));
     if (poem == Poem.shatibiyya && shatibiyyaAshab.contains(v.riwayaId)) {
       if (v.rule == 'ha_damir' && RegExp(r'هُمُ$').hasMatch(v.text)) {
-        return {113, 114};
+        return {113, 114, 115};
       }
       if (!v.isUsul && nabi) return {458};
       if (place == '4:162:23') return {611};

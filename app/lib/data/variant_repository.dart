@@ -575,6 +575,8 @@ String _bare(String text) =>
 bool _matchesUsul(Variant v, String how) {
   // The ishmam the riwaya's rule tells (سِيٓءَ «بإشمام كسرة السين الضم»).
   if (v.rule == 'ishmam' && how.contains('إشمام')) return true;
+  // The ha without its silah (فِيهِ مُهَانًا «بترك الصلة»), told in its usul.
+  if (v.rule == 'ha_silah' && how.contains('صلة')) return true;
   // «يسٓ وَٱلۡقُرۡءَانِ» «وأدغم النون من «يس»…»: the riwaya's idgham row tells it
   // in the usul, no hamesh besides (Shu'ba's, the user, 2026-11-16).
   if (v.rule == 'idgham_saghir' && RegExp('أدغم|إدغام').hasMatch(how)) {

@@ -5718,6 +5718,18 @@ class _UsulBox extends StatelessWidget {
             readers == null ? ' ($d)' : ' ($d: $readers)',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
+        // The ha of the pronoun read without its silah (فِيهِ مُهَانًا، يُؤَدِّهِ):
+        // «(بترك الصلة)» beside it, for every reader (the user, 2026-11-23).
+        if (i.readings.any(
+          (v) =>
+              const {'ha_silah', 'ha_kinaya'}.contains(v.rule) &&
+              RegExp('(دون|بلا) صلة').hasMatch(v.description) &&
+              !v.description.contains('بخلف'),
+        ))
+          Text(
+            ' (بترك الصلة)',
+            style: TextStyle(fontSize: 9 * scale, color: g.color),
+          ),
         // Warsh's taqlil of يُجَٰزِيٓ, read with another face.
         if (i.readings.any(
           (v) =>

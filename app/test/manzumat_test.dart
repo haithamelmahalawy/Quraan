@@ -6386,7 +6386,7 @@ void main() {
             rule: 'ha_damir',
             kind: VariantKind.usul,
           ).mention,
-          {113, 114},
+          {113, 114, 115},
           reason: '$id $s:$a',
         );
       }
