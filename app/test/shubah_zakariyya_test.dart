@@ -26,8 +26,8 @@ void main() {
     }
   });
 
-  // «ٱءۡتُونِي» twice in 18:96, both in the hamesh alike, the first drawn as
-  // it is, without the madd (the user, 2026-11-13).
+  // «ٱئۡتُونِي» twice in 18:96, its hamza on a nabra (the user, 2026-11-24),
+  // both in the hamesh alike, the first drawn without the madd (2026-11-13).
   test('Shubah reads both of 18:96 in the hamesh', () async {
     final variants = VariantRepository({'shubah'});
     await variants.ensureLoaded(['shubah']);
@@ -42,6 +42,7 @@ void main() {
       expect(v.isUsul, isFalse, reason: '${v.word}');
       expect(v.description, rows.first.description);
     }
-    expect(rows.first.text, 'ٱءۡتُونِي');
+    expect(rows.first.text, 'ٱئۡتُونِي');
+    expect(rows.first.description, 'بإسكان الهمزة وحذف الألف');
   });
 }

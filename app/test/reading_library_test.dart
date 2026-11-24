@@ -122,7 +122,7 @@ void main() {
   );
 
   test('book browsing exposes each note once and preserves span indexing', () {
-    expect(book.entries, hasLength(7972));
+    expect(book.entries, hasLength(7975));
     expect(book.entries.toSet(), hasLength(book.entries.length));
     expect(() => book.entries.clear(), throwsUnsupportedError);
     for (final e in book.entries) {
@@ -200,6 +200,32 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('the library search finds the bayts of both poems', (t) async {
+    await show(t);
+    await t.enterText(find.byKey(const ValueKey('library-search')), 'حرمي نصر');
+    await t.pump();
+    await t.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 30)),
+    );
+    await t.pumpAndSettle();
+    await reveal(
+      t,
+      find.byKey(const ValueKey('library-found-shatibiyya-282')),
+      'reading-library-list',
+    );
+    final count = poems
+        .verses(Poem.shatibiyya)
+        .where(
+          (b) => librarySearchMatches(
+            'حرمي نصر',
+            librarySearchText('${b.sadr} ${b.ajz} ${b.chapter}'),
+          ),
+        )
+        .length;
+    expect(find.text('أبيات الشاطبية المطابقة: $count'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets(
     'poem chapter filtering, Arabic number search, explanation and font controls',
     (t) async {
@@ -243,7 +269,7 @@ void main() {
         size: const Size(540, 1100),
         screen: TasheelLibraryScreen(quran: mushafs.madani),
       );
-      expect(find.text('المواضع المعروضة: 7972 من 7972'), findsOneWidget);
+      expect(find.text('المواضع المعروضة: 7975 من 7975'), findsOneWidget);
       await select(
         t,
         'السورة',
@@ -279,11 +305,11 @@ void main() {
         'كلمةغيرموجودة',
       );
       await t.pumpAndSettle();
-      expect(find.text('المواضع المعروضة: 0 من 7972'), findsOneWidget);
+      expect(find.text('المواضع المعروضة: 0 من 7975'), findsOneWidget);
       expect(find.text('لا توجد مواضع مطابقة.'), findsOneWidget);
       await t.tap(find.text('إظهار الجميع'));
       await t.pumpAndSettle();
-      expect(find.text('المواضع المعروضة: 7972 من 7972'), findsOneWidget);
+      expect(find.text('المواضع المعروضة: 7975 من 7975'), findsOneWidget);
       expect(t.takeException(), isNull);
     },
   );

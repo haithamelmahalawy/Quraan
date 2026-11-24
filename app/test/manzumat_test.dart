@@ -3836,6 +3836,125 @@ void main() {
     }
   });
 
+  test("«فَنَبَذتُّهَا» merged cites «وَنَبَذْتُهاَ شَوَاهِدُ حَمَّادٍ»", () {
+    for (final id in ['susi', 'khallad', 'duri_kisai', 'ishaq']) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 20,
+          ayah: 96,
+          word: 11,
+          count: 1,
+          text: 'فَنَبَذتُّهَا',
+          kind: VariantKind.usul,
+          rule: 'idgham_saghir',
+          description: 'بإدغام الذال في التاء',
+        ),
+        'فَنَبَذۡتُهَا',
+        20,
+        surahs,
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, {279}, reason: id);
+    }
+  });
+
+  test("Hamza's «نَبۡشُرُكَ» cites «لِحَمْزَةَ مَعْ كَافٍ مَعَ الْحِجْرِ»", () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      for (final (surah, ayah, text) in [
+        (9, 21, 'يَبۡشُرُهُمۡ'),
+        (15, 53, 'نَبۡشُرُكَ'),
+        (19, 7, 'نَبۡشُرُكَ'),
+        (19, 97, 'لِتَبۡشُرَ'),
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: surah,
+            ayah: ayah,
+            word: 0,
+            count: 1,
+            text: text,
+            kind: VariantKind.farsh,
+            description: 'بفتح النون وإسكان الباء وتخفيف الشين وضم الشين',
+          ),
+          text.replaceAll('بۡشُ', 'بَشِّ'),
+          surah,
+          surahs,
+        );
+        expect(r.mention, {555, 556}, reason: '$id $surah:$ayah');
+      }
+    }
+  });
+
+  test(
+    '«كٓهيعٓصٓ ذِكۡرُ» merged cites «وَحِرْمِيُّ نَصْرٍ صَادَ مَرْيَمَ»',
+    () {
+      for (final id in ['susi', 'hisham', 'khallad', 'duri_kisai', 'ishaq']) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: 19,
+            ayah: 2,
+            word: 0,
+            count: 1,
+            text: 'ذِّكۡرُ',
+            kind: VariantKind.usul,
+            rule: 'idgham_saghir',
+            description: 'بإدغام الصاد في الذال',
+          ),
+          'ذِكۡرُ',
+          19,
+          surahs,
+        );
+        expect(r.poem, Poem.shatibiyya, reason: id);
+        expect(r.mention, {281, 282}, reason: id);
+      }
+    },
+  );
+
+  test('Hafs\'s four sakts left cite «وَسَكْتَةُ حَفْصٍ» for every reader', () {
+    for (final id in [
+      'qalun',
+      'warsh',
+      'bazzi',
+      'susi',
+      'shubah',
+      'khallad',
+      'duri_kisai',
+      'ibn_wardan',
+      'rawh',
+      'ruways',
+      'ishaq',
+    ]) {
+      for (final (surah, ayah, word, text, hafs) in [
+        (18, 1, 10, 'عِوَجٗا', 'عِوَجَاۜ'),
+        (36, 52, 5, 'مَّرۡقَدِنَاۗ هَٰذَا', 'مَّرۡقَدِنَاۜۗ هَٰذَا'),
+        (75, 27, 1, 'مَن رَّاقٖ', 'مَنۡۜ رَاقٖ'),
+        (83, 14, 1, 'بَل رَّانَ', 'بَلۡۜ رَانَ'),
+      ]) {
+        final r = manzumat.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: surah,
+            ayah: ayah,
+            word: word,
+            count: text.split(' ').length,
+            text: text,
+            kind: VariantKind.usul,
+            rule: 'no_sakt',
+            description: 'بالوصل دون سكت',
+          ),
+          hafs,
+          surah,
+          surahs,
+        );
+        expect(r.poem, Poem.shatibiyya, reason: '$id $surah:$ayah');
+        expect(r.mention, {830, 831}, reason: '$id $surah:$ayah');
+      }
+    }
+  });
+
   test('Ibn Amir «مُوصَدَةٌ» cites «وَمُؤْصَدَةٌ فَاهْمِزْ»', () {
     for (final id in ['hisham', 'ibn_dhakwan']) {
       for (final (surah, ayah) in [(90, 20), (104, 8)]) {

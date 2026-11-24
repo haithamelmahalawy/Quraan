@@ -327,14 +327,27 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
   // for Ibn 'Amir: his files are reviewed word by word, and the book's one
   // comparison of a word (the ayn of «وَعُيُونٍ») would hide another of its
   // readings (the tanween before «ٱدۡخُلُوهَا»).
+  bool reads(List g) =>
+      (g[1] as List).contains(id) || (g[2] as List).contains(id);
+  // Words another entry gives this riwaya a reading of its own: kept, though
+  // a wider entry reads them as Hafs (Hamza's «إِن تَضِلَّ» inside the two
+  // hamzas of «ٱلشُّهَدَآءِ أَن», البقرة ٢٨٢; the user, 2026-11-24).
+  final own = <int>{
+    for (final e in json['entries'] as List)
+      if (e[4] == 'farsh' &&
+          (e[5] as List).cast<List>().any(
+            (g) =>
+                !bookReadingAsHafs(g, (e[5] as List).cast<List>()) && reads(g),
+          ))
+        for (var w = e[2] as int; w < (e[2] as int) + (e[3] as int); w++)
+          VariantRepository.key(e[0] as int, e[1] as int, w),
+  };
   for (final e
       in const {'hisham', 'ibn_dhakwan'}.contains(id)
           ? const []
           : json['entries'] as List) {
     if (e[4] != 'farsh') continue;
     final readings = (e[5] as List).cast<List>();
-    bool reads(List g) =>
-        (g[1] as List).contains(id) || (g[2] as List).contains(id);
     final asHafs = readings.any(
       (g) => bookReadingAsHafs(g, readings) && (g[1] as List).contains(id),
     );
@@ -343,6 +356,9 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
     );
     if (!asHafs || other) continue;
     for (var w = e[2] as int; w < (e[2] as int) + (e[3] as int); w++) {
+      if (own.contains(VariantRepository.key(e[0] as int, e[1] as int, w))) {
+        continue;
+      }
       index[VariantRepository.key(e[0] as int, e[1] as int, w)]?.removeWhere(
         (v) =>
             v.kind == VariantKind.farsh &&

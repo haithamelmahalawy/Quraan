@@ -7,6 +7,16 @@ import 'dart:io';
 /// «وَكِتَٰبِهِۦ» read in the singular, by every reader who reads it so.
 const kitabihiDescription = 'بكسر الكاف وفتح التاء وإثبات الألف (على الإفراد)';
 
+/// «لِيَسُوٓأَ» (الإسراء ٧) of Ibn 'Amir, Shu'ba, Hamza and Khalaf al-'Ashir: its
+/// hamza over an alif, after the madd (the user, 2026-11-24).
+const liyasuaText = 'لِيَسُوٓأَ';
+const liyasuaDescription = 'بهمز مفتوح في نهاية الكلمة وحذف الواو الأخيرة';
+
+/// «ٱئۡتُونِيٓ» (الكهف ٩٦) of Shu'ba and Hamza: the alif of joining, then the
+/// quiet hamza on its nabra (the user, 2026-11-24).
+const ituniText = 'ٱئۡتُونِيٓ';
+const ituniDescription = 'بإسكان الهمزة وحذف الألف';
+
 void correctReviewedFarsh(String id, Map quran, List rows) {
   // This spelling is shared by everyone who reads نِعْمَةً at 31:20.
   for (final row in rows) {
@@ -62,7 +72,37 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
       'بضم التاء وكسر الحاء',
     ]);
   }
+  // «لِيَسُوٓأَ» (الإسراء ٧) of Ibn 'Amir and Shu'ba, as of Hamza and Khalaf
+  // al-'Ashir (the user, 2026-11-24).
+  if (const {'hisham', 'ibn_dhakwan', 'shubah'}.contains(id)) {
+    rows.removeWhere(
+      (r) => r[0] == 17 && r[1] == 7 && r[2] == 11 && r[5] == 'f',
+    );
+    final next = rows.indexWhere(
+      (r) => r[0] > 17 || r[0] == 17 && (r[1] > 7 || r[1] == 7 && r[2] > 11),
+    );
+    rows.insert(next < 0 ? rows.length : next, <Object>[
+      17,
+      7,
+      11,
+      1,
+      liyasuaText,
+      'f',
+      liyasuaDescription,
+    ]);
+  }
   if (id != 'shubah') return;
+
+  // «ٱئۡتُونِي زُبَرَ»، «قَالَ ٱئۡتُونِيٓ» (الكهف ٩٦): on its nabra and told as
+  // Hamza's (the user, 2026-11-24).
+  for (final row in rows) {
+    if (row[0] == 18 && row[1] == 96 && (row[2] == 0 || row[2] == 15)) {
+      if ('${row[4]}'.contains('تُونِي') && '${row[4]}'.startsWith('ٱ')) {
+        row[4] = row[2] == 0 ? 'ٱئۡتُونِي' : ituniText;
+        row[6] = ituniDescription;
+      }
+    }
+  }
 
   void put(List<Object> row) {
     final i = rows.indexWhere(

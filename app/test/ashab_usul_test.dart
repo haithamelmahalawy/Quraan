@@ -388,8 +388,9 @@ void main() {
       final rabbi = at(id, 2, 258, 15).where((v) => v[5] == 'f').single;
       expect('${rabbi[4]}', endsWith('ي'), reason: id);
     }
-    // «فَمَن تَطَوَّعَ خَيۡرٗا فَهُوَ» (١٨٤) as Hafs's for al-Ashab: no farsh,
-    // no idgham.
+    // «فَمَن يَطَّوَّعۡ خَيۡرٗا فَهُوَ» (١٨٤) for Hamza, al-Kisa'i and Khalaf
+    // al-'Ashir, «بِحَرْفَيْهِ», Khalaf's nun merged into its ya (the user,
+    // 2026-11-24; before, 2026-11-19, as Hafs's).
     for (final id in [
       'khalaf_hamzah',
       'khallad',
@@ -398,8 +399,10 @@ void main() {
       'ishaq',
       'idris',
     ]) {
-      expect(at(id, 2, 184, 19), isEmpty, reason: id);
-      expect(at(id, 2, 184, 20), isEmpty, reason: id);
+      expect(at(id, 2, 184, 20).where((v) => v[5] == 'f').map((v) => v[4]), [
+        'يَطَّوَّعۡ',
+      ], reason: id);
+      expect(at(id, 2, 184, 19).isNotEmpty, id == 'khalaf_hamzah', reason: id);
     }
     // Juz 2 against «نهج حمزة»: al-Akhfash's ya in «وَلِأُتِمَّ»; the hamza
     // dropped as the rasm in «تَبَرَّءُواْ», «رُءُوسَكُمۡ», not «رَءُوفٞ».
@@ -1191,8 +1194,69 @@ void main() {
           (v) => v[0] == 10 && v[1] == a && v[2] == w && v[7] == 'sakt',
         );
         expect('${row[4]}', contains('لۡۜـ'), reason: '$id $a');
-        expect(row[6], 'بالسكت على لام التعريف قبل الهمز', reason: '$id $a');
+        expect(
+          '${row[6]}',
+          startsWith('بالسكت على لام التعريف قبل الهمز'),
+          reason: '$id $a',
+        );
       }
+    }
+  });
+
+  test(
+    '«قَالَ ٱئۡتُونِيٓ» (الكهف ٩٦): the alif of joining, the hamza on a nabra',
+    () {
+      for (final id in ['khalaf_hamzah', 'khallad']) {
+        final row = (load(id)['variants'] as List).cast<List>().firstWhere(
+          (v) => v[0] == 18 && v[1] == 96 && v[2] == 15 && v[5] == 'f',
+        );
+        expect(row[4], 'ٱئۡتُونِيٓ', reason: id);
+      }
+    },
+  );
+
+  test('«وَأَنَّا ٱخۡتَرۡنَٰكَ» (طه ١٣): its alif a dagger one', () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final row = (load(id)['variants'] as List).cast<List>().firstWhere(
+        (v) => v[0] == 20 && v[1] == 13 && v[5] == 'f',
+      );
+      expect(row[4], 'وَأَنَّا ٱخۡتَرۡنَٰكَ', reason: id);
+    }
+  });
+
+  test('«وَوُلۡدًا»، «وَوُلۡدُهُۥ»: the second waw told', () {
+    for (final id in [
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+      'bazzi',
+      'duri_abuamr',
+    ]) {
+      for (final v in (load(id)['variants'] as List).cast<List>().where(
+        (v) => v[5] == 'f' && '${v[4]}'.startsWith('وَوُ'),
+      )) {
+        expect('${v[6]}', startsWith('بضم الواو الثانية وإسكان اللام'));
+      }
+    }
+  });
+
+  test('«فَمَا ٱسۡطَّٰعُواْ» (الكهف ٩٧): the doubled ta alone', () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final row = (load(id)['variants'] as List).cast<List>().firstWhere(
+        (v) => v[0] == 18 && v[1] == 97 && v[2] == 1 && v[5] == 'f',
+      );
+      expect(row[6], 'بتشديد الطاء', reason: id);
+    }
+  });
+
+  test('«لِشَاْيۡءٍ» (الكهف ٢٣): the sakt on its ya, as on «شيء»', () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final row = (load(id)['variants'] as List).cast<List>().firstWhere(
+        (v) => v[0] == 18 && v[1] == 23 && v[2] == 2 && v[7] == 'sakt',
+      );
+      expect('${row[4]}', contains('يۡۜء'), reason: id);
+      expect('${row[6]}', startsWith('بالسكت على الياء الساكنة في «شيء»'));
     }
   });
 
@@ -1205,4 +1269,127 @@ void main() {
     expect(at(13, 4, 9), allOf(startsWith('صِنۡوَانٖ '), endsWith('رِ')));
     expect(at(76, 21, 4).split(' ').first, endsWith('ۖ'));
   });
+
+  test('«رَءَا» before a sakin told once, its two rows coloured alone', () {
+    for (final id in ['khalaf_hamzah', 'khallad', 'ishaq', 'idris']) {
+      final rows = (load(id)['variants'] as List).cast<List>();
+      for (final (s, a, w) in [
+        (16, 85, 1),
+        (16, 86, 1),
+        (18, 53, 0),
+        (33, 22, 1),
+      ]) {
+        final here = rows.where(
+          (v) =>
+              v[0] == s &&
+              v[1] == a &&
+              v[2] == w &&
+              '${v[6]}'.contains('إمالة'),
+        );
+        expect(
+          here.where((v) => (v[8] as Map)['bandOnly'] == true).map((v) => v[6]),
+          ['بإمالة الراء والهمزة وقفًا، والراء فقط وصلًا'],
+          reason: '$id $s:$a',
+        );
+        expect(
+          here.where((v) => (v[8] as Map)['noBand'] == true).length,
+          2,
+          reason: '$id $s:$a',
+        );
+      }
+    }
+  });
+
+  test('«ٱلدُّنۡيَا» (طه ٧٢، النجم ٢٩) and «وَأَحۡيَا» (النجم ٤٤) leaned', () {
+    for (final id in ashabRiwayat) {
+      final rows = (load(id)['variants'] as List).cast<List>();
+      for (final (s, a, w) in [(20, 72, 18), (53, 29, 10), (53, 44, 3)]) {
+        expect(
+          rows.any(
+            (v) =>
+                v[0] == s &&
+                v[1] == a &&
+                v[2] == w &&
+                v[5] == 'u' &&
+                v[6] == 'بإمالة الألف',
+          ),
+          isTrue,
+          reason: '$id $s:$a',
+        );
+      }
+    }
+  });
+
+  test('يظاهرون، بشهادتهم، من راق as the user set them', () {
+    for (final id in ashabRiwayat) {
+      final rows = (load(id)['variants'] as List).cast<List>();
+      List at(int s, int a, int w, bool Function(List) f) =>
+          rows.firstWhere((v) => v[0] == s && v[1] == a && v[2] == w && f(v));
+      for (final a in [2, 3]) {
+        expect(
+          at(58, a, 1, (v) => v[5] == 'f')[6],
+          'بفتح الياء والظاء والهاء وبتشديد الظاء وبعدها ألف',
+          reason: '$id 58:$a',
+        );
+      }
+      expect(
+        at(70, 33, 2, (v) => v[5] == 'f')[6],
+        'بحذف الألف الثانية (على الإفراد)',
+        reason: id,
+      );
+      final raq = at(75, 27, 1, (v) => v[7] == 'no_sakt');
+      expect(raq[3], 2, reason: id);
+      expect('${raq[4]}', isNot(contains('ۜ')), reason: id);
+    }
+  });
+
+  test(
+    '«لَّمَا» (الطارق ٤) and «سَلَٰسِلَ» (الإنسان ٤) as the book gives them',
+    () {
+      String? farsh(String id, int s, int a, int w) =>
+          (load(id)['variants'] as List)
+              .cast<List>()
+              .where((v) => v[0] == s && v[1] == a && v[2] == w && v[5] == 'f')
+              .map((v) => '${v[6]}')
+              .firstOrNull;
+      for (final id in ['abul_harith', 'duri_kisai', 'ishaq', 'idris']) {
+        expect(farsh(id, 86, 4, 3), 'بتخفيف الميم', reason: id);
+      }
+      for (final id in ['khalaf_hamzah', 'khallad', 'ishaq', 'idris']) {
+        expect(
+          farsh(id, 76, 4, 3),
+          'بحذف الألف وصلًا ووقفًا مع إسكان اللام وقفًا',
+          reason: id,
+        );
+      }
+    },
+  );
+
+  test(
+    '«كِلَ۪اهُمَا» (الإسراء ٢٣) leaned under the lam, «لِيَسُوٓأَ» (الإسراء ٧)',
+    () {
+      for (final id in ashabRiwayat) {
+        final rows = (load(id)['variants'] as List).cast<List>();
+        expect(
+          rows
+              .where((v) => v[0] == 17 && v[1] == 23 && v[2] == 14)
+              .map((v) => v[4]),
+          ['كِلَ۪اهُمَا'],
+          reason: id,
+        );
+      }
+      for (final id in ['khalaf_hamzah', 'khallad', 'ishaq', 'idris']) {
+        final rows = (load(id)['variants'] as List).cast<List>();
+        expect(
+          rows
+              .where(
+                (v) => v[0] == 17 && v[1] == 7 && v[2] == 11 && v[5] != 'u',
+              )
+              .map((v) => '${v[4]} ${v[6]}'),
+          ['لِيَسُوٓأَ بهمز مفتوح في نهاية الكلمة وحذف الواو الأخيرة'],
+          reason: id,
+        );
+      }
+    },
+  );
 }

@@ -47,6 +47,10 @@ String withSmallYa(String text) => text
 /// in Hafs.
 String madinahScript(String text, {String? followingWord}) {
   var shown = text
+      // The sajda overline (ۤ) of the source, drawn by the Hafs font only as
+      // a stray dash after the word, as Hafs's words drop it (لِلۡأَذۡقَانِۤ،
+      // الإسراء ١٠٧; the user, 2026-11-24).
+      .replaceAll('ۤ', '')
       .replaceAll('ے', 'ى')
       .replaceAll('يٰ', 'ىٰ')
       .replaceAll('ٜ', '۪')

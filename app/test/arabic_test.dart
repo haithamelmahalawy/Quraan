@@ -204,4 +204,8 @@ void main() {
     expect(withSmallYa('تَرَنِۦ'), 'تَرَنِۦ');
     expect(withSmallYa('كِتَٰبِ'), 'كِتَٰبِ');
   });
+
+  test('the sajda overline is not drawn after a word (لِلۡأَذۡقَانِۤ)', () {
+    expect(madinahScript('لِلۡۜأَذۡقَانِۤ'), isNot(contains('ۤ')));
+  });
 }

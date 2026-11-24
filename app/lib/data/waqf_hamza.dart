@@ -117,3 +117,7 @@ String? waqfHamzaKindOfFinal(String word) {
   }
   return null;
 }
+
+/// Khallad's two faces of the sakt on the article and on «شيء»: the sakt,
+/// and without it, the first (the user, 2026-11-24).
+const khalladSaktWays = ['السكت', 'عدم السكت، وهو الأولى'];

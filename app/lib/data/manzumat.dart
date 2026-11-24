@@ -230,6 +230,9 @@ class Manzumat {
             _yaqubShatibiyya(reading) != null ||
             reading.riwayaId == 'ruways' && _kafirin(reading, hafs) ||
             _khalafFatathabbatu(reading) ||
+            _hafsSaktLeft(reading) ||
+            _kafHaSad(reading) ||
+            _nabadhtuha(reading) ||
             // A Durrah reader's «قَد» merged, the Durrah silent: his asl's
             // bayt, after the Durrah's two.
             (_idghamQad(reading, hafs) ||
@@ -1447,6 +1450,23 @@ class Manzumat {
       RegExp(r'^[وفبل]*(ال)?كا?فرين$').hasMatch(_letters(hafs));
 
   Set<int> _reviewedVerses(Poem poem, Variant v, String hafs) {
+    // Hafs's sakt left in its four places, by every reader: both bayts (the
+    // user, 2026-11-24).
+    if (poem == Poem.shatibiyya && _hafsSaktLeft(v)) return {830, 831};
+    // Hamza's «يَبۡشُرُهُمۡ» (التوبة ٢١)، «نَبۡشُرُكَ» (الحجر ٥٣، مريم ٧) and
+    // «لِتَبۡشُرَ» (مريم ٩٧): «مَعَ الْكَهْفِ وَالإِسْرَاءِ يَبْشُرُ كَمْ سَمَا … /
+    // … وَفي التَّوْبَةِ اعْكِسُوا لِحَمْزَةَ مَعْ كَافٍ مَعَ الْحِجْرِ أَوَّلَا»
+    // (555، 556; the user, 2026-11-24).
+    if (poem == Poem.shatibiyya &&
+        !v.isUsul &&
+        const {'khalaf_hamzah', 'khallad'}.contains(v.riwayaId) &&
+        const {9, 15, 19}.contains(v.surah) &&
+        _letters(v.text).contains('بشر')) {
+      return {555, 556};
+    }
+    // «كٓهيعٓصٓ ذِكۡرُ» merged: both bayts (the user, 2026-11-24).
+    if (poem == Poem.shatibiyya && _kafHaSad(v)) return {281, 282};
+    if (poem == Poem.shatibiyya && _nabadhtuha(v)) return {279};
     // «تُشۡرِكُونَ» with the ta (يونس ١٨، النحل ١، ٣، الروم ٤٠): «وَخَاطَبَ عَمَّا
     // يُشْرِكُونَ هُنَا شَذاً وَفي الرُّومِ وَالْحَرْفَيْنِ في النَّحْلِ أَوَّلَا»
     // (745) alone (the user, 2026-11-24).
@@ -4008,3 +4028,32 @@ bool _khalafFatathabbatu(Variant v) =>
       '4:94:32',
       '49:6:7',
     }.contains('${v.surah}:${v.ayah}:${v.word}');
+
+/// Hafs's four sakts left (عِوَجٗا، مَّرۡقَدِنَا، مَن رَّاقٖ، بَل رَّانَ): the
+/// Shatibiyya's «وَسَكْتَةُ حَفْصٍ … وَالْبَاقُونَ لاَ سَكْتَ مُوصَلَا» (830، 831)
+/// for every reader, the Durrah's too (the user, 2026-11-24).
+bool _hafsSaktLeft(Variant v) =>
+    const {
+      '18:1:10',
+      '36:52:5',
+      '75:27:1',
+      '83:14:1',
+    }.contains('${v.surah}:${v.ayah}:${v.word}') &&
+    (v.rule == 'no_sakt' || v.description.contains('سكت'));
+
+/// The sad of «كٓهيعٓصٓ» merged into the dhal of «ذِكۡرُ» (مريم ١-٢): «وَيَاسِيْنَ
+/// أَظْهِرْ … / وَحِرْمِيُّ نَصْرٍ صَادَ مَرْيَمَ» (281، 282), for Khalaf
+/// al-'Ashir too (the user, 2026-11-24).
+bool _kafHaSad(Variant v) =>
+    v.rule == 'idgham_saghir' &&
+    v.surah == 19 &&
+    (v.ayah == 1 || v.ayah == 2) &&
+    v.word == 0;
+
+/// «فَنَبَذتُّهَا» (طه ٩٦) merged: «وَعُذْتُ عَلَى إِدْغَامِهِ وَنَبَذْتُهاَ شَوَاهِدُ
+/// حَمَّادٍ» (279), for Khalaf al-'Ashir too (the user, 2026-11-24).
+bool _nabadhtuha(Variant v) =>
+    v.surah == 20 &&
+    v.ayah == 96 &&
+    v.word == 11 &&
+    v.description.contains('إدغام');

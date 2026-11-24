@@ -1959,7 +1959,10 @@ class _MushafPageState extends State<MushafPage>
                               'sakt',
                               'ha_damir',
                             }.contains(v.rule) &&
-                            !v.stopOnly),
+                            !v.stopOnly ||
+                        // And its stop on the hamza, the hamza purple
+                        // (فِرَٰشٗا وَّٱلسَّمَآءَ; the user, 2026-11-24).
+                        v.rule == 'hisham_waqf'),
               ),
           ]
         : const <Variant>[];
@@ -1995,28 +1998,7 @@ class _MushafPageState extends State<MushafPage>
                   s.kinds.contains(v.kind),
             )
             .toList();
-    bool targeted(Variant v) =>
-        v.isUsul &&
-        (v.isBadal ||
-            v.rule == 'ishmam' ||
-            v.rule == 'ishmam_sad' ||
-            v.rule == 'ya_zaida' ||
-            v.isLinHamz ||
-            v.isImala && !v.fathPreferred ||
-            v.isTarqiqOrTaghliz ||
-            _naqlKind(v) != null ||
-            isWarshRabbahuMadd(v) ||
-            isWarshAnaMadd(v) ||
-            v.rule == 'ikhfa' ||
-            v.rule == 'first_sakin' ||
-            // The stop on the hamza: its hamza alone (يَأۡمُرُكُم، not the
-            // whole word; the user, 2026-11-18), the word's other letters left
-            // to their rules (the nun of «أَن يَّكۡفُرُواْ»).
-            v.rule == 'hisham_waqf' ||
-            // The ha of the kinaya and the mim of the plural: their letter
-            // alone (عَلَيۡهُمۡ's ha; the user, 2026-11-18).
-            const {'ha_damir', 'mim_jam', 'ha_silah'}.contains(v.rule) ||
-            RegExp('همز|تسهيل|صلة|إدغام|ادغام').hasMatch(v.description));
+    bool targeted(Variant v) => _targetedAsl(v);
     final lexical = readings.any((v) => !v.isUsul);
     // The sakt before the hamza colours the word over any other asl
     // (عَلَيۡهُمۡۜ with its ha's damma; the user, 2026-11-18).
@@ -2024,7 +2006,12 @@ class _MushafPageState extends State<MushafPage>
       (v) => v.isUsul && v.isSakt && v.description.contains('قبل الهمز'),
     );
     if (readings.isEmpty ||
-        !sakt && readings.any((v) => v.isUsul && !targeted(v)) ||
+        !sakt &&
+            readings.any((v) => v.isUsul && !targeted(v)) &&
+            // An asl of the whole word with one of a letter's own (Hamza's
+            // «ءَاتَىٰنِيۡ», its ya quiet and its ta leaned): the word in the
+            // first's colour, that letter in its own (the user, 2026-11-24).
+            !readings.any(_letterAsl) ||
         // A farsh word alone is coloured whole; with a rule of its own
         // (نُوتِيهِمُ: its ibdal; وَٱلنَّبِيٓـِٕۧنَ: its badal) the rule's letter
         // takes the rule's colour, the rest the farsh colour.
@@ -2039,6 +2026,41 @@ class _MushafPageState extends State<MushafPage>
     // differences are alerted).
     return readings;
   }
+
+  /// An asl drawn on one letter by its sign or colour: the imala, the
+  /// ishmam, the tarqiq and taghliz, the lin's hamza, the badal.
+  bool _letterAsl(Variant v) =>
+      v.isUsul &&
+      (v.isImala && !v.fathPreferred ||
+          v.rule == 'ishmam' ||
+          v.rule == 'ishmam_sad' ||
+          v.isTarqiqOrTaghliz ||
+          v.isLinHamz ||
+          v.isBadal);
+
+  /// An asl coloured on its own letters, not the whole word.
+  bool _targetedAsl(Variant v) =>
+      v.isUsul &&
+      (v.isBadal ||
+          v.rule == 'ishmam' ||
+          v.rule == 'ishmam_sad' ||
+          v.rule == 'ya_zaida' ||
+          v.isLinHamz ||
+          v.isImala && !v.fathPreferred ||
+          v.isTarqiqOrTaghliz ||
+          _naqlKind(v) != null ||
+          isWarshRabbahuMadd(v) ||
+          isWarshAnaMadd(v) ||
+          v.rule == 'ikhfa' ||
+          v.rule == 'first_sakin' ||
+          // The stop on the hamza: its hamza alone (يَأۡمُرُكُم، not the
+          // whole word; the user, 2026-11-18), the word's other letters left
+          // to their rules (the nun of «أَن يَّكۡفُرُواْ»).
+          v.rule == 'hisham_waqf' ||
+          // The ha of the kinaya and the mim of the plural: their letter
+          // alone (عَلَيۡهُمۡ's ha; the user, 2026-11-18).
+          const {'ha_damir', 'mim_jam', 'ha_silah'}.contains(v.rule) ||
+          RegExp('همز|تسهيل|صلة|إدغام|ادغام').hasMatch(v.description));
 
   Variant? _replacementAt(Ayah ayah, int w) =>
       !const {'warsh', 'ruways', 'rawh'}.contains(widget.settings.displayed) &&
@@ -2167,6 +2189,21 @@ class _MushafPageState extends State<MushafPage>
         colors[i] = tanweenColor;
       }
     }
+    // An asl of the whole word beside one of a letter's own (Hamza's
+    // «ءَاتَىٰنِيۡ»): the word in the first's colour, the letter's rule marked
+    // over it below (the user, 2026-11-24).
+    final wholeAsl = readings
+        .where((v) => v.isUsul && !_targetedAsl(v) && !v.isSakt)
+        .toList();
+    if (wholeAsl.isNotEmpty &&
+        readings.any(_letterAsl) &&
+        !readings.any((v) => v.isUsul && v.isSakt)) {
+      // The colour the whole word had (of all its rules), kept.
+      final color = ReadingColors.ofReadings(readings);
+      for (var i = 0; color != null && i < letters.length; i++) {
+        if (letters[i].trim().isNotEmpty) colors.putIfAbsent(i, () => color);
+      }
+    }
     // The sakt before the hamza (the user, 2026-11-18): its letters alone in
     // red, over any other rule. Within the word (ٱلۡۜأَرۡضِ، شَيۡۜءٍ), the
     // quiet letter and the hamza after it; at its end (عَذَابٌۜ، خَلَوۡاْۜ), the
@@ -2263,12 +2300,25 @@ class _MushafPageState extends State<MushafPage>
       // (يَأۡمُرُكُم، وَٱلۡأَرۡضِ، ٱلسَّمَآءِ، أُوْلَٰٓئِكَ's second).
       if (v.rule == 'hisham_waqf') {
         final hamza = RegExp('^ـ?[ءأإآؤئ]|ٔ|ٕ');
+        // Within its own word, of two drawn as one (بِنَآءٗ وَّأَنزَلَ).
+        var from = 0, to = letters.length;
+        if (text.contains(' ')) {
+          final space = letters.indexWhere((l) => l.trim().isEmpty);
+          if (v.word == w) {
+            to = space;
+          } else {
+            from = space + 1;
+          }
+        }
         if (v.usulKind == 'الوقف على الساكن المفصول') {
-          if (letters.isNotEmpty && hamza.hasMatch(letters.first)) {
-            mark(0, ReadingColors.of(v));
+          // The word's first letter, after the idgham's doubled waw too.
+          var at = from;
+          if (at < to && !hamza.hasMatch(letters[at]) && v.word != w) at++;
+          if (at < to && hamza.hasMatch(letters[at])) {
+            mark(at, ReadingColors.of(v));
           }
         } else {
-          for (var i = 1; i < letters.length; i++) {
+          for (var i = from + 1; i < to; i++) {
             if (hamza.hasMatch(letters[i])) mark(i, ReadingColors.of(v));
           }
         }
@@ -2742,22 +2792,73 @@ class _MushafPageState extends State<MushafPage>
   /// first word (بِبَعِيدٖ ۝ وَّٱسۡتَغۡفِرُواْ): drawn in the Hafs font, so its
   /// letter is doubled and coloured, not the print's glyph (the user,
   /// 2026-11-23).
-  bool _idghamAcrossAyah(Ayah ayah, int w) {
-    if (w != 0 || ayah.number < 2) return false;
-    if (!RegExp('^[وي]').hasMatch(ayah.words[0])) return false;
+  bool _idghamAcrossAyah(Ayah ayah, int w) =>
+      _idghamAcrossAyahRows(ayah, w).isNotEmpty;
+
+  /// Two words drawn as one by Khalaf's idgham (إِحۡسَٰنٗا وَّتَوۡفِيقًا), its
+  /// asl put out: the one of them glowing by an asl of its own, alone (the
+  /// user, 2026-11-24). Its share of the drawn width from the right (the
+  /// first) or the left (the second); null for the whole.
+  ({bool right, double share})? _glowingPart(
+    Ayah ayah,
+    int w,
+    String drawn,
+    String font,
+    double fontSize,
+  ) {
+    final space = drawn.indexOf(' ');
+    if (space < 0 || w + 1 >= ayah.words.length) return null;
+    final s = widget.settings;
+    List<Variant> rowsAt(int i) => {
+      ..._baseAt(widget.variants, s, ayah, i),
+      ..._readingsAt(widget.variants, s, ayah, i).shown,
+    }.where((v) => v.word == i).toList();
+    final first = rowsAt(w);
+    final idgham = first
+        .where((v) => v.rule == 'idgham_bila_ghunna' && v.count == 2)
+        .toList();
+    if (idgham.isEmpty || _glows(idgham)) return null;
+    bool lit(List<Variant> rows) {
+      final own = rows.where((v) => v.rule != 'idgham_bila_ghunna').toList();
+      return own.isNotEmpty && _glows(own);
+    }
+
+    final one = lit(first), two = lit(rowsAt(w + 1));
+    if (one == two) return null;
+    double width(String text) => (TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontFamily: font, fontSize: fontSize, height: 1),
+      ),
+      textDirection: TextDirection.rtl,
+    )..layout()).width;
+    final whole = width(drawn);
+    if (whole <= 0) return null;
+    final share = width(
+      one ? drawn.substring(0, space) : drawn.substring(space),
+    );
+    return (right: one, share: (share / whole).clamp(0.0, 1.0));
+  }
+
+  /// The rows of that idgham, told on the last word of the ayah before.
+  List<Variant> _idghamAcrossAyahRows(Ayah ayah, int w) {
+    if (w != 0 || ayah.number < 2) return const [];
+    if (!RegExp('^[وي]').hasMatch(ayah.words[0])) return const [];
     final s = widget.settings;
     final prevAyah = widget.quran.ayah(ayah.surah, ayah.number - 1);
     final prev = prevAyah.words.length - 1;
     return [
-      ..._baseAt(widget.variants, s, prevAyah, prev).where((v) => v.isUsul),
-      ..._readingsAt(widget.variants, s, prevAyah, prev).shown,
-    ].any(
-      (v) =>
-          v.word == prev &&
-          v.count == 1 &&
-          v.rule == 'idgham_bila_ghunna' &&
-          s.kinds.contains(v.kind),
-    );
+          ..._baseAt(widget.variants, s, prevAyah, prev).where((v) => v.isUsul),
+          ..._readingsAt(widget.variants, s, prevAyah, prev).shown,
+        ]
+        .where(
+          (v) =>
+              v.word == prev &&
+              v.count == 1 &&
+              v.rule == 'idgham_bila_ghunna' &&
+              s.kinds.contains(v.kind),
+        )
+        .toList();
   }
 
   List<(String, Color?)>? _idghamInto(Ayah ayah, int w, String text) {
@@ -3297,23 +3398,28 @@ class _MushafPageState extends State<MushafPage>
     // Khallad) is coloured still, its rows dropped from the differences: it
     // glows by the shown riwaya's own rows, not as one with none.
     final told = [...m.shown, ...?_letterReadings(ayah, w)];
+    final ownRows = told.isNotEmpty
+        ? told
+        : _baseAt(
+            widget.variants,
+            widget.settings,
+            ayah,
+            w,
+          ).where((v) => v.word == w).toList();
     if (alert != null &&
         !stopping &&
         ((m.color != null || coloured != null) &&
+                // A word of no row of its own, its letter merged into from the
+                // ayah before (رَّحِيمٞ ۝ وَّقَٰتِلُوهُمۡ): it glows with that
+                // idgham, out when it is put out (the user, 2026-11-24).
                 _glows(
-                  told.isNotEmpty
-                      ? told
-                      : _baseAt(
-                          widget.variants,
-                          widget.settings,
-                          ayah,
-                          w,
-                        ).where((v) => v.word == w).toList(),
+                  ownRows.isNotEmpty ? ownRows : _idghamAcrossAyahRows(ayah, w),
                 ) ||
             _pairGlows(ayah, w))) {
       // The sin of the sakt stands above the letters: the glow reaches it.
       word = _Alerting(
         top: drawnText.contains('ۜ') ? fontSize * .5 : 0,
+        part: _glowingPart(ayah, w, drawnText, shown.font, fontSize),
         child: word,
       );
     }
@@ -4173,6 +4279,12 @@ String togetherNote(int places) => switch (places) {
 /// إِبۡرَٰهَٰمُ, the user, 2026-11-21).
 String _toldAlike(String text) => _withoutPause(text)
     .replaceAll('ْ', 'ۡ')
+    // The tanween as the next word has it, shown, merged or hidden (وَلَدٗا،
+    // وَلَدًا), one reading (the user, 2026-11-24).
+    .replaceAll(RegExp('[ࣰٗ]'), 'ً')
+    .replaceAll(RegExp('[ࣱٞ]'), 'ٌ')
+    .replaceAll(RegExp('[ࣲٖ]'), 'ٍ')
+    .replaceAll(RegExp('[ۭۢ]'), '')
     .replaceFirstMapped(
       RegExp('^([^ً-ْٰۡ])([ً-ِۡ]*)ّ'),
       (m) => '${m[1]}${m[2]}',
@@ -5208,12 +5320,15 @@ class _NotesLayout extends MultiChildLayoutDelegate {
 /// A word that differs from Hafs, glowing still while the lamp of
 /// «تنبيه الاختلافات» is lit.
 class _Alerting extends StatelessWidget {
-  const _Alerting({required this.child, this.top = 0});
+  const _Alerting({required this.child, this.top = 0, this.part});
 
   final Widget child;
 
   /// How far above the word the glow reaches: over the sin of the sakt.
   final double top;
+
+  /// One word of two drawn as one: its side and share of the width.
+  final ({bool right, double share})? part;
 
   static BoxDecoration get _glow => BoxDecoration(
     borderRadius: BorderRadius.circular(6),
@@ -5227,7 +5342,30 @@ class _Alerting extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) => top == 0
+  Widget build(BuildContext context) => part != null
+      ? Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              top: -top,
+              bottom: 0,
+              child: Align(
+                alignment: part!.right
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: part!.share,
+                  heightFactor: 1,
+                  child: DecoratedBox(decoration: _glow),
+                ),
+              ),
+            ),
+            child,
+          ],
+        )
+      : top == 0
       ? DecoratedBox(decoration: _glow, child: child)
       : Stack(
           clipBehavior: Clip.none,
@@ -5410,6 +5548,11 @@ class _UsulBox extends StatelessWidget {
 
   /// The word, its reader and the face, a row for each reader's own; in the
   /// order of the readers' list.
+  /// Khallad's sakt on the article and on «شيء», of two faces.
+  static bool _khalladSakt(_UsulGroup g) =>
+      g.label == 'السكت قبل الهمز' &&
+      g.ways.join('|') == khalladSaktWays.join('|');
+
   Widget _table(List<_UsulGroup> of) {
     final rows = <(_UsulGroup, List<_UsulItem>, List<String>, String)>[];
     for (final g in of) {
@@ -5421,7 +5564,7 @@ class _UsulBox extends StatelessWidget {
           '${i.ayah.surah}:${i.ayah.number}:${i.word}:${i.stopOnly}:'
           '${i.text.endsWith('\u0653')}:'
           // Told by its wording: each wording a row of its own (\u0647\u064e\u0670\u0653\u0623\u064e\u0646\u062a\u064f\u0645\u06e1).
-          '${g.ways.isEmpty ? i.readings.first.description : ''}',
+          '${g.ways.isEmpty || _khalladSakt(g) ? i.readings.first.description : ''}',
           () => (i, {}),
         );
         place.$2.addAll(i.riwayat);
@@ -5432,7 +5575,9 @@ class _UsulBox extends StatelessWidget {
           ..sort((a, b) => _riwayaRank(a).compareTo(_riwayaRank(b)));
         // Told by its faces, or else by the wording of its row.
         // Numbered where there are several; one told as it is.
-        final faces = g.ways.length == 1
+        final faces = _khalladSakt(g)
+            ? 'بوجهين: السكت، وعدم السكت وهو الأولى'
+            : g.ways.length == 1
             ? g.ways.single
             : g.ways.isNotEmpty
             ? numberedWays(g.ways)
@@ -5495,6 +5640,43 @@ class _UsulBox extends StatelessWidget {
             const ['khalaf_hamzah', 'khallad'],
             '${khallad.$4}${khallad.$4.contains('؛') ? '؛' : '،'} '
                 'ولخلف وجه آخر بالسكت',
+          )
+          ..remove(khallad);
+      }
+    }
+    // Hamza's sakt on the article and on «شيء», both narrators chosen:
+    // Khalaf's row, and Khallad's face without it beside (the user,
+    // 2026-11-24).
+    if (of.first.label == 'السكت قبل الهمز') {
+      String places(List<_UsulItem> items) =>
+          (items
+                  .map((i) => '${i.ayah.surah}:${i.ayah.number}:${i.word}')
+                  .toList()
+                ..sort())
+              .join(',');
+      for (final khallad in [...rows]) {
+        if (!_khalladSakt(khallad.$1) ||
+            khallad.$3.length != 1 ||
+            khallad.$3.single != 'khallad') {
+          continue;
+        }
+        final khalaf = rows
+            .where(
+              (r) =>
+                  r.$1.ways.isEmpty &&
+                  r.$3.length == 1 &&
+                  r.$3.single == 'khalaf_hamzah' &&
+                  places(r.$2) == places(khallad.$2),
+            )
+            .firstOrNull;
+        if (khalaf == null) continue;
+        final at = rows.indexOf(khalaf);
+        rows
+          ..[at] = (
+            khalaf.$1,
+            khalaf.$2,
+            const ['khalaf_hamzah', 'khallad'],
+            '${khalaf.$4}، ولخلاد وجه بعدم السكت وهو الأولى',
           )
           ..remove(khallad);
       }

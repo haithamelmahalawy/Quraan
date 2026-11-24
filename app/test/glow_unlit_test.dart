@@ -254,4 +254,67 @@ void main() {
     await glowing(t, 325, khalaf(325));
     expect(colorOf('21:39:7', 'هُ'), isNotNull);
   });
+
+  // «الإدغام بلا غنة» put out (the user, 2026-11-24): «رَّحِيمٞ ۝ وَّقَٰتِلُوهُمۡ»
+  // (البقرة ١٩٢-١٩٣) glows no more, the second word of none of its own;
+  // «إِحۡسَٰنٗا وَّتَوۡفِيقًا» (النساء ٦٢), drawn as one, glows on its second
+  // word alone, by its sakt.
+  testWidgets('the idgham put out, its words glow by their own usul', (
+    t,
+  ) async {
+    String bare(String s) => s.replaceAll(RegExp('[ً-ٟۖ-ۭـ]'), '');
+    final lit30 = (await glowing(
+      t,
+      30,
+      khalaf(30)..setUsulLit('الإدغام بلا غنة', false),
+    )).map(bare).toSet();
+    expect(lit30, isNot(contains(bare('وَّقَٰتِلُوهُمۡ'))));
+    expect(lit30, isNot(contains(bare('رَّحِيمٞ'))));
+    await glowing(t, 88, khalaf(88)..setUsulLit('الإدغام بلا غنة', false));
+    final pair = find.ancestor(
+      of: find.byKey(const ValueKey('word:4:62:14')),
+      matching: find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_Alerting',
+      ),
+    );
+    expect(pair, findsOneWidget);
+    expect(
+      find.descendant(of: pair, matching: find.byType(FractionallySizedBox)),
+      findsOneWidget,
+    );
+  });
+
+  // The stop on the hamza of the second word drawn as one by the idgham
+  // (فِرَٰشٗا وَّٱلسَّمَآءَ، أَندَادٗا وَّأَنتُمۡ): its hamza purple (the user,
+  // 2026-11-24).
+  testWidgets('the second word of the idgham keeps its hamza purple', (
+    t,
+  ) async {
+    await glowing(t, 4, khalaf(4));
+    for (final key in ['2:22:4', '2:22:20']) {
+      final parts = t.widget<InkText>(find.byKey(ValueKey('word:$key'))).parts!;
+      final space = parts.indexWhere((p) => p.$1.trim().isEmpty);
+      expect(
+        parts.skip(space + 1).any((p) => p.$2 == ReadingColors.hamza),
+        isTrue,
+        reason: key,
+      );
+    }
+  });
+
+  // Khallad's sakt on the article and on «شيء» of two faces (the user,
+  // 2026-11-24): alone, «بوجهين»; with Khalaf, beside his sakt.
+  testWidgets('Khallad\'s sakt of two faces in the key', (t) async {
+    await glowing(t, 2, khalaf(2)..displayed = null);
+    expect(
+      find.textContaining('ولخلاد وجه بعدم السكت وهو الأولى'),
+      findsWidgets,
+    );
+    final alone = ReaderSettings.memory(selected: {'khallad'})
+      ..page = 2
+      ..qcfFont = false
+      ..diffAlert = DiffAlert.glow;
+    await glowing(t, 2, alone);
+    expect(find.text('بوجهين: السكت، وعدم السكت وهو الأولى'), findsWidgets);
+  });
 }

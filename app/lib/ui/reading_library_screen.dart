@@ -55,7 +55,11 @@ class ReadingLibraryScreen extends StatefulWidget {
 
 class _ReadingLibraryScreenState extends State<ReadingLibraryScreen> {
   final _search = TextEditingController();
+  final _poems = Manzumat.load();
   int _category = 0;
+
+  /// At most this many bayts of each poem listed, the rest counted.
+  static const versesShown = 30;
 
   @override
   void dispose() {
@@ -120,7 +124,7 @@ class _ReadingLibraryScreenState extends State<ReadingLibraryScreen> {
               controller: _search,
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
-                labelText: 'ابحث عن متن أو مصدر',
+                labelText: 'ابحث عن متن أو مصدر أو في أبيات المتون',
                 prefixIcon: Icon(Icons.search),
               ),
             ),
@@ -138,7 +142,7 @@ class _ReadingLibraryScreenState extends State<ReadingLibraryScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            if (books.isEmpty)
+            if (books.isEmpty && !_searchesVerses)
               const Padding(
                 padding: EdgeInsets.all(24),
                 child: Text('لا توجد نتائج مطابقة.'),
@@ -205,16 +209,103 @@ class _ReadingLibraryScreenState extends State<ReadingLibraryScreen> {
                   ),
                 ),
               ),
+            if (_searchesVerses) _verseResults(theme),
           ],
         ),
       ),
     );
   }
+
+  /// The search also looks in the poems' bayts, from two letters on (the
+  /// user, 2026-11-24).
+  bool get _searchesVerses =>
+      _category != 2 && librarySearchText(_search.text).trim().length >= 2;
+
+  /// The bayts of the Shatibiyya and the Durrah the search finds, by their
+  /// words, their number or their chapter.
+  Widget _verseResults(ThemeData theme) => FutureBuilder<Manzumat>(
+    future: _poems,
+    builder: (context, snapshot) {
+      final data = snapshot.data;
+      if (data == null) return const SizedBox.shrink();
+      final number = int.tryParse(librarySearchText(_search.text).trim());
+      final found = [
+        for (final poem in [Poem.shatibiyya, Poem.durrah])
+          (
+            poem,
+            data
+                .verses(poem)
+                .where(
+                  (b) => number != null
+                      ? b.n == number
+                      : librarySearchMatches(
+                          _search.text,
+                          librarySearchText('${b.sadr} ${b.ajz} ${b.chapter}'),
+                        ),
+                )
+                .toList(),
+          ),
+      ];
+      return Column(
+        key: const ValueKey('library-verse-results'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 8),
+          for (final (poem, verses) in found) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'أبيات ${poem.nameAr} المطابقة: ${verses.length}',
+                key: ValueKey('library-verse-count-${poem.name}'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            for (final b in verses.take(versesShown))
+              Card(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                      child: Text(b.chapter, style: theme.textTheme.bodySmall),
+                    ),
+                    PoemVerse(
+                      key: ValueKey('library-found-${poem.name}-${b.n}'),
+                      bayt: b,
+                      named: false,
+                      explanation: data.explanation(poem, b.n),
+                      bookExplanation: '',
+                    ),
+                  ],
+                ),
+              ),
+            if (verses.length > versesShown)
+              TextButton(
+                onPressed: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        PoemLibraryScreen(poem: poem, query: _search.text),
+                  ),
+                ),
+                child: Text(
+                  'عرض كل الأبيات (${verses.length}) في متن ${poem.nameAr}',
+                ),
+              ),
+          ],
+        ],
+      );
+    },
+  );
 }
 
 class PoemLibraryScreen extends StatefulWidget {
-  const PoemLibraryScreen({super.key, required this.poem});
+  const PoemLibraryScreen({super.key, required this.poem, this.query = ''});
   final Poem poem;
+
+  /// The search it opens with.
+  final String query;
 
   @override
   State<PoemLibraryScreen> createState() => _PoemLibraryScreenState();
@@ -222,7 +313,7 @@ class PoemLibraryScreen extends StatefulWidget {
 
 class _PoemLibraryScreenState extends State<PoemLibraryScreen> {
   final _data = Manzumat.load();
-  final _search = TextEditingController();
+  late final _search = TextEditingController(text: widget.query);
   final _scroll = ScrollController();
   String? _chapter;
   double _fontSize = 18;
