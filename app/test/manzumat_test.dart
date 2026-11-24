@@ -3661,7 +3661,7 @@ void main() {
   test('Ibn Dhakwan رأى cites the farsh of al-An\'am', () {
     for (final (text, stop, verses) in [
       ('ر۪ء۪اهَا', false, {646, 647}),
-      ('ر۪ء۪ا', false, {646}),
+      ('ر۪ء۪ا', false, {646, 647}),
       ('ر۪ء۪ا', true, {648, 649}),
     ]) {
       final r = manzumat.referenceOf(
@@ -3856,6 +3856,86 @@ void main() {
       );
       expect(r.poem, Poem.shatibiyya, reason: id);
       expect(r.mention, {279}, reason: id);
+    }
+  });
+
+  test('«رَءَا» and «رَءَاكَ» leaned cite «وَحَرْفَيْ رَأَى كُلاًّ»', () {
+    for (final (id, hafs, text, d, verses) in [
+      ('khallad', 'رَءَاكَ', 'رَ۪ءَ۪اكَ', 'بإمالة الراء والهمزة', {646, 647}),
+      (
+        'duri_kisai',
+        'رَءَاهُ',
+        'رَ۪ءَ۪اهُ',
+        'بإمالة الراء والهمزة',
+        {646, 647},
+      ),
+      ('susi', 'رَءَا', 'رَءَ۪ا', 'بالإمالة', {646, 647}),
+      (
+        'khalaf_hamzah',
+        'رَءَا',
+        'رَ۪ءَا',
+        'بإمالة الراء فقط وصلًا',
+        {648, 649},
+      ),
+      ('shubah', 'رَءَا', 'رٜءَا', 'بالإمالة', {648, 649}),
+    ]) {
+      final r = ref(
+        id,
+        16,
+        hafs,
+        text: text,
+        kind: VariantKind.usul,
+        description: d,
+      );
+      expect(r.mention, verses, reason: '$id $text');
+    }
+  });
+  test('«قُلۡ كَمۡ، قُلۡ إِن» (المؤمنون) cite «وَفي قَالَ كَمْ قُلْ»', () {
+    for (final (id, ayah) in [
+      ('bazzi', 112),
+      ('qunbul', 112),
+      ('khallad', 112),
+      ('khalaf_hamzah', 114),
+      ('duri_kisai', 114),
+      ('abul_harith', 112),
+    ]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 23,
+          ayah: ayah,
+          word: 0,
+          count: 1,
+          text: 'قُلۡ',
+          kind: VariantKind.farsh,
+          description: 'بضم القاف وحذف الألف وإسكان اللام',
+        ),
+        'قَٰلَ',
+        23,
+        surahs,
+      );
+      expect(r.mention, {911}, reason: '$id $ayah');
+    }
+  });
+  test("Hamza's «عَلَيۡهُمۡ، إِلَيۡهُمۡ، لَدَيۡهُمۡ» cite «عَلَيْهِمْ إِلَيْهِمْ حَمْزَةٌ»", () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      for (final (hafs, text, verses) in [
+        ('عَلَيۡهِمۡ', 'عَلَيۡهُمۡ', {110}),
+        ('إِلَيۡهِمۡ', 'إِلَيۡهُمۡ', {110}),
+        ('لَدَيۡهِمۡ', 'لَدَيۡهُمۡ', {110}),
+        ('عَلَيۡهِمُ', 'عَلَيۡهُمُ', {110, 113, 114, 115}),
+      ]) {
+        final r = ref(
+          id,
+          2,
+          hafs,
+          text: text,
+          rule: 'ha_damir',
+          kind: VariantKind.usul,
+          description: 'بضم هاء الضمير بعد الياء الساكنة',
+        );
+        expect(r.mention, verses, reason: '$id $text');
+      }
     }
   });
 
@@ -9137,14 +9217,16 @@ void main() {
         count: 1,
         text: 'رَ۪ءَ۪ا',
         kind: VariantKind.usul,
-        description: 'بإمالة الراء والهمزة وقفًا',
+        description: ayah == 76
+            ? 'بإمالة الهمزة والراء وقفًا ووصلًا'
+            : 'بإمالة الراء والهمزة وقفًا',
       ),
       'رَءَا',
       6,
       surahs,
     );
     for (final id in ['ibn_dhakwan', 'shubah', 'khalaf_hamzah', 'duri_kisai']) {
-      expect(raa(id, 76, 4).mention, {646}, reason: id);
+      expect(raa(id, 76, 4).mention, {646, 647}, reason: id);
       expect(raa(id, 77, 1).mention, {648, 649}, reason: id);
       expect(raa(id, 78, 1).mention, {648, 649}, reason: id);
     }

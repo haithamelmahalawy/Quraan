@@ -1062,7 +1062,7 @@ void main() {
             .where((v) => v[0] == 17 && v[1] == a && v[2] == w && v[5] == 'f')
             .firstOrNull;
     for (final id in ['duri_kisai', 'abul_harith']) {
-      expect(at(id, 7, 11)![4], 'لِنَسُوٓءَ', reason: id);
+      expect(at(id, 7, 11)![4], 'لِنَسُوٓأَ', reason: id);
       expect(at(id, 7, 11)![6], 'بالنون وبهمزة مفتوحة بعد المد المتصل');
     }
     for (final id in [

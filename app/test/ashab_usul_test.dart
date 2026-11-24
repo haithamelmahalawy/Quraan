@@ -1250,6 +1250,23 @@ void main() {
     }
   });
 
+  test(
+    "Khallad's «وَنَـَٔا» with the hamza alone leaned, al-Isra and Fussilat",
+    () {
+      final rows = (load('khallad')['variants'] as List).cast<List>();
+      for (final (s, a) in [(17, 83), (41, 51)]) {
+        final row = rows.firstWhere(
+          (v) =>
+              v[0] == s &&
+              v[1] == a &&
+              v[2] == 5 &&
+              '${v[6]}'.startsWith('بإمالة'),
+        );
+        expect(row[6], 'بإمالة الهمزة فقط', reason: '$s:$a');
+      }
+    },
+  );
+
   test('«لِشَاْيۡءٍ» (الكهف ٢٣): the sakt on its ya, as on «شيء»', () {
     for (final id in ['khalaf_hamzah', 'khallad']) {
       final row = (load(id)['variants'] as List).cast<List>().firstWhere(

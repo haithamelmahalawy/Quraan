@@ -5576,7 +5576,7 @@ class _UsulBox extends StatelessWidget {
         // Told by its faces, or else by the wording of its row.
         // Numbered where there are several; one told as it is.
         final faces = _khalladSakt(g)
-            ? 'بوجهين: السكت، وعدم السكت وهو الأولى'
+            ? 'بوجهين: السكت، وعدم السكت وهو المقدّم'
             : g.ways.length == 1
             ? g.ways.single
             : g.ways.isNotEmpty
@@ -5584,7 +5584,7 @@ class _UsulBox extends StatelessWidget {
             : i.readings.first.description.replaceFirst(RegExp('^ب'), '');
         byRow
             .putIfAbsent(
-              '${ordered.join(',')}:$faces',
+              '${ordered.join(',')}:$faces:${_khalladSakt(g) ? i.readings.first.description : ''}',
               () => ([], ordered, faces),
             )
             .$1
@@ -5676,7 +5676,7 @@ class _UsulBox extends StatelessWidget {
             khalaf.$1,
             khalaf.$2,
             const ['khalaf_hamzah', 'khallad'],
-            '${khalaf.$4}، ولخلاد وجه بعدم السكت وهو الأولى',
+            '${khalaf.$4}، ولخلاد وجه آخر بعدم السكت وهو المقدّم',
           )
           ..remove(khallad);
       }

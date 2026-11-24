@@ -239,7 +239,7 @@ class Manzumat {
                     _idghamTa(reading, hafs) ||
                     _idghamIdh(reading, hafs) ||
                     _idghamHalBal(reading, hafs) ||
-                    _raaaAnam(reading).isNotEmpty) &&
+                    _raaaAnam(reading, hafs).isNotEmpty) &&
                 Poem.of(reading.riwayaId) == Poem.durrah ||
             (_idghamDhal(reading, hafs) ||
                     // Not «كُفُؤًا» (الإخلاص ٤), told in the Durrah:
@@ -792,7 +792,7 @@ class Manzumat {
       // sakin on stopping, «وَقِفْ فِيهِ كَالأُولَى».
       if (v.isImala && RegExp(r'^[وف]?رء?ا(ه|ها|ك)?$').hasMatch(bare)) {
         if (v.stopOnly) return {648, 649};
-        return RegExp(r'(ه|ها|ك)$').hasMatch(bare) ? {646, 647} : {646};
+        return const {646, 647};
       }
     }
     // «مَيۡت» light (بلد ميت، الميت), in the farsh of Al 'Imran: «وَفي بَلَدٍ
@@ -1083,14 +1083,39 @@ class Manzumat {
   /// «رَءَا ٱلۡقَمَرَ، رَءَا ٱلشَّمۡسَ» (٧٧، ٧٨): «وَقَبلَ السُّكُونِ الرَّا أَمِلْ فِي صَفاَ
   /// يَدٍ ...» and «وَقِفْ فِيهِ كَالأُولَى ...» (the user, 2026-11-19). Warsh's
   /// taqlil is told in its chapter.
-  static Set<int> _raaaAnam(Variant v) =>
-      v.surah != 6 || v.riwayaId == 'warsh' || !v.description.contains('إمالة')
-      ? const {}
-      : v.ayah == 76 && v.word == 4
-      ? const {646}
-      : (v.ayah == 77 || v.ayah == 78) && v.word == 1
-      ? const {648, 649}
-      : const {};
+  ///
+  /// Every «رَءَا» before a mover and with a pronoun (رَءَاكَ، رَءَاهُ، رَءَاهَا):
+  /// «وَحَرْفَيْ رَأَى كُلاًّ ... / بِخُلْفٍ وَخُلْفٌ فِيهِماَ مَعَ مُضْمِرٍ مُصِيبٌ
+  /// وَعَنْ عُثْمَانَ في الْكُلِّ قَلِّلَا» (646، 647); before a sakin, wherever
+  /// it is, as in al-An'am (the user, 2026-11-24).
+  static Set<int> _raaaAnam(Variant v, [String hafs = '']) {
+    if (v.riwayaId == 'warsh' ||
+        v.rule == 'hisham_waqf' ||
+        !RegExp('إمالة|بالإمالة').hasMatch(v.description)) {
+      return const {};
+    }
+    final bare = hafs.split(' ').first.replaceAll(RegExp('[ً-ٰٟۖ-ۭ]'), '');
+    if (!RegExp(r'^[وف]?ر[ءأ]ا(ك|ه|ها)?$').hasMatch(bare)) {
+      // Without Hafs's word, al-An'am's places by their number.
+      if (v.surah != 6) return const {};
+      return v.ayah == 76 && v.word == 4
+          ? const {646, 647}
+          : (v.ayah == 77 || v.ayah == 78) && v.word == 1
+          ? const {648, 649}
+          : const {};
+    }
+    // Before a sakin: the ra alone in joining, both at the stop.
+    final d = v.description;
+    // Or the sign on its ra alone, its hamza opened (Shu'ba's «رٜءَا»).
+    final raAlone =
+        RegExp('ر[ً-ْ]*[ٜ۪]').hasMatch(v.text) &&
+        RegExp('ءَ(?![ٜ۪])').hasMatch(v.text);
+    final beforeSakin =
+        !RegExp('(ك|ه|ها)\$').hasMatch(bare) &&
+        (d.contains('فقط وصل') || d.endsWith('وقفًا') || raAlone);
+    // A stop's own row before a sakin: «وَقِفْ فِيهِ كَالأُولَى».
+    return beforeSakin || v.stopOnly ? const {648, 649} : const {646, 647};
+  }
 
   /// Nafi''s hamza of «ٱلنَّبِيٓءُ» and its bab: «وَجَمْعاً وَفَرْداً فِي النَّبِيءِ
   /// وَفي النُّبُوءَةِ الْهَمْزَ كُلٌّ غَيْرَ نَافِعٍ ابْدَلاَ»; without it in
@@ -1463,6 +1488,28 @@ class Manzumat {
         const {9, 15, 19}.contains(v.surah) &&
         _letters(v.text).contains('بشر')) {
       return {555, 556};
+    }
+    // Hamza's ha of «عَلَيۡهُمۡ، إِلَيۡهُمۡ، لَدَيۡهُمۡ»: «عَلَيْهِمْ إِلَيْهِمْ حَمْزَةٌ
+    // وَلَدَيْهِموُ جَمِيعاً بِضَمِّ الْهاءِ وَقْفاً وَمَوْصِلاَ» (110), before
+    // the mim joined to a sakin, «وَمِنْ دُونِ وَصْلٍ ضَمُّهَا قَبْلَ سَاكِنٍ» (113-115),
+    // too (the user, 2026-11-24).
+    if (poem == Poem.shatibiyya &&
+        const {'khalaf_hamzah', 'khallad'}.contains(v.riwayaId) &&
+        v.rule == 'ha_damir' &&
+        RegExp(r'^[وف]?(عليهم|اليهم|إليهم|لديهم)$')
+            .hasMatch(_letters(hafs.split(' ').first))) {
+      return RegExp(r'هُمُ$').hasMatch(v.text) ? {110, 113, 114, 115} : {110};
+    }
+    // «قُلۡ كَمۡ لَبِثۡتُمۡ، قُلۡ إِن لَّبِثۡتُمۡ» (المؤمنون ١١٢، ١١٤): «وَفي قَالَ كَمْ قُلْ
+    // دُونَ شَكٍّ وَبَعْدَهُ شَفَا» (911), for every reader of «قُلۡ» (the
+    // user, 2026-11-24).
+    if (poem == Poem.shatibiyya &&
+        !v.isUsul &&
+        v.surah == 23 &&
+        (v.ayah == 112 || v.ayah == 114) &&
+        v.word == 0 &&
+        _letters(v.text) == 'قل') {
+      return {911};
     }
     // «كٓهيعٓصٓ ذِكۡرُ» merged: both bayts (the user, 2026-11-24).
     if (poem == Poem.shatibiyya && _kafHaSad(v)) return {281, 282};
@@ -3531,8 +3578,8 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _hamzaSirat(v, hafs).isNotEmpty) {
       return _hamzaSirat(v, hafs);
     }
-    if (poem == Poem.shatibiyya && _raaaAnam(v).isNotEmpty) {
-      return _raaaAnam(v);
+    if (poem == Poem.shatibiyya && _raaaAnam(v, hafs).isNotEmpty) {
+      return _raaaAnam(v, hafs);
     }
     final nafi = _nafiHamza(poem, v);
     if (nafi.isNotEmpty) return nafi;
@@ -3719,7 +3766,7 @@ class Manzumat {
       if (poem == Poem.shatibiyya && _idghamLabith(v, hafs)) {282},
       if (poem == Poem.shatibiyya && v.rule == 'idgham_bila_ghunna') {287},
       if (poem == Poem.shatibiyya) _hamzaSirat(v, hafs),
-      if (poem == Poem.shatibiyya) _raaaAnam(v),
+      if (poem == Poem.shatibiyya) _raaaAnam(v, hafs),
       _nafiHamza(poem, v),
     ]) {
       if (own.isNotEmpty) {

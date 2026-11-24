@@ -307,7 +307,7 @@ void main() {
   testWidgets('Khallad\'s sakt of two faces in the key', (t) async {
     await glowing(t, 2, khalaf(2)..displayed = null);
     expect(
-      find.textContaining('ولخلاد وجه بعدم السكت وهو الأولى'),
+      find.textContaining('ولخلاد وجه آخر بعدم السكت وهو المقدّم'),
       findsWidgets,
     );
     final alone = ReaderSettings.memory(selected: {'khallad'})
@@ -315,6 +315,6 @@ void main() {
       ..qcfFont = false
       ..diffAlert = DiffAlert.glow;
     await glowing(t, 2, alone);
-    expect(find.text('بوجهين: السكت، وعدم السكت وهو الأولى'), findsWidgets);
+    expect(find.text('بوجهين: السكت، وعدم السكت وهو المقدّم'), findsWidgets);
   });
 }

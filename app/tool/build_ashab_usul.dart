@@ -547,7 +547,7 @@ Map<String, int> buildAshabUsul(
           'sakt',
           khalaf
               ? 'بالسكت على $what قبل الهمز'
-              : 'بالسكت على $what قبل الهمز بخلف عنه، وعدم السكت هو الأولى',
+              : 'بالسكت على $what قبل الهمز بخلف عنه، وعدم السكت هو المقدّم',
           text: marked(key, w.t, (a ?? b)!.end),
           ways: khalaf ? const [] : khalladSaktWays,
         );
@@ -1965,12 +1965,13 @@ Map<String, int> buildAshabUsul(
       ]);
     }
   }
-  // al-Kisa'i's «لِنَسُوٓءَ» (الإسراء ٧): the madd over the waw, the nun opened
-  // (the user, 2026-11-15).
+  // al-Kisa'i's «لِنَسُوٓأَ» (الإسراء ٧): the madd over the waw, the nun opened
+  // (the user, 2026-11-15); its hamza over an alif, as «لِيَسُوٓأَ» (the user,
+  // 2026-11-24).
   if (_kisai.contains(id)) {
     for (final v in (data['variants'] as List).cast<List>()) {
       if (v[0] == 17 && v[1] == 7 && v[2] == 11 && v[5] == 'f') {
-        v[4] = 'لِنَسُوٓءَ';
+        v[4] = 'لِنَسُوٓأَ';
         v[6] = 'بالنون وبهمزة مفتوحة بعد المد المتصل';
       }
     }
@@ -1999,9 +2000,10 @@ Map<String, int> buildAshabUsul(
         (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int);
     for (final (s, a) in const [(17, 83), (41, 51)]) {
       final hafs = index[_key(s, a, 5)]!.t;
-      // Khallad's in al-Isra the hamza alone, as the book gives it: «بإمالة
-      // الهمزة فقط» (the user, 2026-11-24).
-      final hamzaOnly = id == 'khallad' && s == 17;
+      // Khallad's the hamza alone, as the book gives it in al-Isra: «بإمالة
+      // الهمزة فقط» (the user, 2026-11-24); in Fussilat so too for now, till
+      // its review.
+      final hamzaOnly = id == 'khallad';
       final row = [
         s,
         a,
@@ -3503,7 +3505,10 @@ Map<String, int> buildAshabUsul(
         );
       }
       final own = variants.cast<List>().where(
-        (r) => order(r) == order(row) && r[5] == 'f',
+        (r) =>
+            order(r) == order(row) &&
+            r[5] == row[5] &&
+            (row[5] == 'f' || r.length > 7 && r[7] == row[7]),
       );
       if (own.isNotEmpty) {
         for (final r in own) {

@@ -76,7 +76,12 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
   // al-'Ashir (the user, 2026-11-24).
   if (const {'hisham', 'ibn_dhakwan', 'shubah'}.contains(id)) {
     rows.removeWhere(
-      (r) => r[0] == 17 && r[1] == 7 && r[2] == 11 && r[5] == 'f',
+      // And the old «لِيَسُوٓءَ» of the hamesh, without a description.
+      (r) =>
+          r[0] == 17 &&
+          r[1] == 7 &&
+          r[2] == 11 &&
+          (r[5] == 'f' || r[5] == 'h' && '${r.length > 6 ? r[6] : ''}'.isEmpty),
     );
     final next = rows.indexWhere(
       (r) => r[0] > 17 || r[0] == 17 && (r[1] > 7 || r[1] == 7 && r[2] > 11),
