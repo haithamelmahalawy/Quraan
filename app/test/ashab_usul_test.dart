@@ -1168,4 +1168,41 @@ void main() {
       }
     }
   });
+
+  test("Khalaf's sakt drawn in a two-word row: «أُنزِلَت سُّورَةٌۜ» (التوبة ٨٦)", () {
+    final rows = (load('khalaf_hamzah')['variants'] as List).cast<List>();
+    String at(int s, int a, int w) =>
+        '${rows.firstWhere((v) => v[0] == s && v[1] == a && v[2] == w && (v[3] as int) > 1)[4]}';
+    expect(at(9, 86, 1).split(' ')[1], endsWith('ٌۜ'));
+    expect(at(28, 8, 5).split(' ')[1], endsWith('ًۜا'));
+    expect(at(26, 193, 2).split(' ')[1], startsWith('ٱلۡۜ'));
+    final khallad = (load('khallad')['variants'] as List).cast<List>();
+    expect(
+      khallad.any((v) => v[0] == 9 && v[1] == 86 && '${v[4]}'.contains('ۜ')),
+      isFalse,
+    );
+  });
+
+  test('«ءَآلۡۜـَٰٔنَ» (يونس ٥١، ٩١): the sakt on its article for both', () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final rows = (load(id)['variants'] as List).cast<List>();
+      for (final (a, w) in [(51, 6), (91, 0)]) {
+        final row = rows.firstWhere(
+          (v) => v[0] == 10 && v[1] == a && v[2] == w && v[7] == 'sakt',
+        );
+        expect('${row[4]}', contains('لۡۜـ'), reason: '$id $a');
+        expect(row[6], 'بالسكت على لام التعريف قبل الهمز', reason: '$id $a');
+      }
+    }
+  });
+
+  test("Khalaf's idgham on his farsh of several words: «وَزَرۡعٖ وَّنَخِيلٖ»", () {
+    final rows = (load('khalaf_hamzah')['variants'] as List).cast<List>();
+    String at(int s, int a, int w) =>
+        '${rows.firstWhere((v) => v[0] == s && v[1] == a && v[2] == w && v[7] == 'idgham_bila_ghunna')[4]}';
+    expect(at(13, 4, 6).split(' ')[1], endsWith('عٖ'));
+    expect(at(13, 4, 7), allOf(startsWith('وَزَرۡعٖ '), endsWith('لٖ')));
+    expect(at(13, 4, 9), allOf(startsWith('صِنۡوَانٖ '), endsWith('رِ')));
+    expect(at(76, 21, 4).split(' ').first, endsWith('ۖ'));
+  });
 }

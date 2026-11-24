@@ -89,7 +89,15 @@ int _imala(
       // Hamza), not its flag, set where any reader of the group reduces it
       // (Warsh with al-Duri's imala, أَبۡصَٰرِهِمۡ).
       final stop = g[4] == true || kisaiHa,
-          taqlil = RegExp('قلل|(?<!لا )تقليل').hasMatch('${g[3]}');
+          taqlil =
+              RegExp('قلل|(?<!لا )تقليل').hasMatch('${g[3]}') ||
+              // Or a note of the group naming him (ٱلۡبَوَارِ: «قلل حمزة لفظة
+              // «البوار» فقط»; the user, 2026-11-24).
+              (g.length > 6 ? g[6] as List : const []).any(
+                (n) =>
+                    RegExp('قلل|(?<!لا )تقليل').hasMatch('${n[0]}') &&
+                    (n[1] as List).contains(id),
+              );
       if (!done.add('${_key(s, a, w)}:$stop')) continue;
       final khulf = disputed.contains(id);
       // «معاً»: the same word again in the ayah too (بِٱلتَّوۡرَىٰةِ, آل عمران ٩٣).

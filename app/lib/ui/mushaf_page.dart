@@ -1763,7 +1763,8 @@ class _MushafPageState extends State<MushafPage>
         _letterReadings(ayah, w) == null &&
         _waslDammColor(ayah, w) == null &&
         !(w > 0 && _waslDammColor(ayah, w - 1) != null) &&
-        _haDamirBefore(ayah, w) == null) {
+        _haDamirBefore(ayah, w) == null &&
+        !_idghamAcrossAyah(ayah, w)) {
       return (text: glyph, font: QcfFonts.family(widget.page));
     }
     if (source != null) {
@@ -1804,6 +1805,22 @@ class _MushafPageState extends State<MushafPage>
                   .where((v) => v.word == w && v.isQasr && v.text.isNotEmpty)
                   .firstOrNull
             : null);
+    // A farsh of several words with Khalaf's idgham into one of them, that
+    // word drawn alone (at a line's head, وَّغَيۡرِ of «صِنۡوَانٖ وَّغَيۡرِ», الرعد ٤):
+    // the idgham's word, its letter doubled (the user, 2026-11-24).
+    final into = v != null && v.kind == VariantKind.farsh && v.word < w
+        ? base
+              .where(
+                (r) =>
+                    r.rule == 'idgham_bila_ghunna' &&
+                    r.canReplaceText &&
+                    r.count == 2 &&
+                    r.word == w - 1 &&
+                    r.text.split(' ').length == 2,
+              )
+              .firstOrNull
+        : null;
+    if (into != null) return (text: into.text.split(' ')[1], font: 'Hafs');
     if (v != null) {
       // A chain of Khalaf's idgham (ظُلُمَٰتٞ وَّرَعۡدٞ، وَرَعۡدٞ وَّبَرۡقٞ): the row
       // that starts on a word already drawn with the one before it draws its
@@ -1891,7 +1908,8 @@ class _MushafPageState extends State<MushafPage>
     if (_letterReadings(ayah, w) != null ||
         _waslDammColor(ayah, w) != null ||
         w > 0 && _waslDammColor(ayah, w - 1) != null ||
-        _haDamirBefore(ayah, w) != null) {
+        _haDamirBefore(ayah, w) != null ||
+        _idghamAcrossAyah(ayah, w)) {
       return (text: ayah.words[w], font: 'Hafs');
     }
     if (glyph != null) return (text: glyph, font: QcfFonts.family(widget.page));
@@ -2659,6 +2677,9 @@ class _MushafPageState extends State<MushafPage>
           (v) =>
               v.word == w - 1 &&
               v.rule == 'ha_damir' &&
+              // The damma the sakin brings, not the reader's own (Hamza's
+              // «عَلَيۡهُمُ ٱلَّذِيٓ»: the word alone, the user, 2026-11-24).
+              v.description.contains('قبل الساكن') &&
               s.kinds.contains(v.kind) &&
               _glows([v]),
         )
@@ -2715,6 +2736,28 @@ class _MushafPageState extends State<MushafPage>
     return [
       for (final (i, l) in letters.indexed) (l, i <= last ? color : null),
     ];
+  }
+
+  /// Khalaf's idgham without ghunna from the ayah before into this ayah's
+  /// first word (بِبَعِيدٖ ۝ وَّٱسۡتَغۡفِرُواْ): drawn in the Hafs font, so its
+  /// letter is doubled and coloured, not the print's glyph (the user,
+  /// 2026-11-23).
+  bool _idghamAcrossAyah(Ayah ayah, int w) {
+    if (w != 0 || ayah.number < 2) return false;
+    if (!RegExp('^[وي]').hasMatch(ayah.words[0])) return false;
+    final s = widget.settings;
+    final prevAyah = widget.quran.ayah(ayah.surah, ayah.number - 1);
+    final prev = prevAyah.words.length - 1;
+    return [
+      ..._baseAt(widget.variants, s, prevAyah, prev).where((v) => v.isUsul),
+      ..._readingsAt(widget.variants, s, prevAyah, prev).shown,
+    ].any(
+      (v) =>
+          v.word == prev &&
+          v.count == 1 &&
+          v.rule == 'idgham_bila_ghunna' &&
+          s.kinds.contains(v.kind),
+    );
   }
 
   List<(String, Color?)>? _idghamInto(Ayah ayah, int w, String text) {
@@ -3666,12 +3709,17 @@ List<_UsulGroup> _usulNotes(
     // Equal rule descriptions can still have different written examples
     // (e.g. Warsh's extended mim silah versus Ibn Kathir's). Do not use
     // the main text's comparison filter to choose the margin examples.
-    for (final v in irkabTold(
-      variants.forBand(
-        {...s.selected, ?s.displayed},
-        ayah.surah,
-        ayah.number,
+    for (final v in majrahaTold(
+      irkabTold(
+        variants.forBand(
+          {...s.selected, ?s.displayed},
+          ayah.surah,
+          ayah.number,
+          w,
+        ),
+        ayah,
         w,
+        s,
       ),
       ayah,
       w,
@@ -3680,7 +3728,9 @@ List<_UsulGroup> _usulNotes(
       if (!s.kinds.contains(v.kind) ||
           v.word != w ||
           v.inHamesh ||
-          v.riwayaId == hafsId && v.bandNote != 'بالإدغام' ||
+          v.riwayaId == hafsId &&
+              v.bandNote != 'بالإدغام' &&
+              !isHafsMajraha(v) ||
           isRoutineMadd(v) ||
           !showYaqubMimExample(v, ayah.words[w]) ||
           // A ya read unlike Hafs told for all who read it, the shown
@@ -3804,6 +3854,42 @@ List<_UsulGroup> _usulNotes(
   return [
     for (final at in const [0, 1, 2])
       ...groups.values.where((g) => last(g) == at),
+  ];
+}
+
+/// Hafs's «مَجۡر۪ىٰهَا» (هود ٤١) in the band.
+bool isHafsMajraha(Variant v) =>
+    v.riwayaId == hafsId &&
+    v.surah == 11 &&
+    v.ayah == 41 &&
+    v.word == 5 &&
+    v.isImala;
+
+/// «مَجۡر۪ىٰهَا» (هود ٤١) told under the imala with Hafs among those who lean
+/// it, when his text is the page's or he is compared: «وَحَفْصُهُمْ يُوَالِي
+/// بِمَجْرَاهَا» (the user, 2026-11-23).
+@visibleForTesting
+Iterable<Variant> majrahaTold(
+  Iterable<Variant> rows,
+  Ayah ayah,
+  int w,
+  ReaderSettings s,
+) {
+  if (ayah.surah != 11 || ayah.number != 41 || w != 5) return rows;
+  if (s.displayed != null && !s.compareHafs) return rows;
+  return [
+    ...rows,
+    Variant(
+      riwayaId: hafsId,
+      surah: 11,
+      ayah: 41,
+      word: 5,
+      count: 1,
+      text: ayah.words[5],
+      kind: VariantKind.usul,
+      description: 'بإمالة الألف',
+      rule: '',
+    ),
   ];
 }
 

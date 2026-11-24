@@ -475,8 +475,10 @@ Map<String, int> buildAshabUsul(
     const khulf = ['السكت', 'ترك السكت، وهو المقدّم'];
     const after = '، وترك السكت هو المقدّم';
     // The sakin's letter and its marks, then the hamza.
+    // And «ءَآلۡـَٰٔنَ» (يونس ٥١، ٩١), its lam the article's (the user,
+    // 2026-11-23).
     final al = RegExp(
-      '^((?:[وفبلكأ][َِ]?){0,3}(?:ٱلۡ|(?<=[َِ])لۡ))(?=ـ?[ءأإآٔ])',
+      '^(ءَ(?:آ|آ)لۡ|(?:[وفبلكأ][َِ]?){0,3}(?:ٱلۡ|(?<=[َِ])لۡ))(?=ـ?[ءأإآٔ])',
     );
     final shay = RegExp('^([وفبلك]?[َِ]?شَيۡ)(?=ـ?[ءٔ])');
     // The last letter sakin: a sukun, or a tanween (before its alif).
@@ -3390,6 +3392,13 @@ Map<String, int> buildAshabUsul(
       v[6] = 'بضم التاء وإضافة ألف بمد مشبع بعد الميم';
     }
   }
+  // «لَمُنجُوهُمۡ» (الحجر ٥٩): the lightened jim alone, the rest as Hafs's
+  // (the user, 2026-11-24).
+  for (final v in (data['variants'] as List).cast<List>()) {
+    if (v[5] == 'f' && v[0] == 15 && v[1] == 59 && v[2] == 4) {
+      v[6] = 'بتخفيف الجيم';
+    }
+  }
   // «أَئِنَّكُمۡ» (العنكبوت ٢٨): the added hamza of the question alone, its two
   // hamzas told in their usul (the user, 2026-11-23).
   for (final v in (data['variants'] as List).cast<List>()) {
@@ -3919,7 +3928,9 @@ Map<String, int> buildAshabUsul(
   _idghamIntoYaIdafa(data['variants'] as List);
   _raaaKawkab(id, data['variants'] as List);
   _taraaa(id, data['variants'] as List);
+  _majraha(id, data['variants'] as List);
   _idghamChain(data['variants'] as List);
+  _saktInSpan(data['variants'] as List);
   // The plural's mim told only where the reader's ha before it is not
   // Hafs's: «يَحۡسَبُهُمُ» (البقرة ٢٧٣) is Hafs's own, its mim no rule, the
   // farsh drawing the word (يَحۡسِبُهُمُ; the user, 2026-11-18).
@@ -4534,6 +4545,49 @@ bool _sameVowels(String a, String b) {
 /// Khalaf's idgham without ghunna into a word merged in turn into the next
 /// (وَمَن يُّرِد ثَّوَابَ، آل عمران ١٤٥): that word's last letter bare, as
 /// Khallad's (the user, 2026-11-18).
+/// A word of a two-word row (أُنزِلَت سُّورَةٌۜ أَنۡ، فِتۡنَتَهُمۡۜ إِلَّآ، ٱلرُّوحُ
+/// ٱلۡۜأَمِينُ) keeps the sakt its own row tells: the page draws the span,
+/// which hid the sign (التوبة ٨٦; the user, 2026-11-23). The sakt row takes
+/// the span's word when the farsh reads it otherwise (فِتۡنَتَهُمۡۜ).
+void _saktInSpan(List variants) {
+  final rows = variants.cast<List>();
+  final sakt = <String, List>{
+    for (final v in rows)
+      if (v[7] == 'sakt' && v[3] == 1 && '${v[4]}'.contains('ۜ'))
+        _key(v[0], v[1], v[2]): v,
+  };
+  String bare(String s) => s.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), '');
+  for (final v in rows) {
+    final text = '${v[4]}';
+    if ((v[3] as int) < 2 || text.isEmpty) continue;
+    final words = text.split(' ');
+    if (words.length != v[3]) continue;
+    var changed = false;
+    for (var i = 0; i < words.length; i++) {
+      final s = sakt[_key(v[0], v[1], (v[2] as int) + i)];
+      final w = words[i];
+      if (s == null || w.contains('ۜ')) continue;
+      final own = '${s[4]}';
+      if (bare(own) != bare(w)) continue;
+      final article = RegExp(r'^((?:[وفبكل][َُِ]?)?[ٱا]لۡ)');
+      final signed = RegExp(r'^(?:[وفبكل][َُِ]?)?[ٱا]لۡۜ').hasMatch(own)
+          ? w.replaceFirstMapped(article, (m) => '${m[1]}ۜ')
+          : w.replaceFirstMapped(RegExp(r'([اى]?[ۖ-ۛ]*)$'), (m) => 'ۜ${m[1]}');
+      if (!signed.contains('ۜ')) continue;
+      words[i] = signed;
+      changed = true;
+      // The farsh's vowels on the sakt's own row, not Hafs's; an idgham's
+      // shadda stays with the span.
+      if (v[7] != 'idgham_saghir' &&
+          v[7] != 'idgham_kabir' &&
+          v[7] != 'idgham_bila_ghunna') {
+        s[4] = signed;
+      }
+    }
+    if (changed) v[4] = words.join(' ');
+  }
+}
+
 void _idghamChain(List variants) {
   final sukun = RegExp(r'[ْۡ](?=[ۖ-ۛ]*$)');
   final merged = <String>{
@@ -4553,24 +4607,42 @@ void _idghamChain(List variants) {
   }
 }
 
+/// The farsh by its words: a row of one word, and each word of a row of
+/// several told word for word (وَزَرۡعٖ وَنَخِيلٖ صِنۡوَانٖ وَغَيۡرِ, الرعد ٤).
+Map<String, String> _farshWords(List variants) => {
+  for (final v in variants.cast<List>())
+    if (v[5] == 'f' && '${v[4]}'.isNotEmpty)
+      if ('${v[4]}'.split(' ') case final words when words.length == v[3])
+        for (final (i, w) in words.indexed)
+          _key(v[0], v[1], (v[2] as int) + i): w,
+};
+
 /// Khalaf's idgham without ghunna whose first word is his farsh, its letters
 /// another than the row took (هُزۡؤٗا وَّٱذۡكُرُواْ, the hamza on the waw as the
 /// farsh's and Khalaf al-'Ashir's, not «هُزۡءًا»; the user, 2026-11-18): the
 /// farsh's word.
 void _idghamOnFarsh(List variants) {
   String plain(String s) => s.replaceAll(RegExp('[ً-ٰۖ-ۭـ]'), '');
-  final farsh = <String, String>{
-    for (final v in variants.cast<List>())
-      if (v[5] == 'f' && v[3] == 1 && '${v[4]}'.isNotEmpty)
-        _key(v[0], v[1], v[2]): '${v[4]}',
-  };
+  final farsh = _farshWords(variants);
+  // Its vowels too (وَزَرۡعٖ for Hafs's «وَزَرۡعٞ», الرعد ٤; the user,
+  // 2026-11-24), without the signs of stop and sakt.
+  String marked(String s) =>
+      s.replaceAll(RegExp('[ۖ-ۜ]'), '').replaceFirst(RegExp(r'ۡ$'), '');
   for (final v in variants.cast<List>()) {
     if (v[7] != 'idgham_bila_ghunna' || v[3] != 2) continue;
     final parts = '${v[4]}'.split(' ');
     if (parts.length != 2) continue;
     final own = farsh[_key(v[0], v[1], v[2])];
-    if (own == null || plain(own) == plain(parts[0])) continue;
-    v[4] = '${own.replaceFirst(RegExp(r'ۡ$'), '')} ${parts[1]}';
+    if (own == null ||
+        plain(own) == plain(parts[0]) &&
+            _sameVowels(marked(own), marked(parts[0]))) {
+      continue;
+    }
+    // Hafs's stop sign on it kept (وَإِسۡتَبۡرَقٍۖ).
+    final stop = RegExp(r'[ۖ-ۛ]+$').firstMatch(parts[0])?[0] ?? '';
+    var first = own.replaceFirst(RegExp(r'ۡ$'), '');
+    if (stop.isNotEmpty && !first.endsWith(stop)) first = '$first$stop';
+    v[4] = '$first ${parts[1]}';
   }
 }
 
@@ -4579,6 +4651,7 @@ void _idghamOnFarsh(List variants) {
 /// as his own row writes it, as Khallad's (the user, 2026-11-19).
 void _idghamIntoYaIdafa(List variants) {
   final ya = <String, String>{
+    ..._farshWords(variants),
     for (final v in variants.cast<List>())
       if ((v[7] == 'ya_idafa' || v[5] == 'f') &&
           v[3] == 1 &&
@@ -4596,8 +4669,41 @@ void _idghamIntoYaIdafa(List variants) {
     var rest = own.substring(cluster.firstMatch(own)![0]!.length);
     // Its sakt kept (بِقِنطَارٖ يُّؤَدِّهۡۜ).
     if (parts[1].endsWith('ۜ') && !rest.endsWith('ۜ')) rest = '$restۜ';
+    // And Hafs's stop sign (خُضۡرٍ وَّإِسۡتَبۡرَقٍۖ).
+    final stop = RegExp(r'[ۖ-ۛ]+$').firstMatch(parts[1])?[0] ?? '';
+    if (stop.isNotEmpty && !rest.endsWith(stop)) rest = '$rest$stop';
     v[4] = '${parts[0]} $first$rest';
   }
+}
+
+/// «مَجۡر۪ىٰهَا» (هود ٤١), leaned as Hafs leans it: «وَمَا بَعْدَ رَاءٍ شَاعَ
+/// حُكْمًا وَحَفْصُهُمْ يُوَالِي بِمَجْرَاهَا» (311), told with the imala (the
+/// user, 2026-11-23).
+void _majraha(String id, List variants) {
+  if (!_hamza.contains(id) &&
+      !_kisai.contains(id) &&
+      !_khalafAshir.contains(id)) {
+    return;
+  }
+  final rows = variants.cast<List>();
+  bool here(List r) => r[0] == 11 && r[1] == 41 && r[2] == 5;
+  if (rows.any((r) => here(r) && '${r[6]}'.contains('إمالة'))) return;
+  final at = rows.indexWhere(
+    (r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int) >
+        11041005,
+  );
+  variants.insert(at < 0 ? rows.length : at, [
+    11,
+    41,
+    5,
+    1,
+    'مَجۡر۪ىٰهَا',
+    'u',
+    'بإمالة الألف',
+    '',
+    {'source': ashabSource},
+  ]);
 }
 
 /// «تَرَٰٓءَا ٱلۡجَمۡعَانِ» (الشعراء ٦١) for Hamza and Khalaf al-'Ashir: told once

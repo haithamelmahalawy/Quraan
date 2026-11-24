@@ -171,4 +171,41 @@ void main() {
     );
     expect(t.takeException(), isNull);
   });
+
+  testWidgets(
+    "Khalaf's idgham across an ayah's end doubles the next ayah's waw",
+    (t) async {
+      t.view.physicalSize = const Size(685, 960);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      await t.pumpWidget(
+        MaterialApp(
+          theme: buildTheme(MushafPalette.light),
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: MushafPage(
+                page: 22,
+                quran: quran,
+                variants: variants,
+                mutashabihat: mutashabihat,
+                settings: ReaderSettings.memory(selected: {'khalaf_hamzah'})
+                  ..displayed = 'khalaf_hamzah',
+                onWordTap: (_, _) {},
+                qcf: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      // «... ۝ وَّكَذَٰلِكَ» (البقرة ١٤٢-١٤٣): in the Hafs font, its waw doubled,
+      // not the print's glyph (the user, 2026-11-23).
+      final word = t.widget<InkText>(
+        find.byKey(const ValueKey('word:2:143:0')),
+      );
+      expect(word.style.fontFamily, 'Hafs');
+      expect(word.parts?.first.$1, contains('ّ'));
+    },
+  );
 }

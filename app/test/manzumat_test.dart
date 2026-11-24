@@ -9060,4 +9060,167 @@ void main() {
       }
     }
   });
+
+  test(
+    'the ten verbs cite «وَكَيْفَ الثُّلاَثِيْ ...» with «وَحَاقَ ...»',
+    () async {
+      final quran = await QuranRepository.load();
+      final variants = await VariantRepository.discover();
+      await variants.ensureLoaded(['khalaf_hamzah', 'khallad', 'ishaq']);
+      for (final (id, s, a, w) in [
+        ('khalaf_hamzah', 9, 25, 15),
+        ('khallad', 9, 118, 11),
+        ('khalaf_hamzah', 2, 10, 3),
+        ('khallad', 11, 8, 16),
+        ('khalaf_hamzah', 29, 53, 5),
+        ('ishaq', 9, 48, 9),
+      ]) {
+        final v = variants.at([id], s, a, w).firstWhere((v) => v.isImala);
+        final r = manzumat.referenceOf(
+          v,
+          quran.ayah(s, a).words[w],
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.mention, {318, 319}, reason: '$id $s:$a:$w');
+      }
+    },
+  );
+
+  test(
+    '«مَجۡر۪ىٰهَا» (هود ٤١) leaned cites «وَحَفْصُهُمْ يُوَالِي بِمَجْرَاهَا»',
+    () async {
+      final quran = await QuranRepository.load();
+      final variants = await VariantRepository.discover();
+      final ids = [
+        'khalaf_hamzah',
+        'khallad',
+        'duri_kisai',
+        'abul_harith',
+        'susi',
+        'duri_abuamr',
+      ];
+      await variants.ensureLoaded(ids);
+      for (final id in ids) {
+        final v = variants
+            .forBand({id}, 11, 41, 5)
+            .firstWhere((v) => v.isUsul && v.isImala && v.word == 5);
+        final r = manzumat.referenceOf(
+          v,
+          quran.ayah(11, 41).words[5],
+          11,
+          surahs,
+          entries: book.at(11, 41, 5),
+        );
+        expect(r.mention, {311}, reason: id);
+      }
+    },
+  );
+
+  test(
+    'the ba of the jussive into the fa cites «وَإِدْغَامُ بَاءِ الْجَزْمِ»',
+    () async {
+      final quran = await QuranRepository.load();
+      final variants = await VariantRepository.discover();
+      await variants.ensureLoaded(['khallad', 'duri_kisai']);
+      for (final id in ['khallad', 'duri_kisai']) {
+        for (final (s, a, w) in [(4, 74, 16), (13, 5, 1), (49, 11, 35)]) {
+          final v = variants
+              .at([id], s, a, w)
+              .firstWhere((v) => v.rule == 'idgham_saghir' && v.word == w);
+          final r = manzumat.referenceOf(
+            v,
+            quran.ayah(s, a).words[w],
+            s,
+            surahs,
+            entries: book.at(s, a, w),
+          );
+          expect(r.mention, {277}, reason: '$id $s:$a');
+        }
+      }
+    },
+  );
+
+  test(
+    "Hamza's taqlil of «ٱلۡبَوَارِ» and «ٱلۡقَهَّارِ» cites bayt 325",
+    () async {
+      final quran = await QuranRepository.load();
+      final variants = await VariantRepository.discover();
+      await variants.ensureLoaded(['khalaf_hamzah', 'khallad']);
+      for (final id in ['khalaf_hamzah', 'khallad']) {
+        for (final (s, a, w) in [(14, 28, 11), (14, 48, 9), (40, 16, 14)]) {
+          final v = variants
+              .at([id], s, a, w)
+              .firstWhere((v) => v.word == w && v.isUsul);
+          expect(v.description, 'بالتقليل', reason: '$id $s:$a');
+          final r = manzumat.referenceOf(
+            v,
+            quran.ayah(s, a).words[w],
+            s,
+            surahs,
+            entries: book.at(s, a, w),
+          );
+          expect(r.mention, {325}, reason: '$id $s:$a');
+        }
+      }
+    },
+  );
+
+  test("Hamza's taqlil of the words with two ra's cites bayt 326", () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['khalaf_hamzah', 'khallad']);
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      for (final (s, a, w) in [
+        (14, 26, 12),
+        (3, 193, 19),
+        (38, 62, 9),
+        (40, 39, 10),
+      ]) {
+        final v = variants
+            .at([id], s, a, w)
+            .firstWhere((v) => v.word == w && v.description.contains('تقليل'));
+        expect(v.description, 'بالتقليل', reason: '$id $s:$a');
+        final r = manzumat.referenceOf(
+          v,
+          quran.ayah(s, a).words[w],
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.mention, {326}, reason: '$id $s:$a');
+      }
+    }
+  });
+
+  test('«تُشۡرِكُونَ» with the ta cites bayt 745 alone', () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    final ids = ['khalaf_hamzah', 'khallad', 'duri_kisai', 'abul_harith'];
+    await variants.ensureLoaded(ids);
+    for (final id in ids) {
+      for (final (s, a) in [(10, 18), (16, 1), (16, 3), (30, 40)]) {
+        final v = variants
+            .allOf(id)
+            .where(
+              (v) =>
+                  v.surah == s &&
+                  v.ayah == a &&
+                  !v.isUsul &&
+                  v.text.contains('تُشۡرِكُونَ'),
+            )
+            .firstOrNull;
+        if (v == null) continue;
+        final r = manzumat.referenceOf(
+          v,
+          quran.ayah(s, a).words[v.word],
+          s,
+          surahs,
+          entries: book.at(s, a, v.word),
+        );
+        expect(r.mention, {745}, reason: '$id $s:$a');
+      }
+    }
+  });
 }

@@ -1447,6 +1447,60 @@ class Manzumat {
       RegExp(r'^[وفبل]*(ال)?كا?فرين$').hasMatch(_letters(hafs));
 
   Set<int> _reviewedVerses(Poem poem, Variant v, String hafs) {
+    // «تُشۡرِكُونَ» with the ta (يونس ١٨، النحل ١، ٣، الروم ٤٠): «وَخَاطَبَ عَمَّا
+    // يُشْرِكُونَ هُنَا شَذاً وَفي الرُّومِ وَالْحَرْفَيْنِ في النَّحْلِ أَوَّلَا»
+    // (745) alone (the user, 2026-11-24).
+    if (poem == Poem.shatibiyya &&
+        !v.isUsul &&
+        const {
+          '10:18',
+          '16:1',
+          '16:3',
+          '30:40',
+        }.contains('${v.surah}:${v.ayah}') &&
+        _letters(v.text) == 'تشركون') {
+      return {745};
+    }
+    // Hamza's taqlil of «ٱلۡبَوَارِ» and «ٱلۡقَهَّارِ»: «... وَمَعَهُ فِي الْـ / بَوَارِ
+    // وَفِي الْقَهَّارِ حَمْزَةُ قَلَّلَا» (325), its word split between the two
+    // halves (the user, 2026-11-24).
+    if (poem == Poem.shatibiyya &&
+        const {'khalaf_hamzah', 'khallad'}.contains(v.riwayaId) &&
+        v.description.contains('تقليل') &&
+        RegExp(r'^[وف]?(ال|لل)(بوار|قهار)$')
+            .hasMatch(_letters(hafs).replaceAll('ٱ', 'ا'))) {
+      return {325};
+    }
+    // And of the words with two ra's (قَرَارٍ، ٱلۡقَرَارِ، ٱلۡأَبۡرَارِ، ٱلۡأَشۡرَارِ):
+    // «وَإِضْجَاعُ ذِي رَاءَيْنِ حَجَّ رُوَاتُهُ كَالأَبْرَارِ وَالتَّقْلِيلُ جَادَلَ
+    // فَيْصَلَا» (326) (the user, 2026-11-24).
+    if (poem == Poem.shatibiyya &&
+        const {'khalaf_hamzah', 'khallad'}.contains(v.riwayaId) &&
+        v.description.contains('تقليل') &&
+        RegExp(r'رار$').hasMatch(_letters(hafs))) {
+      return {326};
+    }
+    // The ba of the jussive into the fa (يَغۡلِبۡ فَسَوۡفَ، تَعۡجَبۡ فَعَجَبٞ، ٱذۡهَبۡ
+    // فَمَن، فَٱذۡهَبۡ فَإِنَّ، يَتُبۡ فَأُوْلَٰٓئِكَ): «وَإِدْغَامُ بَاءِ الْجَزْمِ فِي
+    // الْفَاءِ قَدْ رَسَا حَمِيداً وَخَيِّرْ فِي يَتُبْ قَاصِداً وَلَا» (277) (the user,
+    // 2026-11-24).
+    if (poem == Poem.shatibiyya &&
+        v.rule == 'idgham_saghir' &&
+        v.description.contains('الباء في الفاء')) {
+      return {277};
+    }
+    // «مَجۡر۪ىٰهَا» (هود ٤١) leaned: «وَمَا بَعْدَ رَاءٍ شَاعَ حُكْمًا وَحَفْصُهُمْ
+    // يُوَالِي بِمَجْرَاهَا وَفي هُودَ أُنْزِلَا» (311), Hamza, al-Kisa'i and Abu
+    // 'Amr with Hafs (the user, 2026-11-23).
+    if (poem == Poem.shatibiyya &&
+        v.isUsul &&
+        v.isImala &&
+        v.surah == 11 &&
+        v.ayah == 41 &&
+        v.word == 5 &&
+        v.riwayaId != 'warsh') {
+      return {311};
+    }
     // «وَرُؤيَاكَ مَعْ مَثْوَايَ عَنْهُ لِحَفْصِهِمْ وَمَحْيَايَ مِشْكَاةٍ هُدَايَ قَدِ
     // انجَلَا» (305), its words for all who lean them (the user, 2026-11-22).
     if (poem == Poem.shatibiyya &&
@@ -1487,6 +1541,22 @@ class Manzumat {
               .replaceAll(RegExp('[^ء-ي]'), ''),
         )) {
       return {298};
+    }
+    // The ten verbs: «وَكَيْفَ الثُّلاَثِيْ غَيْرَ زَاغَتْ بِمَاضِيٍ أَمِلْ خَابَ خَافُوا
+    // طَابَ ضَاقَتْ فَتُجْمِلَا / وَحَاقَ وَزَاغُوا جَاءَ شَاءَ وَزَادَ فُزْ ...»
+    // (318-319) for Hamza (the user, 2026-11-23); Ibn Dhakwan's «جَاءَ، شَاءَ،
+    // زَادَ» by 319-320 below.
+    if (poem == Poem.shatibiyya &&
+        const {'khalaf_hamzah', 'khallad'}.contains(v.riwayaId) &&
+        v.isImala &&
+        hafs
+            .replaceAll(RegExp('[أإآٱ]'), 'ا')
+            .replaceAll(RegExp('[^ء-ي ]'), '')
+            .split(' ')
+            .any(
+              RegExp('^[وفل]*(خاب|خاف|طاب|ضاق|حاق|زاغ|جاء|شاء|زاد)').hasMatch,
+            )) {
+      return {318, 319};
     }
     if (poem == Poem.shatibiyya &&
         const {

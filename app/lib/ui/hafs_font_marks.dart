@@ -429,6 +429,12 @@ const saktRise = .72;
 const saktOverTall = 1.10;
 const saktOverShort = .84;
 
+/// Over the lam and its sukun before a kashida (ءَآلۡۜـَٰٔنَ).
+const saktOverLam = 1.0;
+
+/// And how far left of the lam, in the sin's widths: off the madda over it.
+const saktLeftOfLam = .6;
+
 /// Over the hamza on its alif and its vowel (ٱلۡۜأَرۡضِ).
 const saktOverHamza = 1.20;
 
@@ -697,7 +703,13 @@ class _QuranMarkPainter extends CustomPainter {
         // the taller of the two.
         final over = source[at];
         final after = end < source.length ? source[end] : '';
-        final rise = over == ' ' || over == 'ـ'
+        // The article's lam before a kashida carrying the hamza and its marks
+        // (ءَآلۡۜـَٰٔنَ): right over the lam and its sukun, clear of them (the
+        // user, 2026-11-23).
+        final overLam = over == 'ل' && after == 'ـ';
+        final rise = overLam
+            ? saktOverLam
+            : over == ' ' || over == 'ـ'
             ? saktRise
             : 'أآ'.contains(after)
             // And the madd over it (ٱلۡۜأٓخِرَةِ), clear of it too.
@@ -710,6 +722,8 @@ class _QuranMarkPainter extends CustomPainter {
             : saktOverShort;
         final x = over == ' '
             ? box.right - mark.width - font * saktGap
+            : overLam
+            ? box.left - mark.width * saktLeftOfLam
             : over == 'ـ'
             ? (box.left + box.right - mark.width) / 2
             : box.left -

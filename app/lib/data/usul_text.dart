@@ -272,9 +272,12 @@ String usulReadingText(
     // The ha damma alone where no sakin follows (عَلَيۡهُمۡ غَيۡرِ، عَلَيۡهُمۡ
     // وَلَا): the next word only where the mim meets its sakin (the user,
     // 2026-11-18).
+    // Nor where the damma is the reader's own, wasl and waqf (Hamza's
+    // «عَلَيۡهُمُ ٱلَّذِيٓ»): the word alone (the user, 2026-11-24).
     if (following != null &&
         (reading.rule != 'ha_damir' ||
-            following.words[nextWord].startsWith('ٱ'))) {
+            following.words[nextWord].startsWith('ٱ') &&
+                reading.description.contains('قبل الساكن'))) {
       final second = readingText(
         variants,
         reading.riwayaId,

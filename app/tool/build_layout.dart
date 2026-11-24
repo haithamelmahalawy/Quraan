@@ -41,8 +41,9 @@ const _movedEnds = {(53, 62, 0)};
 void main(List<String> args) {
   final dir = args.isNotEmpty ? args[0] : '../tools/source/layout_v1';
   final edition = args.length > 1 ? args[1] : 'v1';
-  final quran = jsonDecode(File('assets/data/quran.json').readAsStringSync())
-      as Map<String, dynamic>;
+  final quran = jsonDecode(
+    File('assets/data/quran.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
 
   // Hafs words per ayah, and the page of each ayah.
   final words = <String, List<String>>{};
@@ -67,26 +68,48 @@ void main(List<String> args) {
           .where((w) => w['char_type_name'] == 'word')
           .toList();
       final ours = words[key]!;
-      final lineOf = _mapWords(
-        ours,
-        [for (final w in api) w['text_uthmani'] as String],
-      );
+      final lineOf = _mapWords(ours, [
+        for (final w in api) w['text_uthmani'] as String,
+      ]);
       // Each of our words shows the glyphs of the quran.com words it covers
       // (the two texts split a few ayahs differently).
-      final end = (v['words'] as List)
-          .firstWhere((w) => w['char_type_name'] == 'end')['code_$edition'] as String;
-      glyphs[key] = (
-        [
-          for (var i = 0; i < ours.length; i++)
-            [
-              for (var k = lineOf[i];
-                  k < (i + 1 < ours.length ? lineOf[i + 1] : api.length);
-                  k++)
-                api[k]['code_$edition'] as String,
-            ].join(' '),
-        ],
-        end,
-      );
+      final end =
+          (v['words'] as List).firstWhere(
+                (w) => w['char_type_name'] == 'end',
+              )['code_$edition']
+              as String;
+      final slots = [
+        for (var i = 0; i < ours.length; i++)
+          [
+            for (
+              var k = lineOf[i];
+              k < (i + 1 < ours.length ? lineOf[i + 1] : api.length);
+              k++
+            )
+              api[k]['code_$edition'] as String,
+          ].join(' '),
+      ];
+      // One of theirs split into several of ours (بَعْدَ مَا for «بَعۡدَ» and
+      // «مَا», الرعد ٣٧): a glyph for each where it has as many, or all on the
+      // first, the others drawn with it (the user, 2026-11-24).
+      for (var i = 0; i < ours.length; i++) {
+        var j = i;
+        while (j + 1 < ours.length && lineOf[j + 1] == lineOf[i]) {
+          j++;
+        }
+        if (j == i) continue;
+        final all = slots[j];
+        final codes = all.replaceAll(' ', '').runes.toList();
+        for (var m = i; m <= j; m++) {
+          slots[m] = codes.length == j - i + 1
+              ? String.fromCharCode(codes[m - i])
+              : m == i
+              ? all
+              : '';
+        }
+        i = j;
+      }
+      glyphs[key] = (slots, end);
       for (var i = 0; i < ours.length; i++) {
         final w = api[lineOf[i]];
         final page = w['${edition}_page'] as int;
@@ -95,8 +118,10 @@ void main(List<String> args) {
         if (i == 0) {
           pageOf[key] = page;
         } else if (page != pageOf[key]) {
-          throw StateError('$key word $i: page $page '
-              'but the ayah starts on page ${pageOf[key]}');
+          throw StateError(
+            '$key word $i: page $page '
+            'but the ayah starts on page ${pageOf[key]}',
+          );
         }
       }
     }
@@ -140,13 +165,17 @@ void main(List<String> args) {
         end++;
       }
       final run = end - l;
-      final next = end <= count ? used[end]!.first.$1 : _firstSurahOf(lines[p + 1]);
+      final next = end <= count
+          ? used[end]!.first.$1
+          : _firstSurahOf(lines[p + 1]);
       final withBasmala = next != 1 && next != 9;
       if (headerPending == next) {
         if (run != 1 || !withBasmala) throw StateError('page $p line $l');
         out.add(['b', next]);
       } else if (run == 2 && withBasmala) {
-        out..add(['s', next])..add(['b', next]);
+        out
+          ..add(['s', next])
+          ..add(['b', next]);
       } else if (run == 1) {
         out.add(['s', next]);
         if (end > count && withBasmala) headerPending = next;
@@ -161,20 +190,25 @@ void main(List<String> args) {
     pages.add(out);
   }
 
-  File('assets/data/layout.json').writeAsStringSync(jsonEncode({
-    'source': edition == 'v1'
-        ? 'Madinah mushaf, KFGQPC V1 (1405H) line layout via quran.com'
-        : 'Madinah mushaf, KFGQPC V2 (1421H) line layout via quran.com',
-    'pages': pages,
-  }));
-  File('assets/data/qcf.json').writeAsStringSync(jsonEncode({
-    'version': edition,
-    'source': 'KFGQPC QCF ${edition.toUpperCase()} glyph codes via quran.com '
-        '(code_$edition)',
-    'ayahs': [
-      for (final key in ayahOrder) [glyphs[key]!.$1, glyphs[key]!.$2],
-    ],
-  }));
+  File('assets/data/layout.json').writeAsStringSync(
+    jsonEncode({
+      'source': edition == 'v1'
+          ? 'Madinah mushaf, KFGQPC V1 (1405H) line layout via quran.com'
+          : 'Madinah mushaf, KFGQPC V2 (1421H) line layout via quran.com',
+      'pages': pages,
+    }),
+  );
+  File('assets/data/qcf.json').writeAsStringSync(
+    jsonEncode({
+      'version': edition,
+      'source':
+          'KFGQPC QCF ${edition.toUpperCase()} glyph codes via quran.com '
+          '(code_$edition)',
+      'ayahs': [
+        for (final key in ayahOrder) [glyphs[key]!.$1, glyphs[key]!.$2],
+      ],
+    }),
+  );
   // The ayahs on the pages of this print, and where each surah starts.
   for (final a in quran['ayahs'] as List) {
     a[2] = pageOf['${a[0]}:${a[1]}'];
@@ -183,8 +217,11 @@ void main(List<String> args) {
     su['page'] = pageOf['${su['n']}:1'];
   }
   File('assets/data/quran.json').writeAsStringSync(jsonEncode(quran));
-  final headers =
-      pages.expand((p) => p).whereType<List>().where((l) => l[0] != 'a').length;
+  final headers = pages
+      .expand((p) => p)
+      .whereType<List>()
+      .where((l) => l[0] != 'a')
+      .length;
   stdout.writeln('layout.json: ${pages.length} pages, $headers header lines');
 }
 
@@ -217,5 +254,9 @@ List<int> _mapWords(List<String> ours, List<String> theirs) {
   ];
 }
 
-int _letters(String w) =>
-    w.runes.where((c) => (c >= 0x0621 && c <= 0x064A) || c == 0x0671).length;
+/// Its letters, not the kashida (quran.com's «أَنزَلْنَـٰهُ»: counted as a
+/// letter, it moved the glyphs of the ayah's words one on, الرعد ٣٧; the
+/// user, 2026-11-24).
+int _letters(String w) => w.runes
+    .where((c) => (c >= 0x0621 && c <= 0x064A && c != 0x0640) || c == 0x0671)
+    .length;
