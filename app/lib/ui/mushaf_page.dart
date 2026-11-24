@@ -3406,9 +3406,15 @@ class _MushafPageState extends State<MushafPage>
             ayah,
             w,
           ).where((v) => v.word == w).toList();
+    // One of two words drawn as one by the idgham, put out, glowing by an
+    // asl of its own (وَلِيدٗا وَّلَبِثتَّ: the idgham of «لَبِثتَّ»).
+    final part = alert != null && !stopping
+        ? _glowingPart(ayah, w, drawnText, shown.font, fontSize)
+        : null;
     if (alert != null &&
         !stopping &&
-        ((m.color != null || coloured != null) &&
+        (part != null ||
+            (m.color != null || coloured != null) &&
                 // A word of no row of its own, its letter merged into from the
                 // ayah before (رَّحِيمٞ ۝ وَّقَٰتِلُوهُمۡ): it glows with that
                 // idgham, out when it is put out (the user, 2026-11-24).
@@ -3419,7 +3425,7 @@ class _MushafPageState extends State<MushafPage>
       // The sin of the sakt stands above the letters: the glow reaches it.
       word = _Alerting(
         top: drawnText.contains('ۜ') ? fontSize * .5 : 0,
-        part: _glowingPart(ayah, w, drawnText, shown.font, fontSize),
+        part: part,
         child: word,
       );
     }
@@ -5868,6 +5874,21 @@ class _UsulBox extends StatelessWidget {
     });
   }
 
+  /// A dispute of some of the word's readers, not all: told of them by name
+  /// (ءَاتِيكَ (بخلف عن خلاد) (حمزة): Khalaf leans it alone, the user,
+  /// 2026-11-24).
+  static String _khulfOf(String note, _UsulItem i) {
+    const khulf = 'بخلف عنه';
+    if (!note.startsWith(khulf)) return note;
+    final own = [
+      for (final id in i.riwayat)
+        if (i.readings.any((v) => v.riwayaId == id && v.bandNote == note)) id,
+    ];
+    if (own.length == i.riwayat.length) return note;
+    return 'بخلف عن ${readersAr(own, const [])}'
+        '${note.substring(khulf.length)}';
+  }
+
   Widget _togetherText(_UsulGroup g, _UsulItem i, int places) => Text(
     togetherNote(places),
     key: ValueKey(
@@ -5974,7 +5995,7 @@ class _UsulBox extends StatelessWidget {
             if (v.bandNote.isNotEmpty) v.bandNote,
         })
           Text(
-            ' ($d)',
+            ' (${_khulfOf(d, i)})',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
         // The ha of the pronoun with the damma: in joining only where the

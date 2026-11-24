@@ -161,12 +161,14 @@ class HafsFontMarks extends StatelessWidget {
   /// apart, a little to the right of where the font sets it.
   /// Not a short hamza before a long a (ٱلۡأَمَانِيُّ، ٱلۡأَمَٰنَٰتِ): its hamza
   /// stands on the alif, as in ٱلۡأَرۡضِ.
+  /// And before the offset tanween (لَأَتٖ، العنكبوت ٥): the hamza between the
+  /// lam and the alif (the user, 2026-11-24).
   static bool _lamHamzaApart(String cluster, String? previous, String after) {
     final next = _cluster.matchAsPrefix(after)?[0];
     return cluster == 'أَ' &&
         (previous?.startsWith('ل') ?? false) &&
         next != null &&
-        RegExp('[ً-ِ]').hasMatch(next) &&
+        RegExp('[ً-ࣰِٖٗ-ࣲ]').hasMatch(next) &&
         !RegExp('^مَ[اٰ]').hasMatch(after);
   }
 
@@ -366,6 +368,11 @@ class HafsFontMarks extends StatelessWidget {
     final targets = <(int, Color?, String)>[];
     for (var i = 0; i <= placed.length; i++) {
       if (insertions.containsKey(i)) {
+        // After a stop sign (شَيۡۜءٍۜۖ، أَجۡرٍۜۖ): the sign reaches past the word,
+        // the sin is drawn clear of it, on its left (the user, 2026-11-24).
+        if (_waqf.hasMatch(full.substring(0, i).split('ۜ').last)) {
+          chars.add((saktPastStop, insertions[i]));
+        }
         targets.add((chars.length, insertions[i], 'ۜ'));
         chars.add(('\u2009', insertions[i]));
       }
@@ -428,6 +435,9 @@ const saktSize = .24;
 const saktRise = .72;
 const saktOverTall = 1.10;
 const saktOverShort = .84;
+
+/// The room before the sin after a word ending in a stop sign, past the sign.
+const saktPastStop = '\u2009';
 
 /// Over the lam and its sukun before a kashida (ءَآلۡۜـَٰٔنَ).
 const saktOverLam = 1.0;

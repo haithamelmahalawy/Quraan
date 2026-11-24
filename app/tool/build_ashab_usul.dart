@@ -15,6 +15,8 @@ import 'apply_dagger_alif.dart';
 import 'apply_first_sakin.dart';
 import 'correct_reviewed_farsh.dart'
     show
+        dropsAlif,
+        roundSukun,
         ituniDescription,
         ituniText,
         kitabihiDescription,
@@ -394,7 +396,9 @@ Map<String, int> buildAshabUsul(
     ]) {
       if (!who.contains(id)) continue;
       final row = (sources.verified[from]![k] ?? const <List>[])
-          .where((v) => v.length > 7 && v[7] == 'ya_zaida')
+          // «أَتُمِدُّوٓننِّۦ» told under the idgham, as Ya'qub's (the user,
+          // 2026-11-24).
+          .where((v) => v.length > 7 && (v[7] == 'ya_zaida' || k == '27:36:4'))
           .firstOrNull;
       if (row == null) continue;
       reserved.add(k);
@@ -557,6 +561,18 @@ Map<String, int> buildAshabUsul(
       final following = words[i + 1];
       if (following.s != w.s) continue;
       if (!RegExp('^[ءأإآ]').hasMatch(following.t)) continue;
+      // The opening letters, the last one's name ending sakin (الٓمٓ ۝ أَحَسِبَ،
+      // العنكبوت ١-٢): the sakt after it (the user, 2026-11-24).
+      if (w.a == 1 && w.w == 0 && RegExp(r'[منلصقكسع]ٓ$').hasMatch(own)) {
+        add(
+          w,
+          'sakt',
+          'بالسكت على الساكن المفصول قبل الهمز بخلف عنه$after',
+          text: '${textAt[key] ?? w.t}ۜ',
+          ways: khulf,
+        );
+        continue;
+      }
       final end = sakinEnd.firstMatch(own);
       if (end == null) continue;
       add(
@@ -3536,6 +3552,17 @@ Map<String, int> buildAshabUsul(
     if (v[5] == 'f' && v[0] == 18 && v[1] == 97 && v[2] == 1) {
       v[6] = 'بتشديد الطاء';
     }
+    // Khallad's «وَيَتَّقِهۡ» (النور ٥٢) of two faces: the ha quiet, then as
+    // Khalaf's (the user, 2026-11-24).
+    if (id == 'khallad' &&
+        v[5] == 'f' &&
+        v[0] == 24 &&
+        v[1] == 52 &&
+        v[2] == 6) {
+      v[6] =
+          'بوجهين: الأول بكسر القاف وإسكان الهاء، والثاني بكسر القاف والهاء '
+          'وصلتها';
+    }
     // «وَأَنَّا ٱخۡتَرۡنَٰكَ» (طه ١٣): the added alif a dagger one, in the
     // Madinah script (the user, 2026-11-24).
     if (v[5] == 'f' && v[0] == 20 && v[1] == 13 && v[2] == 0) {
@@ -4127,6 +4154,8 @@ Map<String, int> buildAshabUsul(
   // «وَكِتَٰبِهِۦ»: one description with every reader (the user, 2026-11-18).
   for (final v in (data['variants'] as List).cast<List>()) {
     if (v[5] == 'f' && v[4] == 'وَكِتَٰبِهِۦ') v[6] = kitabihiDescription;
+    // The alif drawn, the round sukun over it (الأحزاب ١٠، ٦٦، ٦٧).
+    if (dropsAlif(v)) v[4] = roundSukun(index[_key(v[0], v[1], v[2])]!.t);
     // «فَنَعِمَّا، نَعِمَّا»: the nun's fatha alone, the ain's kasra Hafs's too.
     if (v[5] == 'f' &&
         RegExp(r'^ف?نعما$')

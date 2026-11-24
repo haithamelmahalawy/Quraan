@@ -317,4 +317,23 @@ void main() {
     await glowing(t, 2, alone);
     expect(find.text('بوجهين: السكت، وعدم السكت وهو المقدّم'), findsWidgets);
   });
+
+  // «وَلِيدٗا وَّلَبِثتَّ» (الشعراء ١٨), drawn as one, «الإدغام بلا غنة» put out:
+  // «لَبِثتَّ» glows still by its own idgham (the user, 2026-11-24).
+  testWidgets('the second word of the idgham glows by its own idgham', (
+    t,
+  ) async {
+    await glowing(t, 367, khalaf(367)..setUsulLit('الإدغام بلا غنة', false));
+    final pair = find.ancestor(
+      of: find.byKey(const ValueKey('word:26:18:4')),
+      matching: find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_Alerting',
+      ),
+    );
+    expect(pair, findsOneWidget);
+    expect(
+      find.descendant(of: pair, matching: find.byType(FractionallySizedBox)),
+      findsOneWidget,
+    );
+  });
 }

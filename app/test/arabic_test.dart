@@ -115,6 +115,13 @@ void main() {
     expect(withImalaSign('مَجۡر۪ىٰهَا'), 'مَجۡر۪ىٰهَا');
     // The alif written as a waw with its dagger: the ba leaned.
     expect(withImalaSign('ٱلرِّبَوٰاْ'), 'ٱلرِّبَ۪وٰاْ');
+    // «رِّبٗا» (الروم ٣٩): its own alif with the tanween, the ba leaned (the
+    // user, 2026-11-24); a long alif before the tanween's still the one.
+    expect(
+      lettersOf(withImalaSign('رِّبٗا'))[1],
+      allOf(startsWith('ب'), contains('۪')),
+    );
+    expect(withImalaSign('ضِعَٰفٗا'), 'ضِعَٰ۪فٗا');
     // The alif of a final «ها» not the one leaned when another is before it
     // (أحياها: under the ya, the user, 2026-11-14).
     expect(withImalaSign('أَحۡيَاهَا'), 'أَحۡيَ۪اهَا');

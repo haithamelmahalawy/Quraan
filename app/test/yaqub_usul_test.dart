@@ -447,7 +447,9 @@ void main() {
     expect(jsonEncode(d), before);
   });
   test(
-    'all 24 Ruways kabir examples have their own assimilated spelling',
+    // «أَتُمِدُّوٓننِّۦ» told under the idgham alone, not the big idgham (the
+    // user, 2026-11-24).
+    'all 23 Ruways kabir examples have their own assimilated spelling',
     () async {
       final repo = await VariantRepository.discover();
       await repo.ensureLoaded(['ruways']);
@@ -456,7 +458,7 @@ void main() {
           .cast<List>()
           .where((v) => v.length > 7 && v[7] == 'idgham_kabir')
           .toList();
-      expect(rows, hasLength(24));
+      expect(rows, hasLength(23));
       for (final row in rows) {
         expect(row[3], 2, reason: '${row[0]}:${row[1]}:${row[2]}');
         final v = repo
@@ -469,9 +471,7 @@ void main() {
         ).split(' ');
         final first = lettersOf(example.first),
             second = lettersOf(example.last);
-        if (v.surah == 27 && v.ayah == 36) {
-          expect(example.first, contains('وٓنّ'));
-        } else if (v.surah == 53 && v.ayah == 55) {
+        if (v.surah == 53 && v.ayah == 55) {
           expect(example.first, 'رَبِّكَ');
           expect(second[0], 'ت');
           expect(second[1], contains('ّ'));
@@ -490,7 +490,7 @@ void main() {
     final rows = (load('rawh')['variants'] as List).cast<List>().where(
       (v) => v.length > 7 && v[7] == 'idgham_kabir',
     );
-    expect(rows, hasLength(3));
+    expect(rows, hasLength(2));
     expect(rows.every((v) => v[3] == 2), isTrue);
   });
   test(

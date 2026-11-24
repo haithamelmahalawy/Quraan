@@ -17,6 +17,18 @@ const liyasuaDescription = 'بهمز مفتوح في نهاية الكلمة و�
 const ituniText = 'ٱئۡتُونِيٓ';
 const ituniDescription = 'بإسكان الهمزة وحذف الألف';
 
+/// «ٱلظُّنُونَاْ، ٱلرَّسُولَاْ، ٱلسَّبِيلَاْ» (الأحزاب ١٠، ٦٦، ٦٧).
+const alifDropped = [(10, 15), (66, 10), (67, 7)];
+
+/// A row dropping the alif of [alifDropped] joined and stopped.
+bool dropsAlif(List row) =>
+    row[0] == 33 &&
+    alifDropped.contains((row[1], row[2])) &&
+    '${row[6]}'.startsWith('بحذف الألف وصلاً ووقف');
+
+/// Hafs's word, the round sukun (ْ) over the alif in place of his oval one.
+String roundSukun(String hafs) => hafs.replaceAll('۠', 'ْ');
+
 void correctReviewedFarsh(String id, Map quran, List rows) {
   // This spelling is shared by everyone who reads نِعْمَةً at 31:20.
   for (final row in rows) {
@@ -95,6 +107,38 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
       'f',
       liyasuaDescription,
     ]);
+  }
+  // «ٱلظُّنُونَاْ، ٱلرَّسُولَاْ، ٱلسَّبِيلَاْ» (الأحزاب ١٠، ٦٦، ٦٧) of those who drop
+  // the alif joined and stopped: drawn with it, the round sukun over it; Abu
+  // 'Amr reads them so too, with the same note (the user, 2026-11-25).
+  if (id == 'duri_abuamr' || id == 'susi') {
+    for (final (ayah, word) in alifDropped) {
+      if (rows.any((r) => r[0] == 33 && r[1] == ayah && r[2] == word)) {
+        continue;
+      }
+      final key = 33000000 + ayah * 1000 + word;
+      final next = rows.indexWhere(
+        (r) =>
+            (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int) >
+            key,
+      );
+      rows.insert(next < 0 ? rows.length : next, [
+        33,
+        ayah,
+        word,
+        1,
+        '',
+        'f',
+        'بحذف الألف وصلاً ووقفًا',
+      ]);
+    }
+  }
+  for (final row in rows) {
+    if (!dropsAlif(row)) continue;
+    final a = (quran['ayahs'] as List).firstWhere(
+      (a) => a[0] == 33 && a[1] == row[1],
+    );
+    row[4] = roundSukun((a[4] as String).split(' ')[row[2] as int]);
   }
   if (id != 'shubah') return;
 

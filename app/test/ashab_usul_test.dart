@@ -1241,6 +1241,17 @@ void main() {
     }
   });
 
+  test("Khallad's «وَيَتَّقِهۡ» (النور ٥٢) of two faces, the second Khalaf's", () {
+    final row = (load('khallad')['variants'] as List).cast<List>().firstWhere(
+      (v) => v[0] == 24 && v[1] == 52 && v[2] == 6 && v[5] == 'f',
+    );
+    expect('${row[4]}', endsWith('قِهۡ'));
+    expect(
+      row[6],
+      'بوجهين: الأول بكسر القاف وإسكان الهاء، والثاني بكسر القاف والهاء وصلتها',
+    );
+  });
+
   test('«فَمَا ٱسۡطَّٰعُواْ» (الكهف ٩٧): the doubled ta alone', () {
     for (final id in ['khalaf_hamzah', 'khallad']) {
       final row = (load(id)['variants'] as List).cast<List>().firstWhere(

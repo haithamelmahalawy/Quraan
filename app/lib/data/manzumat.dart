@@ -233,6 +233,9 @@ class Manzumat {
             _hafsSaktLeft(reading) ||
             _kafHaSad(reading) ||
             _nabadhtuha(reading) ||
+            _fihiMuhana(reading) ||
+            _tasin(reading).isNotEmpty ||
+            _ayatAnkabut(reading) ||
             // A Durrah reader's «قَد» merged, the Durrah silent: his asl's
             // bayt, after the Durrah's two.
             (_idghamQad(reading, hafs) ||
@@ -1514,6 +1517,13 @@ class Manzumat {
     // «كٓهيعٓصٓ ذِكۡرُ» merged: both bayts (the user, 2026-11-24).
     if (poem == Poem.shatibiyya && _kafHaSad(v)) return {281, 282};
     if (poem == Poem.shatibiyya && _nabadhtuha(v)) return {279};
+    if (poem == Poem.shatibiyya && _fihiMuhana(v)) return {158, 159};
+    if (poem == Poem.shatibiyya && _tasin(v).isNotEmpty) return _tasin(v);
+    if (poem == Poem.shatibiyya && _tumid(v)) return {937, 421, 426};
+    if (poem == Poem.shatibiyya && _aatika(v)) return {329, 330};
+    if (poem == Poem.shatibiyya && _ayatAnkabut(v)) return {954};
+    if (poem == Poem.shatibiyya && _ukhfi(v)) return {963};
+    if (poem == Poem.durrah && _ukhfi(v)) return {181};
     // «تُشۡرِكُونَ» with the ta (يونس ١٨، النحل ١، ٣، الروم ٤٠): «وَخَاطَبَ عَمَّا
     // يُشْرِكُونَ هُنَا شَذاً وَفي الرُّومِ وَالْحَرْفَيْنِ في النَّحْلِ أَوَّلَا»
     // (745) alone (the user, 2026-11-24).
@@ -4104,3 +4114,63 @@ bool _nabadhtuha(Variant v) =>
     v.ayah == 96 &&
     v.word == 11 &&
     v.description.contains('إدغام');
+
+/// «فِيهِ مُهَانًا» (الفرقان ٦٩) without the silah: «وَلَمْ يَصِلُوا هَا مُضْمَرٍ قَبْلَ
+/// سَاكِنٍ … / … وَفِيهِ مُهَاناً مَعْهُ حَفْصٌ أَخُو وِلَا» (158، 159), for every
+/// reader but Ya'qub's, told in the Durrah (the user, 2026-11-24).
+bool _fihiMuhana(Variant v) =>
+    v.surah == 25 &&
+    v.ayah == 69 &&
+    v.word == 6 &&
+    v.rule == 'ha_silah' &&
+    !const {'ruways', 'rawh'}.contains(v.riwayaId);
+
+/// «طسٓمٓ، طسٓ» (الشعراء، النمل، القصص): the ta leaned, «وَإِضْجَاعُ رَا كُلِّ
+/// الْفَوَاتِحِ ذِكْرُهُ حِمًى غَيْرَ حَفْصٍ طَا وَيَا صُحْبَةٌ وَلَا» (738); the nun
+/// of «سين» shown before the mim, «وَيَاسِيْنَ أَظْهِرْ … / … وَطاسِيْنَ عِنْدَ
+/// الْمِيْمِ فَازَ» (281، 283) (the user, 2026-11-24).
+Set<int> _tasin(Variant v) {
+  if (!const {26, 27, 28}.contains(v.surah) || v.ayah != 1 || v.word != 0) {
+    return const {};
+  }
+  if (v.description.contains('إظهار')) return const {281, 283};
+  if (v.description.contains('إمالة')) return const {738};
+  return const {};
+}
+
+/// Hamza's «أَتُمِدُّوٓننِّۦ» (النمل ٣٦), the nuns merged and the ya kept in both
+/// states: «تُمِدُّونَنِي الْإِدْغَامُ فَازَ فَثَقِّلَا» (937), «وَتَثْبُتُ فِي
+/// الْحَالَيْنِ … وَأُولَى النَّمْلِ حَمْزَةُ كَمَّلَا» (421), «وَإِنْ تَرَنِ عَنْهُمْ
+/// تُمِدُّونَنِي سَمَا فَرِيقًا» (426) (the user, 2026-11-24).
+bool _tumid(Variant v) =>
+    v.surah == 27 &&
+    v.ayah == 36 &&
+    v.word == 4 &&
+    v.description == 'بإدغام النون مع المد المشبع' &&
+    Poem.of(v.riwayaId) == Poem.shatibiyya;
+
+/// «ءَاتِيكَ» (النمل ٣٩، ٤٠) leaned: «ضِعَافًا وَحَرْفَا النَّمْلِ آتِيكَ قَوْلُهُ /
+/// بِخُلْفٍ ضَمَمْنَاهُ» (329، 330), Khallad's dispute and Khalaf's in the second
+/// (the user, 2026-11-24).
+bool _aatika(Variant v) =>
+    v.surah == 27 &&
+    (v.ayah == 39 && v.word == 5 || v.ayah == 40 && v.word == 7) &&
+    v.description.startsWith('بإمالة الألف');
+
+/// «ءَايَتٞ» (العنكبوت ٥٠) by the singular: «هُنَا آيَةٌ مِنْ رَبِّهِ صُحْبَةٌ دَلَا»
+/// (954), Khalaf al-'Ashir's after the Durrah's silence (the user, 2026-11-24).
+bool _ayatAnkabut(Variant v) =>
+    v.surah == 29 &&
+    v.ayah == 50 &&
+    v.word == 4 &&
+    v.kind == VariantKind.farsh &&
+    v.description == 'بحذف الألف';
+
+/// Hamza's «أُخۡفِي» (السجدة ١٧), its ya quiet: «… وَالْبَحْرُ أُخْفِي سُكُونُهُ /
+/// فَشَا …» (963) (the user, 2026-11-24).
+bool _ukhfi(Variant v) =>
+    v.surah == 32 &&
+    v.ayah == 17 &&
+    v.word == 4 &&
+    v.rule == 'ya_idafa' &&
+    v.description.contains('إسكان');

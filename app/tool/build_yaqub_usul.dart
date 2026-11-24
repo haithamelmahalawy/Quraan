@@ -304,6 +304,7 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
     bool stop = false,
     String stopText = '',
     List<String> ways = const [],
+    String bandNote = '',
   }) {
     if (!added.add('${key(w)}:$rule')) return;
     rows.add([
@@ -322,6 +323,7 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
         if (stop) 'stopOnly': true,
         if (stopText.isNotEmpty) 'stopText': stopText,
         if (ways.isNotEmpty) 'ways': ways,
+        if (bandNote.isNotEmpty) 'bandNote': bandNote,
       },
     ]);
     counts.update(rule, (n) => n + 1, ifAbsent: () => 1);
@@ -553,7 +555,6 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
       );
     }
     if ((w.s == 4 && w.a == 36 && b == 'والصاحب') ||
-        (w.s == 27 && w.a == 36 && b.startsWith('أتمدون')) ||
         (w.s == 53 && w.a == 55 && b == 'ربك') ||
         (id == 'ruways' &&
             ((w.s == 23 && w.a == 101 && b == 'أنساب') ||
@@ -863,13 +864,16 @@ Map<String, int> buildYaqubUsul(Map quran, Map data, String id) {
     );
   }
   final tumid = index['27:36:4']!;
+  // Told under the idgham alone, not the zawa'id nor the big idgham: the first
+  // nun bare, the second doubled with its kasra, the madd over the waw, the
+  // ya the small one of the zawa'id (the user, 2026-11-24).
   add(
     tumid,
-    'ya_zaida',
-    'بإثبات الياء الزائدة وصلاً ووقفًا مع إدغام النونين',
+    '',
+    'بإدغام النون مع المد المشبع',
     28,
-    text: '${tumid.t.replaceAll(RegExp(r'[ۖ-ۭ]'), '')}ۦ',
-    ways: ['إثبات الياء وصلاً ووقفًا مع إدغام النونين'],
+    text: tumidText,
+    bandNote: 'بإدغام النون مع المد المشبع',
   );
   rows.sort((a, b) {
     for (final n in [0, 1, 2]) {
@@ -912,3 +916,6 @@ void main() {
     f.writeAsStringSync(jsonEncode(data));
   }
 }
+
+/// «أَتُمِدُّونَنِ» (النمل ٣٦) as Hamza and Ya'qub read it, the nuns merged.
+const tumidText = 'أَتُمِدُّوٓننِّۦ';

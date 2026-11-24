@@ -188,7 +188,10 @@ List<String> usulOf(Variant v) {
         RegExp(r'(^|\s)(ب|و)?(ال)?مد|ومدها|القصر').hasMatch(d) &&
         !v.isQasr &&
         !d.contains('البدل') &&
-        !RegExp('المتصل|المنفصل').hasMatch(d))
+        !RegExp('المتصل|المنفصل').hasMatch(d) &&
+        // The madd of a merged letter (أَتُمِدُّوٓننِّۦ) told with its idgham
+        // alone (the user, 2026-11-24).
+        !d.startsWith('بإدغام'))
       'المدود',
     if (RegExp('إشمام|الإشمام').hasMatch(d)) 'الإشمام',
     if (RegExp('سكت').hasMatch(d) && !d.contains('دون سكت')) 'السكت',

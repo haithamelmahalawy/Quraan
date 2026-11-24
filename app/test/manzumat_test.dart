@@ -3890,6 +3890,62 @@ void main() {
       expect(r.mention, verses, reason: '$id $text');
     }
   });
+  test('«طسٓمٓ»: its ta leaned cites 738, its nun shown 281، 283', () {
+    for (final (id, surah, rule, d, verses) in [
+      ('khallad', 26, '', 'بإمالة الطاء', {738}),
+      ('shubah', 27, '', 'بالإمالة', {738}),
+      ('ishaq', 28, '', 'بإمالة الطاء', {738}),
+      (
+        'khalaf_hamzah',
+        28,
+        'idgham_saghir',
+        'بإظهار النون من «سين» عند الميم',
+        {281, 283},
+      ),
+    ]) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: surah,
+          ayah: 1,
+          word: 0,
+          count: 1,
+          text: '',
+          kind: VariantKind.usul,
+          rule: rule,
+          description: d,
+        ),
+        'طسٓمٓ',
+        surah,
+        surahs,
+      );
+      expect(r.mention, verses, reason: '$id $surah');
+    }
+  });
+
+  test('«فِيهِ مُهَانًا» without the silah cites 158، 159', () {
+    for (final id in ['qalun', 'susi', 'khallad', 'ibn_wardan', 'ishaq']) {
+      final r = manzumat.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 25,
+          ayah: 69,
+          word: 6,
+          count: 1,
+          text: 'فِيهِ',
+          kind: VariantKind.usul,
+          rule: 'ha_silah',
+          description: 'دون صلة',
+        ),
+        'فِيهِۦ',
+        25,
+        surahs,
+      );
+      expect(r.poem, Poem.shatibiyya, reason: id);
+      expect(r.mention, {158, 159}, reason: id);
+    }
+  });
+
   test('«قُلۡ كَمۡ، قُلۡ إِن» (المؤمنون) cite «وَفي قَالَ كَمْ قُلْ»', () {
     for (final (id, ayah) in [
       ('bazzi', 112),

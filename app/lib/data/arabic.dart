@@ -214,6 +214,9 @@ String withImalaSign(String word, [String? reading]) {
   }
   // The alif of the nasb's tanween is no long alif: the one before it is
   // leaned (ضِعَٰ۪فًا: under the ain, not the fa, the user, 2026-11-19).
+  // Without one, the final alif is the word's own, read with the tanween
+  // (رِّب۪ٗا، الروم ٣٩): the letter before it leaned (the user, 2026-11-24).
+  final ownAlif = from;
   if (from >= 2 &&
       base(from, 0x0627) &&
       (clusters[from - 1].contains(0x064B) ||
@@ -233,6 +236,9 @@ String withImalaSign(String word, [String? reading]) {
   for (var i = from; i >= 0 && target == null; i--) {
     if (base(i, 0x0627) && i > 0) target = i - 1;
     if (target == null && dagger(i)) target = i;
+  }
+  if (target == null && ownAlif != from && base(ownAlif, 0x0627)) {
+    target = ownAlif - 1;
   }
   if (target == null || target < 0) return word;
   // The alif written as a waw with its dagger (ٱلرِّبَوٰاْ): the letter before
