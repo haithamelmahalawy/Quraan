@@ -16,6 +16,10 @@ import 'apply_first_sakin.dart';
 import 'correct_reviewed_farsh.dart'
     show
         dropsAlif,
+        qawariran,
+        dropsSalasilAlif,
+        salasilText,
+        qalamAn,
         tashtahihText,
         roundSukun,
         ituniDescription,
@@ -4159,6 +4163,9 @@ Map<String, int> buildAshabUsul(
   _taraaa(id, data['variants'] as List);
   _raaaJoined(id, data['variants'] as List);
   _majraha(id, data['variants'] as List);
+  // «ءَأَن كَانَ» (القلم ١٤): told as the reviewed farsh tells it.
+  qalamAn(id, data['variants'] as List);
+  qawariran(id, data['variants'] as List);
   _idghamChain(data['variants'] as List);
   _saktInSpan(data['variants'] as List);
   // The plural's mim told only where the reader's ha before it is not
@@ -4176,6 +4183,27 @@ Map<String, int> buildAshabUsul(
     if (v[5] == 'f' && v[4] == 'وَكِتَٰبِهِۦ') v[6] = kitabihiDescription;
     // The alif drawn, the round sukun over it (الأحزاب ١٠، ٦٦، ٦٧).
     if (dropsAlif(v)) v[4] = roundSukun(index[_key(v[0], v[1], v[2])]!.t);
+    if (dropsSalasilAlif(v)) v[4] = salasilText;
+    // «بَل رَّ۪انَ» (المطففين ١٤): its ra leaned, drawn with the sign in both
+    // rows, the idgham's and the imala's, so the ra takes the imala's green
+    // (the user, 2026-11-25).
+    if (v[0] == 83 && v[1] == 14 && v[2] == 1 && v[7] == 'no_sakt') {
+      v[4] = 'بَل رَّ۪انَ';
+    }
+    if (v[0] == 83 &&
+        v[1] == 14 &&
+        v[2] == 2 &&
+        v[5] == 'u' &&
+        ''.contains('إمالة')) {
+      v[4] = 'رَّ۪انَ';
+    }
+    // «ٱلرَّحۡمَٰنُ» (النبأ ٣٧): Hafs's rasm, its dagger alif, the nun's damma
+    // alone (the user, 2026-11-25).
+    if (v[0] == 78 && v[1] == 37 && v[2] == 5 && v[5] == 'f') {
+      v[4] = 'ٱلرَّحۡمَٰنُۖ';
+      v[6] = 'بضم النون';
+      (v[8] as Map).remove('vocalizationSource');
+    }
     // Hamza's «ٱلۡمُنشِـَٔاتُ» (الرحمن ٢٤): the shin's kasra alone; the two
     // faces are Shu'ba's (the user, 2026-11-25).
     if (v[0] == 55 &&
@@ -4191,6 +4219,20 @@ Map<String, int> buildAshabUsul(
     if (v[0] == 43 && v[1] == 71 && v[2] == 8 && v[5] == 'f') {
       v[4] = tashtahihText;
       (v[8] as Map).remove('vocalizationSource');
+    }
+    // Khallad's «فَٱلۡمُلۡقِيَٰٓت ذِّكۡرًا» (المرسلات ٥): two faces, the idgham with
+    // the full madd the preferred of the Taysir and the Shatibiyya (the user,
+    // 2026-11-25).
+    if (id == 'khallad' &&
+        v[0] == 77 &&
+        v[1] == 5 &&
+        v[2] == 0 &&
+        v[7] == 'idgham_kabir') {
+      const both =
+          'بوجهين: بالإظهار، والإدغام مع المد المشبع وهو الراجح من طريق '
+          'التيسير والشاطبية';
+      v[6] = both;
+      (v[8] as Map)['bandNote'] = both;
     }
     // «وَٱلصَّٰٓفَّٰٓت صَّفّٗا» (الصافات ١): both madds told beside the idgham
     // (the user, 2026-11-25).

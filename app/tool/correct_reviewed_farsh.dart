@@ -42,7 +42,108 @@ const luluText = 'وَلُؤۡلُؤٖاْ';
 /// «تَشۡتَهِيهْ» (الزخرف ٧١), its ha dropped under the round sukun.
 const tashtahihText = 'تَشۡتَهِيهْ';
 
+/// «ءَأَن كَانَ» (القلم ١٤), the question's hamza added (the user,
+/// 2026-11-25): in the hamesh «بزيادة همزة استفهام», with each riwaya's way
+/// with the two hamzas beside it; the easing ones told in «الهمزتان من كلمة»
+/// too, the ones reading both whole (Hamza, Shu'ba, Rawh) not.
+void qalamAn(String id, List rows) {
+  const added = 'بزيادة همزة استفهام';
+  const withIdkhal = 'تسهيل الهمزة الثانية مع الإدخال';
+  const withoutIdkhal = 'تسهيل الهمزة الثانية بلا إدخال';
+  final (text, way) = switch (id) {
+    'khalaf_hamzah' || 'khallad' || 'shubah' || 'rawh' => ('ءَأَن', null),
+    'hisham' || 'ibn_wardan' || 'ibn_jammaz' => ('ءَٰا۬ن', withIdkhal),
+    'ibn_dhakwan' || 'ruways' => ('ءَا۬ن', withoutIdkhal),
+    _ => ('', null),
+  };
+  if (text.isEmpty) return;
+  bool here(List r) => r[0] == 68 && r[1] == 14 && r[2] == 0;
+  final at = rows.indexWhere((r) => here(r as List));
+  // Its stop on the hamza kept (Hamza's).
+  rows.removeWhere(
+    (r) => here(r as List) && (r.length < 8 || r[7] != 'hisham_waqf'),
+  );
+  final insertAt = at < 0
+      ? rows.indexWhere(
+          (r) =>
+              (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int) >
+              68014000,
+        )
+      : at;
+  final told = [
+    [
+      68,
+      14,
+      0,
+      1,
+      text,
+      'f',
+      way == null ? added : '$added مع ${way.replaceAll(' بلا إدخال', '')}',
+      '',
+      <String, dynamic>{},
+    ],
+    if (way != null)
+      [
+        68,
+        14,
+        0,
+        1,
+        text,
+        'h',
+        'ب$way',
+        'tasheel_word',
+        {
+          'context': 'ءَأَن',
+          'ways': [way],
+        },
+      ],
+  ];
+  rows.insertAll(insertAt < 0 ? rows.length : insertAt, told);
+}
+
+/// «سَلَٰسِلَاْ» (الإنسان ٤) without its alif drawn as Hafs writes it, the alif
+/// under the round sukun (the user, 2026-11-25).
+const salasilText = 'سَلَٰسِلَاْ';
+
+/// A row of «سَلَٰسِلَ» dropping the alif.
+bool dropsSalasilAlif(List row) =>
+    row[0] == 76 &&
+    row[1] == 4 &&
+    row[2] == 3 &&
+    row[5] == 'f' &&
+    '${row[6]}'.startsWith('بحذف الألف');
+
+/// The first «قَوَارِيرَاْ» (الإنسان ١٥) of Hamza and Ruways: its alif under the
+/// round sukun as the second's, without the tanween joined and stopped on the
+/// ra (the user, 2026-11-25); the second as Hafs's, no row.
+void qawariran(String id, List rows) {
+  if (!const {'khalaf_hamzah', 'khallad', 'ruways'}.contains(id)) return;
+  bool here(List r) => r[0] == 76 && r[1] == 15 && r[2] == 7 && r[5] == 'f';
+  rows.removeWhere((r) => here(r as List));
+  final at = rows.indexWhere(
+    (r) =>
+        (r[0] as int) * 1000000 + (r[1] as int) * 1000 + (r[2] as int) >
+        76015007,
+  );
+  rows.insert(at < 0 ? rows.length : at, [
+    76,
+    15,
+    7,
+    1,
+    'قَوَارِيرَاْ',
+    'f',
+    'بترك التنوين وصلًا وبالراء وقفًا',
+    '',
+    <String, dynamic>{},
+  ]);
+}
+
 void correctReviewedFarsh(String id, Map quran, List rows) {
+  qalamAn(id, rows);
+  qawariran(id, rows);
+  for (final row in rows) {
+    if (dropsSalasilAlif(row)) row[4] = salasilText;
+  }
   // This spelling is shared by everyone who reads نِعْمَةً at 31:20.
   for (final row in rows) {
     if (row[0] == 31 &&

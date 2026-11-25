@@ -2781,7 +2781,15 @@ class _MushafPageState extends State<MushafPage>
     final letters = lettersOf(text);
     var last = letters.length > 1 && letters[1].startsWith('ل')
         ? 1
-        : letters.indexWhere((l) => RegExp('[ْۡ]').hasMatch(l), 1);
+        // The quiet letter after the wasl: with its sukun, or bare where the
+        // nun hides into the next (ٱنقَلَبُواْ: its alif wasl and nun alone;
+        // the user, 2026-11-25).
+        : letters.indexWhere(
+            (l) =>
+                RegExp('[ْۡ]').hasMatch(l) ||
+                !RegExp('[ً-ّٰ]').hasMatch(l.substring(1)),
+            1,
+          );
     if (last < 0) last = 0;
     final color = ReadingColors.of(ha);
     return [

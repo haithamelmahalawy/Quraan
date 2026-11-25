@@ -497,6 +497,12 @@ void _certify(String id, Map<int, List<Variant>> index, String book) {
           }
           continue;
         }
+        // «ءَأَن كَانَ» (القلم ١٤): each reader's own way written in its row,
+        // not the book's two faces after it (the user, 2026-11-25).
+        if (surah == 68 && ayah == 14 && v.word == 0) {
+          found = true;
+          continue;
+        }
         found = true;
         if (v.certified) continue;
         // The same reading is listed at every word it covers.
