@@ -4165,6 +4165,19 @@ Map<String, int> buildAshabUsul(
     if (v[5] == 'f' && v[4] == 'وَكِتَٰبِهِۦ') v[6] = kitabihiDescription;
     // The alif drawn, the round sukun over it (الأحزاب ١٠، ٦٦، ٦٧).
     if (dropsAlif(v)) v[4] = roundSukun(index[_key(v[0], v[1], v[2])]!.t);
+    // «وَٱلصَّٰٓفَّٰٓت صَّفّٗا» (الصافات ١): both madds told beside the idgham
+    // (the user, 2026-11-25).
+    if (v[0] == 37 && v[1] == 1 && v[2] == 0 && v[7] == 'idgham_kabir') {
+      (v[8] as Map)['bandNote'] = 'بالمد المشبع في المدين';
+    }
+    // «فَٱلزَّٰجِرَٰٓت زَّجۡرٗا، فَٱلتَّٰلِيَٰٓت ذِّكۡرًا» (الصافات ٢، ٣): their madd told so too (the user,
+    // 2026-11-25).
+    if (v[0] == 37 &&
+        (v[1] == 2 || v[1] == 3) &&
+        v[2] == 0 &&
+        v[7] == 'idgham_kabir') {
+      (v[8] as Map)['bandNote'] = 'بالمد المشبع';
+    }
     // «فَنَعِمَّا، نَعِمَّا»: the nun's fatha alone, the ain's kasra Hafs's too.
     if (v[5] == 'f' &&
         RegExp(r'^ف?نعما$')

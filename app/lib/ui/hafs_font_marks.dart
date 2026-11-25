@@ -436,6 +436,13 @@ const saktRise = .72;
 const saktOverTall = 1.10;
 const saktOverShort = .84;
 
+/// The madd of a dagger alif on a letter with a shadda (وَٱلصَّٰٓفَّٰٓت): left
+/// of the letter's middle, over the dagger alif, in font sizes.
+const shaddaDaggerMaddShift = .30;
+
+/// Its height, in font sizes below the line's top marks.
+const shaddaDaggerMaddDrop = .10;
+
 /// The room before the sin after a word ending in a stop sign, past the sign.
 const saktPastStop = '\u2009';
 
@@ -795,6 +802,14 @@ class _QuranMarkPainter extends CustomPainter {
           dagger &&
           !source.startsWith('ى', at) &&
           source.substring(at, end).contains('َ');
+      // On a letter with a shadda (وَٱلصَّٰٓفَّٰٓت، Hamza's idgham): the dagger
+      // alif stands low past the shadda, its madd over it, not over the
+      // shadda (the user, 2026-11-25).
+      final shaddaDagger =
+          dagger &&
+          !lamDagger &&
+          !raDagger &&
+          source.substring(at, end).contains('ّ');
       final daggerOffShadda = sign == 'ٰ' && source.startsWith('ف', at);
       // The dagger alif beside the ta, and its madd over it (طَٰٓئِفٞ).
       final taDagger = (sign == 'ٰ' || sign == 'ٓ') && taDaggers.contains(at);
@@ -824,6 +839,8 @@ class _QuranMarkPainter extends CustomPainter {
                 // The high mim over the za, off its stem.
                 : iqlab && !low && source.startsWith('ظ', at)
                 ? font * .08
+                : shaddaDagger
+                ? font * shaddaDaggerMaddShift
                 : lamAlif
                 ? font * .22
                 : lamDagger
@@ -924,7 +941,9 @@ class _QuranMarkPainter extends CustomPainter {
                     // dagger alif stands higher (إِسۡرَٰٓءِيلَ، ٱلرِّبَوٰٓاْ), close
                     // on the others (يَٰٓأَيُّهَا، هَٰٓؤُلَآءِ).
                     : source.substring(at, end).contains('ٰ')
-                    ? (lamDagger
+                    ? (shaddaDagger
+                          ? shaddaDaggerMaddDrop
+                          : lamDagger
                           ? -.10
                           : raDagger
                           ? -.10
