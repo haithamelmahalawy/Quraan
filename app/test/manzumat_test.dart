@@ -8340,7 +8340,7 @@ void main() {
           .where((v) => v.word == 10 && !v.isUsul)
           .single
           .description,
-      'بنقل الألف بعد اللام',
+      'بتشديد اللام ونقل ألف المد بعد اللام',
     );
     for (final id in ids) {
       // «يَّشَأۡ» and «يَخۡسِفۡ» each its own word: «بِهُمُ» stays drawn.

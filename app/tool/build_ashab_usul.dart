@@ -2801,10 +2801,10 @@ Map<String, int> buildAshabUsul(
     }
   }
   // «عَٰلِمِ ٱلۡغَيۡبِ» (سبأ ٣) read «عَلَّٰمِ»: told as the alif moved after the
-  // lam (the user, 2026-11-16).
+  // lam, the lam doubled (the user, 2026-11-16, 2026-11-25).
   for (final v in (data['variants'] as List).cast<List>()) {
     if (v[0] == 34 && v[1] == 3 && v[2] == 10 && v[5] == 'f') {
-      v[6] = 'بنقل الألف بعد اللام';
+      v[6] = 'بتشديد اللام ونقل ألف المد بعد اللام';
     }
   }
   // «تُظَٰهِرُونَ» (الأحزاب ٤) read «تَظَٰهَرُونَ»: its ha opened too (the user,
