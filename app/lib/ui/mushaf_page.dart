@@ -6885,3 +6885,74 @@ String numberedWays(Iterable<String> ways) {
   final told = [for (final (n, w) in ways.indexed) '${n + 1}- $w'].join('؛ ');
   return fiveQiyas(ways) ? '$fiveQiyasLabel: $told' : told;
 }
+
+/// The usul rules that reach into the next word: a sakt before its hamza,
+/// the ha's vowel into its quiet letter, an idgham into it (the user,
+/// 2026-11-26).
+bool _reachesNext(Variant v) =>
+    v.rule == 'sakt' || v.rule == 'ha_damir' || v.rule.startsWith('idgham');
+
+/// «الكشاف»'s panel for word [word] of [ayah]: the page's own usul and hamesh
+/// told of it, its readers grouped as there, with the rule of the word before
+/// that reaches into it (a sakt, the ha's vowel, an idgham); null where none
+/// is told (the user, 2026-11-26).
+Widget? flashlightPanel({
+  required Ayah ayah,
+  required int word,
+  required QuranRepository quran,
+  required VariantRepository variants,
+  required ReaderSettings settings,
+  required WordTap onWordTap,
+}) {
+  final before = word > 0
+      ? (ayah, word - 1)
+      : ayah.number > 1
+      ? (
+          quran.ayah(ayah.surah, ayah.number - 1),
+          quran.ayah(ayah.surah, ayah.number - 1).words.length - 1,
+        )
+      : null;
+  bool covers(Variant v) =>
+      v.surah == ayah.surah &&
+      v.ayah == ayah.number &&
+      v.word <= word &&
+      word < v.word + v.count;
+  final groups = <_UsulGroup>[];
+  for (final g in _usulNotes(
+    [?before, (ayah, word)],
+    variants,
+    settings,
+    quran,
+  )) {
+    final kept = _UsulGroup(g.label, g.color)..ways.addAll(g.ways);
+    for (final MapEntry(:key, :value) in g.items.entries) {
+      final here = value.readings.any(covers);
+      final into =
+          before != null &&
+          value.ayah.surah == before.$1.surah &&
+          value.ayah.number == before.$1.number &&
+          value.word == before.$2 &&
+          value.readings.any(_reachesNext);
+      if (here || into) kept.items[key] = value;
+    }
+    if (kept.items.isNotEmpty) groups.add(kept);
+  }
+  final entries = _togetherEntries([
+    for (final e in _entriesOf([ayah], variants, settings))
+      if (e.ayah.number == ayah.number &&
+          (e.word == word || e.readings.any(covers)))
+        e,
+  ]);
+  if (groups.isEmpty && entries.isEmpty) return null;
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (groups.isNotEmpty)
+        _UsulBox(groups: groups, onTap: (_) {}, scale: 1.4),
+      if (groups.isNotEmpty && entries.isNotEmpty) const SizedBox(height: 6),
+      for (final e in entries)
+        _EntryView(entry: e, onTap: onWordTap, compact: false, scale: 1.1),
+    ],
+  );
+}

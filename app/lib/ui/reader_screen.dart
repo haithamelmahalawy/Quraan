@@ -1278,7 +1278,17 @@ class _ReaderScreenState extends State<ReaderScreen>
       Positioned.fill(child: pages),
       // «الكشاف» over the page (the user, 2026-11-26).
       Positioned.fill(
-        child: Flashlight(settings: widget.settings, variants: widget.variants),
+        child: Flashlight(
+          settings: widget.settings,
+          panelFor: (ayah, word) => flashlightPanel(
+            ayah: ayah,
+            word: word,
+            quran: _quran,
+            variants: widget.variants,
+            settings: widget.settings,
+            onWordTap: _wordTapped,
+          ),
+        ),
       ),
       // What the last eye gesture did.
       Positioned(
