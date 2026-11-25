@@ -691,10 +691,26 @@ List<Variant> compareReadings({
     from,
     to,
   );
+  // Without the usul: what the word is read by its farsh alone.
+  List<Variant> farshOnly(List<Variant> rows) =>
+      rows.where((v) => !v.isUsul || _lexical(v)).toList();
+  final baseFarshKey = _lexicalKey(
+    ayah,
+    farshOnly(_rows(repository, displayed, ayah, from, to)),
+    from,
+    to,
+  );
   for (final id in ids) {
     final own = lexical[id]!;
-    if (_lexicalKey(ayah, _rows(repository, id, ayah, from, to), from, to) ==
-        baseKey) {
+    final rows = _rows(repository, id, ayah, from, to);
+    if (_lexicalKey(ayah, rows, from, to) == baseKey) {
+      continue;
+    }
+    // A reader whose word differs by its usul alone (Warsh's naql in
+    // «أَهۡلَكَنِيَ»، الملك ٢٨): told in the usul, not in the hamesh beside
+    // another's farsh (the user, 2026-11-25).
+    if (own.isEmpty &&
+        _lexicalKey(ayah, farshOnly(rows), from, to) == baseFarshKey) {
       continue;
     }
     if (own.length == 1 &&
