@@ -22,12 +22,17 @@ class BookPager extends StatefulWidget {
     required this.onPageChanged,
     this.enabled = true,
     this.revision,
+    this.refreshDelay = const Duration(milliseconds: 350),
   });
 
   /// What the pages are drawn with: the pages built are kept until it
   /// changes (a turn builds only the page newly come near). Null: built
   /// again on every rebuild.
   final Object? revision;
+
+  /// How long after a change the neighbours are built again: past the words'
+  /// swap, so a weak phone's freeze does not eat it (the user, 2026-11-25).
+  final Duration refreshDelay;
 
   final int itemCount;
   final int initialIndex;
@@ -103,7 +108,7 @@ class BookPagerState extends State<BookPager>
 
   void _refreshLater() {
     _refresh?.cancel();
-    _refresh = Timer(const Duration(milliseconds: 350), () {
+    _refresh = Timer(widget.refreshDelay, () {
       if (!mounted || _stale.isEmpty) return;
       // Not while a sheet turns: after it.
       if (_progress != 0) return _refreshLater();

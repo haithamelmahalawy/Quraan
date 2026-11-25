@@ -20,7 +20,8 @@ class WordSwapper extends StatelessWidget {
   final Key swapKey;
   final Widget child;
 
-  static const duration = Duration(milliseconds: 700);
+  /// Slow enough to be seen on a weak phone (the user, 2026-11-25).
+  static const duration = Duration(milliseconds: 1200);
 
   @override
   Widget build(BuildContext context) {

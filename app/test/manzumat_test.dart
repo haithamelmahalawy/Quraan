@@ -6918,7 +6918,9 @@ void main() {
           .where((v) => v.word == 22 && v.rule == 'ishmam_sad')
           .single;
       final r = manzumat.referenceOf(v, 'يَصۡدِفُونَ', 6, surahs);
-      final durrah = id == 'ishaq' || id == 'ruways';
+      // Khalaf al-'Ashir by his asl, the Durrah's «طِبْ» Ruways's (the user,
+      // 2026-11-25).
+      final durrah = id == 'ruways';
       expect(r.poem, durrah ? Poem.durrah : Poem.shatibiyya, reason: id);
       expect(r.mention, durrah ? {95} : {603}, reason: id);
     }

@@ -57,6 +57,7 @@ void main() {
                   mutashabihat: mutashabihat,
                   settings: settings,
                   onWordTap: (_, _) {},
+                  showHamesh: true,
                 ),
               ),
             ),

@@ -240,6 +240,11 @@ class Manzumat {
             _luluFatir(reading) ||
             _waliNaja(reading) ||
             _yulhidun(reading).isNotEmpty ||
+            // Khalaf al-'Ashir's ishmam of a sad before a dal: the Durrah's 95
+            // is Ruways's («طِبْ»), his asl's 603 (the user, 2026-11-25).
+            reading.rule == 'ishmam_sad' &&
+                hafs.contains('صۡد') &&
+                const {'ishaq', 'idris'}.contains(reading.riwayaId) ||
             // A Durrah reader's «قَد» merged, the Durrah silent: his asl's
             // bayt, after the Durrah's two.
             (_idghamQad(reading, hafs) ||
@@ -1532,6 +1537,7 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _luluFatir(v)) return {895};
     if (poem == Poem.shatibiyya && _waliNaja(v)) return {417};
     if (poem == Poem.shatibiyya && _amman(v)) return {1005};
+    if (poem == Poem.shatibiyya && _hamzaKabir(v)) return {993, 994};
     if (poem == Poem.shatibiyya && _wasSaata(v)) return {1033};
     if (poem == Poem.shatibiyya && _munshaat(v)) return {1053, 1054};
     if (poem == Poem.shatibiyya && _yulhidun(v).isNotEmpty) {
@@ -4280,3 +4286,20 @@ bool _wasSaata(Variant v) =>
 /// Shu'ba's by khulf (the user, 2026-11-25).
 bool _munshaat(Variant v) =>
     v.surah == 55 && v.ayah == 24 && v.word == 2 && v.kind == VariantKind.farsh;
+
+/// Hamza's big idgham of the ta (الصافات ١-٣، الذاريات ١), Khallad's by khulf
+/// (المرسلات ٥، العاديات ٣): «وَصَفًّا وَزَجْراً ذِكْراً ادْغَمَ حَمْزَةٌ … / وَخَلاَّدُهُمْ
+/// بِالْخُلْفِ فَالْمُلْقِياَتِ فَالْمُغِيرَاتِ فِي ذِكْراً وَصُبْحاً» (993، 994) (the
+/// user, 2026-11-25).
+bool _hamzaKabir(Variant v) =>
+    v.rule == 'idgham_kabir' &&
+    v.word == 0 &&
+    const {
+      '37:1',
+      '37:2',
+      '37:3',
+      '51:1',
+      '77:5',
+      '100:3',
+    }.contains('${v.surah}:${v.ayah}') &&
+    const {'khalaf_hamzah', 'khallad'}.contains(v.riwayaId);

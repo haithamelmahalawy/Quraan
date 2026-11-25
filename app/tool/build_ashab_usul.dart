@@ -575,7 +575,10 @@ Map<String, int> buildAshabUsul(
       }
       if (!khalaf || i + 1 == words.length) continue;
       final following = words[i + 1];
-      if (following.s != w.s) continue;
+      // Into the next surah too, its first word: Hamza joins the surahs
+      // without the basmala (وَٱقۡتَرِب ۝ إِنَّآ، العلق ١٩؛ the user, 2026-11-25).
+      final nextSurah = following.s != w.s;
+      if (nextSurah && (following.a != 1 || following.w != 0)) continue;
       if (!RegExp('^[ءأإآ]').hasMatch(following.t)) continue;
       // The opening letters, the last one's name ending sakin (الٓمٓ ۝ أَحَسِبَ،
       // العنكبوت ١-٢): the sakt after it (the user, 2026-11-24).
@@ -589,13 +592,35 @@ Map<String, int> buildAshabUsul(
         );
         continue;
       }
-      final end = sakinEnd.firstMatch(own);
-      if (end == null) continue;
+      // A surah's last tanween written by the iqlab before the basmala's ba
+      // (حَامِيَةُۢ، مُّمَدَّدَةِۭ، خَوۡفِۭ): a tanween before the hamza joined.
+      final joined = nextSurah
+          ? own
+                .replaceAll('ُۢ', 'ٌ')
+                .replaceAll('ِۭ', 'ٍ')
+                .replaceAll('َۢ', 'ً')
+          : own;
+      final end = sakinEnd.firstMatch(joined);
+      // A surah's last letter written bare, quiet in the joining
+      // (وَٱقۡتَرِب۩، أَمۡثَٰلَكُم).
+      final bare = end == null && nextSurah
+          ? RegExp(r'[ء-ي]([ۖ-ۜ۩]*)$').firstMatch(own)
+          : null;
+      if (end == null && bare == null) continue;
       add(
         w,
         'sakt',
         'بالسكت على الساكن المفصول قبل الهمز بخلف عنه$after',
-        text: marked(key, w.t, end.start + (end[1] ?? end[3])!.length),
+        text: joined != own
+            ? '${joined.substring(0, end!.start + (end[1] ?? end[3])!.length)}ۜ'
+                  '${joined.substring(end.start + (end[1] ?? end[3])!.length)}'
+            : marked(
+                key,
+                w.t,
+                end != null
+                    ? end.start + (end[1] ?? end[3])!.length
+                    : bare!.start + 1,
+              ),
         ways: khulf,
       );
     }
@@ -4223,6 +4248,16 @@ Map<String, int> buildAshabUsul(
     // Khallad's «فَٱلۡمُلۡقِيَٰٓت ذِّكۡرًا» (المرسلات ٥): two faces, the idgham with
     // the full madd the preferred of the Taysir and the Shatibiyya (the user,
     // 2026-11-25).
+    // And «فَٱلۡمُغِيرَٰٓت صُّبۡحٗا» (العاديات ٣), the idgham the preferred.
+    if (id == 'khallad' &&
+        v[0] == 100 &&
+        v[1] == 3 &&
+        v[2] == 0 &&
+        v[7] == 'idgham_kabir') {
+      const both = 'بوجهين: بالإظهار، والإدغام مع المد المشبع وهو المقدّم';
+      v[6] = both;
+      (v[8] as Map)['bandNote'] = both;
+    }
     if (id == 'khallad' &&
         v[0] == 77 &&
         v[1] == 5 &&

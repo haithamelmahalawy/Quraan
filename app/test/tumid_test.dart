@@ -26,6 +26,7 @@ void main() {
   wasSaata();
   tawrat();
   munshaat();
+  ishmamSad();
   List rows(String id) =>
       ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
                   as Map)['variants']
@@ -712,6 +713,63 @@ void munshaat() {
         names,
       );
       expect(ref.mention, {1053, 1054}, reason: id);
+    }
+  });
+}
+
+/// The ishmam of a sad before a dal (يَصۡدُرُ): 603 for Hamza, al-Kisa'i and
+/// Khalaf al-'Ashir, the Durrah's 95 for Ruways (the user, 2026-11-25).
+void ishmamSad() {
+  test('«يَصۡدُرُ» cites 603, Ruways 95', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final (id, want) in [
+      ('khalaf_hamzah', {603}),
+      ('duri_kisai', {603}),
+      ('ishaq', {603}),
+      ('ruways', {95}),
+    ]) {
+      final r = m.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 99,
+          ayah: 6,
+          word: 1,
+          count: 1,
+          text: '',
+          kind: VariantKind.usul,
+          rule: 'ishmam_sad',
+          description: 'بإشمام الصاد صوت الزاي',
+        ),
+        'يَصۡدُرُ',
+        99,
+        names,
+      );
+      expect(r.mention, want, reason: id);
+    }
+  });
+
+  test('Khalaf\'s sakt before the next surah\'s hamza', () {
+    final rows =
+        (jsonDecode(
+              File('assets/data/qiraat/khalaf_hamzah.json').readAsStringSync(),
+            ) as Map)['variants']
+            as List;
+    for (final (s, a, w, text) in [
+      (47, 38, 28, 'أَمۡثَٰلَكُمۜ'),
+      (93, 11, 3, 'فَحَدِّثۡۜ'),
+      (96, 19, 4, 'وَٱقۡتَرِبۜ۩'),
+      (101, 11, 1, 'حَامِيَةٌۜ'),
+      (104, 9, 2, 'مُّمَدَّدَةٍۜ'),
+      (106, 4, 6, 'خَوۡفٍۜ'),
+    ]) {
+      final r = rows.singleWhere(
+        (r) => r[0] == s && r[1] == a && r[2] == w && r[7] == 'sakt',
+      );
+      // The same letters and marks, whatever their order.
+      String sorted(String t) => (t.split('')..sort()).join();
+      expect(sorted(r[4] as String), sorted(text), reason: '$s');
     }
   });
 }

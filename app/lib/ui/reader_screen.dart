@@ -33,6 +33,7 @@ import 'search_screen.dart';
 import 'surah_index.dart';
 import 'page_slider.dart';
 import 'theme.dart';
+import 'word_swap.dart';
 import 'variant_sheet.dart';
 
 /// «الرواة» in the top bar: lets the riwayat's panel down beneath it, or
@@ -656,6 +657,10 @@ class _ReaderScreenState extends State<ReaderScreen>
       initialIndex: _indexOf(_page),
       enabled: !_zoomed,
       revision: (_pagesRevision, _fullScreen, two, _quran.edition),
+      // The neighbours built again after the words' swap.
+      refreshDelay: widget.settings.wordSwap == WordSwap.none
+          ? const Duration(milliseconds: 350)
+          : WordSwapper.duration + const Duration(milliseconds: 300),
       onPageChanged: (i) {
         final number = _pageAt(i);
         if (_middles[number] case final x?) _headerMiddle.value = x;
