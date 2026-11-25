@@ -17,6 +17,8 @@ void main() {
   luluFatir();
   fawatih();
   waliNaja();
+  liMin();
+  amman();
   List rows(String id) =>
       ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
                   as Map)['variants']
@@ -404,6 +406,69 @@ void waliNaja() {
         names,
       );
       expect(ref.mention, {417}, reason: id);
+    }
+  });
+}
+
+/// «لِي مِنۡ عِلۡمِۭ» (ص ٦٩) quiet cites 417 (the user, 2026-11-25).
+void liMin() {
+  test('«لِي» (ص ٦٩) cites 417', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final (id, kind) in [
+      ('khallad', VariantKind.usul),
+      ('duri_kisai', VariantKind.usul),
+      ('susi', VariantKind.farsh),
+      ('shubah', VariantKind.farsh),
+      ('hisham', VariantKind.farsh),
+      ('ruways', VariantKind.farsh),
+      ('ishaq', VariantKind.usul),
+    ]) {
+      final ref = m.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 38,
+          ayah: 69,
+          word: 2,
+          count: 1,
+          text: 'لِي',
+          kind: kind,
+          rule: kind == VariantKind.usul ? 'ya_idafa' : '',
+          description: 'بإسكان ياء الإضافة',
+        ),
+        'لِيَ',
+        38,
+        names,
+      );
+      expect(ref.mention, {417}, reason: id);
+    }
+  });
+}
+
+/// «أَمَنۡ» (الزمر ٩) lightened cites 1005 (the user, 2026-11-25).
+void amman() {
+  test('«أَمَنۡ» (الزمر ٩) cites 1005', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final id in ['khallad', 'khalaf_hamzah', 'qalun', 'warsh', 'bazzi']) {
+      final ref = m.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 39,
+          ayah: 9,
+          word: 0,
+          count: 1,
+          text: 'أَمَنۡ',
+          kind: VariantKind.farsh,
+          description: 'بتخفيف الميم',
+        ),
+        'أَمَّنۡ',
+        39,
+        names,
+      );
+      expect(ref.mention, {1005}, reason: id);
     }
   });
 }

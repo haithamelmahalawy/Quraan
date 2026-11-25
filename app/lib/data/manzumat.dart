@@ -1530,6 +1530,7 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _tanawush(v)) return {982};
     if (poem == Poem.shatibiyya && _luluFatir(v)) return {895};
     if (poem == Poem.shatibiyya && _waliNaja(v)) return {417};
+    if (poem == Poem.shatibiyya && _amman(v)) return {1005};
     // «تُشۡرِكُونَ» with the ta (يونس ١٨، النحل ١، ٣، الروم ٤٠): «وَخَاطَبَ عَمَّا
     // يُشْرِكُونَ هُنَا شَذاً وَفي الرُّومِ وَالْحَرْفَيْنِ في النَّحْلِ أَوَّلَا»
     // (745) alone (the user, 2026-11-24).
@@ -4211,11 +4212,19 @@ bool _luluFatir(Variant v) =>
         v.surah == 22 && v.ayah == 23 && v.word == 18) &&
     v.description.contains('تنوين الهمزة بالكسر');
 
-/// «وَلِي نَعۡجَةٞ» (ص ٢٣), its ya quiet: «وَلِيْ نَعْجَةٌ مَا كَانَ لِيْ اثْنَيْنِ
-/// … عُلاً» (417), Hafs alone opening it; the Durrah's readers after its
-/// silence (the user, 2026-11-25).
+/// «وَلِي نَعۡجَةٞ» (ص ٢٣) and «مَا كَانَ لِي مِنۡ عِلۡمِۭ» (ص ٦٩), the ya
+/// quiet: «وَلِيْ نَعْجَةٌ مَا كَانَ لِيْ اثْنَيْنِ … عُلاً» (417), Hafs alone
+/// opening them; the Durrah's readers after its silence (the user,
+/// 2026-11-25).
 bool _waliNaja(Variant v) =>
     v.surah == 38 &&
-    v.ayah == 23 &&
-    v.word == 7 &&
+    (v.ayah == 23 && v.word == 7 || v.ayah == 69 && v.word == 2) &&
     v.description.contains('إسكان');
+
+/// «أَمَنۡ هُوَ قَٰنِتٌ» (الزمر ٩) lightened: «أَمَنْ خَفَّ حِرْمِيٌّ فَشَا» (1005)
+/// (the user, 2026-11-25).
+bool _amman(Variant v) =>
+    v.surah == 39 &&
+    v.ayah == 9 &&
+    v.word == 0 &&
+    v.description == 'بتخفيف الميم';

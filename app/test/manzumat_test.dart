@@ -8551,7 +8551,7 @@ void main() {
           .where((v) => v.word == 0 && !v.isUsul)
           .single;
       expect(v.text, 'ٱتَّخَذۡنَٰهُمۡ', reason: id);
-      expect(v.description, 'بهمزة وصل تكسر ابتداءً', reason: id);
+      expect(v.description, 'بهمزة وصل تُكسر ابتداءً', reason: id);
     }
   });
 
