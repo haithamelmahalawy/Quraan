@@ -4117,9 +4117,10 @@ bool _kafHaSad(Variant v) =>
 /// «فَنَبَذتُّهَا» (طه ٩٦) merged: «وَعُذْتُ عَلَى إِدْغَامِهِ وَنَبَذْتُهاَ شَوَاهِدُ
 /// حَمَّادٍ» (279), for Khalaf al-'Ashir too (the user, 2026-11-24).
 bool _nabadhtuha(Variant v) =>
-    v.surah == 20 &&
-    v.ayah == 96 &&
-    v.word == 11 &&
+    (v.surah == 20 && v.ayah == 96 && v.word == 11 ||
+        // «عُذتُّ» (غافر ٢٧، الدخان ٢٠) too (the user, 2026-11-25).
+        v.surah == 40 && v.ayah == 27 && v.word == 3 ||
+        v.surah == 44 && v.ayah == 20 && v.word == 1) &&
     v.description.contains('إدغام');
 
 /// «فِيهِ مُهَانًا» (الفرقان ٦٩) without the silah: «وَلَمْ يَصِلُوا هَا مُضْمَرٍ قَبْلَ

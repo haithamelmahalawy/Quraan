@@ -19,6 +19,7 @@ void main() {
   waliNaja();
   liMin();
   amman();
+  udhtu();
   List rows(String id) =>
       ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
                   as Map)['variants']
@@ -478,6 +479,41 @@ void amman() {
         names,
       );
       expect(ref.mention, {1005}, reason: id);
+    }
+  });
+}
+
+/// «عُذتُّ» (غافر ٢٧، الدخان ٢٠) merged cites 279 (the user, 2026-11-25).
+void udhtu() {
+  test('«عُذتُّ» cites 279', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final (s, a, w) in [(40, 27, 3), (44, 20, 1)]) {
+      for (final (id, kind) in [
+        ('khallad', VariantKind.usul),
+        ('duri_kisai', VariantKind.usul),
+        ('susi', VariantKind.farsh),
+        ('ishaq', VariantKind.usul),
+      ]) {
+        final ref = m.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: 1,
+            text: 'عُذتُّ',
+            kind: kind,
+            rule: kind == VariantKind.usul ? 'idgham_saghir' : '',
+            description: 'بإدغام الذال في التاء',
+          ),
+          'عُذۡتُ',
+          s,
+          names,
+        );
+        expect(ref.mention, {279}, reason: '$id $s');
+      }
     }
   });
 }
