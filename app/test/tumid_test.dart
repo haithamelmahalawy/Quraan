@@ -316,6 +316,13 @@ void fawatih() {
               27,
               28,
               36,
+              40,
+              41,
+              42,
+              43,
+              44,
+              45,
+              46,
             }.contains(r[0]) ||
             r[1] != 1 ||
             r[2] != 0 ||
@@ -342,6 +349,8 @@ void fawatih() {
                 if ('${r[6]}'.contains('الطاء')) 738,
                 if ('${r[6]}'.contains('الهاء')) 739,
               }
+            : (r[0] as int) >= 40
+            ? {740}
             : {738};
         expect(ref.mention, want, reason: '$id ${r[0]}');
         seen.add('$id ${r[0]}');

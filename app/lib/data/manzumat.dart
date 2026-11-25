@@ -4148,6 +4148,9 @@ Set<int> _tasin(Variant v) {
   if (const {10, 11, 12, 13, 14, 15, 26, 27, 28, 36}.contains(v.surah)) {
     return const {738};
   }
+  // «حمٓ» leaned: «شَفَا صادِقًا حَم مُخْتَارُ صُحْبَةٍ» (740) (the user,
+  // 2026-11-25).
+  if (v.surah >= 40 && v.surah <= 46) return const {740};
   if (v.surah == 20) {
     return {
       if (v.description.contains('الطاء')) 738,
