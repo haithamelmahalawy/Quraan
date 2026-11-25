@@ -14,6 +14,7 @@ void main() {
   ukhfi();
   ghurfat();
   tanawush();
+  luluFatir();
   List rows(String id) =>
       ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
                   as Map)['variants']
@@ -223,6 +224,56 @@ void tanawush() {
         names,
       );
       expect(ref.mention, {982}, reason: id);
+    }
+  });
+}
+
+/// «وَلُؤۡلُؤٖ» (فاطر ٣٣): one note, 895 alone for every reader of it (the
+/// user, 2026-11-25).
+void luluFatir() {
+  test('«وَلُؤۡلُؤٖ» (فاطر ٣٣) told alike, cites 895', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final id in [
+      'bazzi',
+      'qunbul',
+      'duri_abuamr',
+      'hisham',
+      'ibn_dhakwan',
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+      'ruways',
+      'rawh',
+      'ishaq',
+      'idris',
+    ]) {
+      final r =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .singleWhere(
+                (r) => r[0] == 35 && r[1] == 33 && r[2] == 9 && r[5] == 'f',
+              );
+      expect(r[6], 'بتنوين الهمزة بالكسر', reason: id);
+      final ref = m.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 35,
+          ayah: 33,
+          word: 9,
+          count: 1,
+          text: r[4] as String,
+          kind: VariantKind.farsh,
+          description: r[6] as String,
+        ),
+        'وَلُؤۡلُؤٗاۖ',
+        35,
+        names,
+      );
+      expect(ref.mention, {895}, reason: id);
     }
   });
 }

@@ -32,6 +32,9 @@ String roundSukun(String hafs) => hafs.replaceAll('۠', 'ْ');
 /// «ٱلتَّنَآؤُشُ» (سبأ ٥٢), its hamza after the alif.
 const tanawushDescription = 'بالهمز مع المد المتصل';
 
+/// «وَلُؤۡلُؤٖ» (فاطر ٣٣), its hamza with the kasra's tanween.
+const luluDescription = 'بتنوين الهمزة بالكسر';
+
 void correctReviewedFarsh(String id, Map quran, List rows) {
   // This spelling is shared by everyone who reads نِعْمَةً at 31:20.
   for (final row in rows) {
@@ -148,6 +151,18 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
   for (final row in rows) {
     if (row[0] == 34 && row[1] == 52 && row[2] == 5 && row[5] == 'h') {
       row[6] = tanawushDescription;
+    }
+  }
+  // «وَلُؤۡلُؤٖ» (فاطر ٣٣) with the kasra: one note for Ibn Kathir, Abu 'Amr,
+  // Ibn 'Amir, Hamza, al-Kisa'i, Ya'qub and Khalaf (the user, 2026-11-25).
+  for (final row in rows) {
+    if (row[0] == 35 &&
+        row[1] == 33 &&
+        row[2] == 9 &&
+        row[5] == 'f' &&
+        RegExp('تنوين الهمزة بالكسر|بجر الهمزة الثانية')
+            .hasMatch('${row[6]}')) {
+      row[6] = luluDescription;
     }
   }
   if (id != 'shubah') return;

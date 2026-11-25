@@ -21,6 +21,7 @@ import 'correct_reviewed_farsh.dart'
         ituniText,
         kitabihiDescription,
         liyasuaDescription,
+        luluDescription,
         liyasuaText;
 import 'repeated_istifham.dart';
 import 'build_data.dart' as bd show describe, currentRiwaya;
@@ -2454,7 +2455,9 @@ Map<String, int> buildAshabUsul(
         1,
         'وَلُؤۡلُؤٖاْ',
         'f',
-        'بتنوين الهمزة بالكسر وحذف الألف',
+        // Fatir's told by the tanween alone, as every reader of it (the
+        // user, 2026-11-25).
+        s == 35 ? luluDescription : 'بتنوين الهمزة بالكسر وحذف الألف',
         '',
         {'source': ashabSource},
       ];
