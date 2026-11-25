@@ -33,6 +33,7 @@ import 'reading_colors.dart';
 import 'theme.dart';
 import 'usul_guide_sheet.dart';
 import 'usul_labels.dart';
+import 'flashlight.dart';
 import 'word_swap.dart';
 
 typedef WordTap = void Function(Ayah ayah, int word);
@@ -3193,10 +3194,15 @@ class _MushafPageState extends State<MushafPage>
     // Another riwaya chosen: the words it changes give way to the new ones
     // as the reader chose in the menu (the user, 2026-11-25).
     final shown = _display(ayah, w);
-    return WordSwapper(
-      style: widget.settings.wordSwap,
-      swapKey: ValueKey('${shown?.font}|${shown?.text}'),
-      child: placed,
+    // Found by «الكشاف» under its beam (the user, 2026-11-26).
+    return MetaData(
+      metaData: WordTag(ayah, w),
+      behavior: HitTestBehavior.translucent,
+      child: WordSwapper(
+        style: widget.settings.wordSwap,
+        swapKey: ValueKey('${shown?.font}|${shown?.text}'),
+        child: placed,
+      ),
     );
   }
 

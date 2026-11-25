@@ -211,6 +211,21 @@ class ReaderSettings extends ChangeNotifier {
     _set('lamp.y', at.dy);
   }
 
+  /// Where «الكشاف» was left over the page, as fractions of its area; null
+  /// on the frame's corner at first (the user, 2026-11-26).
+  Offset? get flashlightAt {
+    final x = _get('flash.x') as num?, y = _get('flash.y') as num?;
+    return x == null || y == null ? null : Offset(x.toDouble(), y.toDouble());
+  }
+
+  set flashlightAt(Offset? at) {
+    if (at == null) return;
+    _memory['flash.x'] = at.dx;
+    _prefs?.setDouble('flash.x', at.dx);
+    _memory['flash.y'] = at.dy;
+    _prefs?.setDouble('flash.y', at.dy);
+  }
+
   /// The riwaya last listened to.
   String? get listenRiwaya => _get('listenRiwaya') as String?;
   set listenRiwaya(String? id) => _set('listenRiwaya', id ?? 'hafs');

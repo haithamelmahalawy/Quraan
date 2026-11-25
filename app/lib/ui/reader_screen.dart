@@ -33,6 +33,7 @@ import 'search_screen.dart';
 import 'surah_index.dart';
 import 'page_slider.dart';
 import 'theme.dart';
+import 'flashlight.dart';
 import 'word_swap.dart';
 import 'variant_sheet.dart';
 
@@ -1275,6 +1276,10 @@ class _ReaderScreenState extends State<ReaderScreen>
     key: _hintArea,
     children: [
       Positioned.fill(child: pages),
+      // «الكشاف» over the page (the user, 2026-11-26).
+      Positioned.fill(
+        child: Flashlight(settings: widget.settings, variants: widget.variants),
+      ),
       // What the last eye gesture did.
       Positioned(
         left: 0,
