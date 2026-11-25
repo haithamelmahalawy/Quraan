@@ -12,6 +12,8 @@ import 'package:qiraat_mushaf/ui/usul_labels.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   ukhfi();
+  ghurfat();
+  tanawush();
   List rows(String id) =>
       ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
                   as Map)['variants']
@@ -159,6 +161,68 @@ void ukhfi() {
         names,
       );
       expect(r.mention, verses, reason: id);
+    }
+  });
+}
+
+/// «ٱلۡغُرۡفَتِ» (سبأ ٣٧) of Hamza: the singular, its ta open (the user,
+/// 2026-11-25).
+void ghurfat() {
+  test('«ٱلۡغُرۡفَتِ» for Hamza', () {
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final r =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .singleWhere((r) => r[0] == 34 && r[1] == 37 && r[2] == 21);
+      expect(r[4], 'ٱلۡغُرۡفَتِ', reason: id);
+      expect(r[6], 'بحذف الألف (على الإفراد)', reason: id);
+    }
+  });
+}
+
+/// «ٱلتَّنَآؤُشُ» (سبأ ٥٢): one note, 982 for every reader of it (the user,
+/// 2026-11-25).
+void tanawush() {
+  test('«ٱلتَّنَآؤُشُ» told alike, cites 982', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final id in [
+      'duri_abuamr',
+      'susi',
+      'shubah',
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+      'ishaq',
+      'idris',
+    ]) {
+      final r =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .singleWhere(
+                (r) => r[0] == 34 && r[1] == 52 && r[2] == 5 && r[5] == 'h',
+              );
+      expect(r[6], 'بالهمز مع المد المتصل', reason: id);
+      final ref = m.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 34,
+          ayah: 52,
+          word: 5,
+          count: 1,
+          text: r[4] as String,
+          kind: VariantKind.hamza,
+          description: r[6] as String,
+        ),
+        'ٱلتَّنَاوُشُ',
+        34,
+        names,
+      );
+      expect(ref.mention, {982}, reason: id);
     }
   });
 }

@@ -236,6 +236,7 @@ class Manzumat {
             _fihiMuhana(reading) ||
             _tasin(reading).isNotEmpty ||
             _ayatAnkabut(reading) ||
+            _tanawush(reading) ||
             // A Durrah reader's «قَد» merged, the Durrah silent: his asl's
             // bayt, after the Durrah's two.
             (_idghamQad(reading, hafs) ||
@@ -1524,6 +1525,7 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _ayatAnkabut(v)) return {954};
     if (poem == Poem.shatibiyya && _ukhfi(v)) return {963};
     if (poem == Poem.durrah && _ukhfi(v)) return {181};
+    if (poem == Poem.shatibiyya && _tanawush(v)) return {982};
     // «تُشۡرِكُونَ» with the ta (يونس ١٨، النحل ١، ٣، الروم ٤٠): «وَخَاطَبَ عَمَّا
     // يُشْرِكُونَ هُنَا شَذاً وَفي الرُّومِ وَالْحَرْفَيْنِ في النَّحْلِ أَوَّلَا»
     // (745) alone (the user, 2026-11-24).
@@ -4174,3 +4176,12 @@ bool _ukhfi(Variant v) =>
     v.word == 4 &&
     v.rule == 'ya_idafa' &&
     v.description.contains('إسكان');
+
+/// «ٱلتَّنَآؤُشُ» (سبأ ٥٢) with the hamza: «… وَيَهْمِزُ التَّنَاوُشُ حُلْوًا
+/// صُحْبَةً …» (982), Khalaf al-'Ashir's after the Durrah's silence (the user,
+/// 2026-11-25).
+bool _tanawush(Variant v) =>
+    v.surah == 34 &&
+    v.ayah == 52 &&
+    v.word == 5 &&
+    v.description.startsWith('بالهمز');

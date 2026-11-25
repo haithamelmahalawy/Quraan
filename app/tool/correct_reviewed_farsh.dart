@@ -29,6 +29,9 @@ bool dropsAlif(List row) =>
 /// Hafs's word, the round sukun (ْ) over the alif in place of his oval one.
 String roundSukun(String hafs) => hafs.replaceAll('۠', 'ْ');
 
+/// «ٱلتَّنَآؤُشُ» (سبأ ٥٢), its hamza after the alif.
+const tanawushDescription = 'بالهمز مع المد المتصل';
+
 void correctReviewedFarsh(String id, Map quran, List rows) {
   // This spelling is shared by everyone who reads نِعْمَةً at 31:20.
   for (final row in rows) {
@@ -139,6 +142,13 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
       (a) => a[0] == 33 && a[1] == row[1],
     );
     row[4] = roundSukun((a[4] as String).split(' ')[row[2] as int]);
+  }
+  // «ٱلتَّنَآؤُشُ» (سبأ ٥٢): one note for Abu 'Amr, Shu'ba, Hamza, al-Kisa'i and
+  // Khalaf al-'Ashir (the user, 2026-11-25).
+  for (final row in rows) {
+    if (row[0] == 34 && row[1] == 52 && row[2] == 5 && row[5] == 'h') {
+      row[6] = tanawushDescription;
+    }
   }
   if (id != 'shubah') return;
 
