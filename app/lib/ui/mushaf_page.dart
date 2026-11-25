@@ -33,6 +33,7 @@ import 'reading_colors.dart';
 import 'theme.dart';
 import 'usul_guide_sheet.dart';
 import 'usul_labels.dart';
+import 'word_swap.dart';
 
 typedef WordTap = void Function(Ayah ayah, int word);
 
@@ -3180,7 +3181,15 @@ class _MushafPageState extends State<MushafPage>
   /// font and size (the user, 2026-11-21).
   Widget _word(Ayah ayah, int w, double pageSize, [int kashida = 0]) {
     final word = _drawnWord(ayah, w, pageSize, kashida);
-    return _pageQcf ? MushafLines.onLine(word, pageSize) : word;
+    final placed = _pageQcf ? MushafLines.onLine(word, pageSize) : word;
+    // Another riwaya chosen: the words it changes give way to the new ones
+    // as the reader chose in the menu (the user, 2026-11-25).
+    final shown = _display(ayah, w);
+    return WordSwapper(
+      style: widget.settings.wordSwap,
+      swapKey: ValueKey('${shown?.font}|${shown?.text}'),
+      child: placed,
+    );
   }
 
   Widget _drawnWord(Ayah ayah, int w, double pageSize, [int kashida = 0]) {
@@ -3821,13 +3830,18 @@ List<_UsulGroup> _usulNotes(
     // Equal rule descriptions can still have different written examples
     // (e.g. Warsh's extended mim silah versus Ibn Kathir's). Do not use
     // the main text's comparison filter to choose the margin examples.
-    for (final v in majrahaTold(
-      irkabTold(
-        variants.forBand(
-          {...s.selected, ?s.displayed},
-          ayah.surah,
-          ayah.number,
+    for (final v in ajamiTold(
+      majrahaTold(
+        irkabTold(
+          variants.forBand(
+            {...s.selected, ?s.displayed},
+            ayah.surah,
+            ayah.number,
+            w,
+          ),
+          ayah,
           w,
+          s,
         ),
         ayah,
         w,
@@ -3835,14 +3849,14 @@ List<_UsulGroup> _usulNotes(
       ),
       ayah,
       w,
-      s,
     )) {
       if (!s.kinds.contains(v.kind) ||
           v.word != w ||
           v.inHamesh ||
           v.riwayaId == hafsId &&
               v.bandNote != 'بالإدغام' &&
-              !isHafsMajraha(v) ||
+              !isHafsMajraha(v) &&
+              !isHafsAjami(v) ||
           isRoutineMadd(v) ||
           !showYaqubMimExample(v, ayah.words[w]) ||
           // A ya read unlike Hafs told for all who read it, the shown
@@ -3966,6 +3980,35 @@ List<_UsulGroup> _usulNotes(
   return [
     for (final at in const [0, 1, 2])
       ...groups.values.where((g) => last(g) == at),
+  ];
+}
+
+/// Hafs's «ءَا۬عۡجَمِيّٞ» (فصلت ٤٤) in the band.
+bool isHafsAjami(Variant v) =>
+    v.riwayaId == hafsId && v.surah == 41 && v.ayah == 44 && v.word == 8;
+
+/// «ءَا۬عۡجَمِيّٞ» (فصلت ٤٤) under «الهمزتان من كلمة»: wherever a chosen reader
+/// is told in it, Hafs's own row under it, «بتسهيل الثانية» (the user,
+/// 2026-11-25).
+@visibleForTesting
+Iterable<Variant> ajamiTold(Iterable<Variant> rows, Ayah ayah, int w) {
+  if (ayah.surah != 41 || ayah.number != 44 || w != 8) return rows;
+  final list = rows.toList();
+  if (!list.any((v) => v.word == 8 && v.rule == 'tasheel_word')) return list;
+  return [
+    ...list,
+    Variant(
+      riwayaId: hafsId,
+      surah: 41,
+      ayah: 44,
+      word: 8,
+      count: 1,
+      text: ayah.words[8],
+      kind: VariantKind.hamza,
+      description: 'بتسهيل الثانية',
+      rule: 'tasheel_word',
+      usulWays: const ['تسهيل الثانية'],
+    ),
   ];
 }
 
@@ -4097,6 +4140,9 @@ TableBorder get _tableBorder =>
     TableBorder.all(color: MushafColors.gold.withAlpha(220), width: 0.8);
 
 /// The place of a riwaya in the app's list of the readers.
+/// A riwaya's place among a table's rows: Hafs after the others.
+int _tableRank(String id) => id == hafsId ? 1 << 20 : _riwayaRank(id);
+
 int _riwayaRank(String id) {
   var rank = 0;
   for (final q in qiraat) {
@@ -5691,7 +5737,8 @@ class _UsulBox extends StatelessWidget {
       final place = at(a).compareTo(at(b));
       return place != 0
           ? place
-          : _riwayaRank(a.$3.first).compareTo(_riwayaRank(b.$3.first));
+          // Hafs under the readers told (ءَا۬عۡجَمِيّٞ, the user, 2026-11-25).
+          : _tableRank(a.$3.first).compareTo(_tableRank(b.$3.first));
     });
     Widget cell(Widget child) => Padding(padding: _cellPadding, child: child);
     Widget wordsOf(_UsulGroup g, List<_UsulItem> items) => Wrap(

@@ -8,6 +8,7 @@ import 'package:qiraat_mushaf/ui/hafs_font_marks.dart';
 /// 2026-11-24).
 void main() {
   lamHamza();
+  lamHamzaShort();
   setUpAll(() async {
     await (FontLoader(
       'Hafs',
@@ -60,5 +61,37 @@ void main() {
 void lamHamza() {
   test('the hamza of «لَأَتٖ» drawn apart over the lam-alif', () {
     expect(HafsFontMarks.needsAdjustment('لَأَتٖۚ'), isTrue);
+  });
+}
+
+/// A short hamza over the lam-alif drawn over the alif, a little left and up
+/// (لَأَرَيۡنَٰكَهُمۡ، ٱلۡأَشِرُ); a long one, its madd alif unwritten, apart to
+/// the right (the user, 2026-11-25).
+void lamHamzaShort() {
+  test('every hamza over a lam-alif drawn apart, short and long', () {
+    for (final w in [
+      'لَأَرَيۡنَٰكَهُمۡ',
+      'لِأَخِيهِ',
+      'وَٱلۡأَذَىٰ',
+      'ٱلۡأَلِيمِ',
+      'ٱلۡأَمِينِ',
+      'ٱلۡأَيَٰمَىٰ',
+      'لَأَكَلُواْ',
+    ]) {
+      // Drawn apart too, over the alif, a little left and up.
+      expect(HafsFontMarks.needsAdjustment(w), isTrue, reason: w);
+    }
+    for (final w in [
+      'ٱلۡأَخِرَةِ',
+      'لَأَيَٰتٖ',
+      'لِأَدَمَ',
+      'ٱلۡأَصَالِ',
+      'ٱلۡأَنَ',
+      'ٱلۡأَمِنِينَ',
+      'لَأَيَةٗ',
+      'لَأَتِيَةٞ',
+    ]) {
+      expect(HafsFontMarks.needsAdjustment(w), isTrue, reason: w);
+    }
   });
 }

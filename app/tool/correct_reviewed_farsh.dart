@@ -39,6 +39,9 @@ const luluDescription = 'بتنوين الهمزة بالكسر';
 /// (the user, 2026-11-25).
 const luluText = 'وَلُؤۡلُؤٖاْ';
 
+/// «تَشۡتَهِيهْ» (الزخرف ٧١), its ha dropped under the round sukun.
+const tashtahihText = 'تَشۡتَهِيهْ';
+
 void correctReviewedFarsh(String id, Map quran, List rows) {
   // This spelling is shared by everyone who reads نِعْمَةً at 31:20.
   for (final row in rows) {
@@ -170,6 +173,58 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
       // Its own drawing now, not the source's quotation.
       if (row.length > 8) (row[8] as Map).remove('vocalizationSource');
       row[6] = luluDescription;
+    }
+  }
+  // «تَشۡتَهِيهْ» (الزخرف ٧١) without its ha: the ha drawn, the round sukun
+  // over it, dropped joined and stopped, for every reader of it (the user,
+  // 2026-11-25).
+  for (final row in rows) {
+    if (row[0] == 43 &&
+        row[1] == 71 &&
+        row[2] == 8 &&
+        row[5] == 'f' &&
+        '${row[6]}'.startsWith('بحذف الهاء')) {
+      row[4] = tashtahihText;
+      if (row.length > 8) (row[8] as Map).remove('vocalizationSource');
+    }
+  }
+  // «ءَايَٰتٍ» (الجاثية ٤، ٥) with the kasra: one note, told together (معًا)
+  // (the user, 2026-11-25).
+  for (final row in rows) {
+    if (row[0] == 45 &&
+        (row[1] == 4 && row[2] == 6 || row[1] == 5 && row[2] == 17) &&
+        row[5] == 'f' &&
+        RegExp('تنوين|كسر').hasMatch('${row[6]}')) {
+      row[6] = 'بتنوين التاء بالكسر';
+    }
+  }
+  // «خَٰشِعًا» (القمر ٧): one note for every reader of it (the user,
+  // 2026-11-25).
+  for (final row in rows) {
+    if (row[0] == 54 && row[1] == 7 && row[2] == 0 && row[5] == 'f') {
+      row[6] = 'بفتح الخاء وإثبات الألف وكسر الشين مع تخفيفها';
+    }
+  }
+  // «يَظَّٰهَرُونَ» (المجادلة ٢، ٣): one note for Ibn 'Amir, Hamza, al-Kisa'i,
+  // Abu Ja'far and Khalaf (the user, 2026-11-25).
+  for (final row in rows) {
+    if (row[0] == 58 &&
+        (row[1] == 2 || row[1] == 3) &&
+        row[2] == 1 &&
+        row[5] == 'f' &&
+        '${row[4]}'.contains('ٰ')) {
+      row[6] = 'بفتح الياء وفتح الظاء وتشديدها وفتح الهاء';
+    }
+  }
+  // «يَظَّهَّرُونَ» there: one note for Nafi', Ibn Kathir, Abu 'Amr and Ya'qub
+  // (the user, 2026-11-25).
+  for (final row in rows) {
+    if (row[0] == 58 &&
+        (row[1] == 2 || row[1] == 3) &&
+        row[2] == 1 &&
+        row[5] == 'f' &&
+        !'${row[4]}'.contains('ٰ')) {
+      row[6] = 'بفتح الياء وفتح الظاء والهاء وتشديدهما';
     }
   }
   if (id != 'shubah') return;

@@ -161,8 +161,9 @@ void main() {
   test('the hamza of a lam-alif with its madd unwritten is drawn apart', () {
     expect(HafsFontMarks.needsAdjustment('ٱلۡأَخِرَةِ'), isTrue);
     expect(HafsFontMarks.needsAdjustment('لَأَيَةٗ'), isTrue);
-    // A sukun after it: the font's own lam-alif.
-    expect(HafsFontMarks.needsAdjustment('ٱلۡأَرۡضِ'), isFalse);
+    // A short one too, over the alif, a little left and up (the user,
+    // 2026-11-25).
+    expect(HafsFontMarks.needsAdjustment('ٱلۡأَرۡضِ'), isTrue);
   });
 
   test('قالا has no hamza, so no naql and no colour', () {
@@ -739,10 +740,7 @@ void main() {
       final v = variants
           .at(['warsh'], 58, ayah, 1)
           .singleWhere((v) => v.inHamesh);
-      expect(
-        v.description,
-        'بفتح الياء وتشديد الظاء وحذف الألف وتشديد الهاء مع فتحها',
-      );
+      expect(v.description, 'بفتح الياء وفتح الظاء والهاء وتشديدهما');
     }
   });
 

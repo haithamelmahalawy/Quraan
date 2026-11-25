@@ -16,6 +16,7 @@ import 'apply_first_sakin.dart';
 import 'correct_reviewed_farsh.dart'
     show
         dropsAlif,
+        tashtahihText,
         roundSukun,
         ituniDescription,
         ituniText,
@@ -46,8 +47,7 @@ const _kisai = {'abul_harith', 'duri_kisai'};
 const _khalafAshir = {'ishaq', 'idris'};
 
 /// «يَظَّٰهَرُونَ» (المجادلة ٢، ٣) for all who read it so (the user, 2026-11-24).
-const yazzaharunDescription =
-    'بفتح الياء والظاء والهاء وبتشديد الظاء وبعدها ألف';
+const yazzaharunDescription = 'بفتح الياء وفتح الظاء وتشديدها وفتح الهاء';
 
 /// «بِشَهَٰدَتِهِمۡ» (المعارج ٣٣) for all who read it in the singular (the
 /// user, 2026-11-24).
@@ -259,14 +259,23 @@ Map<String, int> buildAshabUsul(
       if (!sirat && !musaytir) continue;
       if (sirat && !khalaf && _key(w.s, w.a, w.w) != '1:6:1') continue;
       final khulf = musaytir && !khalaf;
+      // «ٱلۡمُصَيۡطِرُونَ» (الطور ٣٧): drawn without the sin under the sad;
+      // Khallad's pure sad first (the user, 2026-11-25).
+      final tur = _key(w.s, w.a, w.w) == '52:37:6';
       add(
         w,
         'ishmam_sad',
-        khulf ? '$how بخلف عنه، والإشمام هو المقدّم' : how,
-        text: '',
-        ways: khulf
-            ? const ['الإشمام، وهو المقدّم', 'الصاد الخالصة']
-            : const [],
+        !khulf
+            ? how
+            : tur
+            ? '$how بخلف عنه، والصاد الخالصة هي المقدّمة'
+            : '$how بخلف عنه، والإشمام هو المقدّم',
+        text: tur ? 'ٱلۡمُصَيۡطِرُونَ' : '',
+        ways: !khulf
+            ? const []
+            : tur
+            ? const ['الصاد الخالصة، وهي المقدّمة', 'الإشمام']
+            : const ['الإشمام، وهو المقدّم', 'الصاد الخالصة'],
       );
     }
   }
@@ -4167,15 +4176,32 @@ Map<String, int> buildAshabUsul(
     if (v[5] == 'f' && v[4] == 'وَكِتَٰبِهِۦ') v[6] = kitabihiDescription;
     // The alif drawn, the round sukun over it (الأحزاب ١٠، ٦٦، ٦٧).
     if (dropsAlif(v)) v[4] = roundSukun(index[_key(v[0], v[1], v[2])]!.t);
+    // Hamza's «ٱلۡمُنشِـَٔاتُ» (الرحمن ٢٤): the shin's kasra alone; the two
+    // faces are Shu'ba's (the user, 2026-11-25).
+    if (v[0] == 55 &&
+        v[1] == 24 &&
+        v[2] == 2 &&
+        v[5] == 'f' &&
+        _hamza.contains(id)) {
+      v[6] = 'بكسر الشين';
+      (v[8] as Map).remove('wujuh');
+    }
+    // «تَشۡتَهِيهْ» (الزخرف ٧١): the ha under the round sukun (the user,
+    // 2026-11-25).
+    if (v[0] == 43 && v[1] == 71 && v[2] == 8 && v[5] == 'f') {
+      v[4] = tashtahihText;
+      (v[8] as Map).remove('vocalizationSource');
+    }
     // «وَٱلصَّٰٓفَّٰٓت صَّفّٗا» (الصافات ١): both madds told beside the idgham
     // (the user, 2026-11-25).
     if (v[0] == 37 && v[1] == 1 && v[2] == 0 && v[7] == 'idgham_kabir') {
       (v[8] as Map)['bandNote'] = 'بالمد المشبع في المدين';
     }
-    // «فَٱلزَّٰجِرَٰٓت زَّجۡرٗا، فَٱلتَّٰلِيَٰٓت ذِّكۡرًا» (الصافات ٢، ٣): their madd told so too (the user,
+    // «فَٱلزَّٰجِرَٰٓت زَّجۡرٗا، فَٱلتَّٰلِيَٰٓت ذِّكۡرًا» (الصافات ٢، ٣): their madd
+    // told so too (the user,
     // 2026-11-25).
-    if (v[0] == 37 &&
-        (v[1] == 2 || v[1] == 3) &&
+    // «وَٱلذَّٰرِيَٰٓت ذَّرۡوٗا» (الذاريات ١) too (the user, 2026-11-25).
+    if ((v[0] == 37 && (v[1] == 2 || v[1] == 3) || v[0] == 51 && v[1] == 1) &&
         v[2] == 0 &&
         v[7] == 'idgham_kabir') {
       (v[8] as Map)['bandNote'] = 'بالمد المشبع';

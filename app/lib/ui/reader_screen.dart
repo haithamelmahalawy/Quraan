@@ -849,6 +849,23 @@ class _ReaderScreenState extends State<ReaderScreen>
                             ),
                         ],
                       ),
+                      // How the changed words move when another riwaya is
+                      // chosen (the user, 2026-11-25).
+                      PopupMenuButton<WordSwap>(
+                        key: const ValueKey('word-swap-menu'),
+                        tooltip: 'حركة الكلمات عند تغيير الرواية',
+                        initialValue: widget.settings.wordSwap,
+                        icon: const Icon(Icons.animation_rounded),
+                        onSelected: (value) => widget.settings.wordSwap = value,
+                        itemBuilder: (_) => [
+                          for (final style in WordSwap.values)
+                            CheckedPopupMenuItem(
+                              value: style,
+                              checked: widget.settings.wordSwap == style,
+                              child: Text(style.labelAr),
+                            ),
+                        ],
+                      ),
                       RaisedIcon(
                         icon: Icons.search_rounded,
                         tooltip: 'بحث',

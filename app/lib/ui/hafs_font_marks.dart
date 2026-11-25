@@ -169,8 +169,28 @@ class HafsFontMarks extends StatelessWidget {
         (previous?.startsWith('ل') ?? false) &&
         next != null &&
         RegExp('[ً-ࣰِٖٗ-ࣲ]').hasMatch(next) &&
-        !RegExp('^مَ[اٰ]').hasMatch(after);
+        _longAfterLam.hasMatch(
+          after.split(' ').first.replaceAll(RegExp('[ً-ٰۖ-ࣰۭ-ࣲـ]'), ''),
+        );
   }
+
+  /// A short hamza over a lam-alif (ٱلۡأَشِرُ، لَأَرَيۡنَٰكَهُمۡ، ٱلۡأَرۡضِ): the font
+  /// sets it low at the lam's join; it is drawn apart over the alif, a little
+  /// left and up (the user, 2026-11-25).
+  static bool _lamHamzaShort(String cluster, String? previous, String after) =>
+      RegExp(r'^أ[َُ]$').hasMatch(cluster) &&
+      (previous?.startsWith('ل') ?? false) &&
+      // Kept where the font sets it before a non-joiner (لَأَ‌تَوْهَا).
+      !after.startsWith('‌') &&
+      !_lamHamzaApart(cluster, previous, after);
+
+  /// The words whose hamza over the lam-alif is long, its madd alif unwritten
+  /// (ٱلۡأَخِرَةِ، لَأَيَٰتٖ، لِأَدَمَ، لَأَتٖ، ٱلۡأَصَالِ، ٱلۡأَزِفَةِ، ٱلۡأَنَ), by
+  /// the letters after it. A short one (لَأَرَيۡنَٰكَهُمۡ، لِأَخِيهِ، ٱلۡأَذَىٰ،
+  /// ٱلۡأَلِيمِ، ٱلۡأَمِينِ) keeps its hamza on the alif (the user, 2026-11-25).
+  static final _longAfterLam = RegExp(
+    r'^(خر|ي[ةت]|دم|ثمين|فلين|فاق|صال|مر(ون|ن)|من$|منين|كل(ون|ين)|ت|زف|لهة|ن$)',
+  );
 
   /// The dagger alif of a ta with its madd (طَٰٓئِفٞ، الأعراف ٢٠١): the font
   /// sets it over the ta; it stands beside it, at its left, the madd on it.
@@ -207,6 +227,7 @@ class HafsFontMarks extends StatelessWidget {
     for (final m in _cluster.allMatches(text)) {
       final cluster = m[0]!;
       if (_lamHamzaApart(cluster, previous, text.substring(m.end)) ||
+          _lamHamzaShort(cluster, previous, text.substring(m.end)) ||
           _raisedMadd(cluster, previous) ||
           _lowerImala(cluster) ||
           _lowSeen(cluster) ||
@@ -274,10 +295,16 @@ class HafsFontMarks extends StatelessWidget {
     final dropped = <int>{};
     // The hamzas drawn apart, their seats written as a bare alif.
     final seats = <int>{};
+    final shortSeats = <int, String>{};
     String? previous;
     for (final m in _cluster.allMatches(full)) {
       if (_lamHamzaApart(m[0]!, previous, full.substring(m.end))) {
         seats.add(m.start);
+        dropped.add(m.start + 1);
+      }
+      if (_lamHamzaShort(m[0]!, previous, full.substring(m.end))) {
+        seats.add(m.start);
+        shortSeats[m.start] = m[0]!.substring(1);
         dropped.add(m.start + 1);
       }
       if (_raisedMadd(m[0]!, previous)) {
@@ -403,7 +430,11 @@ class HafsFontMarks extends StatelessWidget {
       }
     }
     for (final at in seats) {
-      targets.add((offsets[at]!, placed[at].$2, 'ٔ'));
+      targets.add((
+        offsets[at]!,
+        placed[at].$2,
+        shortSeats.containsKey(at) ? '$_shortHamza${shortSeats[at]}' : 'ٔ',
+      ));
     }
     for (final MapEntry(:key, :value) in waws.entries) {
       targets.add((offsets[key]!, value, 'ۥ'));
@@ -426,6 +457,14 @@ class HafsFontMarks extends StatelessWidget {
 /// The hamza drawn apart over a lam-alif, in font sizes: how far right of its
 /// alif, how high over the line, and where the ink of its own alif is clipped.
 const lamHamzaShift = -.02;
+
+/// A short hamza's over the alif: left of the seat's middle and raised, in
+/// font sizes.
+const shortHamzaShift = -.12;
+const shortHamzaRise = .0;
+
+/// The sign a short hamza over a lam-alif is painted by.
+const _shortHamza = 'ٔ‍';
 const lamHamzaRise = -.10;
 const lamHamzaClip = .70;
 
@@ -596,10 +635,11 @@ class _QuranMarkPainter extends CustomPainter {
         );
         continue;
       }
-      if (sign == 'ٔ') {
+      if (sign == 'ٔ' || sign.startsWith(_shortHamza)) {
+        final short = sign.startsWith(_shortHamza);
         final hamza = TextPainter(
           text: TextSpan(
-            text: 'أَ',
+            text: short ? 'أ${sign.substring(_shortHamza.length)}' : 'أَ',
             style: TextStyle(
               fontFamily: 'Hafs',
               fontSize: font,
@@ -609,7 +649,8 @@ class _QuranMarkPainter extends CustomPainter {
           ),
           textDirection: TextDirection.rtl,
         )..layout();
-        final baseline = line.baseline - font * lamHamzaRise;
+        final baseline =
+            line.baseline - font * (short ? shortHamzaRise : lamHamzaRise);
         canvas.save();
         canvas.clipRect(
           Rect.fromLTRB(
@@ -622,7 +663,8 @@ class _QuranMarkPainter extends CustomPainter {
         hamza.paint(
           canvas,
           Offset(
-            (box.left + box.right - hamza.width) / 2 + font * lamHamzaShift,
+            (box.left + box.right - hamza.width) / 2 +
+                font * (short ? shortHamzaShift : lamHamzaShift),
             baseline - hamza.computeLineMetrics().single.baseline,
           ),
         );

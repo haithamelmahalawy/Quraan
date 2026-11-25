@@ -239,6 +239,7 @@ class Manzumat {
             _tanawush(reading) ||
             _luluFatir(reading) ||
             _waliNaja(reading) ||
+            _yulhidun(reading).isNotEmpty ||
             // A Durrah reader's «قَد» merged, the Durrah silent: his asl's
             // bayt, after the Durrah's two.
             (_idghamQad(reading, hafs) ||
@@ -1531,6 +1532,11 @@ class Manzumat {
     if (poem == Poem.shatibiyya && _luluFatir(v)) return {895};
     if (poem == Poem.shatibiyya && _waliNaja(v)) return {417};
     if (poem == Poem.shatibiyya && _amman(v)) return {1005};
+    if (poem == Poem.shatibiyya && _wasSaata(v)) return {1033};
+    if (poem == Poem.shatibiyya && _munshaat(v)) return {1053, 1054};
+    if (poem == Poem.shatibiyya && _yulhidun(v).isNotEmpty) {
+      return _yulhidun(v);
+    }
     // «تُشۡرِكُونَ» with the ta (يونس ١٨، النحل ١، ٣، الروم ٤٠): «وَخَاطَبَ عَمَّا
     // يُشْرِكُونَ هُنَا شَذاً وَفي الرُّومِ وَالْحَرْفَيْنِ في النَّحْلِ أَوَّلَا»
     // (745) alone (the user, 2026-11-24).
@@ -1751,8 +1757,21 @@ class Manzumat {
     // ثُمَّ مُوصِلَا» (the user, 2026-11-14).
     if (poem == Poem.shatibiyya &&
         RegExp(r'^[وفبل]?(هز|كف)[وؤء]ا?$')
-            .hasMatch(hafs.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), ''))) {
+        // Its own word, though drawn with the next (هُزۡؤٗا وَّغَرَّتۡكُمُ،
+        // Khalaf's tanween merged, الجاثية ٣٥; the user, 2026-11-25).
+        .hasMatch(hafs.split(' ').first.replaceAll(RegExp('[ً-ٰٟۖ-ۭـ]'), ''))) {
       return {460, 461};
+    }
+    // «ٱلتَّوۡرَىٰةَ» leaned or between, all its places: «وَإِضْجَاعُكَ التَّوْرَاةَ
+    // مَا رُدَّ حُسْنُهُ / وَقُلِّلَ فِي جَوْدٍ وَبِالْخُلْفِ بَلَّلَا» (546); Khalaf
+    // al-'Ashir's «تَوْرَاةَ فِدْ» (the Durrah's 44) (the user, 2026-11-25).
+    if (v.isUsul &&
+        RegExp('إمالة|تقليل').hasMatch(v.description) &&
+        RegExp(
+          'تورى?ة',
+        ).hasMatch(hafs.split(' ').first.replaceAll(RegExp('[ً-ٰۖ-ۭ]'), ''))) {
+      if (poem == Poem.shatibiyya) return {546};
+      if (poem == Poem.durrah && v.description.contains('إمالة')) return {44};
     }
     // «وَهۡوَ، فَهۡيَ، لَهۡوَ» its ha quiet, all the mushaf: «وَهَا هُوَ بَعْدَ الْوَاوِ
     // وَالْفَا وَلاَمِهَا وَهَا هِيَ أَسْكِنْ رَاضِياً ...»; the Durrah's «... هُوْ وَهِيْ
@@ -4232,3 +4251,32 @@ bool _amman(Variant v) =>
     v.ayah == 9 &&
     v.word == 0 &&
     v.description == 'بتخفيف الميم';
+
+/// «يَلۡحَدُونَ» (الأعراف ١٨٠، النحل ١٠٣، فصلت ٤٠): «وَحَيْثُ يُلْحِدُونَ بِفَتْحِ
+/// الضَّمِّ وَالْكَسْرِ فُصِّلَا» (708) alone, the other bayts of the chapter
+/// left out (the user, 2026-11-25); in النحل «وَفِي النَّحْلِ وَالَاهُ
+/// الْكِسَائِيْ» (709) with it, Khalaf al-'Ashir's after the Durrah's silence.
+Set<int> _yulhidun(Variant v) {
+  if (!v.description.startsWith('بفتح الياء وفتح الحاء')) return const {};
+  if (v.surah == 7 && v.ayah == 180 && v.word == 7 ||
+      v.surah == 41 && v.ayah == 40 && v.word == 2) {
+    return const {708};
+  }
+  if (v.surah == 16 && v.ayah == 103 && v.word == 9) return const {708, 709};
+  return const {};
+}
+
+/// Hamza's «وَٱلسَّاعَةَ» (الجاثية ٣٢): «وَوَالسَّاعَةَ ارْفَعْ غَيْرَ حَمْزَةَ»
+/// (1033); Khalaf al-'Ashir reads it as Hafs, «وَالسَّاعَةَ الرَّفْعُ فُصِّلَا»
+/// (the Durrah's 206) (the user, 2026-11-25).
+bool _wasSaata(Variant v) =>
+    v.surah == 45 &&
+    v.ayah == 32 &&
+    v.word == 6 &&
+    v.description == 'بفتح التاء';
+
+/// «ٱلۡمُنشِـَٔاتُ» (الرحمن ٢٤) with the kasra: «وَفِى الْمُنْشَآتُ الشِّينُ
+/// بِالْكَسْرِ فَاحْمِلَا / صَحِيحاً بِخُلْفٍ» (1053، 1054), Hamza's alone and
+/// Shu'ba's by khulf (the user, 2026-11-25).
+bool _munshaat(Variant v) =>
+    v.surah == 55 && v.ayah == 24 && v.word == 2 && v.kind == VariantKind.farsh;

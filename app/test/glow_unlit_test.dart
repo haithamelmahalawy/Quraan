@@ -120,7 +120,9 @@ void main() {
   // ghunna across the ayah's end, the two glowing together (the user,
   // 2026-11-19).
   testWidgets('page 97 glows by the idgham across the ayah end', (t) async {
-    String bare(String s) => s.replaceAll(RegExp('[ً-ٟۖ-ۭـ]'), '');
+    // The hamza over a lam-alif painted apart, its seat a bare alif.
+    String bare(String s) =>
+        s.replaceAll(RegExp('[ً-ٟۖ-ۭـ]'), '').replaceAll('أ', 'ا');
     final lit = (await glowing(t, 97, khalaf(97))).map(bare).toSet();
     expect(lit, contains(bare('مَّفۡرُوضٗا')));
     expect(lit, contains(bare('وَلَأُضِلَّنَّهُمۡ')));

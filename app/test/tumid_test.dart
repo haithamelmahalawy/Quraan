@@ -20,6 +20,12 @@ void main() {
   liMin();
   amman();
   udhtu();
+  yulhidun();
+  tashtahih();
+  huzuanTwoWords();
+  wasSaata();
+  tawrat();
+  munshaat();
   List rows(String id) =>
       ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
                   as Map)['variants']
@@ -514,6 +520,198 @@ void udhtu() {
         );
         expect(ref.mention, {279}, reason: '$id $s');
       }
+    }
+  });
+}
+
+/// «يَلۡحَدُونَ» cites 708 alone, النحل 708 and 709 (the user, 2026-11-25).
+void yulhidun() {
+  test('«يَلۡحَدُونَ» cites 708', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final (id, s, a, w, want) in [
+      ('khallad', 41, 40, 2, {708}),
+      ('khalaf_hamzah', 7, 180, 7, {708}),
+      ('khallad', 16, 103, 9, {708, 709}),
+      ('duri_kisai', 16, 103, 9, {708, 709}),
+      ('ishaq', 16, 103, 9, {708, 709}),
+    ]) {
+      final ref = m.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: s,
+          ayah: a,
+          word: w,
+          count: 1,
+          text: 'يَلۡحَدُونَ',
+          kind: VariantKind.farsh,
+          description: 'بفتح الياء وفتح الحاء',
+        ),
+        'يُلۡحِدُونَ',
+        s,
+        names,
+      );
+      expect(ref.mention, want, reason: '$id $s');
+    }
+  });
+}
+
+/// «تَشۡتَهِيهْ» (الزخرف ٧١): its ha under the round sukun for every reader
+/// who drops it (the user, 2026-11-25).
+void tashtahih() {
+  test('«تَشۡتَهِيهْ» drawn with the dropped ha', () {
+    for (final id in [
+      'bazzi',
+      'qunbul',
+      'duri_abuamr',
+      'susi',
+      'shubah',
+      'khalaf_hamzah',
+      'khallad',
+      'abul_harith',
+      'duri_kisai',
+      'ruways',
+      'rawh',
+      'ishaq',
+      'idris',
+    ]) {
+      final r =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .singleWhere(
+                (r) => r[0] == 43 && r[1] == 71 && r[2] == 8 && r[5] == 'f',
+              );
+      expect(r[4], 'تَشۡتَهِيهْ', reason: id);
+    }
+  });
+}
+
+/// «هُزۡؤٗا وَّغَرَّتۡكُمُ» (الجاثية ٣٥), drawn with the next word for Khalaf,
+/// still cites 460، 461 (the user, 2026-11-25).
+void huzuanTwoWords() {
+  test('«هُزۡؤٗا» drawn with the next word cites 460، 461', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    final r = m.referenceOf(
+      Variant(
+        riwayaId: 'khalaf_hamzah',
+        surah: 45,
+        ayah: 35,
+        word: 5,
+        count: 1,
+        text: 'هُزۡؤٗا',
+        kind: VariantKind.farsh,
+        description: 'بإسكان الزاي وبالهمز',
+      ),
+      'هُزۡؤٗا وَّغَرَّتۡكُمُ',
+      45,
+      names,
+    );
+    expect(r.mention, {460, 461});
+  });
+}
+
+/// Hamza's «وَٱلسَّاعَةَ» (الجاثية ٣٢) cites 1033 (the user, 2026-11-25).
+void wasSaata() {
+  test('«وَٱلسَّاعَةَ» cites 1033', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final id in ['khalaf_hamzah', 'khallad']) {
+      final r = m.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 45,
+          ayah: 32,
+          word: 6,
+          count: 1,
+          text: 'وَٱلسَّاعَةَ',
+          kind: VariantKind.farsh,
+          description: 'بفتح التاء',
+        ),
+        'وَٱلسَّاعَةُ',
+        45,
+        names,
+      );
+      expect(r.mention, {1033}, reason: id);
+    }
+  });
+}
+
+/// «ٱلتَّوۡرَىٰةِ» leaned or between cites 546; Khalaf al-'Ashir the Durrah's
+/// 44 (the user, 2026-11-25).
+void tawrat() {
+  test('«ٱلتَّوۡرَىٰةِ» cites 546', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final (id, d, want) in [
+      ('khallad', 'بالتقليل', {546}),
+      ('khalaf_hamzah', 'بالتقليل', {546}),
+      ('duri_kisai', 'بالإمالة', {546}),
+      ('susi', 'بالإمالة', {546}),
+      ('ibn_dhakwan', 'بالإمالة', {546}),
+      ('warsh', 'بالتقليل', {546}),
+      ('qalun', 'بالفتح والتقليل، والراجح الفتح', {546}),
+      ('ishaq', 'بالإمالة', {44}),
+    ]) {
+      for (final (s, a, w) in [(48, 29, 27), (3, 3, 9)]) {
+        final r = m.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: s,
+            ayah: a,
+            word: w,
+            count: 1,
+            text: '',
+            kind: VariantKind.usul,
+            description: d,
+          ),
+          q.ayah(s, a).words[w],
+          s,
+          names,
+        );
+        expect(r.mention, want, reason: '$id $s');
+      }
+    }
+  });
+}
+
+/// Hamza's «ٱلۡمُنشِـَٔاتُ» (الرحمن ٢٤) the kasra alone, Shu'ba's two faces;
+/// both cite 1053، 1054 (the user, 2026-11-25).
+void munshaat() {
+  test('«ٱلۡمُنشِـَٔاتُ»', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final id in ['khalaf_hamzah', 'khallad', 'shubah']) {
+      final r =
+          ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                      as Map)['variants']
+                  as List)
+              .singleWhere(
+                (r) => r[0] == 55 && r[1] == 24 && r[2] == 2 && r[5] == 'f',
+              );
+      if (id != 'shubah') expect(r[6], 'بكسر الشين', reason: id);
+      final ref = m.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 55,
+          ayah: 24,
+          word: 2,
+          count: 1,
+          text: r[4] as String,
+          kind: VariantKind.farsh,
+          description: r[6] as String,
+        ),
+        q.ayah(55, 24).words[2],
+        55,
+        names,
+      );
+      expect(ref.mention, {1053, 1054}, reason: id);
     }
   });
 }

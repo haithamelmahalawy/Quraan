@@ -148,6 +148,14 @@ class ReaderSettings extends ChangeNotifier {
 
   set diffAlert(DiffAlert? style) => _set('diffAlert', style?.name ?? '');
 
+  /// How the words that change move when another riwaya is chosen from the
+  /// frame: faded slowly at first in the app (the user, 2026-11-25); still
+  /// in tests' settings.
+  WordSwap get wordSwap =>
+      WordSwap.values.asNameMap()[_get('wordSwap')] ??
+      (_prefs != null ? WordSwap.fade : WordSwap.none);
+  set wordSwap(WordSwap style) => _set('wordSwap', style.name);
+
   /// What the camera reads of a printed page: its number (the fastest), a
   /// line in its middle, or the middle of the whole page.
   ScanMode get scanMode =>
@@ -374,6 +382,19 @@ enum DiffAlert {
   glow('توهج حول الكلمة');
 
   const DiffAlert(this.labelAr);
+
+  final String labelAr;
+}
+
+/// How a word changed by another riwaya takes the old one's place.
+enum WordSwap {
+  none('بلا حركة'),
+  fade('تلاشٍ تدريجي'),
+  slide('تبديل من أعلى'),
+  flip('انقلاب'),
+  scale('تكبير وتصغير');
+
+  const WordSwap(this.labelAr);
 
   final String labelAr;
 }
