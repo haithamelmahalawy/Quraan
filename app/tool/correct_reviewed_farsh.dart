@@ -35,6 +35,10 @@ const tanawushDescription = 'بالهمز مع المد المتصل';
 /// «وَلُؤۡلُؤٖ» (فاطر ٣٣), its hamza with the kasra's tanween.
 const luluDescription = 'بتنوين الهمزة بالكسر';
 
+/// Its drawing, Hamza's, al-Kisa'i's and Khalaf's, for every reader of it
+/// (the user, 2026-11-25).
+const luluText = 'وَلُؤۡلُؤٖاْ';
+
 void correctReviewedFarsh(String id, Map quran, List rows) {
   // This spelling is shared by everyone who reads نِعْمَةً at 31:20.
   for (final row in rows) {
@@ -153,15 +157,18 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
       row[6] = tanawushDescription;
     }
   }
-  // «وَلُؤۡلُؤٖ» (فاطر ٣٣) with the kasra: one note for Ibn Kathir, Abu 'Amr,
-  // Ibn 'Amir, Hamza, al-Kisa'i, Ya'qub and Khalaf (the user, 2026-11-25).
+  // «وَلُؤۡلُؤٖ» (فاطر ٣٣، الحج ٢٣) with the kasra: one note for Ibn Kathir, Abu 'Amr,
+  // Ibn 'Amir, Hamza, al-Kisa'i, Ya'qub and Khalaf, drawn alike (the user,
+  // 2026-11-25).
   for (final row in rows) {
-    if (row[0] == 35 &&
-        row[1] == 33 &&
-        row[2] == 9 &&
+    if ((row[0] == 35 && row[1] == 33 && row[2] == 9 ||
+            row[0] == 22 && row[1] == 23 && row[2] == 18) &&
         row[5] == 'f' &&
         RegExp('تنوين الهمزة بالكسر|بجر الهمزة الثانية')
             .hasMatch('${row[6]}')) {
+      row[4] = luluText;
+      // Its own drawing now, not the source's quotation.
+      if (row.length > 8) (row[8] as Map).remove('vocalizationSource');
       row[6] = luluDescription;
     }
   }

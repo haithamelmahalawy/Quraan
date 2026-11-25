@@ -4134,11 +4134,24 @@ bool _fihiMuhana(Variant v) =>
 /// of «سين» shown before the mim, «وَيَاسِيْنَ أَظْهِرْ … / … وَطاسِيْنَ عِنْدَ
 /// الْمِيْمِ فَازَ» (281، 283) (the user, 2026-11-24).
 Set<int> _tasin(Variant v) {
-  if (!const {26, 27, 28}.contains(v.surah) || v.ayah != 1 || v.word != 0) {
-    return const {};
+  if (v.ayah != 1 || v.word != 0) return const {};
+  if (const {26, 27, 28}.contains(v.surah) && v.description.contains('إظهار')) {
+    return const {281, 283};
   }
-  if (v.description.contains('إظهار')) return const {281, 283};
-  if (v.description.contains('إمالة')) return const {738};
+  // Every leaned ra, ta and the ya of «يس»: «وَإِضْجَاعُ رَا كُلِّ الْفَوَاتِحِ
+  // ذِكْرُهُ / حِمًى غَيْرَ حَفْصٍ طَا وَيَا صُحْبَةٌ وَلَا» (738); the ha of «طه»
+  // «وَهَا صِفْ رِضًى حُلْوًا» (739) (the user, 2026-11-25).
+  if (!v.description.contains('إمالة')) return const {};
+  if (const {10, 11, 12, 13, 14, 15, 26, 27, 28, 36}.contains(v.surah)) {
+    return const {738};
+  }
+  if (v.surah == 20) {
+    return {
+      if (v.description.contains('الطاء')) 738,
+      if (v.description.contains('الهاء') || !v.description.contains('الطاء'))
+        739,
+    };
+  }
   return const {};
 }
 
@@ -4188,11 +4201,10 @@ bool _tanawush(Variant v) =>
     v.word == 5 &&
     v.description.startsWith('بالهمز');
 
-/// «وَلُؤۡلُؤٖ» (فاطر ٣٣) with the kasra: «وَمَعْ فَاطِرِ انْصِبْ لُؤْلُؤًا نَظْمُ
+/// «وَلُؤۡلُؤٖ» (فاطر ٣٣، الحج ٢٣) with the kasra: «وَمَعْ فَاطِرِ انْصِبْ لُؤْلُؤًا نَظْمُ
 /// أُلْفَةٍ» (895), the rest reading it so; Ya'qub's and Khalaf al-'Ashir's
 /// after the Durrah's silence, its 165 al-Hajj's (the user, 2026-11-25).
 bool _luluFatir(Variant v) =>
-    v.surah == 35 &&
-    v.ayah == 33 &&
-    v.word == 9 &&
+    (v.surah == 35 && v.ayah == 33 && v.word == 9 ||
+        v.surah == 22 && v.ayah == 23 && v.word == 18) &&
     v.description.contains('تنوين الهمزة بالكسر');

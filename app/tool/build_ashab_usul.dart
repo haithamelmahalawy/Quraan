@@ -2455,9 +2455,9 @@ Map<String, int> buildAshabUsul(
         1,
         'وَلُؤۡلُؤٖاْ',
         'f',
-        // Fatir's told by the tanween alone, as every reader of it (the
-        // user, 2026-11-25).
-        s == 35 ? luluDescription : 'بتنوين الهمزة بالكسر وحذف الألف',
+        // Told by the tanween alone, as every reader of it (the user,
+        // 2026-11-25).
+        luluDescription,
         '',
         {'source': ashabSource},
       ];

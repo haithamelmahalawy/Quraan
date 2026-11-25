@@ -15,6 +15,7 @@ void main() {
   ghurfat();
   tanawush();
   luluFatir();
+  fawatih();
   List rows(String id) =>
       ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
                   as Map)['variants']
@@ -271,6 +272,99 @@ void luluFatir() {
         ),
         'وَلُؤۡلُؤٗاۖ',
         35,
+        names,
+      );
+      expect(ref.mention, {895}, reason: id);
+    }
+  });
+}
+
+/// The leaned fawatih cite 738, the ha of «طه» 739 (the user, 2026-11-25);
+/// «وَلُؤۡلُؤٖ» (الحج ٢٣) 895 alone.
+void fawatih() {
+  test('the leaned fawatih cite 738', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    final seen = <String>[];
+    for (final id in [
+      'khallad',
+      'khalaf_hamzah',
+      'duri_kisai',
+      'shubah',
+      'duri_abuamr',
+      'ibn_dhakwan',
+      'ishaq',
+    ]) {
+      final rows =
+          (jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
+                  as Map)['variants']
+              as List;
+      for (final r in rows) {
+        if (!const {
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              20,
+              26,
+              27,
+              28,
+              36,
+            }.contains(r[0]) ||
+            r[1] != 1 ||
+            r[2] != 0 ||
+            !'${r[6]}'.contains('إمالة')) {
+          continue;
+        }
+        final ref = m.referenceOf(
+          Variant(
+            riwayaId: id,
+            surah: r[0] as int,
+            ayah: 1,
+            word: 0,
+            count: 1,
+            text: r[4] as String,
+            kind: VariantKind.usul,
+            description: r[6] as String,
+          ),
+          q.ayah(r[0] as int, 1).words.first,
+          r[0] as int,
+          names,
+        );
+        final want = r[0] == 20
+            ? {
+                if ('${r[6]}'.contains('الطاء')) 738,
+                if ('${r[6]}'.contains('الهاء')) 739,
+              }
+            : {738};
+        expect(ref.mention, want, reason: '$id ${r[0]}');
+        seen.add('$id ${r[0]}');
+      }
+    }
+    expect(seen.length, greaterThan(50));
+  });
+
+  test('«وَلُؤۡلُؤٖ» (الحج ٢٣) cites 895 alone', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final id in ['khallad', 'bazzi', 'duri_abuamr', 'hisham', 'ishaq']) {
+      final ref = m.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 22,
+          ayah: 23,
+          word: 18,
+          count: 1,
+          text: 'وَلُؤۡلُؤٖاْ',
+          kind: VariantKind.farsh,
+          description: 'بتنوين الهمزة بالكسر',
+        ),
+        'وَلُؤۡلُؤٗاۚ',
+        22,
         names,
       );
       expect(ref.mention, {895}, reason: id);
