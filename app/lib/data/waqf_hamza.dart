@@ -85,6 +85,11 @@ String waqfHamzaKindAt(String word, int k) {
   final before = k > 0 ? cs[k - 1] : null;
   final last = cs.sublist(k + 1).every((x) => x.base == 'ا');
   if (before == null) return 'الوقف على الساكن المفصول';
+  // «لۡـَٔيۡكَةِ» (الشعراء ١٧٦، ص ١٣): the article, its alif unwritten (the
+  // user, 2026-11-25).
+  if (before.base == 'ل' && k == 1 && _vowelOf(before) == '') {
+    return 'الوقف على لام التعريف';
+  }
   if (before.base == 'ل' &&
       k >= 2 &&
       (cs[k - 2].base == 'ٱ' ||

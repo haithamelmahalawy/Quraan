@@ -500,8 +500,10 @@ Map<String, int> buildAshabUsul(
     // The sakin's letter and its marks, then the hamza.
     // And «ءَآلۡـَٰٔنَ» (يونس ٥١، ٩١), its lam the article's (the user,
     // 2026-11-23).
+    // «لۡـَٔيۡكَةِ» (الشعراء ١٧٦، ص ١٣) too, its article's alif unwritten (the
+    // user, 2026-11-25).
     final al = RegExp(
-      '^(ءَ(?:آ|آ)لۡ|(?:[وفبلكأ][َِ]?){0,3}(?:ٱلۡ|(?<=[َِ])لۡ))(?=ـ?[ءأإآٔ])',
+      '^(ءَ(?:آ|آ)لۡ|لۡ|(?:[وفبلكأ][َِ]?){0,3}(?:ٱلۡ|(?<=[َِ])لۡ))(?=ـ?[ءأإآٔ])',
     );
     // And «لِشَاْيۡءٍ» (الكهف ٢٣), its extra alif (the user, 2026-11-24).
     final shay = RegExp('^([وفبلك]?[َِ]?شَ(?:اْ)?يۡ)(?=ـ?[ءٔ])');

@@ -16,6 +16,7 @@ void main() {
   tanawush();
   luluFatir();
   fawatih();
+  waliNaja();
   List rows(String id) =>
       ((jsonDecode(File('assets/data/qiraat/$id.json').readAsStringSync())
                   as Map)['variants']
@@ -368,6 +369,41 @@ void fawatih() {
         names,
       );
       expect(ref.mention, {895}, reason: id);
+    }
+  });
+}
+
+/// «وَلِي نَعۡجَةٞ» (ص ٢٣) quiet cites 417 (the user, 2026-11-25).
+void waliNaja() {
+  test('«وَلِي» (ص ٢٣) cites 417', () async {
+    final m = await Manzumat.load();
+    final q = await QuranRepository.load();
+    final names = [for (final s in q.surahs) s.nameAr];
+    for (final (id, kind) in [
+      ('khallad', VariantKind.usul),
+      ('khalaf_hamzah', VariantKind.usul),
+      ('susi', VariantKind.farsh),
+      ('shubah', VariantKind.farsh),
+      ('ruways', VariantKind.farsh),
+      ('ishaq', VariantKind.usul),
+    ]) {
+      final ref = m.referenceOf(
+        Variant(
+          riwayaId: id,
+          surah: 38,
+          ayah: 23,
+          word: 7,
+          count: 1,
+          text: 'وَلِي',
+          kind: kind,
+          rule: kind == VariantKind.usul ? 'ya_idafa' : '',
+          description: 'بإسكان الياء',
+        ),
+        'وَلِيَ',
+        38,
+        names,
+      );
+      expect(ref.mention, {417}, reason: id);
     }
   });
 }
