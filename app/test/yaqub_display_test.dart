@@ -467,7 +467,9 @@ void main() {
           await t.pump();
         }
         expect(usul, isTrue);
-        if (number == 4) expect(farsh, isTrue);
+        // Page 4 has no farsh of theirs since Ya'qub's «عَلَيۡهِمۡ» (البقرة ٢٠) is
+        // told in the usul alone (the user, 2026-11-26).
+        if (number == 5) expect(farsh, isTrue);
         expect(positions, isNotEmpty);
         if (landscape) {
           final scroll = t

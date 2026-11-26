@@ -1592,13 +1592,21 @@ class _MushafPageState extends State<MushafPage>
       'ruways',
       'rawh',
     }.contains(widget.settings.displayed);
-    final ownKabir = isYaqub
+    // The big idgham drawn, Ya'qub's and al-Susi's: the first word's last
+    // letter bare, the next one's first doubled, into the next ayah too
+    // (فِيه هُّدٗى، ٱلرَّحِيم ۝ مَّلِكِ) (the user, 2026-11-26). Not one within
+    // a word (خَلَقكُّمۡ), written by its own text, nor the next ayah's word
+    // told with its first (noBand).
+    final kabirDrawn = isYaqub || widget.settings.displayed == 'susi';
+    bool pairKabir(Variant v, int at) =>
+        v.word == at && v.rule == 'idgham_kabir' && v.text.isEmpty && !v.noBand;
+    final ownKabir = kabirDrawn
         ? _baseAt(
             widget.variants,
             widget.settings,
             ayah,
             w,
-          ).where((v) => v.word == w && v.rule == 'idgham_kabir').firstOrNull
+          ).where((v) => pairKabir(v, w)).firstOrNull
         : null;
     final previousAyah = w > 0
         ? ayah
@@ -1606,10 +1614,13 @@ class _MushafPageState extends State<MushafPage>
         ? widget.quran.ayah(ayah.surah, ayah.number - 1)
         : null;
     final previousWord = w > 0 ? w - 1 : (previousAyah?.words.length ?? 0) - 1;
-    final previousKabir = isYaqub && previousAyah != null
-        ? _baseAt(widget.variants, widget.settings, previousAyah, previousWord)
-              .where((v) => v.word == previousWord && v.rule == 'idgham_kabir')
-              .firstOrNull
+    final previousKabir = kabirDrawn && previousAyah != null
+        ? _baseAt(
+            widget.variants,
+            widget.settings,
+            previousAyah,
+            previousWord,
+          ).where((v) => pairKabir(v, previousWord)).firstOrNull
         : null;
     final nextWord = w + 1 < ayah.words.length
         ? ayah.words[w + 1]
@@ -6979,7 +6990,7 @@ Widget? flashlightPanel({
     }
     if (kept.items.isNotEmpty) groups.add(kept);
   }
-  final entries = _togetherEntries([
+  var entries = _togetherEntries([
     for (final e in _entriesOf([ayah], variants, settings))
       if (e.ayah.number == ayah.number &&
           (e.word == word || e.readings.any(covers)) &&
@@ -6989,6 +7000,61 @@ Widget? flashlightPanel({
             if (wanted(v.riwayaId)) v,
         ]),
   ]);
+  // «العشر»: the readers who read as the page's text told too, beside those
+  // who read otherwise, whatever riwaya is shown (وَهُوَ ، وَهۡوَ) (the user,
+  // 2026-11-26).
+  if (settings.flashMode == FlashMode.ten && entries.isNotEmpty) {
+    final e = entries.first;
+    final told = {for (final v in e.readings) v.riwayaId};
+    final end = e.readings
+        .map((v) => v.word + v.count)
+        .reduce((a, b) => a > b ? a : b);
+    final shown = readingText(
+      variants,
+      settings.displayed,
+      e.ayah,
+      e.word,
+      end,
+    );
+    // Each by his own reading: the shown one's, or another (Hafs's «وَهُوَ»
+    // where al-Susi's «وَهۡوَ» is shown).
+    final alike = [
+      for (final q in qiraat)
+        for (final r in q.riwayat)
+          if (!told.contains(r.id) &&
+              (r.id == hafsId ||
+                  r.id == shownId ||
+                  settings.selected.contains(r.id)))
+            if (readingText(
+                  variants,
+                  r.id == hafsId ? null : r.id,
+                  e.ayah,
+                  e.word,
+                  end,
+                )
+                case final own)
+              Variant(
+                riwayaId: r.id,
+                surah: e.ayah.surah,
+                ayah: e.ayah.number,
+                word: e.word,
+                count: end - e.word,
+                text: own,
+                kind: VariantKind.farsh,
+                rule: 'comparison',
+                description: own != shown
+                    ? ''
+                    : settings.displayed == null
+                    ? 'كقراءة حفص'
+                    : 'كالرواية المعروضة',
+              ),
+    ];
+    entries = [
+      HameshEntry(e.ayah, e.word, e.hafs, e.color, [...alike, ...e.readings])
+        ..together = e.together,
+      ...entries.skip(1),
+    ];
+  }
   if (groups.isEmpty && entries.isEmpty) return null;
   return Column(
     mainAxisSize: MainAxisSize.min,

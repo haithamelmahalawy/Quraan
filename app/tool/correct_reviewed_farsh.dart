@@ -498,20 +498,245 @@ void correctReviewedFarsh(String id, Map quran, List rows) {
 void main() {
   final quran =
       jsonDecode(File('assets/data/quran.json').readAsStringSync()) as Map;
+  final files = <File, (Map, String)>{};
   for (final file in Directory(
     'assets/data/qiraat',
   ).listSync().whereType<File>()) {
     if (!file.path.endsWith('.json')) continue;
     final data = jsonDecode(file.readAsStringSync()) as Map;
+    if (data['variants'] is! List) continue;
     final before = jsonEncode(data);
     correctReviewedFarsh(
       data['riwaya'] as String,
       quran,
       data['variants'] as List,
     );
+    files[file] = (data, before);
+  }
+  for (final (data, _) in files.values) {
+    maliYaIdafa(
+      data['riwaya'] as String,
+      (data['variants'] as List).cast<List>(),
+    );
+    warshYaIdafa(
+      data['riwaya'] as String,
+      quran,
+      (data['variants'] as List).cast<List>(),
+    );
+    ownFarshWording(
+      data['riwaya'] as String,
+      (data['variants'] as List).cast<List>(),
+    );
+    rafathFusuq((data['variants'] as List).cast<List>());
+    dropFarshOfUsul((data['variants'] as List).cast<List>());
+  }
+  shareFarshWording([
+    for (final (data, _) in files.values)
+      (data['variants'] as List).cast<List>(),
+  ]);
+  for (final MapEntry(key: file, value: (data, before)) in files.entries) {
     if (jsonEncode(data) != before) {
       file.writeAsStringSync(jsonEncode(data));
       stdout.writeln('Corrected ${data['riwaya']}');
     }
+  }
+}
+
+/// A farsh row told without its wording (Abu 'Amr's and Hisham's
+/// «يُكَذِّبُونَ»، البقرة ١٠) takes the one wording of the readers who read the
+/// word alike, in every riwaya (the user, 2026-11-26).
+void shareFarshWording(List<List<List>> riwayat) {
+  // The marks over one letter in either order (ٱلشَّيَٰطِينُ with the shadda
+  // before the fatha or after it, Hisham's and Khallad's): the same drawing.
+  String key(List r) =>
+      '${r[0]}:${r[1]}:${r[2]}:${r[3]}:'
+      // The sukun round, oval or left out (Warsh's «وَأَنْ», the others'
+      // «وَأَن»), and the ha's small waw of the silah (Ibn Kathir's
+      // «نَنكُسۡهُۥ»), told in the usul.
+      '${'${r[4]}'.replaceAll(RegExp('[ۖ-ۜ۞۩ۥۦْۡ]'), '').trim().replaceAllMapped(RegExp('[ً-ْ]+'), (m) => (m[0]!.split('')..sort()).join())}';
+  final wordings = <String, Set<String>>{};
+  for (final rows in riwayat) {
+    for (final r in rows) {
+      if (r.length < 7 || r[5] != 'f' || '${r[4]}'.isEmpty) continue;
+      if ('${r[6]}'.isNotEmpty) (wordings[key(r)] ??= {}).add('${r[6]}');
+    }
+  }
+  for (final rows in riwayat) {
+    for (final r in rows) {
+      if (r.length < 7 || r[5] != 'f' || '${r[4]}'.isEmpty) continue;
+      if ('${r[6]}'.isNotEmpty) continue;
+      // Two faces told in its meta (Shu'ba's «ٱنشِزُواْ»): its own wording.
+      if (r.length > 8 &&
+          r[8] is Map &&
+          ((r[8] as Map).containsKey('wujuh') ||
+              (r[8] as Map).containsKey('ways'))) {
+        continue;
+      }
+      final one = wordings[key(r)];
+      if (one != null && one.length == 1) r[6] = one.single;
+    }
+  }
+}
+
+/// A farsh row standing on the riwaya's own usul row of the same letters,
+/// telling nothing more (Ya'qub's «عَلَيۡهُمۡ، عَلَيۡهُنَّ» beside «بضم هاء الضمير
+/// بعد الياء الساكنة»): the usul tell it; dropped (the user, 2026-11-26).
+void dropFarshOfUsul(List<List> rows) {
+  String bare(Object? t) => '$t'.replaceAll(RegExp('[^ء-ي]'), '');
+  final usul = <String, List<List>>{};
+  for (final r in rows) {
+    if (r.length > 5 && r[5] == 'u') {
+      (usul['${r[0]}:${r[1]}:${r[2]}:${r[3]}'] ??= []).add(r);
+    }
+  }
+  rows.removeWhere(
+    (r) =>
+        r.length > 6 &&
+        r[5] == 'f' &&
+        bare(r[4]).isNotEmpty &&
+        RegExp(r'^(:?\s*بضم الهاء)?$').hasMatch('${r[6]}'.trim()) &&
+        (usul['${r[0]}:${r[1]}:${r[2]}:${r[3]}'] ?? const []).any(
+          (u) => bare(u[4]) == bare(r[4]),
+        ),
+  );
+}
+
+/// «مَالِيَ لَآ أَرَى» (النمل ٢٠) with the quiet ya of Warsh, Abu 'Amr and Ibn
+/// Dhakwan: told
+/// under ياءات الإضافة, as Qalun's, not in the farsh (the user, 2026-11-26).
+void maliYaIdafa(String riwaya, List<List> rows) {
+  if (!const {'warsh', 'duri_abuamr', 'susi', 'ibn_dhakwan'}.contains(riwaya)) {
+    return;
+  }
+  final i = rows.indexWhere(
+    (r) =>
+        r[0] == 27 &&
+        r[1] == 20 &&
+        r[2] == 3 &&
+        (r[5] == 'f' || r.length > 7 && r[7] == 'ya_idafa'),
+  );
+  if (i < 0) return;
+  rows[i] = [
+    27,
+    20,
+    3,
+    1,
+    'مَالِي',
+    'u',
+    // Worded as the riwaya's other ya al-idafa: Nafi''s and Ibn 'Amir's
+    // «بإسكان الياء», Abu 'Amr's «بإسكان ياء الإضافة».
+    const {'warsh', 'ibn_dhakwan'}.contains(riwaya)
+        ? 'بإسكان الياء'
+        : 'بإسكان ياء الإضافة',
+    'ya_idafa',
+    if (rows[i].length > 8 && (rows[i][8] as Map).containsKey('source'))
+      {'source': (rows[i][8] as Map)['source']},
+  ];
+}
+
+/// The farsh no reader alike words in the same rows (the user, 2026-11-26):
+/// Ya'qub's «رَفَثٌ وَلَا فُسُوقٌ» told as one, Abu Ja'far's «جِدَالٌ», and
+/// Ya'qub's «وَجَٰعِلُ ٱلَّيۡلِ» (الأنعام ٩٦) as Ibn 'Amir's, its kasra restored,
+/// and his «نَنۡكُسۡهُ» (يس ٦٨) with its quiet nun.
+void ownFarshWording(String riwaya, List<List> rows) {
+  void word(int s, int a, int w, String description, [String? text]) {
+    for (final r in rows) {
+      if (r[0] == s && r[1] == a && r[2] == w && r[5] == 'f') {
+        if ('${r[6]}'.isEmpty) r[6] = description;
+        if (text != null) {
+          r[4] = text;
+          // Its source quotation written wrong («وجَٰعلُ ٱلليلِ، نَنَكُسْهُ»):
+          // not kept as the word's source.
+          if (r.length > 8 && r[8] is Map) {
+            (r[8] as Map).remove('vocalizationSource');
+          }
+        }
+      }
+    }
+  }
+
+  if (const {'ruways', 'rawh'}.contains(riwaya)) {
+    word(2, 197, 8, 'بتنوين الثاء والقاف بالضم');
+    // «نَنۡكُسۡهُ» (يس ٦٨): its second nun quiet, as its wording tells.
+    word(36, 68, 2, '', 'نَنۡكُسۡهُ');
+    word(
+      6,
+      96,
+      2,
+      'بألف بعد الجيم وكسر العين ورفع اللام، وجر «الليلِ»',
+      'وَجَٰعِلُ ٱلَّيۡلِ',
+    );
+  }
+  if (const {'ibn_wardan', 'ibn_jammaz'}.contains(riwaya)) {
+    word(2, 197, 12, 'بتنوين اللام بالضم');
+  }
+}
+
+/// «رَفَثٌ وَلَا فُسُوقٌ» (البقرة ١٩٧) told in one row by all who read both
+/// with the damma's tanween, as Ya'qub's (the user, 2026-11-26).
+void rafathFusuq(List<List> rows) {
+  bool at(List r, int w) =>
+      r[0] == 2 && r[1] == 197 && r[2] == w && r[3] == 1 && r[5] == 'f';
+  final rafath = rows.where((r) => at(r, 8)).firstOrNull;
+  final fusuq = rows.where((r) => at(r, 10)).firstOrNull;
+  if (rafath == null || fusuq == null) return;
+  final i = rows.indexOf(rafath);
+  rows
+    ..remove(fusuq)
+    ..[i] = [
+      2,
+      197,
+      8,
+      3,
+      '${rafath[4]} وَلَا ${fusuq[4]}',
+      'f',
+      'بتنوين الثاء والقاف بالضم',
+      ...rafath.skip(7),
+    ];
+}
+
+/// Warsh's ya al-idafa, «بفتح الياء» or «بإسكان الياء» on the speaker's ya
+/// at the end of Hafs's word (إِنِّيَ، عَهۡدِيَ): told under ياءات الإضافة, as
+/// Qalun's, with their wording; not in the farsh (the user, 2026-11-26).
+void warshYaIdafa(String riwaya, Map quran, List<List> rows) {
+  if (riwaya != 'warsh') return;
+  final ayahs = {
+    for (final a in (quran['ayahs'] as List).cast<List>())
+      '${a[0]}:${a[1]}': '${a[4]}'.split(' '),
+  };
+  final moved = <List>[];
+  for (final r in rows) {
+    if (r[5] != 'f' ||
+        !const {'بفتح الياء', 'بإسكان الياء'}.contains(r[6]) ||
+        r.length > 7 && '${r[7]}'.isNotEmpty) {
+      continue;
+    }
+    final words = ayahs['${r[0]}:${r[1]}'];
+    if (words == null || (r[2] as int) + (r[3] as int) > words.length) continue;
+    final hafs = words
+        .sublist(r[2] as int, (r[2] as int) + (r[3] as int))
+        .join(' ')
+        .replaceAll(RegExp('[ۖ-ۜ]'), '');
+    if (!RegExp(r'ي[َۡٓ]?$').hasMatch(hafs)) continue;
+    r[5] = 'u';
+    if (r.length < 8) r.add('');
+    r[7] = 'ya_idafa';
+    moved.add(r);
+  }
+  // After the word's other rows (its naql), where Warsh's usul tool puts it.
+  for (final r in moved) {
+    rows.remove(r);
+    final last = rows.lastIndexWhere(
+      (o) => o[0] == r[0] && o[1] == r[1] && o[2] == r[2],
+    );
+    final at = last >= 0
+        ? last + 1
+        : rows.indexWhere(
+            (o) =>
+                (o[0] as int) > (r[0] as int) ||
+                o[0] == r[0] && (o[1] as int) > (r[1] as int) ||
+                o[0] == r[0] && o[1] == r[1] && (o[2] as int) > (r[2] as int),
+          );
+    rows.insert(at < 0 ? rows.length : at, r);
   }
 }

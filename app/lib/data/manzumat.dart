@@ -687,6 +687,62 @@ class Manzumat {
 
   /// Preserve alefs/hamzas: the general Quran skeleton deliberately removes
   /// them, making it too permissive for assigning a poem as evidence.
+  /// Abu 'Amr's big idgham, by its chapter (116-157) (the user,
+  /// 2026-11-26):
+  /// - within a word: «مَنَاسِكَكُمۡ، سَلَكَكُمۡ» (117); the qaf in the kaf
+  ///   (يَرۡزُقُكُمۡ، خَلَقَكُمۡ) (132-134); «طَلَّقَكُنَّ» (135);
+  /// - two like letters in two words (يَعۡلَمُ مَا، فِيهِ هُدٗى، طَبَعَ عَلَىٰ):
+  ///   «وَمَا كَانَ مِنْ مِثْلَيْنِ فِي كِلْمَتَيْهِمَا ... كَيَعْلَمُ مَا فِيهِ هُدًى
+  ///   وَطُبِعْ عَلَى قُلُوبِهِمُ وَالْعَفْوَ وَأْمُرْ تَمَثَّلَا» (118-119);
+  /// - two close letters in two words: «وَمَهْماَ يَكُونَا كِلْمَتَيْنِ فَمُدْغِمٌ
+  ///   ... شِفَا لَمْ تَضِقْ نَفْسًا ...» (136-137) with the bayt of the letter.
+  static Set<int> _abuAmrKabir(Poem poem, Variant v, String hafs) {
+    if (poem != Poem.shatibiyya ||
+        !const {'susi', 'duri_abuamr'}.contains(v.riwayaId) ||
+        v.rule != 'idgham_kabir') {
+      return const {};
+    }
+    final words = v.usulText.trim().split(RegExp(r'\s+'));
+    if (words.length != 2) {
+      final w = _letters(hafs);
+      if (RegExp('(منا?سككم|سلككم)').hasMatch(w)) return {117};
+      if (w.contains('طلقكن')) return {135};
+      return {132, 133, 134};
+    }
+    String last(String w) {
+      final l = _letters(w).replaceAll('ة', 'ت');
+      return l.isEmpty ? '' : l[l.length - 1];
+    }
+
+    String first(String w) {
+      final sun = RegExp(r'^ٱل([ء-ي])ّ').firstMatch(w);
+      if (sun != null) return sun[1]!;
+      if (w.startsWith('ٱلۡ')) return 'ل';
+      final l = _letters(w.replaceFirst(RegExp('^ٱ'), ''));
+      return l.isEmpty ? '' : l[0];
+    }
+
+    final from = last(words[0]), into = first(words[1]);
+    if (from.isEmpty || into.isEmpty) return const {};
+    if (from == into) return {118, 119};
+    final own = switch (from) {
+      'ح' => {139},
+      'ق' || 'ك' => {139, 140},
+      'ج' => {141},
+      'ش' || 'ض' => {142},
+      'س' => {143},
+      'د' => {144},
+      'ت' => {146},
+      'ث' || 'ذ' => {149},
+      'ر' || 'ل' => {150},
+      'ن' => {151},
+      'م' => {152},
+      'ب' => {153},
+      _ => <int>{},
+    };
+    return {136, 137, ...own};
+  }
+
   static String _letters(String s) => s
       .replaceAll(RegExp('[أإآٱ]'), 'ا')
       .replaceAll('ى', 'ي')
@@ -1517,6 +1573,16 @@ class Manzumat {
       RegExp(r'^[وفبل]*(ال)?كا?فرين$').hasMatch(_letters(hafs));
 
   Set<int> _reviewedVerses(Poem poem, Variant v, String hafs) {
+    final kabir = _abuAmrKabir(poem, v, hafs);
+    if (kabir.isNotEmpty) return kabir;
+    // Al-Susi's quiet hamza made a madd letter (يُؤۡمِنُونَ، يَأۡكُلُونَ، بِئۡرٖ):
+    // «وَيُبْدَلُ لِلسُّوسِيِّ كُلُّ مُسَكَّنٍ مِنَ الْهَمْزِ مَدًّا غَيْرَ مَجْزُومٍ
+    // اْهْمِلَا» (216) (the user, 2026-11-26).
+    if (poem == Poem.shatibiyya &&
+        v.riwayaId == 'susi' &&
+        v.rule == 'ibdal_single') {
+      return {216};
+    }
     // Hafs's sakt left in its four places, by every reader: both bayts (the
     // user, 2026-11-24).
     if (poem == Poem.shatibiyya && _hafsSaktLeft(v)) return {830, 831};

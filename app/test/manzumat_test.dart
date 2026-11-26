@@ -9535,4 +9535,42 @@ void main() {
       }
     }
   });
+  test("al-Susi's big idgham and ibdal cite their bayts", () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['susi']);
+    Set<int> cited(bool Function(Variant) which) {
+      final v = variants.allOf('susi').firstWhere(which);
+      return manzumat
+          .referenceOf(
+            v,
+            quran.ayah(v.surah, v.ayah).words[v.word],
+            v.surah,
+            surahs,
+            entries: book.at(v.surah, v.ayah, v.word),
+          )
+          .mention;
+    }
+
+    // «وَمَا كَانَ مِنْ مِثْلَيْنِ فِي كِلْمَتَيْهِمَا ... كَيَعْلَمُ مَا فِيهِ هُدًى».
+    expect(
+      cited((v) => v.rule == 'idgham_kabir' && v.usulText.startsWith('فِيهِ')),
+      {118, 119},
+    );
+    // Close letters: «وَمَهْماَ يَكُونَا كِلْمَتَيْنِ» with the dal's bayt.
+    expect(
+      cited((v) => v.rule == 'idgham_kabir' && v.usulText == 'بَعۡدِ ذَٰلِكَ'),
+      {136, 137, 144},
+    );
+    expect(
+      // «وَاِدْغَامُ ذِي التَّحْرِيمِ طَلَّقَكُنَّ قُلْ أَحَقُّ».
+      cited((v) => v.rule == 'idgham_kabir' && v.surah == 66 && v.ayah == 5),
+      {135},
+    );
+    // «وَيُبْدَلُ لِلسُّوسِيِّ كُلُّ مُسَكَّنٍ».
+    expect(
+      cited((v) => v.rule == 'ibdal_single' && v.surah == 2 && v.ayah == 3),
+      {216},
+    );
+  });
 }

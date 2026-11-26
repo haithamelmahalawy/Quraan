@@ -50,11 +50,21 @@ bool showYaqubYaIdafaExample(Variant reading, String reference) {
   String first,
   String second,
 ) {
-  if (!const {'ruways', 'rawh'}.contains(reading.riwayaId) ||
+  if (!const {'ruways', 'rawh', 'susi'}.contains(reading.riwayaId) ||
       reading.rule != 'idgham_kabir') {
     return null;
   }
   final a = lettersOf(first), b = lettersOf(second);
+  // The letter bare, its stop sign kept (فِيه ۛ هُّدٗى) (the user, 2026-11-26).
+  String bare(String c) =>
+      c[0] + c.substring(1).replaceAll(RegExp('[^ۖ-ۜ]'), '');
+  // Al-Susi's alike (the user, 2026-11-26); into a hamzat wasl (ٱل), the
+  // letter after it doubled already: the first bare alone.
+  if (b.isNotEmpty && b[0].startsWith('ٱ')) {
+    if (a.isEmpty) return null;
+    a[a.length - 1] = bare(a.last);
+    return (first: a.join(), second: second);
+  }
   if (a.isEmpty || b.isEmpty) return null;
   String doubled(String c) => '${c[0]}ّ${c.substring(1).replaceAll('ّ', '')}';
   if (reading.surah == 27 && reading.ayah == 36) {
@@ -80,7 +90,7 @@ bool showYaqubYaIdafaExample(Variant reading, String reference) {
     }
     return (first: first, second: b.join());
   }
-  a[a.length - 1] = a.last[0];
+  a[a.length - 1] = bare(a.last);
   b[0] = doubled(b[0]);
   return (first: a.join(), second: b.join());
 }

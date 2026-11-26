@@ -178,5 +178,36 @@ void ten() {
     expect(find.textContaining('نافع', findRichText: true), findsWidgets);
     // The chosen ones left as they were.
     expect(s.selected, {'khallad', 'ibn_dhakwan'});
+    // «وَهُوَ» (البقرة ٢٩): those who read as the page too, Hafs's or al-Susi's
+    // shown (the user, 2026-11-26).
+    for (final shown in [null, 'susi']) {
+      s.displayed = shown;
+      await t.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Material(
+              child: SingleChildScrollView(
+                child: flashlightPanel(
+                  ayah: quran.ayah(2, 29),
+                  word: 15,
+                  quran: quran,
+                  variants: variants,
+                  settings: s,
+                  onWordTap: (_, _) {},
+                )!,
+              ),
+            ),
+          ),
+        ),
+      );
+      for (final reader in ['قالون', 'ورش', 'الكسائي', 'حمزة']) {
+        expect(
+          find.textContaining(reader, findRichText: true),
+          findsWidgets,
+          reason: '$shown $reader',
+        );
+      }
+    }
   });
 }

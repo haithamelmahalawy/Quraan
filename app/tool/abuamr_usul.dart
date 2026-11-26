@@ -245,6 +245,8 @@ Map<String, int> buildAbuAmrUsul(
       // Into the next ayah's first word (ٱلرَّحِيمِ ۝ مَٰلِكِ): told on this one.
       final across = n == null;
       final after = across ? index[_key(w.s, w.a + 1, 0)]?.t ?? '' : n.t;
+      // A surah's last word (الرعد ٤٣، إبراهيم ٥٢): nothing to merge into.
+      if (after.isEmpty) continue;
       put(
         row(
           w.s,
@@ -259,9 +261,9 @@ Map<String, int> buildAbuAmrUsul(
         ),
       );
       // The next ayah's first word coloured as well, told once in the band
-      // (the user, 2026-11-26).
+      // (the user, 2026-11-26). Not marked told: its own farsh (مَلِكِ) stays.
       if (across && after.isNotEmpty) {
-        put(
+        rows.add(
           row(
             w.s,
             w.a + 1,
@@ -517,16 +519,18 @@ Map<String, int> buildAbuAmrUsul(
   final hamzaChapters = {
     for (final r in rows)
       if (const {
-        'tasheel_word',
-        'tasheel_pair',
-        'tasheel_pair_first',
-        'ibdal_waw',
-        'ibdal_ya',
-        'mim_jam',
-        'ha_antum',
-        'idgham_saghir',
-        'idgham_kabir',
-      }.contains(r[7]))
+            'tasheel_word',
+            'tasheel_pair',
+            'tasheel_pair_first',
+            'ibdal_waw',
+            'ibdal_ya',
+            'mim_jam',
+            'ha_antum',
+            'idgham_saghir',
+            'idgham_kabir',
+          }.contains(r[7]) &&
+          // The next ayah's word merged into (مَلِكِ): its farsh its own.
+          !(r.length > 8 && (r[8] as Map)['noBand'] == true))
         _key(r[0], r[1], r[2]),
   };
   final kabirFirst = {
@@ -549,7 +553,18 @@ Map<String, int> buildAbuAmrUsul(
         .toList();
     if (parts.isEmpty && '${v[6]}'.isNotEmpty) continue;
     final how = parts.isEmpty ? '' : 'ب${parts.join(' و')}';
-    final text = madinahScript('${v[4]}');
+    // The next ayah's word merged into (مَّلِكِ): its doubled first letter is
+    // the idgham's, drawn by the page; the farsh its own (مَلِكِ).
+    final merged = rows.any(
+      (r) =>
+          r[7] == 'idgham_kabir' &&
+          _key(r[0], r[1], r[2]) == at &&
+          r.length > 8 &&
+          (r[8] as Map)['noBand'] == true,
+    );
+    final text = merged
+        ? madinahScript('${v[4]}').replaceFirst('ّ', '')
+        : madinahScript('${v[4]}');
     // A verified reader who reads it alike: his row.
     List? his;
     String? who;
@@ -628,6 +643,16 @@ Map<String, int> buildAbuAmrUsul(
     put([...r.take(8), meta]);
   });
 
+  // The farsh the extraction left without its wording, as the book words it
+  // in its tables (pp. 105، 118، 156، 172، 199، 289، 314) (the user,
+  // 2026-11-26); al-Susi's word merged into the next one by the big idgham
+  // is the same farsh.
+  for (final r in rows) {
+    if (r[5] != 'f' || '${r[6]}'.isNotEmpty) continue;
+    final wording = _abuAmrBookWording['${r[0]}:${r[1]}:${r[2]}'];
+    if (wording != null) r[6] = wording;
+  }
+
   // By place, the rows of one word in the order made.
   final order = {for (final (i, v) in rows.indexed) v: i};
   data['variants'] = rows
@@ -644,3 +669,24 @@ Map<String, int> buildAbuAmrUsul(
   _finishRows(id, quran, data, index, words, sources, book, counts);
   return counts;
 }
+
+/// The book's wording of the farsh words its extraction left bare; where al-Duri
+/// has a verified reader's wording, al-Susi takes the same.
+const _abuAmrBookWording = {
+  // «حَيۡثُ يَجۡعَلُ رِسَالَٰتِهِۦ» (ص ١٠٥).
+  '6:124:17': 'بإثبات الألف وكسر التاء وكسر الهاء والياء',
+  // «خَطَٰيَٰكُمۡ» (ص ١١٨).
+  '7:161:17': 'بفتح الطاء وبعدها ألف وفتح الياء وحذف الهمزة والتاء',
+  '8:70:7': 'بضم الهمزة وفتح السين وإثبات الألف',
+  // «ٱلۡكَٰفِرُ» (ص ١٥٦).
+  '13:42:14': 'بفتح الكاف وبعدها ألف وبكسر الفاء وتخفيفها وبعدها راء مرفوعة مظهرة مفخمة',
+  // «تُفَجِّرَ» (ص ١٧٢).
+  '17:90:5': 'بضم التاء وفتح الفاء وكسر الجيم وتشديدها',
+  // «يَدۡفَعُ» (ص ١٩٩).
+  '22:38:2': 'بفتح الياء ودال ساكنة وحذف الألف وفتح الفاء',
+  // «وَأَتۡبَعۡنَٰهُمۡ» (ص ٢٨٩).
+  '52:21:2': 'بهمزة قطع مفتوحة وإسكان التاء الأولى والعين، ونون مفتوحة بدل التاء ثم ألف',
+  // «خَطَٰيَٰهُمۡ» (ص ٣١٤).
+  '71:25:1':
+      'بفتح الطاء وبعدها ألف ثم فتح الياء، وحذف الهمزة والتاء، وضم الهاء',
+};
