@@ -53,40 +53,63 @@ class _FlashlightState extends State<Flashlight> {
   /// The word under the beam's tip, its panel and its box in the area.
   WordTag? _tag;
   Widget? _panel;
+
+  /// Being dragged: the panel lets the beam through to the words beneath.
+  bool _dragging = false;
   Rect? _wordRect;
 
   /// The beam's tip: the top of its light, over the middle of the body.
   Offset _tip(Size area) =>
       Offset(_at.dx * area.width + Flashlight.width / 2, _at.dy * area.height);
 
+  /// The word any part of the beam's top touches (the user, 2026-11-26):
+  /// its edge and a little below it, across its width, the middle first.
+  (WordTag, Rect)? _touched(RenderBox box, Size area) {
+    final tip = _tip(area);
+    const across = [0.0, -.25, .25, -.45, .45];
+    const down = [0.0, 4.0, 8.0];
+    for (final dy in down) {
+      for (final dx in across) {
+        final result = HitTestResult();
+        WidgetsBinding.instance.hitTestInView(
+          result,
+          box.localToGlobal(tip + Offset(dx * Flashlight.width, dy)),
+          View.of(context).viewId,
+        );
+        for (final entry in result.path) {
+          final target = entry.target;
+          if (target is RenderMetaData && target.metaData is WordTag) {
+            return (
+              target.metaData as WordTag,
+              box.globalToLocal(target.localToGlobal(Offset.zero)) &
+                  target.size,
+            );
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /// The panel of the word touched; kept between words and over a word
+  /// told of nothing, until another word with its own panel is touched
+  /// (the user, 2026-11-26).
   void _probe(Size area) {
     final box = context.findRenderObject();
     if (box is! RenderBox) return;
-    final result = HitTestResult();
-    WidgetsBinding.instance.hitTestInView(
-      result,
-      box.localToGlobal(_tip(area)),
-      View.of(context).viewId,
-    );
-    WordTag? tag;
-    Rect? rect;
-    for (final entry in result.path) {
-      final target = entry.target;
-      if (target is RenderMetaData && target.metaData is WordTag) {
-        tag = target.metaData as WordTag;
-        rect =
-            box.globalToLocal(target.localToGlobal(Offset.zero)) & target.size;
-        break;
-      }
-    }
+    final touched = _touched(box, area);
+    if (touched == null) return;
+    final (tag, rect) = touched;
     if (tag == _tag) {
       if (rect != _wordRect) setState(() => _wordRect = rect);
       return;
     }
+    final panel = widget.panelFor(tag.ayah, tag.word);
+    if (panel == null) return;
     setState(() {
       _tag = tag;
       _wordRect = rect;
-      _panel = tag == null ? null : widget.panelFor(tag.ayah, tag.word);
+      _panel = panel;
     });
   }
 
@@ -125,7 +148,12 @@ class _FlashlightState extends State<Flashlight> {
                 });
                 _probe(area);
               },
-              onPanEnd: (_) => widget.settings.flashlightAt = _at,
+              onPanStart: (_) => setState(() => _dragging = true),
+              onPanEnd: (_) {
+                setState(() => _dragging = false);
+                widget.settings.flashlightAt = _at;
+              },
+              onPanCancel: () => setState(() => _dragging = false),
               // A tap puts the panel away.
               onTap: () => setState(() {
                 _tag = null;
@@ -168,24 +196,27 @@ class _FlashlightState extends State<Flashlight> {
       bottom: above ? area.height - word.top + 4 : null,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: area.height * .5),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: MushafColors.paper,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: MushafColors.gold, width: 1.2),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x33000000),
-                blurRadius: 10,
-                offset: Offset(0, 3),
+        child: IgnorePointer(
+          ignoring: _dragging,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: MushafColors.paper,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: MushafColors.gold, width: 1.2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(8),
+                child: _panel,
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(8),
-              child: _panel,
             ),
           ),
         ),

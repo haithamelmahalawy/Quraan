@@ -85,6 +85,16 @@ void main() {
       ),
       findsOneWidget,
     );
+    // Kept off the word too, until another word with its own panel (the user,
+    // 2026-11-26).
+    final again = await t.startGesture(t.getCenter(lamp));
+    for (var i = 0; i < 6; i++) {
+      await again.moveBy(const Offset(0, 6));
+      await t.pump();
+    }
+    await again.up();
+    await t.pump();
+    expect(find.byKey(const ValueKey('flashlight-panel')), findsOneWidget);
     expect(t.takeException(), isNull);
   });
 }
