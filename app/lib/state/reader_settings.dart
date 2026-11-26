@@ -226,6 +226,12 @@ class ReaderSettings extends ChangeNotifier {
     _prefs?.setDouble('flash.y', at.dy);
   }
 
+  /// What «الكشاف» tells of a word: every chosen riwaya, the shown one alone,
+  /// or the hamesh's alone (the user, 2026-11-26).
+  FlashMode get flashMode =>
+      FlashMode.values.asNameMap()[_get('flashMode')] ?? FlashMode.all;
+  set flashMode(FlashMode mode) => _set('flashMode', mode.name);
+
   /// The riwaya last listened to.
   String? get listenRiwaya => _get('listenRiwaya') as String?;
   set listenRiwaya(String? id) => _set('listenRiwaya', id ?? 'hafs');
@@ -412,4 +418,16 @@ enum WordSwap {
   const WordSwap(this.labelAr);
 
   final String labelAr;
+}
+
+/// What «الكشاف» tells of a word.
+enum FlashMode {
+  all('الكل', 'أصول وفرش كل الروايات المختارة'),
+  shown('المعروضة', 'أصول وفرش الرواية المعروضة وحدها'),
+  hamesh('الهوامش', 'أصول وفرش روايات الهامش دون المعروضة');
+
+  const FlashMode(this.labelAr, this.hintAr);
+
+  final String labelAr;
+  final String hintAr;
 }

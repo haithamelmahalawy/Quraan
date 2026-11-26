@@ -6917,6 +6917,26 @@ Widget? flashlightPanel({
       v.ayah == ayah.number &&
       v.word <= word &&
       word < v.word + v.count;
+  // The riwayat told by the flashlight's mode (the user, 2026-11-26).
+  final shownId = settings.displayed ?? hafsId;
+  bool wanted(String id) => switch (settings.flashMode) {
+    FlashMode.all => true,
+    FlashMode.shown => id == shownId,
+    FlashMode.hamesh => id != shownId,
+  };
+  _UsulItem? only(_UsulItem i) {
+    final rows = i.readings.where((v) => wanted(v.riwayaId)).toList();
+    if (rows.isEmpty) return null;
+    final c = _UsulItem(i.ayah, i.word, i.text, i.stopOnly, i.replacement)
+      ..riwayat.addAll(i.riwayat.where(wanted))
+      ..readings.addAll(rows)
+      ..ways.addAll(i.ways);
+    c.spots
+      ..clear()
+      ..addAll(i.spots);
+    return c;
+  }
+
   final groups = <_UsulGroup>[];
   for (final g in _usulNotes(
     [?before, (ayah, word)],
@@ -6933,15 +6953,20 @@ Widget? flashlightPanel({
           value.ayah.number == before.$1.number &&
           value.word == before.$2 &&
           value.readings.any(_reachesNext);
-      if (here || into) kept.items[key] = value;
+      final told = here || into ? only(value) : null;
+      if (told != null) kept.items[key] = told;
     }
     if (kept.items.isNotEmpty) groups.add(kept);
   }
   final entries = _togetherEntries([
     for (final e in _entriesOf([ayah], variants, settings))
       if (e.ayah.number == ayah.number &&
-          (e.word == word || e.readings.any(covers)))
-        e,
+          (e.word == word || e.readings.any(covers)) &&
+          e.readings.any((v) => wanted(v.riwayaId)))
+        HameshEntry(e.ayah, e.word, e.hafs, e.color, [
+          for (final v in e.readings)
+            if (wanted(v.riwayaId)) v,
+        ]),
   ]);
   if (groups.isEmpty && entries.isEmpty) return null;
   return Column(

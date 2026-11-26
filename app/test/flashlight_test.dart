@@ -6,12 +6,14 @@ import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
 import 'package:qiraat_mushaf/ui/flashlight.dart';
+import 'package:qiraat_mushaf/ui/mushaf_page.dart';
 import 'package:qiraat_mushaf/ui/reader_screen.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
 /// «الكشاف» dragged over a word read otherwise shows its panel of every
 /// chosen riwaya's difference (the user, 2026-11-26).
 void main() {
+  modes();
   testWidgets('the flashlight over a differing word', (t) async {
     late Mushafs mushafs;
     late VariantRepository variants;
@@ -85,16 +87,53 @@ void main() {
       ),
       findsOneWidget,
     );
-    // Kept off the word too, until another word with its own panel (the user,
+    // Off the word, to the page's top: put away at once (the user,
     // 2026-11-26).
-    final again = await t.startGesture(t.getCenter(lamp));
-    for (var i = 0; i < 6; i++) {
-      await again.moveBy(const Offset(0, 6));
+    final off = await t.startGesture(t.getCenter(lamp));
+    for (var i = 0; i < 40; i++) {
+      await off.moveBy(const Offset(0, -20));
       await t.pump();
     }
-    await again.up();
+    await off.up();
     await t.pump();
-    expect(find.byKey(const ValueKey('flashlight-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('flashlight-panel')), findsNothing);
+    // Held: the three ways, the chosen one kept (the user, 2026-11-26).
+    await t.longPress(lamp);
+    await t.pumpAndSettle();
+    for (final mode in FlashMode.values) {
+      expect(find.byKey(ValueKey('flash-mode:${mode.name}')), findsOneWidget);
+    }
+    await t.tap(find.byKey(const ValueKey('flash-mode:shown')));
+    await t.pumpAndSettle();
+    expect(s.flashMode, FlashMode.shown);
     expect(t.takeException(), isNull);
+  });
+}
+
+/// The flashlight's modes: «يَكۡذِبُونَ» (البقرة ١٠), Hafs shown, Ibn Dhakwan's
+/// farsh: nothing of the shown alone, the hamesh's with all and the hamesh
+/// (the user, 2026-11-26).
+void modes() {
+  test('the modes filter the panel', () async {
+    final mushafs = await Mushafs.load();
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['khallad', 'ibn_dhakwan']);
+    final quran = mushafs.of(MushafEdition.madani);
+    final s = ReaderSettings.memory(selected: {'khallad', 'ibn_dhakwan'});
+    Widget? panel(FlashMode mode) {
+      s.flashMode = mode;
+      return flashlightPanel(
+        ayah: quran.ayah(2, 10),
+        word: 11,
+        quran: quran,
+        variants: variants,
+        settings: s,
+        onWordTap: (_, _) {},
+      );
+    }
+
+    expect(panel(FlashMode.all), isNotNull);
+    expect(panel(FlashMode.hamesh), isNotNull);
+    expect(panel(FlashMode.shown), isNull);
   });
 }

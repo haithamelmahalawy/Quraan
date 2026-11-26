@@ -91,21 +91,29 @@ class _FlashlightState extends State<Flashlight> {
     return null;
   }
 
-  /// The panel of the word touched; kept between words and over a word
-  /// told of nothing, until another word with its own panel is touched
-  /// (the user, 2026-11-26).
+  /// The panel of the word touched alone: put away as soon as the beam leaves
+  /// it, shown again only on a word told of in the hamesh or the usul (the
+  /// user, 2026-11-26).
   void _probe(Size area) {
     final box = context.findRenderObject();
     if (box is! RenderBox) return;
     final touched = _touched(box, area);
-    if (touched == null) return;
+    if (touched == null) {
+      if (_tag != null) {
+        setState(() {
+          _tag = null;
+          _panel = null;
+          _wordRect = null;
+        });
+      }
+      return;
+    }
     final (tag, rect) = touched;
     if (tag == _tag) {
       if (rect != _wordRect) setState(() => _wordRect = rect);
       return;
     }
     final panel = widget.panelFor(tag.ayah, tag.word);
-    if (panel == null) return;
     setState(() {
       _tag = tag;
       _wordRect = rect;
@@ -154,6 +162,9 @@ class _FlashlightState extends State<Flashlight> {
                 widget.settings.flashlightAt = _at;
               },
               onPanCancel: () => setState(() => _dragging = false),
+              // Held: what it tells, the chosen one marked (the user,
+              // 2026-11-26).
+              onLongPressStart: (d) => _chooseMode(d.globalPosition),
               // A tap puts the panel away.
               onTap: () => setState(() {
                 _tag = null;
@@ -175,6 +186,53 @@ class _FlashlightState extends State<Flashlight> {
       );
     },
   );
+
+  Future<void> _chooseMode(Offset at) async {
+    final now = widget.settings.flashMode;
+    final picked = await showMenu<FlashMode>(
+      context: context,
+      position: RelativeRect.fromLTRB(at.dx, at.dy - 160, at.dx, at.dy),
+      color: MushafColors.paper,
+      // A thin gold edge, as the panel's.
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: MushafColors.gold, width: 1.2),
+      ),
+      items: [
+        for (final mode in FlashMode.values)
+          CheckedPopupMenuItem(
+            key: ValueKey('flash-mode:${mode.name}'),
+            value: mode,
+            checked: mode == now,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  mode.labelAr,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: MushafColors.green,
+                  ),
+                ),
+                Text(mode.hintAr, style: const TextStyle(fontSize: 11)),
+              ],
+            ),
+          ),
+      ],
+    );
+    if (picked == null || picked == now || !mounted) return;
+    widget.settings.flashMode = picked;
+    // The word lit told again by the new mode.
+    final tag = _tag;
+    setState(() {
+      _panel = tag == null ? null : widget.panelFor(tag.ayah, tag.word);
+      if (_panel == null) {
+        _tag = null;
+        _wordRect = null;
+      }
+    });
+  }
 
   /// The panel right above the word (under it, where the page's top leaves
   /// no room, and below the flashlight then), across most of the page, the
