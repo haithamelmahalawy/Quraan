@@ -232,7 +232,10 @@ String usulReadingText(
         v.isImala && (v.stopOnly || v.rule == 'imala_ha')) {
       return text.replaceAll(RegExp('[۪ٜ]'), '');
     }
-    return v.isImala && !v.fathPreferred ? withImalaSign(text, v.text) : text;
+    if (!v.isImala || v.fathPreferred) return text;
+    // The taqlil's diamond, the imala's dot (the user, 2026-11-26).
+    final signed = withImalaSign(text, v.text);
+    return v.description.contains('تقليل') ? asTaqlil(signed) : signed;
   }
 
   final hafs = ayah.words
@@ -364,6 +367,7 @@ String usulReadingText(
       text = _silah(text, actual.shownDescription);
       if (actual.isImala && !actual.fathPreferred) {
         text = withImalaSign(text, actual.text);
+        if (actual.description.contains('تقليل')) text = asTaqlil(text);
       }
     }
     prefix.add(text);

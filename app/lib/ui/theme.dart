@@ -530,7 +530,9 @@ class InkText extends StatelessWidget {
     // (al-Kisa'i's «ءَات۪ىٰنِ»: its dot under the ta, the user, 2026-11-16).
     final small =
         style.fontFamily == 'Hafs' &&
-            !(parts?.map((p) => p.$1).join() ?? text).contains(RegExp('[۪ٜ]'))
+            !(parts?.map((p) => p.$1).join() ?? text).contains(
+              RegExp('[۪ٜ\uE01A]'),
+            )
         ? smallHamzaAlifParts(parts ?? [(text, null)])
         : null;
     if (small != null) return _drawSmallAlif(small);

@@ -1854,7 +1854,8 @@ class _MushafPageState extends State<MushafPage>
           return (
             text: imala == null
                 ? parts[w - v.word]
-                : withImalaSign(
+                : _signed(
+                    imala,
                     parts[w - v.word],
                     imala.text.isEmpty ? null : imala.text,
                   ),
@@ -1887,7 +1888,8 @@ class _MushafPageState extends State<MushafPage>
         for (var i = 0; i < parts.length; i++) {
           final at = i == 0 ? base : _baseAt(widget.variants, s, ayah, w + i);
           if (_ownImala(at, w + i) case final imala?) {
-            parts[i] = withImalaSign(
+            parts[i] = _signed(
+              imala,
               parts[i],
               imala.text.isEmpty ? null : imala.text,
             );
@@ -1895,7 +1897,7 @@ class _MushafPageState extends State<MushafPage>
         }
         text = parts.join(' ');
       } else if (_ownImala(base, w) case final imala?) {
-        text = withImalaSign(text, imala.text.isEmpty ? null : imala.text);
+        text = _signed(imala, text, imala.text.isEmpty ? null : imala.text);
       }
       return (
         text: _ashabSilah.contains(s.displayed)
@@ -1912,7 +1914,7 @@ class _MushafPageState extends State<MushafPage>
     // The page font has no imala sign to add: such a word is drawn in the
     // Hafs font, with the sign under the letters the reading marks.
     if (imala != null) {
-      return (text: withImalaSign(ayah.words[w], imala.text), font: 'Hafs');
+      return (text: _signed(imala, ayah.words[w], imala.text), font: 'Hafs');
     }
     if (_replacementAt(ayah, w) != null || _ruwaysTasheelAt(ayah, w) != null) {
       return (text: ayah.words[w], font: 'Hafs');
@@ -2078,7 +2080,10 @@ class _MushafPageState extends State<MushafPage>
   Variant? _replacementAt(Ayah ayah, int w) =>
       !const {'warsh', 'ruways', 'rawh'}.contains(widget.settings.displayed) &&
           // Ashab al-Silah's ibdal too, in Warsh's circle (ٱلسُّفَهَآءُ أَلَآ).
-          !_ashabSilah.contains(widget.settings.displayed)
+          !_ashabSilah.contains(widget.settings.displayed) &&
+          // Abu 'Amr's alike: a waw in a circle over the second hamza (the
+          // user, 2026-11-26).
+          !const {'duri_abuamr', 'susi'}.contains(widget.settings.displayed)
       ? null
       : [
               ..._baseAt(widget.variants, widget.settings, ayah, w),
@@ -3679,6 +3684,13 @@ List<int>? _mergedLetters(String description, List<String> letters) {
   return out;
 }
 
+/// [word] with the sign of [imala]'s reading: the imala's dot, or the
+/// taqlil's diamond (the user, 2026-11-26).
+String _signed(Variant imala, String word, [String? reading]) {
+  final signed = withImalaSign(word, reading);
+  return imala.description.contains('تقليل') ? asTaqlil(signed) : signed;
+}
+
 /// A usul imala, or a farsh word read with it (يَٰبُشۡرٰ۪يَ بالتقليل); not the
 /// sign under a wasl alif begun with kasra (اَ۪تَّخَذتُّمُ), nor يُوح۪ىٰٓ for
 /// نُوحِيٓ, whose taqlil is part of its farsh: the whole word in its colour.
@@ -4438,6 +4450,53 @@ List<Variant> _otherBodies(
   told,
 );
 
+/// Abu 'Amr's iskan of «يَأۡمُرُكُمۡ، بَارِئِكُمۡ» and their like, al-Duri's
+/// ikhtilas his second face: both narrators chosen, one line for Abu 'Amr,
+/// «بإسكان الراء، وللدوري وجه باختلاس ضمة الراء، والإسكان هو المقدّم» on
+/// al-Duri's word; each alone, his own (the user, 2026-11-26).
+List<Variant> _abuAmrIskan(List<Variant> rows) {
+  final twoFaces = RegExp(r'^بوجهين: إسكان (.+)، وهو المقدّم؛ أو (اختلاس .+)$');
+  final duri = rows
+      .where(
+        (v) =>
+            v.riwayaId == 'duri_abuamr' &&
+            !v.isUsul &&
+            twoFaces.hasMatch(v.description),
+      )
+      .firstOrNull;
+  if (duri == null) return rows;
+  final susi = rows
+      .where(
+        (v) =>
+            v.riwayaId == 'susi' &&
+            !v.isUsul &&
+            v.word == duri.word &&
+            v.description.startsWith('بإسكان'),
+      )
+      .firstOrNull;
+  if (susi == null) return rows;
+  final m = twoFaces.firstMatch(duri.description)!;
+  final told = 'بإسكان ${m[1]}، وللدوري وجه ب${m[2]}، والإسكان هو المقدّم';
+  Variant as(Variant v) => Variant(
+    riwayaId: v.riwayaId,
+    surah: v.surah,
+    ayah: v.ayah,
+    word: v.word,
+    count: v.count,
+    text: duri.text,
+    kind: v.kind,
+    description: told,
+    rule: v.rule,
+    certified: v.certified,
+    stopOnly: v.stopOnly,
+    hamesh: v.hamesh,
+  );
+  return [
+    for (final v in rows)
+      if (identical(v, duri) || identical(v, susi)) as(v) else v,
+  ];
+}
+
 List<HameshEntry> _entriesOf(
   List<Ayah> ayahs,
   VariantRepository variants,
@@ -4451,10 +4510,10 @@ List<HameshEntry> _entriesOf(
       // Usul are told once by their colour, in the page's key; beside the
       // farsh, only what the certified source states.
       final own = m.shown.where((v) => v.word == w && v.inHamesh).toList();
-      final starting = [
+      final starting = _abuAmrIskan([
         ...own,
         ..._otherBodies(variants, settings, ayah, w, m.shown),
-      ];
+      ]);
       if (starting.isEmpty) continue;
       final end = starting
           .map((v) => v.word + v.count)
@@ -5756,6 +5815,43 @@ class _UsulBox extends StatelessWidget {
             '${khalaf.$4}، ولخلاد وجه آخر بعدم السكت وهو المقدّم',
           )
           ..remove(khallad);
+      }
+    }
+    // Abu 'Amr's idgham of two faces for al-Duri (نَّغۡفِر لَّكُمۡ), both
+    // narrators chosen: al-Susi's row, al-Duri's izhar beside it (the user,
+    // 2026-11-26).
+    if (of.first.label == 'الإدغام') {
+      String places(List<_UsulItem> items) =>
+          (items
+                  .map((i) => '${i.ayah.surah}:${i.ayah.number}:${i.word}')
+                  .toList()
+                ..sort())
+              .join(',');
+      for (final duri in [...rows]) {
+        if (duri.$3.length != 1 ||
+            duri.$3.single != 'duri_abuamr' ||
+            duri.$1.ways.join('|') != 'الإدغام، وهو المقدّم|الإظهار') {
+          continue;
+        }
+        final susi = rows
+            .where(
+              (r) =>
+                  r.$3.length == 1 &&
+                  r.$3.single == 'susi' &&
+                  r.$1.ways.isEmpty &&
+                  places(r.$2) == places(duri.$2),
+            )
+            .firstOrNull;
+        if (susi == null) continue;
+        final at = rows.indexOf(susi);
+        rows
+          ..[at] = (
+            susi.$1,
+            susi.$2,
+            const ['duri_abuamr', 'susi'],
+            '${susi.$4}، وللدوري وجه بالإظهار، والإدغام المقدّم له',
+          )
+          ..remove(duri);
       }
     }
     rows.sort((a, b) {

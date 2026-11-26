@@ -9573,4 +9573,24 @@ void main() {
       {216},
     );
   });
+  test('the ya opened before a hamza with a fatha cites 390', () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    final ids = ['qalun', 'warsh', 'bazzi', 'qunbul', 'duri_abuamr', 'susi'];
+    await variants.ensureLoaded(ids);
+    // «إِنِّيٓ أَعۡلَمُ» (البقرة ٣٠): «فَتِسْعُونَ مَعْ هَمْزٍ بِفَتْحٍ ... سَمَا فَتْحُهَا».
+    for (final id in ids) {
+      final v = variants
+          .at([id], 2, 30, 23)
+          .firstWhere((v) => v.rule == 'ya_idafa');
+      final r = manzumat.referenceOf(
+        v,
+        quran.ayah(2, 30).words[23],
+        2,
+        surahs,
+        entries: book.at(2, 30, 23),
+      );
+      expect(r.mention, {390}, reason: id);
+    }
+  });
 }

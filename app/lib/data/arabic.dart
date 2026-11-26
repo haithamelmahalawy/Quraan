@@ -161,8 +161,20 @@ final _prefixedWasl = RegExp(
 /// The imala sign of the Madinah mushaf, a dot below the letter.
 const imalaSign = '۪';
 
+/// The taqlil's own sign, a small diamond under the letter, drawn apart by
+/// the page (HafsFontMarks); the imala keeps its dot (the user, 2026-11-26).
+/// A private-use character: no font draws it.
+const taqlilSign = '\uE01A';
+
+/// [signed] with the taqlil's diamond in place of the imala's dot.
+String asTaqlil(String signed) => signed.replaceAll(imalaSign, taqlilSign);
+
 bool _isMark(int c) =>
-    (c >= 0x064B && c <= 0x065F) || c == 0x0670 || (c >= 0x06D6 && c <= 0x06ED);
+    (c >= 0x064B && c <= 0x065F) ||
+    c == 0x0670 ||
+    (c >= 0x06D6 && c <= 0x06ED) ||
+    // The taqlil's sign (taqlilSign).
+    c == 0xE01A;
 
 /// [word] with the imala sign under the letter read with imala: the one
 /// before ى (هُدَى → هُدَ۪ى), before an alef followed by ra (ٱلنَّارِ →

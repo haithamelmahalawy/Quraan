@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qiraat_mushaf/data/arabic.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/usul_text.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
@@ -11,7 +12,12 @@ void main() {
   setUpAll(() async {
     quran = await QuranRepository.load();
     variants = await VariantRepository.discover();
-    await variants.ensureLoaded(['warsh', 'qunbul', 'khalaf_hamzah', 'khallad']);
+    await variants.ensureLoaded([
+      'warsh',
+      'qunbul',
+      'khalaf_hamzah',
+      'khallad',
+    ]);
   });
 
   Variant rule(int a, int w, String id) =>
@@ -136,7 +142,9 @@ void main() {
   test('ibdal, imala and sakt retain the actual source writing', () {
     expect(text(rule(3, 1, 'ibdal_single')), 'يُومِنُونَ');
     final imala = variants.at(['warsh'], 2, 7, 7).single;
-    expect(text(imala), imala.text);
+    // Warsh's taqlil: its diamond in place of the imala's dot (the user,
+    // 2026-11-26).
+    expect(text(imala), asTaqlil(imala.text));
     final sakt = variants
         .at(['khalaf_hamzah'], 2, 4, 9)
         .firstWhere((v) => v.text.isNotEmpty);

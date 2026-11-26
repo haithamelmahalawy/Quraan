@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../data/arabic.dart';
+
 /// The ishmam's sign put after its letter in a word's parts: a dot painted
 /// over the letter, clear of its marks, in the ishmam's colour (the user,
 /// 2026-11-22). A mark no Quran text uses, never drawn by the font.
@@ -25,7 +27,8 @@ class HafsFontMarks extends StatelessWidget {
   static final _tanween = RegExp(
     r'([ًٗ])ا([ۖ-ۭ]*)(?=\s|$)|ا[ًٗ]([ۖ-ۭ]*)(?=\s|$)',
   );
-  static final _cluster = RegExp('[^ً-ٰٟۖ-ۭ][ً-ٰٟۖ-ۭ]*');
+  // The taqlil's sign a mark of its letter too.
+  static final _cluster = RegExp('[^ً-ٰٟۖ-ۭ\uE01A][ً-ٰٟۖ-ۭ\uE01A]*');
   static final _boundarySakt = RegExp(
     // The kashida drawn out after it too (شَيۡۜـًٔۜــا, the user, 2026-11-18).
     r'ۜ(ـ*[اى]?[ً-ٰٟۖ-ۭ]*)(?:(?=\s|$)|(?<=(?:^|\s)اۜ))',
@@ -63,7 +66,8 @@ class HafsFontMarks extends StatelessWidget {
   /// into the word it breaks the font's stacking of the letter's other marks
   /// (مُّسَمّٗى: its tanween dropped onto the ya), and on the ra's tail
   /// (عِمۡرٰ۪نَ) the font puts it astray.
-  static bool _lowerImala(String cluster) => RegExp('[۪ٜ]').hasMatch(cluster);
+  static bool _lowerImala(String cluster) =>
+      RegExp('[۪ٜ\uE01A]').hasMatch(cluster);
 
   /// The kasra (or kasratan) of a ya or waw with the hamza below it
   /// (وَرَآيِٕ، ٱللُّؤۡلُوِٕ، ٱمۡرِيٕٖ): the font draws it across the hamza; it
@@ -312,7 +316,7 @@ class HafsFontMarks extends StatelessWidget {
         marks[at] = placed[at].$2;
       }
       if (_lowerImala(m[0]!)) {
-        final markAt = full.indexOf(RegExp('[۪ٜ]'), m.start);
+        final markAt = full.indexOf(RegExp('[۪ٜ\uE01A]'), m.start);
         marks[markAt] = placed[markAt].$2;
       }
       if (_lowSeen(m[0]!)) {
@@ -518,6 +522,11 @@ const ishmamOverDots = .80;
 const ishmamOverTall = 1.08;
 const ishmamOverMark = .30;
 
+/// Where the taqlil's diamond stands under the imala sign's baseline, and its
+/// half height, in font sizes.
+const taqlilDrop = .22;
+const taqlilSize = .095;
+
 /// How far under the line the imala sign stands, in font sizes; under a jim.
 const imalaDrop = .20;
 
@@ -583,7 +592,8 @@ class _QuranMarkPainter extends CustomPainter {
     };
     for (final (at, color, sign) in targets) {
       final sakt = sign == 'ۜ';
-      final imala = sign == '۪' || sign == 'ٜ';
+      final taqlil = sign == taqlilSign;
+      final imala = sign == '۪' || sign == 'ٜ' || taqlil;
       final kasra = HafsFontMarks._kasras.hasMatch(sign);
       final below = imala || kasra;
       // The sakt after a word or on a kashida: its own room; over a letter,
@@ -1031,7 +1041,27 @@ class _QuranMarkPainter extends CustomPainter {
                             : .68),
         ),
       );
-      mark.paint(canvas, origin);
+      if (taqlil) {
+        // The taqlil's diamond where the imala's dot would stand.
+        final c = Offset(
+          origin.dx + mark.width / 2 + font * .025,
+          origin.dy +
+              mark.computeLineMetrics().single.baseline +
+              font * taqlilDrop,
+        );
+        final r = font * taqlilSize;
+        canvas.drawPath(
+          Path()
+            ..moveTo(c.dx, c.dy - r)
+            ..lineTo(c.dx + r * .8, c.dy)
+            ..lineTo(c.dx, c.dy + r)
+            ..lineTo(c.dx - r * .8, c.dy)
+            ..close(),
+          Paint()..color = color ?? style.color ?? const Color(0xFF000000),
+        );
+      } else {
+        mark.paint(canvas, origin);
+      }
       canvas.restore();
       mark.dispose();
     }

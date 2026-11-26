@@ -1227,7 +1227,11 @@ void main() {
       expect(variants.at(['warsh'], 2, 72, 3), isEmpty);
       final susi = variants.at(['susi'], 2, 72, 3).single;
       expect(susi.text, 'فَاَدَّٰرَٰتُمۡ');
-      expect(susi.description, 'بحذف الهمزة');
+      // His ibdal of the quiet hamza into an alif (the user, 2026-11-26).
+      expect(susi.description, 'بإبدال الهمزة ألفًا');
+      expect(susi.rule, 'ibdal_single');
+      // Al-Duri reads it as Hafs.
+      expect(variants.at(['duri_abuamr'], 2, 72, 3), isEmpty);
     },
   );
 

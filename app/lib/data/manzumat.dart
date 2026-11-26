@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 
+import 'ya_idafa_hamza.dart';
+
 import '../models/qiraat_catalog.dart';
 import '../models/quran.dart';
 import 'arabic.dart';
@@ -1575,6 +1577,23 @@ class Manzumat {
   Set<int> _reviewedVerses(Poem poem, Variant v, String hafs) {
     final kabir = _abuAmrKabir(poem, v, hafs);
     if (kabir.isNotEmpty) return kabir;
+    // The ya of the speaker opened before a hamza with a fatha (إِنِّيَ أَعۡلَمُ)
+    // by Nafi', Ibn Kathir and Abu 'Amr: «فَتِسْعُونَ مَعْ هَمْزٍ بِفَتْحٍ وَتِسْعُهَا
+    // سَمَا فَتْحُهَا إِلَّا مَوَاضِعَ هُمَّلَا» (390) (the user, 2026-11-26).
+    if (poem == Poem.shatibiyya &&
+        v.rule == 'ya_idafa' &&
+        v.description.contains('فتح') &&
+        const {
+          'qalun',
+          'warsh',
+          'bazzi',
+          'qunbul',
+          'duri_abuamr',
+          'susi',
+        }.contains(v.riwayaId) &&
+        yaBeforeOpenHamza.contains('${v.surah}:${v.ayah}:${v.word}')) {
+      return {390};
+    }
     // Al-Susi's quiet hamza made a madd letter (يُؤۡمِنُونَ، يَأۡكُلُونَ، بِئۡرٖ):
     // «وَيُبْدَلُ لِلسُّوسِيِّ كُلُّ مُسَكَّنٍ مِنَ الْهَمْزِ مَدًّا غَيْرَ مَجْزُومٍ
     // اْهْمِلَا» (216) (the user, 2026-11-26).

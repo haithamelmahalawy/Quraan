@@ -183,12 +183,13 @@ Map<String, int> buildAbuAmrUsul(
               2,
               text,
               'u',
-              'بإدغام الراء في اللام بخلف عنه، والإظهار هو المقدّم',
+              // The idgham first, the izhar his second face (the user,
+              // 2026-11-26); with al-Susi one row in the band (mushaf_page).
+              'بوجهين: إدغام الراء في اللام، وهو المقدّم؛ أو الإظهار',
               'idgham_saghir',
               {
-                'ways': const ['الإظهار، وهو المقدّم', 'الإدغام'],
+                'ways': const ['الإدغام، وهو المقدّم', 'الإظهار'],
                 'ownWays': true,
-                'bandNote': 'بخلف عنه، والإظهار هو المقدّم أداءً',
               },
             ),
     );
@@ -396,16 +397,12 @@ Map<String, int> buildAbuAmrUsul(
     );
   }
 
-  // ---- الهمزتان من كلمتين: المتفقتان بإسقاط الأولى في الثلاث، وفي حرف
-  // المد قبلها التوسط على توسط المنفصل (الدوري)، والقصر المقدّم والتوسط
-  // على قصره (السوسي)؛ والمختلفتان كقالون، والمضمومة مع المكسورة بالإبدال
-  // واوًا مكسورة المقدّم ثم التسهيل.
-  final isqatHow = susi
-      ? 'بوجهين: إسقاط الهمزة الأولى مع القصر، وهو المقدّم؛ أو إسقاطها مع التوسط'
-      : 'بإسقاط الهمزة الأولى مع التوسط';
-  final isqatWays = susi
-      ? const ['إسقاط الهمزة الأولى مع القصر، وهو المقدّم', 'إسقاطها مع التوسط']
-      : const ['إسقاط الهمزة الأولى مع التوسط'];
+  // ---- الهمزتان من كلمتين: المتفقتان (هَٰٓؤُلَآءِ إِن، جَآءَ أَحَدٞ، أَوۡلِيَآءُ
+  // أُوْلَٰٓئِكَ) بإسقاط الأولى مع القصر والمد، للدوري والسوسي سواءً، بلا
+  // مقدّم (المستخدم، 2026-11-26)؛ والمختلفتان كقالون، والمضمومة مع المكسورة
+  // بالإبدال واوًا مكسورة المقدّم ثم التسهيل.
+  const isqatHow = 'بوجهين: إسقاط الهمزة الأولى مع القصر؛ أو إسقاطها مع المد';
+  const isqatWays = ['إسقاط الهمزة الأولى مع القصر', 'إسقاطها مع المد'];
   final finalHamza = RegExp('ء[ًٌٍَُِ]?([ۖ-ۛ]*)\$');
   for (final v in sources.qalun) {
     if (v.length < 8) continue;
@@ -605,8 +602,8 @@ Map<String, int> buildAbuAmrUsul(
     ownRows++;
   }
   // al-Duri's ikhtilas (p. 43): «أرنا، أرني» his only face; «بارئكم،
-  // يأمركم، ينصركم، يشعركم، يأمرهم، تأمرهم» with the iskan, the ikhtilas
-  // first.
+  // يأمركم، ينصركم، يشعركم، يأمرهم، تأمرهم» with the ikhtilas, the iskan
+  // first, written so (the user, 2026-11-26).
   if (!susi) {
     for (final w in words) {
       final bare = _bare(w.t).replaceFirst(RegExp('^[وف]'), '');
@@ -627,9 +624,35 @@ Map<String, int> buildAbuAmrUsul(
       final letter = '${r[6]}'.replaceFirst('بإسكان ', '');
       final vowel = bare.startsWith('بارئ') ? 'كسرة' : 'ضمة';
       final ikhtilas = 'اختلاس $vowel $letter';
-      r[4] = w.t;
-      r[6] = 'بوجهين: $ikhtilas، وهو المقدّم؛ أو إسكان $letter';
-      (r[8] as Map)['ways'] = ['$ikhtilas، وهو المقدّم', 'إسكان $letter'];
+      r[6] = 'بوجهين: إسكان $letter، وهو المقدّم؛ أو $ikhtilas';
+      (r[8] as Map)['ways'] = ['إسكان $letter، وهو المقدّم', ikhtilas];
+    }
+    // «بَارِئِكُمۡ» (البقرة ٥٤، معًا): al-Duri leans the alif after the ba, told
+    // under the imala beside his farsh (the user, 2026-11-26).
+    for (final w in words) {
+      if (_bare(w.t) != 'بارئكم') continue;
+      put(row(w.s, w.a, w.w, 1, '', 'u', 'بإمالة الألف', ''));
+    }
+  } else {
+    // Al-Susi's iskan of these words is their farsh, al-Duri's first face;
+    // his ibdal (يَامُرۡكُمۡ) told with it, drawn as the farsh's (the user,
+    // 2026-11-26).
+    final stems = RegExp(r'^(بارئكم|يأمركم|ينصركم|يشعركم|يأمرهم|تأمرهم)$');
+    for (final r in rows) {
+      if (r[5] != 'h' || !'${r[6]}'.startsWith('بإسكان')) continue;
+      final w = index[_key(r[0], r[1], r[2])];
+      if (w == null) continue;
+      final bare = _bare(w.t).replaceFirst(RegExp('^[وف]'), '');
+      if (!stems.hasMatch(bare)) continue;
+      r[5] = 'f';
+      for (final o in rows) {
+        if (o[0] == r[0] &&
+            o[1] == r[1] &&
+            o[2] == r[2] &&
+            o[7] == 'ibdal_single') {
+          o[4] = r[4];
+        }
+      }
     }
   }
   counts['farsh copied'] = copied;
@@ -667,6 +690,87 @@ Map<String, int> buildAbuAmrUsul(
   data.remove('font');
   // The corrections the user made to al-Ashab's rows, where they are his.
   _finishRows(id, quran, data, index, words, sources, book, counts);
+  // «فَٱدَّٰرَٰٔتُمۡ» (البقرة ٧٢): al-Duri reads it as Hafs, the extraction's
+  // «بالهمز وحذف الهمزة» a mistake; al-Susi's quiet hamza an alif, his ibdal
+  // (the user, 2026-11-26).
+  final all = (data['variants'] as List).cast<List>();
+  // «مُوسَىٰ، يَٰمُوسَىٰ» with Abu 'Amr's taqlil, never the imala: its imala rows
+  // dropped, one turned to the taqlil where none is told (the user,
+  // 2026-11-26).
+  final musa = <String, List<List>>{};
+  for (final r in all) {
+    if (r[5] != 'u') continue;
+    final w = index[_key(r[0], r[1], r[2])];
+    if (w == null ||
+        !RegExp(r'^[وفبل]?ي?موسى$').hasMatch(_bare(w.t).replaceAll('ٰ', ''))) {
+      continue;
+    }
+    (musa[_key(r[0], r[1], r[2])] ??= []).add(r);
+  }
+  for (final place in musa.values) {
+    final imala = [
+      for (final r in place)
+        if ('${r[6]}'.startsWith('بإمالة')) r,
+    ];
+    if (imala.isEmpty) continue;
+    final taqlil = place.where((r) => '${r[6]}'.startsWith('بالتقليل'));
+    if (taqlil.isEmpty) {
+      final keep = imala.first;
+      keep[6] = '${keep[6]}'.contains('وقفًا') ? 'بالتقليل وقفًا' : 'بالتقليل';
+      imala.remove(keep);
+    }
+    all.removeWhere((r) => imala.any((i) => identical(i, r)));
+  }
+  all.removeWhere(
+    (r) => !susi && r[0] == 2 && r[1] == 72 && r[2] == 3 && r[5] == 'h',
+  );
+  for (final r in all) {
+    if (susi && r[0] == 2 && r[1] == 72 && r[2] == 3 && r[5] == 'h') {
+      r[6] = 'بإبدال الهمزة ألفًا';
+      r[7] = 'ibdal_single';
+    }
+  }
+  // Al-Susi's ra leaned before a quiet letter (نَرَى ٱللَّهَ، ٱلۡقُرَى ٱلَّتِي):
+  // in wasl too by khulf, the imala first, then the fath; before the Name,
+  // its lam thick or thin with the imala; told on the row of the stop, not a
+  // row of its own: «وَقَبْلَ سُكُونٍ ... خُلْفُ يَصْطَلِى» (the user,
+  // 2026-11-26).
+  if (susi) {
+    for (final r in (data['variants'] as List).cast<List>()) {
+      if (r.length < 9 ||
+          (r[8] as Map)['stopOnly'] != true ||
+          !'${r[6]}'.contains('إمالة')) {
+        continue;
+      }
+      final w = index[_key(r[0], r[1], r[2])];
+      final next = index[_key(r[0], r[1], (r[2] as int) + 1)];
+      if (w == null ||
+          next == null ||
+          !next.t.startsWith('ٱ') ||
+          !RegExp(r'رَ[ىا]ٰ?$').hasMatch(w.t.replaceAll(RegExp('[ۖ-ۜ]'), ''))) {
+        continue;
+      }
+      final name = _bare(next.t) == 'الله';
+      r[6] = name
+          ? 'بإمالة الألف وقفًا؛ ووصلًا بخلف عنه: الإمالة مع تغليظ لام لفظ '
+                'الجلالة أو ترقيقها، أو الفتح'
+          : 'بإمالة الألف وقفًا؛ ووصلًا بخلف عنه: الإمالة، أو الفتح';
+      (r[8] as Map)
+        ..remove('stopOnly')
+        // Beside the word in the band, as al-Duri's «(وقفًا فقط)».
+        ..['bandNote'] = name
+            ? 'وقفًا، ووصلًا بخلف عنه مع تغليظ لام لفظ الجلالة أو ترقيقها'
+            : 'وقفًا، ووصلًا بخلف عنه'
+        ..['ways'] = name
+            ? [
+                'الإمالة مع تغليظ لام لفظ الجلالة',
+                'الإمالة مع ترقيقها',
+                'الفتح وصلًا',
+              ]
+            : ['الإمالة', 'الفتح وصلًا'];
+    }
+  }
+
   return counts;
 }
 
