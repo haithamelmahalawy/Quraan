@@ -453,7 +453,15 @@ class Manzumat {
     return (
       poem: poem,
       chapter: chapter,
-      verses: inChapter,
+      verses: [
+        for (final b in inChapter)
+          citedPart(
+            poem,
+            reading.riwayaId,
+            b,
+            majraha: reading.surah == 11 && reading.ayah == 41,
+          ),
+      ],
       mention: mention,
       fromBook: quoted.isNotEmpty,
       bookExplanation: bookExplanation,
@@ -604,6 +612,28 @@ class Manzumat {
     usulKind: v.usulKind,
     hamesh: v.hamesh,
   );
+
+  /// The part of a bayt cited for a riwaya: «وَمَا بَعْدَ رَاءٍ شَاعَ حُكْمًا» (311)
+  /// alone for Hamza and al-Kisa'i, not the rest of the bayt (the user,
+  /// 2026-11-26); «مَجۡر۪ىٰهَا» (هود ٤١) with the whole bayt, its «يُوَالِي
+  /// بِمَجْرَاهَا وَفِي هُودَ أُنْزِلَا» (the user, 2026-11-26).
+  Bayt citedPart(Poem poem, String riwayaId, Bayt b, {bool majraha = false}) =>
+      poem == Poem.shatibiyya &&
+          b.n == 311 &&
+          !majraha &&
+          const {
+            'khalaf_hamzah',
+            'khallad',
+            'abul_harith',
+            'duri_kisai',
+          }.contains(riwayaId)
+      ? (
+          n: b.n,
+          chapter: b.chapter,
+          sadr: 'وَمَا بَعْدَ رَاءٍ شَاعَ حُكْمًا',
+          ajz: '',
+        )
+      : b;
 
   /// The Durrah's «لِثَانٍ أَبُو عَمْرٍو وَالاَوَّلِ نَافِعٌ ...» and «وَرَمْزُهُمُ ثُمَّ
   /// الرُّوَاةُ كَأَصْلِهِمْ ...» (7، 8): each of the three reads as his asl
@@ -1675,7 +1705,7 @@ class Manzumat {
       // «وَكَيْفَ جَرَتْ فَعْلَى فَفِيهَا وُجُودُهَا ...» (294) (the user,
       // 2026-11-23).
       final m = RegExp(
-        r'^(?:[وفبلك][َِ])?(?:ٱلۡ?|لِلۡ?)?([^ً-ٰ])([َُِ])([^ً-ٰ])ۡ([^ً-ٰ])َ(?:ىٰ?|ا)$',
+        r'^(?:[وفبلك][َِ])?(?:ٱلۡ?|لِلۡ?)?([^ً-ٰ])([َُِ])([^ً-ٰ])ۡ?([^ً-ٰ])َ(?:ىٰ?|ا)$',
       ).firstMatch(hafs.replaceAll(RegExp('[ّٓۖ-ۜ]'), ''));
       if (m != null) {
         final stem = '${m[1]}${m[3]}${m[4]}';
@@ -1691,12 +1721,40 @@ class Manzumat {
                 'قتل',
                 'نجو',
                 'دعو',
+                // «يَحۡيَىٰ», as موسى and عيسى (the user, 2026-11-26).
+                'يحي',
               }.contains(stem)
             // Not a verb's passive (يُتۡلَىٰ، تُدۡعَىٰ، نُؤۡتَىٰ).
             : !(m[2] == 'ُ' && 'يتن'.contains(m[1]!)) &&
                   // «كِلۡتَا», told by its own bayt.
                   stem != 'كلت';
         if (fala) return {294};
+      }
+      final bare = hafs.replaceAll(RegExp('[ّٓۖ-ۜ]'), '');
+      // «مُوسَىٰ، عِيسَىٰ، طُوبَىٰ، ضِيزَىٰ، ٱلۡأُولَىٰ» and their weight, the middle a
+      // madd letter; not a verb's passive (يُوحَىٰ): the same bayt (294) (the
+      // user, 2026-11-26).
+      final madd = RegExp(
+        r'^(?:يَٰ|[وفبلك][َِ])?(?:ٱلۡ?|لِلۡ?)?([^ً-ٰ])([ُِ])([وي])([^ً-ٰ])َىٰ?$',
+      ).firstMatch(bare);
+      if (madd != null && !(madd[2] == 'ُ' && 'يتن'.contains(madd[1]!))) {
+        return {294};
+      }
+      // فَعَالَى، فُعَالَى (يَتَٰمَىٰ، كُسَالَىٰ، فُرَٰدَىٰ، ٱلۡأَيَٰمَىٰ): «وَإِنْ ضُمَّ أَوْ
+      // يُفْتَحْ فَعَالَى فَحَصِّلَا» (294); with the fatha only those nouns, not
+      // a verb (تَعَٰلَىٰ، فَنَادَىٰ).
+      final faala = RegExp(
+        r'^(?:[وفبلك][َِ])?(?:ٱلۡ?|لِلۡ?)?([^ً-ٰ])([َُ])([^ً-ٰ])َ(?:ٰ|ا)([^ً-ٰ])َىٰ?$',
+      ).firstMatch(bare);
+      if (faala != null &&
+          (faala[2] == 'ُ' ||
+              const {
+                'يتم',
+                'أيم',
+                'نصر',
+                'سكر',
+              }.contains('${faala[1]}${faala[3]}${faala[4]}'))) {
+        return {294};
       }
     }
     if (_dhawatYa(poem, v, hafs)) return {291, 292, 293};

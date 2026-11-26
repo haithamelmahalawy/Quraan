@@ -71,12 +71,13 @@ class _PoemVerseState extends State<PoemVerse> {
                         textDirection: TextDirection.rtl,
                         style: style,
                       ),
-                      Text(
-                        bayt.ajz,
-                        textDirection: TextDirection.rtl,
-                        textAlign: TextAlign.end,
-                        style: style,
-                      ),
+                      if (bayt.ajz.isNotEmpty)
+                        Text(
+                          bayt.ajz,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.end,
+                          style: style,
+                        ),
                     ],
                   ),
                 ),

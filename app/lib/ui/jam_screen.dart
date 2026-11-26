@@ -1242,7 +1242,7 @@ class _JamScreenState extends State<JamScreen> {
                         TextSpan(
                           text:
                               '${poem.nameAr} (${_arabic(b.n)}): '
-                              '${b.sadr} ... ${b.ajz}',
+                              '${b.sadr}${b.ajz.isEmpty ? '' : ' ... ${b.ajz}'}',
                         ),
                       ],
                     ),

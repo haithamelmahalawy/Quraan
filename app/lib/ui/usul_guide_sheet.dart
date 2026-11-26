@@ -262,9 +262,11 @@ class _RiwayaSection extends StatelessWidget {
     final poem = Poem.of(riwaya);
     final names = [for (final s in quran.surahs) s.nameAr];
     final named = <int>{};
+    var majraha = false;
     for (final group in shown) {
       for (final kind in group.value) {
         final v = kind.value.first;
+        if (v.surah == 11 && v.ayah == 41) majraha = true;
         named.addAll(
           manzumat
               .referenceOf(
@@ -280,7 +282,8 @@ class _RiwayaSection extends StatelessWidget {
     }
     final verses = [
       for (final b in manzumat.verses(poem))
-        if (named.contains(b.n) && isUsulChapter(label, b)) b,
+        if (named.contains(b.n) && isUsulChapter(label, b))
+          manzumat.citedPart(poem, riwaya, b, majraha: majraha),
     ];
     final chapter = verses.isEmpty
         ? usulChapterVerses(manzumat, poem, label)

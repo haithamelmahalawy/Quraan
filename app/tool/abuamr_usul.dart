@@ -258,6 +258,23 @@ Map<String, int> buildAbuAmrUsul(
           {'context': '${w.t} $after'},
         ),
       );
+      // The next ayah's first word coloured as well, told once in the band
+      // (the user, 2026-11-26).
+      if (across && after.isNotEmpty) {
+        put(
+          row(
+            w.s,
+            w.a + 1,
+            0,
+            1,
+            '',
+            'u',
+            'بالإدغام الكبير وصلاً',
+            'idgham_kabir',
+            {'context': '${w.t} $after', 'noBand': true},
+          ),
+        );
+      }
     }
     final inWord = RegExp('([قك])[َُِ](ك)([َُِ])');
     for (final v in raw) {

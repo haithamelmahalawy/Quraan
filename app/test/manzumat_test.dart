@@ -9377,6 +9377,59 @@ void main() {
     },
   );
 
+  test('«مُوسَىٰ، عِيسَىٰ، يَتَٰمَىٰ» cite 294; the ra «وَمَا بَعْدَ رَاءٍ شَاعَ حُكْمًا» alone', () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_kisai', 'khallad']);
+    // «وَكَيْفَ جَرَتْ فَعْلَى فَفِيهَا وُجُودُهَا وَإِنْ ضُمَّ أَوْ يُفْتَحْ فَعَالَى
+    // فَحَصِّلَا» (the user, 2026-11-26).
+    for (final id in ['duri_kisai', 'khallad']) {
+      for (final (s, a, w) in [(2, 51, 2), (2, 87, 9), (2, 83, 13)]) {
+        final v = variants
+            .forBand({id}, s, a, w)
+            .firstWhere((v) => v.isImala && v.word == w);
+        final r = manzumat.referenceOf(
+          v,
+          quran.ayah(s, a).words[w],
+          s,
+          surahs,
+          entries: book.at(s, a, w),
+        );
+        expect(r.mention, {294}, reason: '$id $s:$a:$w');
+      }
+      // «وَبُشۡرَىٰ» (البقرة ٩٧): the half-bayt alone.
+      final v = variants
+          .forBand({id}, 2, 97, 16)
+          .firstWhere((v) => v.isImala && v.word == 16);
+      final r = manzumat.referenceOf(
+        v,
+        quran.ayah(2, 97).words[16],
+        2,
+        surahs,
+        entries: book.at(2, 97, 16),
+      );
+      final b = r.verses.firstWhere((b) => b.n == 311);
+      expect(b.sadr, 'وَمَا بَعْدَ رَاءٍ شَاعَ حُكْمًا', reason: id);
+      expect(b.ajz, isEmpty, reason: id);
+      // «مَجۡر۪ىٰهَا» (هود ٤١): the whole bayt, «يُوَالِي بِمَجْرَاهَا» (the
+      // user, 2026-11-26).
+      final m = variants
+          .forBand({id}, 11, 41, 5)
+          .firstWhere((v) => v.isUsul && v.isImala && v.word == 5);
+      final whole = manzumat
+          .referenceOf(
+            m,
+            quran.ayah(11, 41).words[5],
+            11,
+            surahs,
+            entries: book.at(11, 41, 5),
+          )
+          .verses
+          .firstWhere((b) => b.n == 311);
+      expect(whole.ajz, contains('بِمَجْرَاهَا'), reason: id);
+    }
+  });
+
   test(
     'the ba of the jussive into the fa cites «وَإِدْغَامُ بَاءِ الْجَزْمِ»',
     () async {
