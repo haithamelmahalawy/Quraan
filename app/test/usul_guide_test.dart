@@ -391,15 +391,15 @@ void main() {
       usulOfRiwaya(variants, quran, 'ruways')['الهمزتان من كلمتين'],
       hasLength(115),
     );
-    // Abu 'Amr's single hamza is told only at «ٱلَّٰٓـِٔي», in the chapter of
-    // the verified readers.
+    // al-Susi's single hamza in the chapter of the verified readers: his
+    // ibdal as Ibn Wardan's, and «ٱلَّٰٓـِٔي» (the user, 2026-11-26).
     expect(
       usulOfRiwaya(
         variants,
         quran,
         'susi',
       )['الهمز المفرد']!.map((v) => v.rule).toSet(),
-      {'hamza_mutatarrif', 'hamza_hadhf'},
+      containsAll({'ibdal_single', 'hamza_mutatarrif', 'hamza_hadhf'}),
     );
   });
 

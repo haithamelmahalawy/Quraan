@@ -36,6 +36,7 @@ part 'ashab_idgham.dart';
 part 'ashab_imala.dart';
 part 'ashab_waqf.dart';
 part 'ashab_waqf_middle.dart';
+part 'abuamr_usul.dart';
 
 const ashabSource = 'ashab_pdf';
 const ashabRiwayat = [
@@ -1267,6 +1268,22 @@ Map<String, int> buildAshabUsul(
       }
       return order[x]!.compareTo(order[y]!);
     });
+  _finishRows(id, quran, data, index, words, sources, book, counts);
+  return counts;
+}
+
+/// The corrections run on the rows once made, al-Ashab's and Abu 'Amr's
+/// alike, each guarded by its readers.
+void _finishRows(
+  String id,
+  Map quran,
+  Map data,
+  Map<String, _Word> index,
+  List<_Word> words,
+  AshabSources sources,
+  Map? book,
+  Map<String, int> counts,
+) {
   // An alif added to Hafs's rasm is the dagger one.
   applyDaggerAlif(quran, data['variants'] as List);
   // The small alif over a final ya where Hafs writes it (تَسَوَّىٰ، سَكۡرَىٰ،
@@ -3781,7 +3798,12 @@ Map<String, int> buildAshabUsul(
   // «ءَا۬عۡجَمِيّٞ» (فصلت ٤٤) with both hamzas whole, in «الهمزتان من كلمة» (the
   // user, 2026-11-16).
   for (final v in (data['variants'] as List).cast<List>()) {
-    if (v[0] == 41 && v[1] == 44 && v[2] == 8 && v[3] == 1 && v[5] != 'u') {
+    if (ashabRiwayat.contains(id) &&
+        v[0] == 41 &&
+        v[1] == 44 &&
+        v[2] == 8 &&
+        v[3] == 1 &&
+        v[5] != 'u') {
       v[4] = 'ءَأَعۡجَمِيّٞ';
       v[5] = 'h';
       v[6] = 'بتحقيق الهمزتين';
@@ -4318,7 +4340,6 @@ Map<String, int> buildAshabUsul(
         v[2] == 28 &&
         v[7] == 'idgham_bila_ghunna',
   );
-  return counts;
 }
 
 /// The farsh the user set (2026-11-12) where the book's rows fall short.

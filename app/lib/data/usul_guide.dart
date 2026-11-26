@@ -42,6 +42,9 @@ const usulUnifiedRiwayat = {
   'duri_kisai',
   'ishaq',
   'idris',
+  // Abu 'Amr, by tool/build_abuamr_usul.dart.
+  'duri_abuamr',
+  'susi',
 };
 
 /// The words told in «مد الفرق», a kind of «الهمزتان من كلمة»: the
