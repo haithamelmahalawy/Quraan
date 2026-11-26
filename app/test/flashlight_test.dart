@@ -64,10 +64,11 @@ void main() {
     expect(word, findsOneWidget);
     final target = t.getCenter(word);
     final from = t.getCenter(lamp);
-    // The beam's tip is above the lamp's head.
+    // The lamp held is its body; the beam above it.
     final gesture = await t.startGesture(from);
-    // In small steps, as a finger moves, toward where the beam's tip (its
-    // top, at its middle) is on the word.
+    // In small steps, as a finger moves, toward where the beam's lowest light
+    // (at the lens) is on the word: any part of the beam lights it (the
+    // user, 2026-11-26).
     for (var i = 0; i < 120; i++) {
       final at = t.getTopLeft(lamp);
       final tip = at + const Offset(Flashlight.width / 2, 1);

@@ -62,14 +62,30 @@ class _FlashlightState extends State<Flashlight> {
   Offset _tip(Size area) =>
       Offset(_at.dx * area.width + Flashlight.width / 2, _at.dy * area.height);
 
-  /// The word any part of the beam's top touches (the user, 2026-11-26):
-  /// its edge and a little below it, across its width, the middle first.
+  /// The beam's light over the area: its cone's box.
+  Rect _beam(Size area) {
+    final tip = _tip(area);
+    return Rect.fromLTWH(
+      tip.dx - Flashlight.width / 2,
+      tip.dy,
+      Flashlight.width,
+      Flashlight.beamHeight,
+    );
+  }
+
+  /// The word any part of the beam touches, its top first (the user,
+  /// 2026-11-26): the whole light down to the lens, across its width as it
+  /// narrows, the middle first. The beam lets the touch through to the words
+  /// (it took the probe for itself, the words under it unseen).
   (WordTag, Rect)? _touched(RenderBox box, Size area) {
     final tip = _tip(area);
-    const across = [0.0, -.25, .25, -.45, .45];
-    const down = [0.0, 4.0, 8.0];
-    for (final dy in down) {
-      for (final dx in across) {
+    const across = [0.0, -.15, .15, -.3, .3, -.45, .45];
+    for (var dy = 0.0; dy <= Flashlight.beamHeight; dy += 3) {
+      // The cone from the full width at its top to .4 of it at the lens.
+      final half = .5 - .3 * dy / Flashlight.beamHeight;
+      for (final f in across) {
+        if (f.abs() > half) continue;
+        final dx = f;
         final result = HitTestResult();
         WidgetsBinding.instance.hitTestInView(
           result,
@@ -99,6 +115,9 @@ class _FlashlightState extends State<Flashlight> {
     if (box is! RenderBox) return;
     final touched = _touched(box, area);
     if (touched == null) {
+      // Kept while the light is still on the word (between its letters).
+      final lit = _wordRect;
+      if (lit != null && _beam(area).overlaps(lit)) return;
       if (_tag != null) {
         setState(() {
           _tag = null;
@@ -135,9 +154,22 @@ class _FlashlightState extends State<Flashlight> {
         children: [
           if (lit && rect != null)
             _panelOver(area, rect, (at.dy * area.height) + Flashlight.height),
+          // The light drawn, the touch through it to the words beneath.
           Positioned(
             left: at.dx * area.width,
             top: at.dy * area.height,
+            child: IgnorePointer(
+              child: SizedBox(
+                width: Flashlight.width,
+                height: Flashlight.height,
+                child: CustomPaint(painter: _Beam(lit: lit)),
+              ),
+            ),
+          ),
+          // The body held and dragged.
+          Positioned(
+            left: at.dx * area.width,
+            top: at.dy * area.height + Flashlight.beamHeight,
             child: GestureDetector(
               key: const ValueKey('flashlight'),
               behavior: HitTestBehavior.opaque,
@@ -174,10 +206,9 @@ class _FlashlightState extends State<Flashlight> {
               child: Tooltip(
                 triggerMode: TooltipTriggerMode.manual,
                 message: 'الكشاف: اسحبه حتى يلمس شعاعه كلمة',
-                child: SizedBox(
+                child: const SizedBox(
                   width: Flashlight.width,
-                  height: Flashlight.height,
-                  child: CustomPaint(painter: _Beam(lit: lit)),
+                  height: Flashlight.bodyHeight,
                 ),
               ),
             ),
