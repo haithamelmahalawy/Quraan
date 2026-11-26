@@ -39,7 +39,7 @@ class Flashlight extends StatefulWidget {
   /// The flashlight's body and its beam above it.
   static const width = 34.0;
   static const bodyHeight = 34.0;
-  static const beamHeight = 46.0;
+  static const beamHeight = 22.0;
   static const height = bodyHeight + beamHeight;
 
   @override
@@ -102,7 +102,8 @@ class _FlashlightState extends State<Flashlight> {
       return Stack(
         clipBehavior: Clip.none,
         children: [
-          if (lit && rect != null) _panelOver(area, rect),
+          if (lit && rect != null)
+            _panelOver(area, rect, (at.dy * area.height) + Flashlight.height),
           Positioned(
             left: at.dx * area.width,
             top: at.dy * area.height,
@@ -148,8 +149,9 @@ class _FlashlightState extends State<Flashlight> {
   );
 
   /// The panel right above the word (under it, where the page's top leaves
-  /// no room), across most of the page, the words beneath covered.
-  Widget _panelOver(Size area, Rect word) {
+  /// no room, and below the flashlight then), across most of the page, the
+  /// words beneath covered.
+  Widget _panelOver(Size area, Rect word, double lampBottom) {
     final width = area.width * .94;
     final left = (word.center.dx - width / 2)
         .clamp(4.0, area.width - width - 4)
@@ -159,7 +161,10 @@ class _FlashlightState extends State<Flashlight> {
       key: const ValueKey('flashlight-panel'),
       left: left,
       width: width,
-      top: above ? null : word.bottom + 4,
+      // Under the flashlight, not over it.
+      top: above
+          ? null
+          : (lampBottom > word.bottom ? lampBottom : word.bottom) + 4,
       bottom: above ? area.height - word.top + 4 : null,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: area.height * .5),
@@ -214,8 +219,8 @@ class _Beam extends CustomPainter {
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
           colors: [
-            light.withAlpha(lit ? 200 : 140),
-            light.withAlpha(lit ? 70 : 25),
+            light.withAlpha(lit ? 150 : 110),
+            light.withAlpha(lit ? 50 : 25),
           ],
         ).createShader(Rect.fromLTWH(0, 0, w, beam)),
     );
@@ -224,31 +229,50 @@ class _Beam extends CustomPainter {
       Offset(w * .15, 1),
       Offset(w * .85, 1),
       Paint()
-        ..color = light.withAlpha(lit ? 255 : 170)
+        ..color = light.withAlpha(255)
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round,
     );
     // The body: the head holding the lens, then the handle.
+    // Solid, to be seen on the page; its beam light, the verse read through
+    // it (the user, 2026-11-26).
     final ink = MushafColors.green;
     final head = RRect.fromRectAndCorners(
       Rect.fromLTWH(w * .18, beam, w * .64, 10),
       topLeft: const Radius.circular(3),
       topRight: const Radius.circular(3),
     );
-    canvas.drawRRect(head, Paint()..color = ink);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * .32, beam + 10, w * .36, Flashlight.bodyHeight - 12),
-        const Radius.circular(3),
-      ),
-      Paint()..color = ink,
+    final handle = RRect.fromRectAndRadius(
+      Rect.fromLTWH(w * .32, beam + 10, w * .36, Flashlight.bodyHeight - 12),
+      const Radius.circular(3),
     );
+    // The whole body at 70% (the user, 2026-11-26): its shadow, edge and
+    // switch with it.
+    canvas.saveLayer(
+      Offset.zero & size,
+      Paint()..color = const Color.fromRGBO(0, 0, 0, .7),
+    );
+    // A soft shadow under it, then a thin gold edge, clear on the page.
+    final shadow = Paint()
+      ..color = const Color(0x55000000)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+    canvas.drawRRect(head.shift(const Offset(0, 1)), shadow);
+    canvas.drawRRect(handle.shift(const Offset(0, 1)), shadow);
+    final edge = Paint()
+      ..color = light
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    for (final part in [head, handle]) {
+      canvas.drawRRect(part, Paint()..color = ink);
+      canvas.drawRRect(part, edge);
+    }
     // Its switch.
     canvas.drawCircle(
       Offset(w / 2, beam + 18),
       2.5,
       Paint()..color = lit ? light : MushafColors.paper,
     );
+    canvas.restore();
   }
 
   @override
