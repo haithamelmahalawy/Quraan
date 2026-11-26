@@ -14,6 +14,7 @@ import 'package:qiraat_mushaf/ui/theme.dart';
 /// chosen riwaya's difference (the user, 2026-11-26).
 void main() {
   modes();
+  ten();
   testWidgets('the flashlight over a differing word', (t) async {
     late Mushafs mushafs;
     late VariantRepository variants;
@@ -135,5 +136,46 @@ void modes() {
     expect(panel(FlashMode.all), isNotNull);
     expect(panel(FlashMode.hamesh), isNotNull);
     expect(panel(FlashMode.shown), isNull);
+  });
+}
+
+/// «العشر»: every riwaya of the ten, chosen or not (the user, 2026-11-26).
+void ten() {
+  testWidgets('«العشر» tells the readers not chosen', (t) async {
+    late Mushafs mushafs;
+    late VariantRepository variants;
+    await t.runAsync(() async {
+      await (FontLoader(
+        'Hafs',
+      )..addFont(rootBundle.load('assets/fonts/hafs.18.ttf'))).load();
+      mushafs = await Mushafs.load();
+      variants = await VariantRepository.discover();
+      await variants.ensureLoaded(variants.available);
+    });
+    final quran = mushafs.of(MushafEdition.madani);
+    final s = ReaderSettings.memory(selected: {'khallad', 'ibn_dhakwan'})
+      ..flashMode = FlashMode.ten;
+    final panel = flashlightPanel(
+      ayah: quran.ayah(2, 10),
+      word: 11,
+      quran: quran,
+      variants: variants,
+      settings: s,
+      onWordTap: (_, _) {},
+    );
+    expect(panel, isNotNull);
+    await t.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Material(child: SingleChildScrollView(child: panel)),
+        ),
+      ),
+    );
+    // Nafi', Ibn Kathir and the others, not chosen, read «يُكَذِّبُونَ»,
+    // grouped by their qari.
+    expect(find.textContaining('نافع', findRichText: true), findsWidgets);
+    // The chosen ones left as they were.
+    expect(s.selected, {'khallad', 'ibn_dhakwan'});
   });
 }

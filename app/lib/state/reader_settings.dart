@@ -301,6 +301,21 @@ class ReaderSettings extends ChangeNotifier {
     .._selected = {...selected}
     .._mode = mode;
 
+  /// These choices with every riwaya of [ids] chosen, kept in memory alone:
+  /// what «الكشاف» tells under «العشر» (the user, 2026-11-26).
+  ReaderSettings withChosen(Set<String> ids) {
+    final copy = ReaderSettings._(null)
+      .._selected = {...ids}
+      .._mode = _mode
+      .._kinds = {..._kinds};
+    for (final key in _prefs?.getKeys() ?? const <String>{}) {
+      final value = _prefs!.get(key);
+      if (value != null) copy._memory[key] = value;
+    }
+    copy._memory.addAll(_memory);
+    return copy;
+  }
+
   void setSelected(Set<String> ids) {
     _selected = {...ids};
     _prefs?.setStringList('selected', _selected.toList());
@@ -424,7 +439,8 @@ enum WordSwap {
 enum FlashMode {
   all('الكل', 'أصول وفرش كل الروايات المختارة'),
   shown('المعروضة', 'أصول وفرش الرواية المعروضة وحدها'),
-  hamesh('الهوامش', 'أصول وفرش روايات الهامش دون المعروضة');
+  hamesh('الهوامش', 'أصول وفرش روايات الهامش دون المعروضة'),
+  ten('العشر', 'أصول وفرش القراء العشر كلهم، المختارين وغيرهم');
 
   const FlashMode(this.labelAr, this.hintAr);
 

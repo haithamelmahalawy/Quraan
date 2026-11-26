@@ -6904,6 +6904,26 @@ Widget? flashlightPanel({
   required ReaderSettings settings,
   required WordTap onWordTap,
 }) {
+  // «العشر»: every riwaya of the Shatibiyya and the Durrah, chosen or not,
+  // loaded first (the user, 2026-11-26).
+  if (settings.flashMode == FlashMode.ten) {
+    final all = {
+      for (final q in qiraat)
+        for (final r in q.riwayat)
+          if (r.id != hafsId && variants.isAvailable(r.id)) r.id,
+    };
+    if (!all.every(variants.isLoaded)) {
+      variants.ensureLoaded(all.toList());
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: Text(
+          'جارٍ تحميل الروايات العشر… مرّر الكشاف على الكلمة مرة أخرى',
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+    settings = settings.withChosen(all);
+  }
   final before = word > 0
       ? (ayah, word - 1)
       : ayah.number > 1
@@ -6923,6 +6943,7 @@ Widget? flashlightPanel({
     FlashMode.all => true,
     FlashMode.shown => id == shownId,
     FlashMode.hamesh => id != shownId,
+    FlashMode.ten => true,
   };
   _UsulItem? only(_UsulItem i) {
     final rows = i.readings.where((v) => wanted(v.riwayaId)).toList();
