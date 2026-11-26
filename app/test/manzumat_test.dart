@@ -9593,4 +9593,16 @@ void main() {
       expect(r.mention, {390}, reason: id);
     }
   });
+  test('the ya before the article cites 407', () async {
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['qalun', 'bazzi']);
+    // «عَهۡدِي ٱلظَّٰلِمِينَ» (البقرة ١٢٤): «وَفِي اللاَّمِ لِلتَّعْرِيفِ أَرْبَعُ عَشْرَةٍ
+    // فَإِسْكَانُهَا فَاشٍ وَعَهْدِيَ فِي عُلَا».
+    for (final id in ['qalun', 'bazzi']) {
+      final v = variants
+          .at([id], 2, 124, 17)
+          .firstWhere((v) => v.rule == 'ya_idafa');
+      expect(manzumat.referenceOf(v, '', 2, surahs).mention, {407}, reason: id);
+    }
+  });
 }

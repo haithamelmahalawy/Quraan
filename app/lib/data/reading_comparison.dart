@@ -329,7 +329,10 @@ String _lexicalKey(Ayah ayah, List<Variant> rows, int from, int to) {
           v.description.contains('وجهًا واحدًا') ||
           // A silah of the farsh, where Hafs reads none (يَرۡضَهُۥ الزمر ٧):
           // a difference of the word, in the hamesh (the user, 2026-11-16).
-          v.description.contains('بمد الصلة'))
+          v.description.contains('بمد الصلة') ||
+          // A vowel stolen, written as Hafs (al-Duri's «وَأَرِنَا» «باختلاس
+          // كسرة الراء»): a difference of the word (the user, 2026-11-26).
+          v.description.contains('اختلاس'))
         '${v.word - from}:faces:${_descriptionKey(v.description)}',
       if (_yaIdafa(v) case final ya? when ya != _hafsYa(ayah, v.word))
         '${v.word - from}:ya:$ya',

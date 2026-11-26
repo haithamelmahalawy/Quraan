@@ -1594,6 +1594,18 @@ class Manzumat {
         yaBeforeOpenHamza.contains('${v.surah}:${v.ayah}:${v.word}')) {
       return {390};
     }
+    // The ya of the speaker before the article, its fourteen (عَهۡدِيَ
+    // ٱلظَّٰلِمِينَ، رَبِّيَ ٱلَّذِي): «وَفِي اللاَّمِ لِلتَّعْرِيفِ أَرْبَعُ عَشْرَةٍ
+    // فَإِسْكَانُهَا فَاشٍ وَعَهْدِيَ فِي عُلَا» (407), for every reader of the
+    // Shatibiyya (the user, 2026-11-26).
+    if (poem == Poem.shatibiyya &&
+        (v.rule == 'ya_idafa' || v.description.contains('ياء الإضافة')) &&
+        yaBeforeArticle.contains('${v.surah}:${v.ayah}:${v.word}') &&
+        // Those who open it, and «عَهۡدِي» of all; a quiet one with a bayt of
+        // its own keeps it («لِعِبَادِيْ»، 408).
+        (v.description.contains('فتح') || v.surah == 2 && v.ayah == 124)) {
+      return {407};
+    }
     // Al-Susi's quiet hamza made a madd letter (يُؤۡمِنُونَ، يَأۡكُلُونَ، بِئۡرٖ):
     // «وَيُبْدَلُ لِلسُّوسِيِّ كُلُّ مُسَكَّنٍ مِنَ الْهَمْزِ مَدًّا غَيْرَ مَجْزُومٍ
     // اْهْمِلَا» (216) (the user, 2026-11-26).

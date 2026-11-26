@@ -151,6 +151,29 @@ Map<String, int> buildAbuAmrUsul(
     if (!saghir.hasMatch(how) && !hal) continue;
     put(taken(v, 'duri_kisai'));
   }
+  // ذال «إذ» في الجيم (وَإِذ جَّعَلۡنَا): أبو عمرو يدغمها، والكسائي لا، فلم
+  // تُنقل من صفوفه (المستخدم، 2026-11-26).
+  for (final w in words) {
+    final n = next(w);
+    if (n == null || !n.t.startsWith('ج')) continue;
+    if (!RegExp(r'^[وف]?َ?إِذۡ$')
+        .hasMatch(w.t.replaceAll(RegExp('[ۖ-ۜ]'), ''))) {
+      continue;
+    }
+    if (told.contains(_key(w.s, w.a, w.w))) continue;
+    put(
+      row(
+        w.s,
+        w.a,
+        w.w,
+        2,
+        '${w.t.replaceFirst('ۡ', '')} ${n.t.replaceFirst('ج', 'جّ')}',
+        'u',
+        'بإدغام الذال في الجيم',
+        'idgham_saghir',
+      ),
+    );
+  }
   // «وَيُعَذِّب مَّن» كقالون.
   for (final v in sources.qalun) {
     if ('${v[6]}'.startsWith('بإدغام الباء في الميم')) put(taken(v, 'qalun'));

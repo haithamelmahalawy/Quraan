@@ -40,6 +40,11 @@ typedef WordTap = void Function(Ayah ayah, int word);
 
 const _ashabSilah = {'qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz'};
 
+/// The riwayat whose eased hamza is drawn on Hafs's word, the tasheel dot in
+/// its hamza's place (شُهَدَآءَ إِ۬ذۡ): Ashab al-Silah, and Abu 'Amr alike (the
+/// user, 2026-11-26).
+const _easedOnHafs = {..._ashabSilah, 'duri_abuamr', 'susi'};
+
 /// A quiet ya of the idafa before a hamza, told with its madd (مَّعِيٓ أَوۡ،
 /// the user, 2026-11-17).
 const _yaWithMadd = 'بإسكان ياء الإضافة مع المد المنفصل';
@@ -1900,7 +1905,7 @@ class _MushafPageState extends State<MushafPage>
         text = _signed(imala, text, imala.text.isEmpty ? null : imala.text);
       }
       return (
-        text: _ashabSilah.contains(s.displayed)
+        text: _easedOnHafs.contains(s.displayed)
             ? _easedAsHafs(text, ayah.words[w], v.kind == VariantKind.hamza)
             : text,
         font: 'Hafs',
@@ -2145,7 +2150,7 @@ class _MushafPageState extends State<MushafPage>
             .firstOrNull;
 
   (int, String)? _easedHamzaAt(Ayah ayah, int w, String drawn) =>
-      _ashabSilah.contains(widget.settings.displayed) ||
+      _easedOnHafs.contains(widget.settings.displayed) ||
           // Another reader's eased hamza on its seat with the same mark
           // (أبو عمرو «أَٰئِ۬نَّكُمۡ», the user, 2026-11-20).
           !const {'ruways', 'warsh'}.contains(widget.settings.displayed) &&
