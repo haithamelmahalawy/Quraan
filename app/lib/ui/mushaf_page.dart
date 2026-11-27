@@ -1641,8 +1641,14 @@ class _MushafPageState extends State<MushafPage>
         : ayah.number < widget.quran.surahs[ayah.surah - 1].ayahCount
         ? widget.quran.ayah(ayah.surah, ayah.number + 1).words.first
         : '';
+    // Abu 'Amr's separated madd short too, for both his narrators (إِلَّا
+    // أَن; the user, 2026-11-27).
+    final abuAmr = const {
+      'duri_abuamr',
+      'susi',
+    }.contains(widget.settings.displayed);
     final shortMadd =
-        isYaqub &&
+        (isYaqub || abuAmr) &&
         ((RegExp(r'^[ءأإؤئآ]').hasMatch(nextWord) &&
                 withoutSeparatedMaddSign(ayah.words[w]) != ayah.words[w]) ||
             withoutJoinedSeparatedMaddSign(ayah.words[w]) != ayah.words[w] ||
