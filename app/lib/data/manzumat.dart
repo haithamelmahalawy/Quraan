@@ -1228,6 +1228,11 @@ class Manzumat {
       ? {}
       : v.rule == 'hamza_zaida' && RegExp('^(هُزُؤ|كُفُؤ)').hasMatch(v.text)
       ? {460, 461}
+      // «زَكَرِيَّآءُ» with its hamza, every reader of it, not Nafi''s bayt:
+      // «وَقُلْ زَكَرِيَّا دُونَ هَمْزِ جَمِيعِهِ صِحَابٌ وَرَفْعٌ غَيْرُ شُعْبَةَ
+      // الاُوَّلَا» (the user, 2026-11-27).
+      : v.rule == 'hamza_zaida' && _letters(v.text).contains('زكرياء')
+      ? {553}
       : v.rule == 'hamza_zaida'
       ? {458}
       : v.rule == 'hamza_hadhf'

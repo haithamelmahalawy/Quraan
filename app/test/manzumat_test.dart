@@ -45,6 +45,21 @@ void main() {
     surahs,
   );
 
+  test('«زَكَرِيَّآءُ» with its hamza cites its own bayt, not Nafi''s', () {
+    for (final id in ['duri_abuamr', 'susi', 'shubah', 'ibn_dhakwan']) {
+      final r = ref(
+        id,
+        3,
+        'زَكَرِيَّا',
+        text: 'زَكَرِيَّآءُ',
+        description: 'بزيادة الهمزة والمد',
+        rule: 'hamza_zaida',
+        kind: VariantKind.hamza,
+      );
+      expect(r.mention, {553}, reason: id);
+    }
+  });
+
   test("Abu Ja'far's sakt of the opening letters cites the Durrah", () {
     for (final id in ['ibn_wardan', 'ibn_jammaz']) {
       final r = ref(

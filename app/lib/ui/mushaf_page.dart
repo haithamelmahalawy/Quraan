@@ -1907,6 +1907,30 @@ class _MushafPageState extends State<MushafPage>
       if (v.count > 1 && parts.length == v.count) {
         for (var i = 0; i < parts.length; i++) {
           final at = i == 0 ? base : _baseAt(widget.variants, s, ayah, w + i);
+          // A word of the row read with its own ibdal: drawn with it, its
+          // first letter doubled still (al-Susi's «قَد جِّيتُكُم»; the user,
+          // 2026-11-27), its usul each told apart.
+          final ibdal = i == 0
+              ? null
+              : at
+                    .where(
+                      (r) =>
+                          r.word == w + i &&
+                          r.count == 1 &&
+                          // Or its big idgham within it (وَلَقَد صَّدَقكُّمُ).
+                          const {
+                            'ibdal_single',
+                            'idgham_kabir',
+                          }.contains(r.rule) &&
+                          r.text.isNotEmpty,
+                    )
+                    .firstOrNull;
+          if (ibdal != null) {
+            final doubled = RegExp(r'^.[ً-ْ]*ّ').hasMatch(parts[i]);
+            parts[i] = doubled && !RegExp(r'^.[ً-ْ]*ّ').hasMatch(ibdal.text)
+                ? '${ibdal.text[0]}ّ${ibdal.text.substring(1)}'
+                : ibdal.text;
+          }
           if (_ownImala(at, w + i) case final imala?) {
             parts[i] = _signed(
               imala,
@@ -4572,7 +4596,9 @@ List<Variant> _abuAmrIskan(List<Variant> rows) {
       .firstOrNull;
   if (susi == null) return rows;
   final m = twoFaces.firstMatch(duri.description)!;
-  final told = 'بإسكان ${m[1]}، وللدوري وجه ب${m[2]}، والإسكان هو المقدّم';
+  final told =
+      'بإسكان ${m[1]}، وللدوري وجه ب${m[2]}، والإسكان هو المقدّم'
+      '${_bySusiIbdal(duri, susi) ? _withSusiIbdal : ''}';
   Variant as(Variant v) => Variant(
     riwayaId: v.riwayaId,
     surah: v.surah,
@@ -4591,6 +4617,60 @@ List<Variant> _abuAmrIskan(List<Variant> rows) {
     for (final v in rows)
       if (identical(v, duri) || identical(v, susi)) as(v) else v,
   ];
+}
+
+/// Told after Abu 'Amr's word where al-Susi reads it with his ibdal.
+const _withSusiIbdal = '، مع الإبدال للسوسي';
+
+/// Whether al-Susi's [susi] is al-Duri's [duri] with its hamza changed
+/// (نُوتِهۡ، نُؤۡتِهۡ).
+bool _bySusiIbdal(Variant duri, Variant susi) {
+  String seatless(String t) => t
+      .replaceAll(RegExp('[ً-ٰٓ-ٕۖ-ۭ]'), '')
+      .replaceAll('ؤ', 'و')
+      .replaceAll('ئ', 'ي')
+      .replaceAll(RegExp('[أآ]'), 'ا');
+  return duri.text != susi.text && seatless(duri.text) == seatless(susi.text);
+}
+
+/// Abu 'Amr's farsh read alike by both, al-Susi's word with his ibdal
+/// (نُؤۡتِهۡ، نُوتِهۡ): both narrators chosen, one line, al-Duri's word,
+/// «بإسكان الهاء، مع الإبدال للسوسي» (the user, 2026-11-27).
+List<Variant> _abuAmrIbdal(List<Variant> rows) {
+  for (final duri in rows.where(
+    (v) => v.riwayaId == 'duri_abuamr' && !v.isUsul,
+  )) {
+    final susi = rows
+        .where(
+          (v) =>
+              v.riwayaId == 'susi' &&
+              !v.isUsul &&
+              v.word == duri.word &&
+              v.description == duri.description &&
+              _bySusiIbdal(duri, v),
+        )
+        .firstOrNull;
+    if (susi == null) continue;
+    Variant as(Variant v) => Variant(
+      riwayaId: v.riwayaId,
+      surah: v.surah,
+      ayah: v.ayah,
+      word: v.word,
+      count: v.count,
+      text: duri.text,
+      kind: v.kind,
+      description: '${duri.description}$_withSusiIbdal',
+      rule: v.rule,
+      certified: v.certified,
+      stopOnly: v.stopOnly,
+      hamesh: v.hamesh,
+    );
+    return [
+      for (final v in rows)
+        if (identical(v, duri) || identical(v, susi)) as(v) else v,
+    ];
+  }
+  return rows;
 }
 
 /// Hafs beside an ikhtilas (al-Duri's «وَأَرِنَا»): his row told with its own
@@ -4650,10 +4730,12 @@ List<HameshEntry> _entriesOf(
       // farsh, only what the certified source states.
       final own = m.shown.where((v) => v.word == w && v.inHamesh).toList();
       final starting = _hafsAgainstIkhtilas(
-        _abuAmrIskan([
-          ...own,
-          ..._otherBodies(variants, settings, ayah, w, m.shown),
-        ]),
+        _abuAmrIbdal(
+          _abuAmrIskan([
+            ...own,
+            ..._otherBodies(variants, settings, ayah, w, m.shown),
+          ]),
+        ),
       );
       if (starting.isEmpty) continue;
       final end = starting

@@ -433,24 +433,30 @@ Map<String, int> buildAbuAmrUsul(
       },
     ]);
   }
-  // «أَؤُنَبِّئُكُم» (آل عمران ١٥) مثلها.
-  if (!told.contains('3:15:1')) {
+  // «أَؤُنَبِّئُكُم» (آل عمران ١٥): بوجهين، التسهيل مع الإدخال ومن غير
+  // إدخال، ويُرسم بلا إدخال (المستخدم، 2026-11-27)؛ لا كقالون بالإدخال وحده.
+  {
     final w = index['3:15:1']!;
+    rows.removeWhere(
+      (r) => r[0] == 3 && r[1] == 15 && r[2] == 1 && r[7] == 'tasheel_word',
+    );
+    told.remove('3:15:1');
     put(
       row(
         3,
         15,
         1,
         1,
-        w.t.replaceFirst('ؤُ', 'ٰءُ۬'),
+        // Hafs's word, its second hamza eased, no alif between the two.
+        noSilah(w.t.replaceFirst('ؤُ', 'ؤُ۬')),
         'h',
-        'بوجهين: تسهيل الهمزة الثانية مع الإدخال، وهو المقدّم؛ أو تسهيلها بلا إدخال',
+        'بوجهين: تسهيل الهمزة الثانية مع الإدخال؛ أو التسهيل من غير إدخال',
         'tasheel_word',
         {
           'context': w.t,
           'ways': const [
-            'تسهيل الهمزة الثانية مع الإدخال، وهو المقدّم',
-            'تسهيلها بلا إدخال',
+            'تسهيل الهمزة الثانية مع الإدخال',
+            'التسهيل من غير إدخال',
           ],
         },
       ),
@@ -689,7 +695,7 @@ Map<String, int> buildAbuAmrUsul(
         );
       }
     }
-    final stems = RegExp(r'^(بارئكم|يأمركم|ينصركم|يشعركم|يأمرهم|تأمرهم)$');
+    final stems = RegExp(r'^أ?(بارئكم|يأمركم|ينصركم|يشعركم|يأمرهم|تأمرهم)$');
     for (final r in rows) {
       if (r[5] != 'f' || !'${r[6]}'.startsWith('بإسكان')) continue;
       final w = index[_key(r[0], r[1], r[2])];
@@ -854,6 +860,101 @@ Map<String, int> buildAbuAmrUsul(
     if (r[5] != 'f' || '${r[6]}'.isNotEmpty) continue;
     final wording = _abuAmrBookWording['${r[0]}:${r[1]}:${r[2]}'];
     if (wording != null) r[6] = wording;
+  }
+
+  // «نُؤۡتِهۡ» (آل عمران ١٤٥ معًا، الشورى ٢٠): al-Susi's as al-Duri's, its
+  // farsh «بإسكان الهاء», his ibdal under its asl, «نُوتِهۡ» (not Ibn
+  // Wardan's row of the two told as one, nor an ibdal with the silah; the
+  // user, 2026-11-27).
+  if (susi) {
+    final joined = RegExp(r'^(بإبدال الهمزة \S+) و(إسكان الهاء)$');
+    for (final r in [...rows]) {
+      final m = r[5] == 'h' ? joined.firstMatch('${r[6]}') : null;
+      if (m == null) continue;
+      rows.removeWhere(
+        (o) =>
+            o[0] == r[0] &&
+            o[1] == r[1] &&
+            o[2] == r[2] &&
+            o[7] == 'ibdal_single' &&
+            !identical(o, r),
+      );
+      r[6] = m[1];
+      (r[8] as Map).remove('farshFrom');
+      rows.add(
+        row(r[0], r[1], r[2], 1, '${r[4]}', 'f', 'ب${m[2]}', '', {
+          'farshFrom': 'shubah',
+        }),
+      );
+    }
+  }
+
+  // The ra into the ra across an ayah's end the source left out (ٱلنَّارِ ۝
+  // رَّبَّنَآ، ٱلۡأَبۡرَارِ ۝ رَّبَّنَا، آل عمران ١٩١، ١٩٣): the first ra bare, the
+  // second doubled, as the others across an ayah (the user, 2026-11-27).
+  if (susi) {
+    for (final (s, a) in const [(3, 191), (3, 193)]) {
+      final last = words.lastWhere((w) => w.s == s && w.a == a);
+      // Its imala or another asl on it besides: only another big idgham
+      // there keeps it out.
+      if (rows.any(
+        (r) =>
+            r[7] == 'idgham_kabir' &&
+            _key(r[0], r[1], r[2]) == _key(s, a, last.w),
+      )) {
+        continue;
+      }
+      final first = index[_key(s, a + 1, 0)]!;
+      final context = {'context': '${last.t} ${first.t}'};
+      put(row(s, a, last.w, 1, '', 'u', 'بالإدغام الكبير وصلاً',
+          'idgham_kabir', context));
+      // The next ayah's word told with it, not apart (its farsh kept).
+      rows.add(row(s, a + 1, 0, 1, '', 'u', 'بالإدغام الكبير وصلاً',
+          'idgham_kabir', {...context, 'noBand': true}));
+    }
+  }
+
+  // The qaf merged into the kaf within a word (صَدَقكُّمُ، نَرۡزُقكُّمۡ،
+  // فَنُغۡرِقكُّم): al-Susi's big idgham, as «خَلَقكُّمۡ», not a farsh «بإسكان
+  // القاف وتشديد الكاف»; «فَنُغۡرِقَكُم» keeps its farsh «بالنون» (the user,
+  // 2026-11-27).
+  if (susi) {
+    const merged = 'إسكان القاف وتشديد الكاف';
+    for (final r in [...rows]) {
+      final how = '${r[6]}';
+      if (r[5] != 'f' || !how.endsWith(merged)) continue;
+      final text = '${r[4]}';
+      // The word as the big idgham writes it, its first letter as Hafs's
+      // (its doubling another idgham's).
+      final kabir = text.replaceFirstMapped(
+        RegExp(r'^([^ً-ْ]+?[ً-ِ]?)ّ'),
+        (m) => m[1]!,
+      );
+      rows.remove(r);
+      put(row(r[0], r[1], r[2], 1, kabir, 'u', 'بالإدغام الكبير',
+          'idgham_kabir'));
+      final rest = how.substring(0, how.length - merged.length).trim();
+      if (rest.endsWith(' و')) {
+        // Its own farsh besides (بالنون): the word unmerged.
+        put(row(r[0], r[1], r[2], 1,
+            kabir.replaceFirst(RegExp('قك[ًٌٍَُِّ]+'), 'قَكُ'), 'f',
+            rest.substring(0, rest.length - 2), ''));
+      }
+    }
+  }
+
+  // «زَكَرِيَّآءُ» told under «زيادة الهمز» in every place, so its places on
+  // a page alike are told together (آل عمران ٣٧ «(معًا)»; the first was
+  // taken from Ibn Wardan's row without its asl; the user, 2026-11-27).
+  for (final r in rows) {
+    if (r[5] == 'h' &&
+        '${r[7]}'.isEmpty &&
+        '${r[6]}'.startsWith('بزيادة الهمزة') &&
+        '${r[4]}'
+            .replaceAll(RegExp('[ً-ٰٓ-ٕۖ-ۭ]'), '')
+            .contains('زكرياء')) {
+      r[7] = 'hamza_zaida';
+    }
   }
 
   // By place, the rows of one word in the order made.
@@ -1135,6 +1236,35 @@ void _abuAmrFinalAlif(
     }
     r[6] = '${r[6]}'.contains('وقفًا') ? 'بالتقليل وقفًا' : 'بالتقليل';
     taqlilAt.add(_key(r[0], r[1], r[2]));
+  }
+  // The book's own taqlil rows (al-Kharouf's) by the same rule: not on a
+  // word his rule does not lean (مَأۡوَىٰهُمۡ; the user, 2026-11-27).
+  for (final r in rows) {
+    if (r[5] != 'u' || !'${r[6]}'.startsWith('بالتقليل')) continue;
+    if (r[8] is! Map || (r[8] as Map)['book'] != 'kharouf') continue;
+    final w = index[_key(r[0], r[1], r[2])];
+    if (w == null) continue;
+    final letters = _bare(w.t).replaceAll('ٰ', '');
+    final stem = letters.replaceFirst(RegExp('[ىا]$pronoun\$'), '');
+    final kept =
+        !finalAlif.hasMatch(letters) ||
+        stem.endsWith('ر') ||
+        falaPattern(w.t) ||
+        elevenSurahs.contains(w.s) && lastWord['${w.s}:${w.a}'] == w.w ||
+        RegExp(r'^[وف]?(?:يَٰ)?(أنى|يويلتى|يحسرتى|موسى|عيسى|يموسى|يعيسى)$')
+            .hasMatch(letters) ||
+        // فَعۡلَى the pattern misses (شَتَّىٰ، لَلۡحُسۡنَىٰ، يَٰيَحۡيَىٰ), and
+        // «يَٰٓأَسَفَىٰ» as the book tells it.
+        const {
+          '59:14:17',
+          '41:50:22',
+          '19:12:0',
+          '12:84:3',
+        }.contains(_key(r[0], r[1], r[2]));
+    if (!kept) {
+      stdout.writeln('taqlil dropped ${_key(r[0], r[1], r[2])} ${w.t}');
+      drop.add(r);
+    }
   }
   rows.removeWhere((r) => drop.any((d) => identical(d, r)));
 }
