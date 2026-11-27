@@ -2649,7 +2649,9 @@ class _MushafPageState extends State<MushafPage>
               break;
             }
           }
-        } else if (w == v.word) {
+        } else if (w == v.word && !v.noBand) {
+          // (Not the next ayah's first word told with the ayah before it,
+          // ٱلرَّحِيمِ ۝ مَّلِكِ: its first letter, not its last.)
           var last = letters.length - 1;
           while (last > 0 && bareAlif.hasMatch(letters[last])) {
             last--;
