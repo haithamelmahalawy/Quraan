@@ -270,11 +270,7 @@ class MushafLines extends StatelessWidget {
           padding: centered
               ? EdgeInsets.symmetric(horizontal: fontSize * 0.12)
               : EdgeInsets.zero,
-          child: InkText(
-            end.text.trimLeft(),
-            style: _style(fontSize, end.font),
-            firmness: 0.35,
-          ),
+          child: endText(end.text.trimLeft(), _style(fontSize, end.font)),
         ),
     ];
     for (final (i, (ayah, w)) in words.indexed) {
@@ -397,13 +393,9 @@ class MushafLines extends StatelessWidget {
     final closes = end != null;
     if (!shown && !closes) return null;
     final markerFont = end?.font ?? 'Hafs';
-    final endText = InkText(
-      end?.text ?? '',
-      style: _style(fontSize, markerFont),
-      firmness: 0.35,
-    );
+    final drawnEnd = endText(end?.text ?? '', _style(fontSize, markerFont));
     // On the print's pages, on the words' one baseline.
-    final marker = hafsScale == 1 ? endText : onLine(endText, fontSize);
+    final marker = hafsScale == 1 ? drawnEnd : onLine(drawnEnd, fontSize);
     if (!shown) return marker;
     Widget word = wordBuilder(ayah, w, fontSize, kashida);
     // The print's word carries its own ۞: told, not drawn again.
@@ -497,7 +489,9 @@ class MushafLines extends StatelessWidget {
       _cache.putIfAbsent('$font|$text', () {
         final painter = TextPainter(
           text: TextSpan(
-            text: font == 'Hafs' ? HafsFontMarks.boundarySpacing(text) : text,
+            text: font == 'Hafs'
+                ? HafsFontMarks.boundarySpacing(endMeasured(text))
+                : text,
             style: _style(_probe, font),
           ),
           textDirection: TextDirection.rtl,
@@ -681,4 +675,49 @@ class RenderOnBaseline extends RenderShiftedBox {
     if (hit) result.add(BoxHitTestEntry(this, position));
     return hit;
   }
+}
+
+/// The highest ayah number the Hafs font draws in one circle; beyond it, the
+/// Basri count's ٢٨٧ of al-Baqarah, it splits the digits into two circles.
+const _widestEndLigature = 286;
+
+/// The number of an ayah's end [text] the font cannot draw in one circle.
+String? _unligatedEnd(String text) {
+  final digits = text.trim();
+  if (!RegExp(r'^[٠-٩]+$').hasMatch(digits)) return null;
+  final n = int.parse(
+    String.fromCharCodes(digits.runes.map((c) => c - 0x0660 + 0x30)),
+  );
+  return n > _widestEndLigature ? digits : null;
+}
+
+/// [text] as measured: an empty circle for a number drawn in one by hand.
+String endMeasured(String text) =>
+    _unligatedEnd(text) == null ? text : ' ۝';
+
+/// An ayah's end, its number in one circle (٢٨٧ in one, not ٢٨ and ٧) (the
+/// user, 2026-11-27).
+Widget endText(String text, TextStyle style, {double firmness = 0.35}) {
+  final digits = _unligatedEnd(text);
+  if (digits == null) return InkText(text, style: style, firmness: firmness);
+  final size = style.fontSize ?? 14;
+  return Stack(
+    alignment: Alignment.center,
+    children: [
+      InkText(' ۝', style: style, firmness: firmness),
+      Padding(
+        padding: EdgeInsetsDirectional.only(start: size * .25),
+        child: Text(
+          digits,
+          textDirection: TextDirection.rtl,
+          // Bare digits, not the font's circles that its ligatures make of them.
+          style: style.copyWith(
+            fontSize: size * .36,
+            height: 1,
+            fontFeatures: const [FontFeature.disable('rlig')],
+          ),
+        ),
+      ),
+    ],
+  );
 }

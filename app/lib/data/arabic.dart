@@ -169,12 +169,18 @@ const taqlilSign = '\uE01A';
 /// [signed] with the taqlil's diamond in place of the imala's dot.
 String asTaqlil(String signed) => signed.replaceAll(imalaSign, taqlilSign);
 
+/// The ikhtilas's sign, a red dot under the letter whose vowel is stolen
+/// (al-Duri's «وَأَرِنَا»), drawn apart by the page (the user, 2026-11-27).
+const ikhtilasSign = '\uE01B';
+
 bool _isMark(int c) =>
     (c >= 0x064B && c <= 0x065F) ||
     c == 0x0670 ||
     (c >= 0x06D6 && c <= 0x06ED) ||
     // The taqlil's sign (taqlilSign).
-    c == 0xE01A;
+    c == 0xE01A ||
+    // The ikhtilas's sign (ikhtilasSign).
+    c == 0xE01B;
 
 /// [word] with the imala sign under the letter read with imala: the one
 /// before ى (هُدَى → هُدَ۪ى), before an alef followed by ra (ٱلنَّارِ →

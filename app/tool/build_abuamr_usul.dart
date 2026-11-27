@@ -17,6 +17,12 @@ void main() {
   final book =
       jsonDecode(File('assets/data/kharouf.json').readAsStringSync()) as Map;
   final duriKisai = rows('duri_kisai'), khallad = rows('khallad');
+  // Al-Susi's book rows: the qasr of the munfasil for both narrators.
+  final susiRaw =
+      ((jsonDecode(File('tool/abuamr_raw/susi.json').readAsStringSync())
+                  as Map)['variants']
+              as List)
+          .cast<List>();
   for (final id in abuAmrRiwayat) {
     final raw =
         jsonDecode(File('tool/abuamr_raw/$id.json').readAsStringSync()) as Map;
@@ -30,6 +36,7 @@ void main() {
       book: book,
       duriKisai: duriKisai,
       khallad: khallad,
+      susiRaw: susiRaw,
     );
     stdout.writeln('$id: $counts');
     File('assets/data/qiraat/$id.json').writeAsStringSync(jsonEncode(data));

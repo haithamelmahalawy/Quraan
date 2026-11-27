@@ -32,6 +32,7 @@ Map<String, int> buildAbuAmrUsul(
   required Map book,
   required List<List> duriKisai,
   required List<List> khallad,
+  required List<List> susiRaw,
 }) {
   if (!abuAmrRiwayat.contains(id)) {
     throw ArgumentError.value(id, 'id', "Not one of Abu 'Amr's");
@@ -124,14 +125,17 @@ Map<String, int> buildAbuAmrUsul(
     }
   }
 
-  // ---- المد المنفصل للسوسي: القصر، كقالون («بالقصر»). For al-Duri the
-  // tawassut, as Hafs: not told.
-  if (susi) {
-    for (final v in raw) {
-      if (v[5] == 'u' && v[6] == 'بالقصر') {
-        put(row(v[0], v[1], v[2], v[3], '${v[4]}', 'u', 'بالقصر', ''));
-      }
+  // ---- المد المنفصل: القصر لأبي عمرو، للدوري والسوسي كقالون («بالقصر»)،
+  // من صفوف السوسي في الكتاب (المستخدم، 2026-11-27).
+  for (final v in susiRaw) {
+    if (v[5] == 'u' && v[6] == 'بالقصر') {
+      put(row(v[0], v[1], v[2], v[3], '${v[4]}', 'u', 'بالقصر', ''));
     }
+  }
+  // An added ya before a hamza (ٱلدَّاعِۦٓ إِذَا) short with it: no madd sign
+  // on al-Duri's word, as al-Susi's (the user, 2026-11-27).
+  for (final r in rows) {
+    if (r[7] == 'ya_zaida') r[4] = '${r[4]}'.replaceFirst(RegExp('ۦٓ'), 'ۦ');
   }
 
   // ---- الإدغام الصغير، كما يقرؤه الدوري عن الكسائي ونصه: ذال «إذ» في
@@ -216,6 +220,39 @@ Map<String, int> buildAbuAmrUsul(
               },
             ),
     );
+  }
+
+  // «فَيَغۡفِرۡ لِّمَن … وَيُعَذِّبۡ مَّن» (البقرة ٢٨٤): أبو عمرو يجزمهما فيدغم
+  // الصغير، لا الكبير؛ الأول بتعرية الراء وتشديد اللام، وللدوري وجه بالإظهار،
+  // والثاني بتعرية الباء وتشديد الميم (المستخدم، 2026-11-27).
+  if (!told.contains('2:284:17')) {
+    final ghafara = index['2:284:17']!.t.replaceFirst('رُ', 'ر');
+    final liman = index['2:284:18']!.t.replaceFirst('ل', 'لّ');
+    put(
+      susi
+          ? row(2, 284, 17, 2, '$ghafara $liman', 'u',
+              'بإدغام الراء في اللام', 'idgham_saghir')
+          : row(
+              2,
+              284,
+              17,
+              2,
+              '$ghafara $liman',
+              'u',
+              'بوجهين: إدغام الراء في اللام، وهو المقدّم؛ أو الإظهار',
+              'idgham_saghir',
+              {
+                'ways': const ['الإدغام، وهو المقدّم', 'الإظهار'],
+                'ownWays': true,
+              },
+            ),
+    );
+  }
+  if (!told.contains('2:284:20')) {
+    final qalun = sources.qalun.firstWhere(
+      (v) => v[0] == 2 && v[1] == 284 && v[2] == 20,
+    );
+    put(taken(qalun, 'qalun'));
   }
 
   // ---- كسر ميم الجمع قبل الساكن بعد هاء مكسورة، إتباعًا لها، بنص رويس.
@@ -634,7 +671,22 @@ Map<String, int> buildAbuAmrUsul(
         rows.removeWhere(
           (r) => r[0] == w.s && r[1] == w.a && r[2] == w.w && r[5] == 'f',
         );
-        put(row(w.s, w.a, w.w, 1, w.t, 'f', 'باختلاس كسرة الراء', ''));
+        // Told under the usul's «الاختلاس», its red dot under the ra
+        // (the user, 2026-11-27).
+        put(
+          row(
+            w.s,
+            w.a,
+            w.w,
+            1,
+            w.t.replaceFirst('رِ', 'رِ'),
+            'u',
+            'باختلاس كسرة الراء',
+            'ikhtilas',
+            // In the hamesh too, its word apart from Hafs's.
+            {'hamesh': true},
+          ),
+        );
       }
     }
     final stems = RegExp(r'^(بارئكم|يأمركم|ينصركم|يشعركم|يأمرهم|تأمرهم)$');
@@ -660,13 +712,46 @@ Map<String, int> buildAbuAmrUsul(
     // Al-Susi's iskan of these words is their farsh, al-Duri's first face;
     // his ibdal (يَامُرۡكُمۡ) told with it, drawn as the farsh's (the user,
     // 2026-11-26).
-    final stems = RegExp(r'^(بارئكم|يأمركم|ينصركم|يشعركم|يأمرهم|تأمرهم)$');
-    for (final r in rows) {
-      if (r[5] != 'h' || !'${r[6]}'.startsWith('بإسكان')) continue;
+    final stems = RegExp(r'^أ?(بارئكم|يأمركم|ينصركم|يشعركم|يأمرهم|تأمرهم)$');
+    for (final r in [...rows]) {
+      if (r[5] != 'h' ||
+          '${r[7]}'.isNotEmpty ||
+          !'${r[6]}'.startsWith('بإسكان')) {
+        continue;
+      }
       final w = index[_key(r[0], r[1], r[2])];
       if (w == null) continue;
       final bare = _bare(w.t).replaceFirst(RegExp('^[وف]'), '');
-      if (!stems.hasMatch(bare)) continue;
+      if (!stems.hasMatch(bare)) {
+        // The book's «بإبدال الهمزة واوًا وإسكان النون» (نُّؤۡمِنَ لَكَ، يَأۡتِيَ
+        // يَوۡمٞ): its big idgham, the iskan of the merged letter, not an
+        // asl of its own (the user, 2026-11-27).
+        final n = next(w);
+        if (n == null) continue;
+        rows.remove(r);
+        if (told.contains(_key(w.s, w.a, w.w)) &&
+            rows.any(
+              (o) =>
+                  o[7] == 'idgham_kabir' &&
+                  _key(o[0], o[1], o[2]) == _key(w.s, w.a, w.w),
+            )) {
+          continue;
+        }
+        put(
+          row(
+            w.s,
+            w.a,
+            w.w,
+            2,
+            '',
+            'u',
+            'بالإدغام الكبير وصلاً',
+            'idgham_kabir',
+            {'context': '${w.t} ${n.t}'},
+          ),
+        );
+        continue;
+      }
       r[5] = 'f';
       for (final o in rows) {
         if (o[0] == r[0] &&
@@ -675,6 +760,33 @@ Map<String, int> buildAbuAmrUsul(
             o[7] == 'ibdal_single') {
           o[4] = r[4];
         }
+      }
+    }
+  }
+  // ---- الوقف بالهاء على تاء التأنيث المبسوطة (نِعۡمَتَ، رَحۡمَتَ): «فَبِالْهَاءِ
+  // قِفْ حَقًّا»، كابن كثير؛ صفوف البزي ورويس، إلا «يا أبت» وما يقرؤه جمعًا،
+  // و«بَيِّنَتٖ» (فاطر ٤٠) (المستخدم، 2026-11-27).
+  final stopsTold = {
+    for (final r in rows)
+      if (r[7] == 'rasm_stop') _key(r[0], r[1], r[2]),
+  };
+  for (final src in const ['bazzi', 'ruways']) {
+    for (final list in sources.verified[src]!.values) {
+      for (final v in list) {
+        if (v.length < 9 || v[7] != 'rasm_stop') continue;
+        final key = _key(v[0], v[1], v[2]);
+        final feminine =
+            '${v[6]}'.contains('تاء التأنيث') || v[0] == 35 && v[1] == 40;
+        if (!feminine) continue;
+        final word = index[key];
+        if (word == null || _bare(word.t).contains('يأبت')) continue;
+        final own = textAt[key];
+        if (own != null && _bare(own).contains('ات')) continue;
+        if (!stopsTold.add(key)) continue;
+        put([
+          ...v.take(8),
+          {...(v[8] as Map), 'source': source, 'farshFrom': src},
+        ]);
       }
     }
   }
@@ -689,6 +801,51 @@ Map<String, int> buildAbuAmrUsul(
     put([...r.take(8), meta]);
   });
 
+  // The extraction's «بفتح الألف» on a wasl alif (لَٱنفَضُّواْ، تَٱللَّهِ): the
+  // same letters as Hafs's, its alif only drawn otherwise; no farsh (the
+  // user, 2026-11-27).
+  String plain(Object? t) => _bare('$t').replaceAll('ٱ', 'ا');
+  rows.removeWhere(
+    (r) =>
+        r[5] == 'f' &&
+        r[6] == 'بفتح الألف' &&
+        plain(r[4]) == plain(index[_key(r[0], r[1], r[2])]?.t),
+  );
+  // So its «بإثبات الألف» on a silent alif of the Soosi rasm (لَإِاْلَى،
+  // لَأَاْنتُمۡ): read as Hafs.
+  rows.removeWhere(
+    (r) =>
+        r[5] == 'f' &&
+        r[6] == 'بإثبات الألف' &&
+        RegExp('[اٱ][ْ۟]').hasMatch('${r[4]}') &&
+        {
+          plain(index[_key(r[0], r[1], r[2])]?.t),
+          // Hafs's rasm writes it too (وَلَأَاْوۡضَعُواْ، التوبة ٤٧).
+          plain(
+            '${index[_key(r[0], r[1], r[2])]?.t}'.replaceAll(
+              RegExp('[اٱ][ْ۟]'),
+              '',
+            ),
+          ),
+        }.contains(plain('${r[4]}'.replaceAll(RegExp('[اٱ][ْ۟]'), ''))),
+  );
+  // «فَنِعِمَّا، نِعِمَّا» (البقرة ٢٧١، النساء ٥٨): the extraction's «بفتح العين
+  // والإمالة» a mistake; Abu 'Amr reads them as Qalun, the iskan first, then
+  // the ikhtilas of the 'ain's kasra (the user, 2026-11-27).
+  for (final r in rows) {
+    if (r[5] != 'f') continue;
+    final at = _key(r[0], r[1], r[2]);
+    if (at != _key(2, 271, 3) && at != _key(4, 58, 17)) continue;
+    final qalun = sources.verified['qalun']?[at]
+        ?.where((v) => v[5] == 'f')
+        .firstOrNull;
+    if (qalun == null) continue;
+    // Al-Duri's drawn with its ikhtilas: the 'ain's kasra and the red dot
+    // under it (the user, 2026-11-27).
+    r[4] = susi ? qalun[4] : index[at]!.t.replaceFirst('عِ', 'عِ');
+    r[6] = qalun[6];
+    (r[8] as Map)['farshFrom'] = 'qalun';
+  }
   // The farsh the extraction left without its wording, as the book words it
   // in its tables (pp. 105، 118، 156، 172، 199، 289، 314) (the user,
   // 2026-11-26); al-Susi's word merged into the next one by the big idgham
@@ -710,6 +867,10 @@ Map<String, int> buildAbuAmrUsul(
       return order[x]!.compareTo(order[y]!);
     });
   data['source'] = source;
+  // Built from «تسهيل الأمر»: al-Kharouf's rows are not mixed in on loading
+  // (their «بِهِمِ الأسبَاب» of two words took «ٱلۡأَسۡبَابُ» off the page, the
+  // user, 2026-11-27).
+  data['reviewedFarsh'] = true;
   data.remove('font');
   // The corrections the user made to al-Ashab's rows, where they are his.
   _finishRows(id, quran, data, index, words, sources, book, counts);
@@ -717,15 +878,17 @@ Map<String, int> buildAbuAmrUsul(
   // «بالهمز وحذف الهمزة» a mistake; al-Susi's quiet hamza an alif, his ibdal
   // (the user, 2026-11-26).
   final all = (data['variants'] as List).cast<List>();
-  // «مُوسَىٰ، يَٰمُوسَىٰ» with Abu 'Amr's taqlil, never the imala: its imala rows
-  // dropped, one turned to the taqlil where none is told (the user,
-  // 2026-11-26).
+  _abuAmrFinalAlif(all, index, words);
+  // «مُوسَىٰ، يَٰمُوسَىٰ، عِيسَىٰ» with Abu 'Amr's taqlil, never the imala: its
+  // imala rows dropped, one turned to the taqlil where none is told, and the
+  // taqlil added where the book's list left the word out (مُوسَىٰ وَعِيسَىٰ،
+  // البقرة ١٣٦) (the user, 2026-11-26/27).
+  final musaWord = RegExp(r'^[وفبل]?ي?(موسى|عيسى)$');
   final musa = <String, List<List>>{};
   for (final r in all) {
     if (r[5] != 'u') continue;
     final w = index[_key(r[0], r[1], r[2])];
-    if (w == null ||
-        !RegExp(r'^[وفبل]?ي?موسى$').hasMatch(_bare(w.t).replaceAll('ٰ', ''))) {
+    if (w == null || !musaWord.hasMatch(_bare(w.t).replaceAll('ٰ', ''))) {
       continue;
     }
     (musa[_key(r[0], r[1], r[2])] ??= []).add(r);
@@ -743,6 +906,66 @@ Map<String, int> buildAbuAmrUsul(
       imala.remove(keep);
     }
     all.removeWhere((r) => imala.any((i) => identical(i, r)));
+  }
+  for (final w in words) {
+    if (!musaWord.hasMatch(_bare(w.t).replaceAll('ٰ', ''))) continue;
+    if (musa.containsKey(_key(w.s, w.a, w.w))) continue;
+    // In its place, after the rows of the words before it.
+    final at = all.indexWhere(
+      (o) =>
+          (o[0] as int) > w.s ||
+          o[0] == w.s && (o[1] as int) > w.a ||
+          o[0] == w.s && o[1] == w.a && (o[2] as int) > w.w,
+    );
+    final taqlil = row(w.s, w.a, w.w, 1, '', 'u', 'بالتقليل', '');
+    if (at < 0) {
+      all.add(taqlil);
+    } else {
+      all.insert(at, taqlil);
+    }
+  }
+  // The taqlil of an alif before a quiet letter (ٱلۡقَتۡلَى ٱلۡحُرُّ، مُوسَى
+  // ٱلۡكِتَٰبَ): at the stop only, as the imala; no sign on the page, «وقفًا
+  // فقط» in the band (the user, 2026-11-27).
+  final stopTaqlil = <String>{
+    for (final r in all)
+      if ('${r[6]}'.startsWith('بالتقليل') &&
+          r.length > 8 &&
+          (r[8] as Map)['stopOnly'] == true)
+        _key(r[0], r[1], r[2]),
+  };
+  final beforeSakin = <List>[];
+  for (final r in all) {
+    if (r[5] != 'u' ||
+        '${r[6]}' != 'بالتقليل' ||
+        r.length > 8 && (r[8] as Map)['stopOnly'] == true) {
+      continue;
+    }
+    final w = index[_key(r[0], r[1], r[2])];
+    final n = w == null ? null : next(w);
+    if (w == null ||
+        n == null ||
+        !n.t.startsWith('ٱ') ||
+        !RegExp('[ىا]ٰ?\$').hasMatch(
+          w.t.replaceAll(RegExp('[ۖ-ۜ]'), '').replaceAll(RegExp('[ًٌٍ]'), ''),
+        )) {
+      continue;
+    }
+    beforeSakin.add(r);
+  }
+  for (final r in beforeSakin) {
+    if (stopTaqlil.contains(_key(r[0], r[1], r[2]))) {
+      all.remove(r);
+      continue;
+    }
+    r[6] = 'بالتقليل وقفًا';
+    if (r.length < 9) {
+      while (r.length < 8) {
+        r.add('');
+      }
+      r.add(<String, Object?>{});
+    }
+    (r[8] as Map)['stopOnly'] = true;
   }
   all.removeWhere(
     (r) => !susi && r[0] == 2 && r[1] == 72 && r[2] == 3 && r[5] == 'h',
@@ -782,8 +1005,8 @@ Map<String, int> buildAbuAmrUsul(
         ..remove('stopOnly')
         // Beside the word in the band, as al-Duri's «(وقفًا فقط)».
         ..['bandNote'] = name
-            ? 'وقفًا، ووصلًا بخلف عنه مع تغليظ لام لفظ الجلالة أو ترقيقها'
-            : 'وقفًا، ووصلًا بخلف عنه'
+            ? 'وقفًا، والوصل بخلف عنه مع تغليظ لام لفظ الجلالة أو ترقيقها'
+            : 'وقفًا، والوصل بخلف عنه'
         ..['ways'] = name
             ? [
                 'الإمالة مع تغليظ لام لفظ الجلالة',
@@ -817,3 +1040,101 @@ const _abuAmrBookWording = {
   '71:25:1':
       'بفتح الطاء وبعدها ألف ثم فتح الياء، وحذف الهمزة والتاء، وضم الهاء',
 };
+
+/// Abu 'Amr's imala of a final alif (هُدٗى، ٱلدُّنۡيَا، يَخۡشَىٰ), by his rules in
+/// the Shatibiyya (the user, 2026-11-27):
+/// - a ra before it: the big imala (ذِكۡرَىٰ، ٱشۡتَرَىٰ), kept;
+/// - فَعۡلَى، فُعۡلَى، فِعۡلَى (ٱلدُّنۡيَا، ٱلتَّقۡوَىٰ، ٱلۡأُنثَىٰ، مُوسَىٰ) and
+///   فُعَالَى: the taqlil, «وَكَيْفَ جَرَتْ فَعْلَى»;
+/// - the ayah's end in the eleven surahs (طه، النجم ...): the taqlil;
+/// - «أَنَّىٰ، يَٰوَيۡلَتَىٰ، يَٰحَسۡرَتَىٰ»: the taqlil;
+/// - else (هُدٗى، كَفَىٰ، مَأۡوَىٰهُمۡ، ءَاتَىٰكُمۡ): no imala, the row dropped.
+/// «أَعۡمَىٰ» (الإسراء ٧٢) the first, «حُكْمُ صُحْبَةٍ أَوَّلَا», keeps its imala.
+void _abuAmrFinalAlif(
+  List<List> rows,
+  Map<String, _Word> index,
+  List<_Word> words,
+) {
+  const elevenSurahs = {20, 53, 70, 75, 79, 80, 87, 91, 92, 93, 96};
+  final lastWord = <String, int>{};
+  for (final w in words) {
+    final k = '${w.s}:${w.a}';
+    if (w.w > (lastWord[k] ?? -1)) lastWord[k] = w.w;
+  }
+  final pronoun = '(?:ه|ها|هم|هما|هن|ك|كم|كما|كن|نا|ني)?';
+  final finalAlif = RegExp('[ىا]$pronoun\$');
+  final marks = RegExp('[ّٓۖ-ۜ]');
+  // The pattern on Hafs's word, its pronoun aside.
+  bool falaPattern(String t) {
+    final w = t
+        .replaceAll(marks, '')
+        .replaceFirst(
+          RegExp(
+            r'(?:ه[ُِ]?|هَا|هُمۡ?|هِمۡ?|هُمَا|هِمَا|هُنَّ?|كَ|كُمۡ?|كُمَا|نَا|نِي)$',
+          ),
+          '',
+        );
+    final m = RegExp(
+      r'^(?:[وفبلك][َِ])?(?:ٱلۡ?|لِلۡ?)?([^ً-ٰ])([َُِ])([^ً-ٰ])ۡ?([^ً-ٰ])َ(?:ىٰ?|ا|ٰ)$',
+    ).firstMatch(w);
+    if (m != null) {
+      final stem = '${m[1]}${m[3]}${m[4]}';
+      if (m[2] == 'َ') {
+        return const {
+          'موت',
+          'سلو',
+          'تقو',
+          'صرع',
+          'مرض',
+          'قتل',
+          'نجو',
+          'دعو',
+          'يحي',
+        }.contains(stem);
+      }
+      return !(m[2] == 'ُ' && 'يتن'.contains(m[1]!));
+    }
+    if (RegExp(
+      r'^(?:[وفبلك][َِ])?(?:ٱلۡ?|لِلۡ?)?(?:يَٰ)?[^ً-ٰ][ُِ][وي][^ً-ٰ]َىٰ?$',
+    ).hasMatch(w)) {
+      return true;
+    }
+    return RegExp(
+      r'^(?:[وفبلك][َِ])?(?:ٱلۡ?|لِلۡ?)?[^ً-ٰ]ُ[^ً-ٰ]َ(?:ٰ|ا)[^ً-ٰ]َىٰ?$',
+    ).hasMatch(w);
+  }
+
+  final taqlilAt = <String>{
+    for (final r in rows)
+      if (r[5] == 'u' && '${r[6]}'.startsWith('بالتقليل'))
+        _key(r[0], r[1], r[2]),
+  };
+  final drop = <List>[];
+  for (final r in rows) {
+    if (r[5] != 'u' ||
+        '${r[7]}'.isNotEmpty ||
+        !RegExp('^بإمالة الألف(?: وقفًا)?\$').hasMatch('${r[6]}')) {
+      continue;
+    }
+    final w = index[_key(r[0], r[1], r[2])];
+    if (w == null) continue;
+    final letters = _bare(w.t).replaceAll('ٰ', '');
+    if (!finalAlif.hasMatch(letters)) continue;
+    final stem = letters.replaceFirst(RegExp('[ىا]$pronoun\$'), '');
+    // A ra before it (ذِكۡرَىٰ), or «رَءَا» and its like: his own imala.
+    if (stem.endsWith('ر') || RegExp('ر[ءأ]').hasMatch(letters)) continue;
+    // «أَعۡمَىٰ» the first of الإسراء ٧٢.
+    if (r[0] == 17 && r[1] == 72 && r[2] == 4) continue;
+    final taqlil =
+        falaPattern(w.t) ||
+        elevenSurahs.contains(w.s) && lastWord['${w.s}:${w.a}'] == w.w ||
+        RegExp(r'^[وف]?(أنى|يويلتى|يحسرتى)$').hasMatch(letters);
+    if (!taqlil || taqlilAt.contains(_key(r[0], r[1], r[2]))) {
+      drop.add(r);
+      continue;
+    }
+    r[6] = '${r[6]}'.contains('وقفًا') ? 'بالتقليل وقفًا' : 'بالتقليل';
+    taqlilAt.add(_key(r[0], r[1], r[2]));
+  }
+  rows.removeWhere((r) => drop.any((d) => identical(d, r)));
+}

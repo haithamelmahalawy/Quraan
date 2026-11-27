@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -5,8 +7,8 @@ import '../models/quran.dart';
 import '../state/reader_settings.dart';
 import 'theme.dart';
 
-/// The place of a word on the page, carried by its widget for «الكشاف» to
-/// find under its beam.
+/// The place of a word on the page, carried by its widget for the lamp to
+/// find under its light.
 class WordTag {
   const WordTag(this.ayah, this.word);
 
@@ -24,31 +26,46 @@ class WordTag {
   int get hashCode => Object.hash(ayah.surah, ayah.number, word);
 }
 
-/// «الكشاف»: a flashlight laid on the mushaf, its beam pointing up, dragged
-/// over the page; the beam's tip on a word told otherwise shows at once,
+/// The lamp of «تنبيه الاختلافات» laid on the mushaf, its light pointing up,
+/// dragged over the page as «الكشاف» was, which it took the place of (the
+/// user, 2026-11-27): its light on a word told otherwise shows at once,
 /// above the word, the page's own usul and hamesh of it, its readers grouped
-/// as there (the user, 2026-11-26).
-class Flashlight extends StatefulWidget {
-  const Flashlight({super.key, required this.settings, required this.panelFor});
+/// as there. A tap lights the words that differ, or puts them out; held, it
+/// opens its settings: the usul it lights and the ways it tells a word.
+class Lamp extends StatefulWidget {
+  const Lamp({
+    super.key,
+    required this.settings,
+    required this.panelFor,
+    required this.onTap,
+    required this.onLongPress,
+  });
 
   final ReaderSettings settings;
+
+  /// A tap: the glow of the words that differ, on or off.
+  final VoidCallback onTap;
+
+  /// Held: its settings.
+  final VoidCallback onLongPress;
 
   /// The panel of word [word] of [ayah]; null where nothing is told of it.
   final Widget? Function(Ayah ayah, int word) panelFor;
 
-  /// The flashlight's body and its beam above it.
+  /// The lamp's body and its light above it.
   static const width = 34.0;
   static const bodyHeight = 34.0;
   static const beamHeight = 22.0;
   static const height = bodyHeight + beamHeight;
 
   @override
-  State<Flashlight> createState() => _FlashlightState();
+  State<Lamp> createState() => _LampState();
 }
 
-class _FlashlightState extends State<Flashlight> {
+class _LampState extends State<Lamp> {
   /// Its place over the area, in fractions of its width and height.
-  late Offset _at = widget.settings.flashlightAt ?? const Offset(.04, .86);
+  /// At first at the page's top (the user, 2026-11-27).
+  late Offset _at = widget.settings.flashlightAt ?? const Offset(.04, 0);
 
   /// The word under the beam's tip, its panel and its box in the area.
   WordTag? _tag;
@@ -60,16 +77,16 @@ class _FlashlightState extends State<Flashlight> {
 
   /// The beam's tip: the top of its light, over the middle of the body.
   Offset _tip(Size area) =>
-      Offset(_at.dx * area.width + Flashlight.width / 2, _at.dy * area.height);
+      Offset(_at.dx * area.width + Lamp.width / 2, _at.dy * area.height);
 
   /// The beam's light over the area: its cone's box.
   Rect _beam(Size area) {
     final tip = _tip(area);
     return Rect.fromLTWH(
-      tip.dx - Flashlight.width / 2,
+      tip.dx - Lamp.width / 2,
       tip.dy,
-      Flashlight.width,
-      Flashlight.beamHeight,
+      Lamp.width,
+      Lamp.beamHeight,
     );
   }
 
@@ -80,16 +97,16 @@ class _FlashlightState extends State<Flashlight> {
   (WordTag, Rect)? _touched(RenderBox box, Size area) {
     final tip = _tip(area);
     const across = [0.0, -.15, .15, -.3, .3, -.45, .45];
-    for (var dy = 0.0; dy <= Flashlight.beamHeight; dy += 3) {
+    for (var dy = 0.0; dy <= Lamp.beamHeight; dy += 3) {
       // The cone from the full width at its top to .4 of it at the lens.
-      final half = .5 - .3 * dy / Flashlight.beamHeight;
+      final half = .5 - .3 * dy / Lamp.beamHeight;
       for (final f in across) {
         if (f.abs() > half) continue;
         final dx = f;
         final result = HitTestResult();
         WidgetsBinding.instance.hitTestInView(
           result,
-          box.localToGlobal(tip + Offset(dx * Flashlight.width, dy)),
+          box.localToGlobal(tip + Offset(dx * Lamp.width, dy)),
           View.of(context).viewId,
         );
         for (final entry in result.path) {
@@ -140,12 +157,43 @@ class _FlashlightState extends State<Flashlight> {
     });
   }
 
+  /// A mode chosen in its settings: the word lit told again by it.
+  FlashMode? _mode;
+
+  void _settingsChanged() {
+    final mode = widget.settings.flashMode;
+    if (mode == _mode) return;
+    _mode = mode;
+    final tag = _tag;
+    if (tag == null || !mounted) return;
+    setState(() {
+      _panel = widget.panelFor(tag.ayah, tag.word);
+      if (_panel == null) {
+        _tag = null;
+        _wordRect = null;
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _mode = widget.settings.flashMode;
+    widget.settings.addListener(_settingsChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.settings.removeListener(_settingsChanged);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final area = constraints.biggest;
-      final maxX = (area.width - Flashlight.width) / area.width;
-      final maxY = (area.height - Flashlight.height) / area.height;
+      final maxX = (area.width - Lamp.width) / area.width;
+      final maxY = (area.height - Lamp.height) / area.height;
       final at = Offset(_at.dx.clamp(0.0, maxX), _at.dy.clamp(0.0, maxY));
       final lit = _panel != null;
       final rect = _wordRect;
@@ -153,25 +201,36 @@ class _FlashlightState extends State<Flashlight> {
         clipBehavior: Clip.none,
         children: [
           if (lit && rect != null)
-            _panelOver(area, rect, (at.dy * area.height) + Flashlight.height),
+            _panelOver(area, rect, (at.dy * area.height) + Lamp.height),
           // The light drawn, the touch through it to the words beneath.
           Positioned(
             left: at.dx * area.width,
             top: at.dy * area.height,
             child: IgnorePointer(
               child: SizedBox(
-                width: Flashlight.width,
-                height: Flashlight.height,
-                child: CustomPaint(painter: _Beam(lit: lit)),
+                width: Lamp.width,
+                height: Lamp.height,
+                child: ListenableBuilder(
+                  listenable: widget.settings,
+                  builder: (context, _) => CustomPaint(
+                    key: widget.settings.diffAlert != null
+                        ? const ValueKey('glow-rays')
+                        : null,
+                    painter: _Beam(
+                      lit: lit,
+                      glowing: widget.settings.diffAlert != null,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
           // The body held and dragged.
           Positioned(
             left: at.dx * area.width,
-            top: at.dy * area.height + Flashlight.beamHeight,
+            top: at.dy * area.height + Lamp.beamHeight,
             child: GestureDetector(
-              key: const ValueKey('flashlight'),
+              key: const ValueKey('glow-lamp'),
               behavior: HitTestBehavior.opaque,
               onPanUpdate: (d) {
                 setState(() {
@@ -194,21 +253,24 @@ class _FlashlightState extends State<Flashlight> {
                 widget.settings.flashlightAt = _at;
               },
               onPanCancel: () => setState(() => _dragging = false),
-              // Held: what it tells, the chosen one marked (the user,
-              // 2026-11-26).
-              onLongPressStart: (d) => _chooseMode(d.globalPosition),
-              // A tap puts the panel away.
-              onTap: () => setState(() {
-                _tag = null;
-                _panel = null;
-                _wordRect = null;
-              }),
+              // Held: its settings, the usul on the right, the ways on the
+              // left (the user, 2026-11-27).
+              onLongPress: widget.onLongPress,
+              // A tap: the glow on or off, the panel put away.
+              onTap: () {
+                setState(() {
+                  _tag = null;
+                  _panel = null;
+                  _wordRect = null;
+                });
+                widget.onTap();
+              },
               child: Tooltip(
                 triggerMode: TooltipTriggerMode.manual,
-                message: 'الكشاف: اسحبه حتى يلمس شعاعه كلمة',
+                message: 'المصباح: اسحبه حتى يقع ضوؤه على كلمة',
                 child: const SizedBox(
-                  width: Flashlight.width,
-                  height: Flashlight.bodyHeight,
+                  width: Lamp.width,
+                  height: Lamp.bodyHeight,
                 ),
               ),
             ),
@@ -218,55 +280,8 @@ class _FlashlightState extends State<Flashlight> {
     },
   );
 
-  Future<void> _chooseMode(Offset at) async {
-    final now = widget.settings.flashMode;
-    final picked = await showMenu<FlashMode>(
-      context: context,
-      position: RelativeRect.fromLTRB(at.dx, at.dy - 160, at.dx, at.dy),
-      color: MushafColors.paper,
-      // A thin gold edge, as the panel's.
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: MushafColors.gold, width: 1.2),
-      ),
-      items: [
-        for (final mode in FlashMode.values)
-          CheckedPopupMenuItem(
-            key: ValueKey('flash-mode:${mode.name}'),
-            value: mode,
-            checked: mode == now,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  mode.labelAr,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: MushafColors.green,
-                  ),
-                ),
-                Text(mode.hintAr, style: const TextStyle(fontSize: 11)),
-              ],
-            ),
-          ),
-      ],
-    );
-    if (picked == null || picked == now || !mounted) return;
-    widget.settings.flashMode = picked;
-    // The word lit told again by the new mode.
-    final tag = _tag;
-    setState(() {
-      _panel = tag == null ? null : widget.panelFor(tag.ayah, tag.word);
-      if (_panel == null) {
-        _tag = null;
-        _wordRect = null;
-      }
-    });
-  }
-
   /// The panel right above the word (under it, where the page's top leaves
-  /// no room, and below the flashlight then), across most of the page, the
+  /// no room, and below the lamp then), across most of the page, the
   /// words beneath covered.
   Widget _panelOver(Size area, Rect word, double lampBottom) {
     final width = area.width * .94;
@@ -275,10 +290,10 @@ class _FlashlightState extends State<Flashlight> {
         .toDouble();
     final above = word.top > area.height * .4;
     return Positioned(
-      key: const ValueKey('flashlight-panel'),
+      key: const ValueKey('lamp-panel'),
       left: left,
       width: width,
-      // Under the flashlight, not over it.
+      // Under the lamp, not over it.
       top: above
           ? null
           : (lampBottom > word.bottom ? lampBottom : word.bottom) + 4,
@@ -314,21 +329,28 @@ class _FlashlightState extends State<Flashlight> {
   }
 }
 
-/// The flashlight: a body below and its beam widening up to its tip, bright
-/// when it lights a word.
+/// The lamp: a bulb on its base below, its light widening up to the tip,
+/// bright when it lights a word; its rays round the bulb while the words
+/// that differ glow.
 class _Beam extends CustomPainter {
-  _Beam({required this.lit});
+  _Beam({required this.lit, required this.glowing});
 
+  /// On a word told of.
   final bool lit;
+
+  /// «تنبيه الاختلافات» on.
+  final bool glowing;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width, beam = Flashlight.beamHeight;
+    final w = size.width, beam = Lamp.beamHeight;
     final light = MushafColors.gold;
-    // The beam: from the lens up, widening to the tip's edge.
+    final bulb = Offset(w / 2, beam + 12);
+    const r = 9.0;
+    // The light: from the bulb up, widening to the tip's edge.
     final cone = Path()
-      ..moveTo(w * .30, beam)
-      ..lineTo(w * .70, beam)
+      ..moveTo(w * .30, beam + 4)
+      ..lineTo(w * .70, beam + 4)
       ..lineTo(w, 0)
       ..lineTo(0, 0)
       ..close();
@@ -353,48 +375,75 @@ class _Beam extends CustomPainter {
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round,
     );
-    // The body: the head holding the lens, then the handle.
-    // Solid, to be seen on the page; its beam light, the verse read through
-    // it (the user, 2026-11-26).
-    final ink = MushafColors.green;
-    final head = RRect.fromRectAndCorners(
-      Rect.fromLTWH(w * .18, beam, w * .64, 10),
-      topLeft: const Radius.circular(3),
-      topRight: const Radius.circular(3),
-    );
-    final handle = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * .32, beam + 10, w * .36, Flashlight.bodyHeight - 12),
-      const Radius.circular(3),
-    );
-    // The whole body at 70% (the user, 2026-11-26): its shadow, edge and
-    // switch with it.
+    // The body at 70%, the verse read through its light (as the
+    // flashlight's, the user, 2026-11-26).
     canvas.saveLayer(
       Offset.zero & size,
       Paint()..color = const Color.fromRGBO(0, 0, 0, .7),
     );
-    // A soft shadow under it, then a thin gold edge, clear on the page.
+    final ink = MushafColors.green;
+    // Its rays while the words glow, still, not flickering.
+    if (glowing) {
+      final ray = Paint()
+        ..color = light
+        ..strokeWidth = 1.6
+        ..strokeCap = StrokeCap.round;
+      for (final deg in [-150, -110, -70, -30, 10, 170]) {
+        final a = deg * 3.14159265 / 180;
+        final d = Offset(_cos(a), _sin(a));
+        canvas.drawLine(bulb + d * (r + 2), bulb + d * (r + 5), ray);
+      }
+    }
     final shadow = Paint()
       ..color = const Color(0x55000000)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-    canvas.drawRRect(head.shift(const Offset(0, 1)), shadow);
-    canvas.drawRRect(handle.shift(const Offset(0, 1)), shadow);
+    // The base: two bands under the bulb, and its tip.
+    final base = RRect.fromRectAndRadius(
+      Rect.fromLTWH(w / 2 - 5, bulb.dy + r - 1, 10, 8),
+      const Radius.circular(2),
+    );
+    canvas.drawCircle(bulb + const Offset(0, 1), r, shadow);
+    canvas.drawRRect(base.shift(const Offset(0, 1)), shadow);
     final edge = Paint()
-      ..color = light
+      ..color = glowing ? ink : light
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
-    for (final part in [head, handle]) {
-      canvas.drawRRect(part, Paint()..color = ink);
-      canvas.drawRRect(part, edge);
-    }
-    // Its switch.
-    canvas.drawCircle(
-      Offset(w / 2, beam + 18),
-      2.5,
-      Paint()..color = lit ? light : MushafColors.paper,
+    canvas.drawCircle(bulb, r, Paint()..color = glowing ? light : ink);
+    canvas.drawCircle(bulb, r, edge);
+    canvas.drawRRect(base, Paint()..color = ink);
+    canvas.drawRRect(
+      base,
+      Paint()
+        ..color = light
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+    canvas.drawLine(
+      Offset(w / 2 - 5, bulb.dy + r + 3),
+      Offset(w / 2 + 5, bulb.dy + r + 3),
+      Paint()
+        ..color = light
+        ..strokeWidth = 1,
+    );
+    // The filament.
+    canvas.drawPath(
+      Path()
+        ..moveTo(bulb.dx - 3, bulb.dy + 3)
+        ..lineTo(bulb.dx - 3, bulb.dy - 1)
+        ..lineTo(bulb.dx, bulb.dy + 1)
+        ..lineTo(bulb.dx + 3, bulb.dy - 1)
+        ..lineTo(bulb.dx + 3, bulb.dy + 3),
+      Paint()
+        ..color = glowing ? ink : (lit ? light : MushafColors.paper)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
     );
     canvas.restore();
   }
 
+  static double _cos(double a) => math.cos(a);
+  static double _sin(double a) => math.sin(a);
+
   @override
-  bool shouldRepaint(_Beam old) => old.lit != lit;
+  bool shouldRepaint(_Beam old) => old.lit != lit || old.glowing != glowing;
 }

@@ -178,9 +178,16 @@ class Variant {
             RegExp(r'ءِ[ۖ-ۭ]*$').hasMatch(usulText.split(' ').first) &&
             usulText.split(' ').last.startsWith('إِ') =>
       'ي',
-    // Al-Bazzi's and Abu Ja'far's ibdal, their first face (يَشَآءُ إِلَىٰ).
+    // Al-Bazzi's, Abu 'Amr's and Abu Ja'far's ibdal, their first face
+    // (يَشَآءُ إِلَىٰ): the waw in a circle (the user, 2026-11-27).
     'tasheel_pair'
-        when const {'bazzi', 'ibn_wardan', 'ibn_jammaz'}.contains(riwayaId) &&
+        when const {
+              'bazzi',
+              'ibn_wardan',
+              'ibn_jammaz',
+              'duri_abuamr',
+              'susi',
+            }.contains(riwayaId) &&
             (usulWays.firstOrNull?.startsWith('إبدال الهمزة الثانية واوًا') ??
                 false) =>
       'و',

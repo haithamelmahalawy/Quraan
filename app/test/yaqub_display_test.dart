@@ -837,6 +837,8 @@ void main() {
     }
   });
 
+  // Its two merged letters alone in the idgham's colour, the rest of each
+  // word not coloured (the user, 2026-11-27).
   testWidgets('Ruways kabir colours and glows both Quran words', (t) async {
     await page(
       t,
@@ -848,7 +850,11 @@ void main() {
     );
     for (final target in [word(2, 176, 4), word(2, 176, 5)]) {
       expect(target, findsOneWidget);
-      expect(t.widget<InkText>(target).style.color, isNot(MushafColors.ink));
+      final parts = t.widget<InkText>(target).parts;
+      expect(
+        parts?.where((p) => p.$2 == ReadingColors.kabirIdgham).length,
+        1,
+      );
       expect(
         find.ancestor(
           of: target,

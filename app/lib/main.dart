@@ -10,6 +10,7 @@ import 'services/audio_library.dart';
 import 'services/ayah_player.dart';
 import 'ui/ayah_sheet.dart';
 import 'ui/home_screen.dart';
+import 'ui/intro_screen.dart';
 import 'ui/recitation_player.dart';
 import 'ui/theme.dart';
 
@@ -35,6 +36,7 @@ Future<void> main() async {
       variants: variants,
       mutashabihat: mutashabihat,
       settings: settings,
+      intro: true,
     ),
   );
 }
@@ -47,6 +49,7 @@ class QiraatApp extends StatefulWidget {
     required this.mutashabihat,
     required this.settings,
     this.player,
+    this.intro = false,
   });
 
   final Mushafs mushafs;
@@ -54,6 +57,9 @@ class QiraatApp extends StatefulWidget {
   final MutashabihatRepository mutashabihat;
   final ReaderSettings settings;
   final AyahPlayer? player;
+
+  /// The opening first, «يَٰيَحۡيَىٰ خُذِ ٱلۡكِتَٰبَ بِقُوَّةٖۖ», then the start page.
+  final bool intro;
 
   @override
   State<QiraatApp> createState() => _QiraatAppState();
@@ -84,6 +90,13 @@ class _QiraatAppState extends State<QiraatApp> {
       _openingPlayer = false;
     }
   }
+
+  Widget _home() => HomeScreen(
+    mushafs: widget.mushafs,
+    variants: widget.variants,
+    mutashabihat: widget.mutashabihat,
+    settings: widget.settings,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -121,12 +134,15 @@ class _QiraatAppState extends State<QiraatApp> {
         locale: const Locale('ar'),
         supportedLocales: const [Locale('ar'), Locale('en')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: HomeScreen(
-          mushafs: widget.mushafs,
-          variants: widget.variants,
-          mutashabihat: widget.mutashabihat,
-          settings: widget.settings,
-        ),
+        home: widget.intro
+            ? IntroScreen(
+                next: (_) => _home(),
+                mushafs: widget.mushafs,
+                variants: widget.variants,
+                mutashabihat: widget.mutashabihat,
+                settings: widget.settings,
+              )
+            : _home(),
       ),
     );
   }

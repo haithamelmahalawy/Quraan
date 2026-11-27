@@ -33,7 +33,7 @@ import 'reading_colors.dart';
 import 'theme.dart';
 import 'usul_guide_sheet.dart';
 import 'usul_labels.dart';
-import 'flashlight.dart';
+import 'lamp.dart';
 import 'word_swap.dart';
 
 typedef WordTap = void Function(Ayah ayah, int word);
@@ -44,6 +44,10 @@ const _ashabSilah = {'qalun', 'bazzi', 'qunbul', 'ibn_wardan', 'ibn_jammaz'};
 /// its hamza's place (شُهَدَآءَ إِ۬ذۡ): Ashab al-Silah, and Abu 'Amr alike (the
 /// user, 2026-11-26).
 const _easedOnHafs = {..._ashabSilah, 'duri_abuamr', 'susi'};
+
+/// Al-Susi's note on a ra leaned before a quiet letter, in joining by khulf
+/// (tool/abuamr_usul.dart).
+const _susiWaslKhulf = 'وقفًا، والوصل بخلف عنه';
 
 /// A quiet ya of the idafa before a hamza, told with its madd (مَّعِيٓ أَوۡ،
 /// the user, 2026-11-17).
@@ -146,6 +150,7 @@ class MushafPage extends StatefulWidget {
     this.onHeaderMiddle,
     this.onJuzName,
     this.ayahShade,
+    this.shadeWord,
   });
 
   /// Where the juz's name in the header is, on the screen: the lamp of
@@ -154,6 +159,10 @@ class MushafPage extends StatefulWidget {
 
   /// A shade behind an ayah's words (the Jam''s ayah read, and those done).
   final Color? Function(Ayah ayah)? ayahShade;
+
+  /// The words of a shaded ayah shaded, when only some are (the opening's
+  /// «يَٰيَحۡيَىٰ خُذِ ٱلۡكِتَٰبَ بِقُوَّةٖۖ»); all of them when null.
+  final bool Function(Ayah ayah, int word)? shadeWord;
 
   /// Where the middle of the page's header is, across the page: the arrow of
   /// the riwayat stands there, between the surah and the juz.
@@ -2008,8 +2017,14 @@ class _MushafPageState extends State<MushafPage>
                       // letters in the farsh colour beside the sakt (the user,
                       // 2026-11-19).
                       !v.isUsul && v.word < w && v.word + v.count > w ||
-                      // The next word's first letter of Khalaf's idgham.
+                      // The next word's first letter of Khalaf's idgham, and
+                      // of the big idgham (the user, 2026-11-27).
                       v.rule == 'idgham_bila_ghunna' ||
+                      v.rule == 'idgham_kabir' ||
+                      // And of the small idgham of two words (لِّمَن، مَّن).
+                      v.rule == 'idgham_saghir' &&
+                          v.count == 2 &&
+                          v.word == w - 1 ||
                       next.contains(v)) &&
                   !v.isMarginNote &&
                   !isRoutineMadd(v) &&
@@ -2613,6 +2628,38 @@ class _MushafPageState extends State<MushafPage>
           base == 'ه' ? ReadingColors.haKinaya : ReadingColors.silah,
         );
       }
+      if (v.rule == 'idgham_kabir') {
+        // The big idgham: its two letters alone (ٱلۡكِتَٰبَ بِٱلۡحَقِّ: the ba of
+        // each), the rest of the word shaded, not coloured (the user,
+        // 2026-11-27).
+        final bareAlif = RegExp(r'^[اى][ۖ-ۭ]*$');
+        if (v.count == 1 && v.text.isNotEmpty) {
+          // Within a word (خَلَقَكُمۡ، مَنَاسِكَكُمۡ): the qaf or kaf and the kaf.
+          for (var i = 1; i < letters.length; i++) {
+            if (letters[i].startsWith('ك') &&
+                RegExp('^[قك]').hasMatch(letters[i - 1])) {
+              mark(i - 1, ReadingColors.kabirIdgham);
+              mark(i, ReadingColors.kabirIdgham);
+              break;
+            }
+          }
+        } else if (w == v.word) {
+          var last = letters.length - 1;
+          while (last > 0 && bareAlif.hasMatch(letters[last])) {
+            last--;
+          }
+          mark(last, ReadingColors.kabirIdgham);
+        } else {
+          // The next word's first letter; after the article, the one it
+          // merges into (ٱلرَّحِيمِ ۝ مَٰلِكِ، قِيلَ لَهُمُ).
+          var first = 0;
+          if (letters.isNotEmpty && letters.first.startsWith('ٱ')) {
+            first = letters.length > 2 && letters[2].contains('ّ') ? 2 : 1;
+          }
+          mark(first, ReadingColors.kabirIdgham);
+        }
+        continue;
+      }
       if (v.rule == 'idgham_bila_ghunna') {
         // Khalaf's idgham without ghunna (مَن يَّقُولُ، غِشَٰوَةٞ وَّلَهُمۡ): the
         // nun or the letter with the tanween, and the next word's first.
@@ -2645,7 +2692,34 @@ class _MushafPageState extends State<MushafPage>
         // before the space and the one it merges in after it, not the
         // first word's own doubled letter.
         final space = letters.indexWhere((l) => l.trim().isEmpty);
-        if (merged == null &&
+        var last = letters.length - 1;
+        while (last > 0 && RegExp(r'^[اى][ۖ-ۭ]*$').hasMatch(letters[last])) {
+          last--;
+        }
+        // Two words merged, as the big idgham: their two letters alone, the
+        // rest of the two shaded (فَيَغۡفِر لِّمَن، وَيُعَذِّب مَّن: the ra and
+        // the lam, the ba and the mim; the user, 2026-11-27).
+        final pair = merged == null && v.count == 2;
+        if (pair &&
+            space > 0 &&
+            space + 1 < letters.length &&
+            (into == null ||
+                letters[space - 1].startsWith(into.$1) &&
+                    letters[space + 1].startsWith(into.$2))) {
+          mark(space - 1, ReadingColors.idgham);
+          mark(space + 1, ReadingColors.idgham);
+        } else if (pair &&
+            space < 0 &&
+            w == v.word &&
+            (into == null || letters[last].startsWith(into.$1))) {
+          mark(last, ReadingColors.idgham);
+        } else if (pair &&
+            space < 0 &&
+            w != v.word &&
+            letters.isNotEmpty &&
+            (into == null || letters.first.startsWith(into.$2))) {
+          mark(0, ReadingColors.idgham);
+        } else if (merged == null &&
             into != null &&
             space > 0 &&
             space + 1 < letters.length &&
@@ -3419,7 +3493,8 @@ class _MushafPageState extends State<MushafPage>
         ],
       );
     }
-    if (widget.ayahShade?.call(ayah) case final shade?) {
+    if (widget.ayahShade?.call(ayah) case final shade?
+        when widget.shadeWord?.call(ayah, w) ?? true) {
       // Over the gaps between the words too, so the ayah reads as one.
       word = Stack(
         clipBehavior: Clip.none,
@@ -3846,6 +3921,9 @@ bool _readByAll(
   // its text. Hafs's text with one riwaya selected is compared with it.
   if (readers.length < 2) return s.displayed != null;
   if (!v.isUsul) return false;
+  // The small idgham of two words keeps its two letters coloured, as the big
+  // one (وَيُعَذِّب مَّن of al-Duri and al-Susi alike; the user, 2026-11-27).
+  if (v.rule == 'idgham_saghir' && v.count == 2) return false;
   final key = readingVariantKey(v);
   return readers.every(
     (id) => variants
@@ -3964,6 +4042,9 @@ List<_UsulGroup> _usulNotes(
         // or its font writes the sukun and the ya («مَعِے»، «مَعِي»).
         final same = word
             .replaceAll(RegExp('[ۖ-ۜ]'), '')
+            // Nor its imala's sign, written in joining and not at the stop
+            // (al-Susi's «يَرَ۪ى» and al-Duri's «يَرَى»).
+            .replaceAll(RegExp('[۪ٜ]'), '')
             .replaceAll('ۡ', 'ْ')
             .replaceAll(RegExp('[ىے]'), 'ي')
             // Nor its madd, Qalun's short and Warsh's long (ٱلنَّبِيٓءُ إِنَّآ).
@@ -3982,7 +4063,9 @@ List<_UsulGroup> _usulNotes(
               ? 'kaf-dhikr'
               : hasYaqub
               ? 'yaqub:${v.stopOnly}:$same:${v.hamzaReplacement}'
-              : '${ayah.surah}:${ayah.number}:$w:${v.stopOnly}:$same:${v.hamzaReplacement}',
+              // Al-Susi's stop and wasl by khulf, al-Duri's stop: one word
+              // (يَرَى ٱلَّذِينَ) (the user, 2026-11-27).
+              : '${ayah.surah}:${ayah.number}:$w:${v.stopOnly || v.bandNote.startsWith(_susiWaslKhulf)}:$same:${v.hamzaReplacement}',
           () => _UsulItem(
             ayah,
             w,
@@ -4502,6 +4585,49 @@ List<Variant> _abuAmrIskan(List<Variant> rows) {
   ];
 }
 
+/// Hafs beside an ikhtilas (al-Duri's «وَأَرِنَا»): his row told with its own
+/// vowel, «بكسر الراء», not bare (the user, 2026-11-27).
+List<Variant> _hafsAgainstIkhtilas(List<Variant> rows) {
+  final ikhtilas = rows.where((v) => v.rule == 'ikhtilas').firstOrNull;
+  if (ikhtilas == null) return rows;
+  final m = RegExp(r'^باختلاس (كسرة|ضمة|فتحة) (.+)$')
+      .firstMatch(ikhtilas.description);
+  if (m == null) return rows;
+  final told =
+      '${const {'كسرة': 'بكسر', 'ضمة': 'بضم', 'فتحة': 'بفتح'}[m[1]]} ${m[2]}';
+  return [
+    for (final v in rows)
+      // Its reader's own row tells it: no bare comparison row beside it.
+      if (v.riwayaId == ikhtilas.riwayaId &&
+          v.rule == 'comparison' &&
+          v.description.isEmpty)
+        ...const <Variant>[]
+      // Hafs, and in «العشر» those who read as he does: the vowel told.
+      else if (v.riwayaId != ikhtilas.riwayaId &&
+          v.description.isEmpty &&
+          v.word == ikhtilas.word &&
+          RegExp(
+            '${m[2] == 'الراء' ? 'ر' : ''}'
+            '${ikhtilas.description.contains('كسرة') ? 'ِ' : 'ُ'}',
+          ).hasMatch(v.text))
+        Variant(
+          riwayaId: v.riwayaId,
+          surah: v.surah,
+          ayah: v.ayah,
+          word: v.word,
+          count: v.count,
+          text: v.text,
+          kind: v.kind,
+          description: told,
+          rule: v.rule,
+          certified: v.certified,
+          hamesh: v.hamesh,
+        )
+      else
+        v,
+  ];
+}
+
 List<HameshEntry> _entriesOf(
   List<Ayah> ayahs,
   VariantRepository variants,
@@ -4515,10 +4641,12 @@ List<HameshEntry> _entriesOf(
       // Usul are told once by their colour, in the page's key; beside the
       // farsh, only what the certified source states.
       final own = m.shown.where((v) => v.word == w && v.inHamesh).toList();
-      final starting = _abuAmrIskan([
-        ...own,
-        ..._otherBodies(variants, settings, ayah, w, m.shown),
-      ]);
+      final starting = _hafsAgainstIkhtilas(
+        _abuAmrIskan([
+          ...own,
+          ..._otherBodies(variants, settings, ayah, w, m.shown),
+        ]),
+      );
       if (starting.isEmpty) continue;
       final end = starting
           .map((v) => v.word + v.count)
@@ -6047,6 +6175,18 @@ class _UsulBox extends StatelessWidget {
     });
   }
 
+  /// Al-Susi's ra leaned at the stop and in joining by khulf, al-Duri's at the
+  /// stop alone, both chosen (يَرَى ٱلَّذِينَ): «وقفًا لأبي عمرو، وللسوسي وصلًا
+  /// بخلف عنه» (the user, 2026-11-27).
+  static String? _susiWithDuri(String note, _UsulItem i) {
+    if (!note.startsWith(_susiWaslKhulf) ||
+        !i.readings.any((v) => v.riwayaId == 'duri_abuamr' && v.stopOnly)) {
+      return null;
+    }
+    return 'وقفًا لأبي عمرو، وللسوسي وصلًا بخلف عنه'
+        '${note.substring(_susiWaslKhulf.length)}';
+  }
+
   /// A dispute of some of the word's readers, not all: told of them by name
   /// (ءَاتِيكَ (بخلف عن خلاد) (حمزة): Khalaf leans it alone, the user,
   /// 2026-11-24).
@@ -6168,7 +6308,7 @@ class _UsulBox extends StatelessWidget {
             if (v.bandNote.isNotEmpty) v.bandNote,
         })
           Text(
-            ' (${_khulfOf(d, i)})',
+            ' (${_susiWithDuri(d, i) ?? _khulfOf(d, i)})',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
         // The ha of the pronoun with the damma: in joining only where the
@@ -6220,7 +6360,10 @@ class _UsulBox extends StatelessWidget {
             ' (بالتفخيم والترقيق)',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
           ),
-        if (i.stopOnly && !_leanedLettersTold(i))
+        if (i.stopOnly &&
+            !_leanedLettersTold(i) &&
+            // Told with al-Susi's note (يَرَى ٱلَّذِينَ).
+            !i.readings.any((v) => v.bandNote.startsWith(_susiWaslKhulf)))
           Text(
             ' (وقفًا فقط)',
             style: TextStyle(fontSize: 9 * scale, color: g.color),
@@ -7151,8 +7294,13 @@ Widget? flashlightPanel({
               ),
     ];
     entries = [
-      HameshEntry(e.ayah, e.word, e.hafs, e.color, [...alike, ...e.readings])
-        ..together = e.together,
+      HameshEntry(
+        e.ayah,
+        e.word,
+        e.hafs,
+        e.color,
+        _hafsAgainstIkhtilas([...alike, ...e.readings]),
+      )..together = e.together,
       ...entries.skip(1),
     ];
   }

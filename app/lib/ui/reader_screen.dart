@@ -3,7 +3,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 
@@ -20,7 +19,7 @@ import '../services/qcf_fonts.dart';
 import '../state/reader_settings.dart';
 import 'ayah_sheet.dart';
 import 'book_pager.dart';
-import 'glow_usul_screen.dart';
+import 'lamp_settings_screen.dart';
 import 'jam_screen.dart';
 import 'mushaf_page.dart';
 import 'page_side_hint.dart';
@@ -33,7 +32,7 @@ import 'search_screen.dart';
 import 'surah_index.dart';
 import 'page_slider.dart';
 import 'theme.dart';
-import 'flashlight.dart';
+import 'lamp.dart';
 import 'word_swap.dart';
 import 'variant_sheet.dart';
 
@@ -1042,18 +1041,9 @@ class _ReaderScreenState extends State<ReaderScreen>
     children: [
       Padding(
         padding: EdgeInsets.symmetric(horizontal: gap ?? (small ? 3 : 2)),
-        child: _GlowLamp(
-          settings: widget.settings,
-          small: small,
-          gap: gap ?? 4,
-          onTap: _toggleGlow,
-          onLongPress: () => GlowUsulScreen.open(
-            context,
-            settings: widget.settings,
-            variants: widget.variants,
-            quran: _quran,
-          ),
-        ),
+        // The lamp left the bar for the page, in place of «الكشاف» (the
+        // user, 2026-11-27): the mutashabihat's button alone here.
+        child: _MutashabihatButton(settings: widget.settings, small: small),
       ),
       if (side)
         _side(
@@ -1276,10 +1266,18 @@ class _ReaderScreenState extends State<ReaderScreen>
     key: _hintArea,
     children: [
       Positioned.fill(child: pages),
-      // «الكشاف» over the page (the user, 2026-11-26).
+      // The lamp over the page, dragged on any word as «الكشاف» was, which
+      // it took the place of (the user, 2026-11-27).
       Positioned.fill(
-        child: Flashlight(
+        child: Lamp(
           settings: widget.settings,
+          onTap: _toggleGlow,
+          onLongPress: () => LampSettingsScreen.open(
+            context,
+            settings: widget.settings,
+            variants: widget.variants,
+            quran: _quran,
+          ),
           panelFor: (ayah, word) => flashlightPanel(
             ayah: ayah,
             word: word,
@@ -1479,123 +1477,33 @@ class _EyeIndicator extends StatelessWidget {
   }
 }
 
-/// Beside «الرواة»: the lamp of «تنبيه الاختلافات» (a tap lights the words
-/// that differ from Hafs, its rays flickering, or puts them out; held, it
-/// opens the usul it lights) and the button of the mutashabihat.
-class _GlowLamp extends StatefulWidget {
-  const _GlowLamp({
-    required this.settings,
-    this.small = false,
-    required this.onTap,
-    required this.onLongPress,
-    this.gap = 4,
-  });
+/// Beside «الرواة»: the button of the mutashabihat (the lamp left it for
+/// the page, the user, 2026-11-27).
+class _MutashabihatButton extends StatelessWidget {
+  const _MutashabihatButton({required this.settings, this.small = false});
+
+  final ReaderSettings settings;
 
   /// On the page's header: smaller, clear of the frame.
   final bool small;
 
-  /// Between the lamp and the mutashabihat's button.
-  final double gap;
-
-  final ReaderSettings settings;
-  final VoidCallback onTap;
-
-  /// Held: the usul of the hamesh, each lit or not.
-  final VoidCallback onLongPress;
-
-  @override
-  State<_GlowLamp> createState() => _GlowLampState();
-}
-
-class _GlowLampState extends State<_GlowLamp>
-    with SingleTickerProviderStateMixin {
-  double get _size => widget.small ? 22 : 30;
-
-  /// The rays: drawn still while the lamp is lit, not flickering: their
-  /// flicker drew the whole screen again (the glow's shadows with it) some
-  /// 26 times a second, the weak phone kept busy without a touch (the
-  /// user, 2026-11-12).
-  late final _rays = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  );
-
-  @override
-  void dispose() {
-    _rays.dispose();
-    super.dispose();
-  }
-
-  void _syncRays(bool lit) {
-    if (_rays.isAnimating) _rays.stop();
-    _rays.value = lit ? 1 : 0;
-  }
+  double get _size => small ? 22 : 30;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: widget.settings,
-    builder: (context, _) {
-      final lit = widget.settings.diffAlert != null;
-      _syncRays(lit);
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _lamp(lit),
-          SizedBox(width: widget.gap),
-          _mutashabihat(),
-        ],
-      );
-    },
-  );
-
-  Widget _lamp(bool lit) => Tooltip(
-    // Held, it opens the usul it lights.
-    triggerMode: TooltipTriggerMode.manual,
-    message: lit ? 'إطفاء توهج الاختلافات' : 'توهج الاختلافات',
-    child: GestureDetector(
-      key: const ValueKey('glow-lamp'),
-      onTap: widget.onTap,
-      onLongPress: widget.onLongPress,
-      child: RepaintBoundary(
-        child: CustomPaint(
-          key: lit ? const ValueKey('glow-rays') : null,
-          painter: lit ? _Rays(_rays, MushafColors.gold) : null,
-          child: Opacity(
-            opacity: lit ? .9 : .65,
-            child: Container(
-              width: _size,
-              height: _size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: (lit ? MushafColors.gold : MushafColors.green).withAlpha(
-                  lit ? 70 : 35,
-                ),
-                border: Border.all(
-                  color: (lit ? MushafColors.gold : MushafColors.green)
-                      .withAlpha(150),
-                ),
-              ),
-              child: Icon(
-                lit ? Icons.lightbulb : Icons.lightbulb_outline,
-                size: widget.small ? 14 : 18,
-                color: lit ? MushafColors.gold : MushafColors.green,
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
+    listenable: settings,
+    builder: (context, _) => _mutashabihat(),
   );
 
   Widget _mutashabihat() {
-    final on = widget.settings.showMutashabihat;
+    final on = settings.showMutashabihat;
     final colour = on ? MushafColors.gold : MushafColors.green;
     return Tooltip(
       triggerMode: TooltipTriggerMode.manual,
       message: on ? 'إخفاء تظليل المتشابهات' : 'إظهار تظليل المتشابهات',
       child: GestureDetector(
         key: const ValueKey('mutashabihat-toggle'),
-        onTap: () => widget.settings.showMutashabihat = !on,
+        onTap: () => settings.showMutashabihat = !on,
         child: Opacity(
           opacity: on ? .9 : .65,
           child: Container(
@@ -1609,7 +1517,7 @@ class _GlowLampState extends State<_GlowLamp>
             // Two pages alike, one over the other.
             child: Icon(
               on ? Icons.difference_rounded : Icons.difference_outlined,
-              size: widget.small ? 13 : 17,
+              size: small ? 13 : 17,
               color: colour,
             ),
           ),
@@ -1619,29 +1527,3 @@ class _GlowLampState extends State<_GlowLamp>
   }
 }
 
-/// Short rays around the lit lamp, coming and going.
-class _Rays extends CustomPainter {
-  _Rays(this.t, this.color) : super(repaint: t);
-
-  final Animation<double> t;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final v = Curves.easeInOut.transform(t.value);
-    final c = size.center(Offset.zero);
-    final r = size.shortestSide / 2;
-    final paint = Paint()
-      ..color = color.withValues(alpha: .25 + .75 * v)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 8; i++) {
-      final a = i * math.pi / 4;
-      final d = Offset(math.cos(a), math.sin(a));
-      canvas.drawLine(c + d * (r + 2), c + d * (r + 3 + 4 * v), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_Rays old) => old.color != color;
-}

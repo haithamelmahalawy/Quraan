@@ -1606,6 +1606,15 @@ class Manzumat {
         (v.description.contains('فتح') || v.surah == 2 && v.ayah == 124)) {
       return {407};
     }
+    // «قَدَرُهُۥ» (البقرة ٢٣٦، معًا), quiet or moved: «مَعًا قَدْرُ حَرِّكْ مِنْ
+    // صَحَابٍ» (513), for every reader of the Shatibiyya (the user,
+    // 2026-11-27).
+    if (poem == Poem.shatibiyya &&
+        v.surah == 2 &&
+        v.ayah == 236 &&
+        (v.word == 16 || v.word == 19)) {
+      return {513};
+    }
     // Al-Susi's quiet hamza made a madd letter (يُؤۡمِنُونَ، يَأۡكُلُونَ، بِئۡرٖ):
     // «وَيُبْدَلُ لِلسُّوسِيِّ كُلُّ مُسَكَّنٍ مِنَ الْهَمْزِ مَدًّا غَيْرَ مَجْزُومٍ
     // اْهْمِلَا» (216) (the user, 2026-11-26).

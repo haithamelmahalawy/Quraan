@@ -33,6 +33,9 @@ abstract final class ReadingColors {
   static Color get separatedMadd => MushafColors.tone(const Color(0xFF558B2F));
   static Color get kabirIdgham => MushafColors.tone(const Color(0xFF4527A0));
 
+  /// The ikhtilas red, as its dot (the user, 2026-11-27).
+  static Color get ikhtilas => MushafColors.tone(const Color(0xFFD50000));
+
   /// Typed rules describe only this row's narrator, even when its source
   /// sentence mentions the contrasting performance of another reader.
   static String? labelForRule(String rule) => switch (rule) {
@@ -57,6 +60,7 @@ abstract final class ReadingColors {
     'fawatih' => 'فواتح السور',
     'bazzi_ta' => 'تاءات البزي',
     'ikhfa' => 'الإخفاء',
+    'ikhtilas' => 'الاختلاس',
     'takbir' => 'تكبير الختم',
     'ana_madd' => 'مد أنا',
     'fath' => 'الفتح',
@@ -110,6 +114,7 @@ abstract final class ReadingColors {
     if (label == 'المد المتصل') return connectedMadd;
     if (label == 'المد المنفصل') return separatedMadd;
     if (label == 'الإدغام الكبير') return kabirIdgham;
+    if (label == 'الاختلاس') return ikhtilas;
     if (label == 'هاء الكناية') return haKinaya;
     if (label == 'ميم الجمع') return silah;
     if (label == 'ياءات الزوائد' ||

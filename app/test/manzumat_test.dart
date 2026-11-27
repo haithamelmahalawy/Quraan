@@ -9605,4 +9605,22 @@ void main() {
       expect(manzumat.referenceOf(v, '', 2, surahs).mention, {407}, reason: id);
     }
   });
+  test('qadruhu cites 513', () async {
+    final quran = await QuranRepository.load();
+    final variants = await VariantRepository.discover();
+    await variants.ensureLoaded(['duri_abuamr', 'susi']);
+    // «مَعًا قَدْرُ حَرِّكْ مِنْ صَحَابٍ».
+    for (final id in ['duri_abuamr', 'susi']) {
+      for (final w in [16, 19]) {
+        final v = variants.at([id], 2, 236, w).firstWhere((v) => v.word == w);
+        expect(
+          manzumat
+              .referenceOf(v, quran.ayah(2, 236).words[w], 2, surahs)
+              .mention,
+          {513},
+          reason: '$id $w',
+        );
+      }
+    }
+  });
 }

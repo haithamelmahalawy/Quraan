@@ -45,6 +45,8 @@ flutter:
     - assets/tessdata_config.json
     # The app icon, shown on the start page (drawn by tool/icon).
     - assets/images/logo.png
+    # The opening's recitation, «يا يحيى خذ الكتاب بقوة», al-Minshawi.
+    - assets/audio/intro_yahya.wav
 
   fonts:
     # KFGQPC Uthmanic Hafs font: the page, and every riwaya's readings in the

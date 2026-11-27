@@ -531,7 +531,7 @@ class InkText extends StatelessWidget {
     final small =
         style.fontFamily == 'Hafs' &&
             !(parts?.map((p) => p.$1).join() ?? text).contains(
-              RegExp('[۪ٜ\uE01A]'),
+              RegExp('[۪ٜ\uE01A\uE01B]'),
             )
         ? smallHamzaAlifParts(parts ?? [(text, null)])
         : null;

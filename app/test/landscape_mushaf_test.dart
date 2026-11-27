@@ -114,15 +114,16 @@ void main() {
       final similar = find.byKey(const ValueKey('mutashabihat-toggle'));
       expect(lamp.hitTestable(), findsOneWidget);
       expect(similar.hitTestable(), findsOneWidget);
-      // In the top bar, beside «الرواة», at its left.
-      final at = t.getRect(lamp.hitTestable());
+      // The mutashabihat in the top bar, beside «الرواة», at its left; the
+      // lamp on the page, not in the bar (the user, 2026-11-27).
+      final at = t.getRect(similar.hitTestable());
       final riwayat = t.getRect(
         find.byKey(const ValueKey('riwayat-panel-toggle')).hitTestable(),
       );
       expect(at.right, lessThan(riwayat.left));
       expect(riwayat.left - at.right, lessThan(12));
       expect((at.center.dy - riwayat.center.dy).abs(), lessThan(2));
-      expect(t.getRect(similar.hitTestable()).right, lessThan(at.left));
+      expect(t.getRect(lamp.hitTestable()).top, greaterThan(riwayat.bottom));
       expect(glowing, findsNothing);
       expect(rays, findsNothing);
       // Out: nothing moves, so nothing is drawn again and again.
@@ -290,11 +291,11 @@ void main() {
     expect(panel, findsNothing);
     final tab = button.hitTestable();
     expect(tab, findsOneWidget);
-    final lamp = t.getRect(
-      find.byKey(const ValueKey('glow-lamp')).hitTestable(),
+    final similar = t.getRect(
+      find.byKey(const ValueKey('mutashabihat-toggle')).hitTestable(),
     );
-    expect(lamp.right, lessThan(t.getRect(tab).left + 1));
-    expect(lamp.height, lessThan(24));
+    expect(similar.right, lessThan(t.getRect(tab).left + 1));
+    expect(similar.height, lessThan(24));
     await t.tap(tab);
     await t.pumpAndSettle();
     expect(panel, findsOneWidget);
@@ -343,7 +344,7 @@ void main() {
     }
 
     await open();
-    expect(find.text('أصول التوهج'), findsOneWidget);
+    expect(find.text('ضبط المصباح'), findsOneWidget);
     // Every asl on at first.
     final switches = find.byType(SwitchListTile);
     expect(switches, findsWidgets);
@@ -394,7 +395,9 @@ void main() {
       ..qcfFont = false;
     await show(t, const Size(800, 432), settings: settings, reader: true);
     final icon = find.byKey(const ValueKey('index-icon')).hitTestable();
-    final lamp = find.byKey(const ValueKey('glow-lamp')).hitTestable();
+    final lamp = find
+        .byKey(const ValueKey('mutashabihat-toggle'))
+        .hitTestable();
     final riwayat = find
         .byKey(const ValueKey('riwayat-panel-toggle'))
         .hitTestable();

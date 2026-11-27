@@ -177,7 +177,10 @@ String usulReadingText(
   Iterable<Variant> at(Ayah a, int w) =>
       variants.at([reading.riwayaId], a.surah, a.number, w);
 
-  if (reading.riwayaId == 'ruways' && reading.rule == 'idgham_kabir') {
+  // Al-Susi's too, in the band (لِنَعۡلَم مَّن: the first bare, the second
+  // doubled) (the user, 2026-11-27).
+  if (const {'ruways', 'susi'}.contains(reading.riwayaId) &&
+      reading.rule == 'idgham_kabir') {
     final context = reading.usulText.split(RegExp(r'\s+'));
     if (context.length == 2) {
       String actual(int w, String fallback) =>

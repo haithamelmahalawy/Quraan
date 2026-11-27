@@ -5,17 +5,17 @@ import 'package:qiraat_mushaf/data/mutashabihat_repository.dart';
 import 'package:qiraat_mushaf/data/quran_repository.dart';
 import 'package:qiraat_mushaf/data/variant_repository.dart';
 import 'package:qiraat_mushaf/state/reader_settings.dart';
-import 'package:qiraat_mushaf/ui/flashlight.dart';
+import 'package:qiraat_mushaf/ui/lamp.dart';
 import 'package:qiraat_mushaf/ui/mushaf_page.dart';
 import 'package:qiraat_mushaf/ui/reader_screen.dart';
 import 'package:qiraat_mushaf/ui/theme.dart';
 
-/// «الكشاف» dragged over a word read otherwise shows its panel of every
-/// chosen riwaya's difference (the user, 2026-11-26).
+/// The lamp, dragged over a word read otherwise as «الكشاف» was, shows its
+/// panel of every chosen riwaya's difference (the user, 2026-11-26, 27).
 void main() {
   modes();
   ten();
-  testWidgets('the flashlight over a differing word', (t) async {
+  testWidgets('the lamp over a differing word', (t) async {
     late Mushafs mushafs;
     late VariantRepository variants;
     late MutashabihatRepository mut;
@@ -50,9 +50,9 @@ void main() {
     for (var i = 0; i < 20; i++) {
       await t.pump(const Duration(milliseconds: 100));
     }
-    final lamp = find.byKey(const ValueKey('flashlight'));
+    final lamp = find.byKey(const ValueKey('glow-lamp'));
     expect(lamp, findsOneWidget);
-    expect(find.byKey(const ValueKey('flashlight-panel')), findsNothing);
+    expect(find.byKey(const ValueKey('lamp-panel')), findsNothing);
     // «يَكۡذِبُونَ» (البقرة ١٠): Khallad and Ibn Dhakwan read it otherwise.
     final word = find.byWidgetPredicate(
       (w) =>
@@ -71,7 +71,8 @@ void main() {
     // user, 2026-11-26).
     for (var i = 0; i < 120; i++) {
       final at = t.getTopLeft(lamp);
-      final tip = at + const Offset(Flashlight.width / 2, 1);
+      // The light's tip, above the body held.
+      final tip = at + const Offset(Lamp.width / 2, 1 - Lamp.beamHeight);
       final left = target - tip;
       if (left.distance < 1) break;
       await gesture.moveBy(
@@ -81,10 +82,10 @@ void main() {
     }
     await gesture.up();
     await t.pump();
-    expect(find.byKey(const ValueKey('flashlight-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('lamp-panel')), findsOneWidget);
     expect(
       find.descendant(
-        of: find.byKey(const ValueKey('flashlight-panel')),
+        of: find.byKey(const ValueKey('lamp-panel')),
         matching: find.textContaining('ابن ذكوان'),
       ),
       findsOneWidget,
@@ -98,15 +99,33 @@ void main() {
     }
     await off.up();
     await t.pump();
-    expect(find.byKey(const ValueKey('flashlight-panel')), findsNothing);
-    // Held: the three ways, the chosen one kept (the user, 2026-11-26).
+    expect(find.byKey(const ValueKey('lamp-panel')), findsNothing);
+    // A tap: the words that differ glow, its rays drawn; again: out.
+    await t.tap(lamp);
+    await t.pump();
+    expect(s.diffAlert, DiffAlert.glow);
+    expect(find.byKey(const ValueKey('glow-rays')), findsOneWidget);
+    await t.tap(lamp);
+    await t.pump();
+    expect(s.diffAlert, isNull);
+    // Held: its settings, the usul on the right, the ways on the left, the
+    // chosen one kept (the user, 2026-11-27).
     await t.longPress(lamp);
-    await t.pumpAndSettle();
+    for (var i = 0; i < 30; i++) {
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await t.pump(const Duration(milliseconds: 100));
+    }
+    final usul = t.getRect(find.text('الأصول'));
+    final ways = t.getRect(find.text('طريقة العرض'));
+    expect(usul.center.dx, greaterThan(ways.center.dx));
+    expect(find.byType(SwitchListTile), findsWidgets);
     for (final mode in FlashMode.values) {
       expect(find.byKey(ValueKey('flash-mode:${mode.name}')), findsOneWidget);
     }
     await t.tap(find.byKey(const ValueKey('flash-mode:shown')));
-    await t.pumpAndSettle();
+    await t.pump();
     expect(s.flashMode, FlashMode.shown);
     expect(t.takeException(), isNull);
   });
