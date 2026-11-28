@@ -502,7 +502,12 @@ Map<String, int> buildAbuAmrUsul(
         v[1],
         v[2],
         1,
-        m == null ? '' : '${w.t.substring(0, m.start)}${m[1]}',
+        // The hamza dropped, its madd sign with it, as Qalun's
+        // «ٱلسُّفَهَا» (the user, 2026-11-28); not a madd before a hamza
+        // still read (هَٰٓؤُلَا).
+        m == null
+            ? ''
+            : '${w.t.substring(0, m.start).replaceFirst(RegExp('ٓ\$'), '')}${m[1]}',
         'h',
         isqatHow,
         'tasheel_pair_first',
@@ -596,6 +601,61 @@ Map<String, int> buildAbuAmrUsul(
           !(r.length > 8 && (r[8] as Map)['noBand'] == true))
         _key(r[0], r[1], r[2]),
   };
+  // al-Susi's big idgham the source wrote as a farsh «بإسكان النون» on the
+  // word's last letter (لِلۡكَٰفِرِينَ نَّصِيبٞ، ٱلنَّارِ لَّهُمۡ، ٱلتَّوۡرَىٰةَ ثُّمَّ): its
+  // row under the big idgham, the next word's first letter doubled (the
+  // user, 2026-11-28); across an ayah's end, as «ٱلرَّحِيمِ ۝ مَّلِكِ».
+  if (susi) {
+    const letter = {'النون': 'ن', 'الراء': 'ر', 'التاء': 'ت', 'اللام': 'ل'};
+    const into = {
+      'ن': 'ن',
+      'ر': 'رل',
+      'ت': 'تث',
+      'ل': 'لر',
+    };
+    String bare(String t) =>
+        t.replaceAll(RegExp('[ً-ٰۖ-ۭ]'), '').replaceAll('ٱ', 'ا');
+    for (final v in raw) {
+      if (v[5] != 'f' || v[3] != 1) continue;
+      // Its imala told with it, under its own chapter (بالإمالة وإسكان النون).
+      final m = RegExp(
+        r'^ب(?:الإمالة و)?إسكان (\S+)$',
+      ).firstMatch('${v[6]}');
+      final l = m == null ? null : letter[m[1]];
+      if (l == null) continue;
+      final w = index[_key(v[0], v[1], v[2])];
+      // The ta marbuta read a ta (ٱلتَّوۡرَىٰةَ ثُّمَّ).
+      if (w == null ||
+          !bare(w.t).endsWith(l) && !(l == 'ت' && bare(w.t).endsWith('ة'))) {
+        continue;
+      }
+      final next = index[_key(w.s, w.a, w.w + 1)];
+      final across = next == null ? index[_key(w.s, w.a + 1, 0)] : null;
+      final first = next ?? across;
+      if (first == null) continue;
+      // The article's lam silent before a sun letter: the letter after it.
+      var head = bare(first.t);
+      if (head.startsWith('ال')) head = head.substring(2);
+      if (head.isEmpty || !into[l]!.contains(head[0])) continue;
+      if (rows.any(
+        (r) =>
+            r[7] == 'idgham_kabir' &&
+            _key(r[0], r[1], r[2]) == _key(w.s, w.a, w.w),
+      )) {
+        continue;
+      }
+      final context = {'context': '${w.t} ${first.t}'};
+      if (next != null) {
+        put(row(w.s, w.a, w.w, 2, '', 'u', 'بالإدغام الكبير وصلاً',
+            'idgham_kabir', context));
+      } else {
+        put(row(w.s, w.a, w.w, 1, '', 'u', 'بالإدغام الكبير وصلاً',
+            'idgham_kabir', context));
+        rows.add(row(first.s, first.a, 0, 1, '', 'u', 'بالإدغام الكبير وصلاً',
+            'idgham_kabir', {...context, 'noBand': true}));
+      }
+    }
+  }
   final kabirFirst = {
     for (final r in rows)
       if (r[7] == 'idgham_kabir') _key(r[0], r[1], r[2]),
@@ -846,9 +906,9 @@ Map<String, int> buildAbuAmrUsul(
         ?.where((v) => v[5] == 'f')
         .firstOrNull;
     if (qalun == null) continue;
-    // Al-Duri's drawn with its ikhtilas: the 'ain's kasra and the red dot
-    // under it (the user, 2026-11-27).
-    r[4] = susi ? qalun[4] : index[at]!.t.replaceFirst('عِ', 'عِ');
+    // Both narrators drawn with the iskan, the face first, told as one in
+    // the hamesh; the ikhtilas not drawn (the user, 2026-11-28).
+    r[4] = qalun[4];
     r[6] = qalun[6];
     (r[8] as Map)['farshFrom'] = 'qalun';
   }
@@ -886,6 +946,31 @@ Map<String, int> buildAbuAmrUsul(
           'farshFrom': 'shubah',
         }),
       );
+    }
+  }
+
+  // al-Susi's ibdal on his own farsh word, not Hafs's (يُوتِيهِ «بالياء», not
+  // «نُوتِيهِ»; لِّيُومِنُواْ، يُوثِرُونَ، وَلُولُؤٖاْ): both rows drawn as his word
+  // with the hamza changed, told «…، مع الإبدال للسوسي» (the user,
+  // 2026-11-28).
+  if (susi) {
+    String changed(String t) => t
+        .replaceFirst('ؤۡ', 'و')
+        .replaceFirst('ئۡ', 'ي')
+        .replaceFirst('أۡ', 'ا');
+    for (final ibdal in rows.where((r) => r[7] == 'ibdal_single').toList()) {
+      final farsh = rows
+          .where(
+            (r) =>
+                r[5] == 'f' &&
+                '${r[4]}'.isNotEmpty &&
+                _key(r[0], r[1], r[2]) == _key(ibdal[0], ibdal[1], ibdal[2]),
+          )
+          .firstOrNull;
+      if (farsh == null || farsh[4] == ibdal[4]) continue;
+      final text = changed('${farsh[4]}');
+      ibdal[4] = text;
+      farsh[4] = text;
     }
   }
 

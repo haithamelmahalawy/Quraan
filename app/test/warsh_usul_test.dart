@@ -1815,7 +1815,7 @@ void main() {
   });
 
   testWidgets(
-    'ءأعجمي 41:44 marks its alif as the second hamza, not as a badal',
+    'ءأعجمي 41:44 marks its two hamzas, the alif the second, not a badal',
     (t) async {
       await page(
         t,
@@ -1828,7 +1828,8 @@ void main() {
         find.byKey(const ValueKey('word:41:44:8')),
       );
       final parts = word.parts!;
-      expect(parts.where((p) => p.$2 == ReadingColors.hamza), hasLength(1));
+      // Both hamzas, the first and the second (the user, 2026-11-28).
+      expect(parts.where((p) => p.$2 == ReadingColors.hamza), hasLength(2));
       expect(parts.where((p) => p.$2 == MushafColors.green), isEmpty);
     },
   );

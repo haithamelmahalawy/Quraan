@@ -1968,6 +1968,8 @@ class _MushafPageState extends State<MushafPage>
         _waslDammColor(ayah, w) != null ||
         w > 0 && _waslDammColor(ayah, w - 1) != null ||
         _haDamirBefore(ayah, w) != null ||
+        // The other word of two hamzas, its hamza coloured.
+        _pairHamzaAt(ayah, w, ayah.words[w]) != null ||
         _idghamAcrossAyah(ayah, w)) {
       return (text: ayah.words[w], font: 'Hafs');
     }
@@ -2615,6 +2617,11 @@ class _MushafPageState extends State<MushafPage>
                   v.rule == 'ibdal_ya' ||
                   v.rule == 'tasheel_pair'
             ? 0
+            // The first of two from two words dropped or eased: the madd
+            // before it, or the eased hamza, the word's last letter alone
+            // (ٱلسُّفَهَا أَمۡوَٰلَكُمُ; the user, 2026-11-28).
+            : v.rule == 'tasheel_pair_first'
+            ? letters.length - 1
             // The second hamza, after the first (ءَآللَّهُ); the riwaya's own
             // text may write the two as one alif (آٰللَّهُ).
             : v.rule == 'tasheel_word' || v.rule == 'hamza_wasl'
@@ -2648,6 +2655,13 @@ class _MushafPageState extends State<MushafPage>
             onDagger ? target - 1 : target,
             isWarshHamzaNaql(v) ? ReadingColors.naql : ReadingColors.hamza,
           );
+          // Two hamzas in a word: both, the first too (ءَأَنذَرۡتَهُمۡ; the
+          // user, 2026-11-28).
+          if (v.rule == 'tasheel_word' &&
+              target == 1 &&
+              _hamzaCluster(letters.first)) {
+            mark(0, ReadingColors.hamza);
+          }
         }
       }
       if (d.contains('صلة')) {
@@ -2901,6 +2915,41 @@ class _MushafPageState extends State<MushafPage>
             )
             .firstOrNull;
     return sakt == null ? null : ReadingColors.of(sakt);
+  }
+
+  /// Two hamzas from two words (ٱلسُّفَهَآءَ أَمۡوَٰلَكُمُ، ٱلسُّفَهَآءُ أَلَآ): the
+  /// other word's hamza alone in the hamza's colour, the rest in ink (the
+  /// user, 2026-11-28): after the first dropped or eased, this word's first
+  /// hamza; before the second changed or eased, this word's last.
+  int? _pairHamzaAt(Ayah ayah, int w, String text) {
+    bool pair(Variant v) =>
+        usulOf(v).any((l) => l.startsWith('الهمزتان من كلمتين'));
+    List<Variant> at(int i) => i < 0 || i >= ayah.words.length
+        ? const []
+        : [
+                ..._readingsAt(widget.variants, widget.settings, ayah, i).shown,
+                ...?_letterReadings(ayah, i),
+              ]
+              .where(
+                (v) => v.word == i && widget.settings.kinds.contains(v.kind),
+              )
+              .toList();
+    final letters = lettersOf(text);
+    final before = at(w - 1)
+        .where((v) => v.rule == 'tasheel_pair_first')
+        .toList();
+    if (before.isNotEmpty && _glows(before)) {
+      final i = letters.indexWhere(_hamzaCluster);
+      return i < 0 ? null : i;
+    }
+    final next = at(w + 1)
+        .where((v) => pair(v) && v.rule != 'tasheel_pair_first')
+        .toList();
+    if (next.isNotEmpty && _glows(next)) {
+      final i = letters.lastIndexWhere(_hamzaCluster);
+      return i < 0 ? null : i;
+    }
+    return null;
   }
 
   List<(String, Color?)>? _haDamirInto(Ayah ayah, int w, String text) {
@@ -3351,6 +3400,9 @@ class _MushafPageState extends State<MushafPage>
         ? _idghamInto(ayah, w, shown.text) ?? _haDamirInto(ayah, w, shown.text)
         : null;
     final saktInto = hafsFont ? _saktInto(ayah, w, shown.text) : null;
+    final pairAt = hafsFont && saktInto == null
+        ? _pairHamzaAt(ayah, w, shown.text)
+        : null;
     final joined = own == null
         ? into
         : into == null || into.isEmpty
@@ -3366,7 +3418,15 @@ class _MushafPageState extends State<MushafPage>
             ...own.skip(1),
           ];
     // The hamza after a sakt at the word before's end, in the sakt's red.
-    final coloured = saktInto == null
+    final coloured = pairAt != null
+        ? [
+            for (final (i, l)
+                in (joined ??
+                        [for (final l in lettersOf(shown.text)) (l, null)])
+                    .indexed)
+              (l.$1, i == pairAt ? ReadingColors.hamza : l.$2),
+          ]
+        : saktInto == null
         ? joined
         : [
             for (final (i, l)
@@ -4630,7 +4690,11 @@ bool _bySusiIbdal(Variant duri, Variant susi) {
       .replaceAll('ؤ', 'و')
       .replaceAll('ئ', 'ي')
       .replaceAll(RegExp('[أآ]'), 'ا');
-  return duri.text != susi.text && seatless(duri.text) == seatless(susi.text);
+  // A hamza al-Susi changed, not his big idgham's shadda (نُّوَلِّهۡ).
+  int hamzas(String t) => RegExp('[ءأإؤئآ]').allMatches(t).length;
+  return duri.text != susi.text &&
+      hamzas(susi.text) < hamzas(duri.text) &&
+      seatless(duri.text) == seatless(susi.text);
 }
 
 /// Abu 'Amr's farsh read alike by both, al-Susi's word with his ibdal
@@ -4665,10 +4729,17 @@ List<Variant> _abuAmrIbdal(List<Variant> rows) {
       stopOnly: v.stopOnly,
       hamesh: v.hamesh,
     );
-    return [
-      for (final v in rows)
-        if (identical(v, duri) || identical(v, susi)) as(v) else v,
-    ];
+    // Those who read it as al-Duri told with them in one line (أبو عمرو
+    // وحمزة وخلف «يُؤۡتِيهِ بالياء، مع الإبدال للسوسي»; the user, 2026-11-28).
+    bool alike(Variant v) =>
+        identical(v, duri) ||
+        identical(v, susi) ||
+        !v.isUsul &&
+            v.word == duri.word &&
+            v.count == duri.count &&
+            v.text == duri.text &&
+            v.description == duri.description;
+    return [for (final v in rows) alike(v) ? as(v) : v];
   }
   return rows;
 }

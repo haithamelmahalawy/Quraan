@@ -45,15 +45,15 @@ class IntroScreen extends StatefulWidget {
   final bool sound;
 
   /// The whole opening.
-  static const duration = Duration(milliseconds: 9500);
+  static const duration = Duration(milliseconds: 10000);
 
-  /// When the recitation starts: as the page is seen.
-  static const soundAt = Duration(milliseconds: 2600);
+  /// When the recitation starts: as the open mushaf is laid flat.
+  static const soundAt = Duration(milliseconds: 3800);
 
   /// The ayah.
   static const surah = 19, ayah = 12;
 
-  /// The page drawn at this size, then fitted into the open mushaf.
+  /// A page drawn at this size, the open mushaf's measure.
   static const pageSize = Size(560, 860);
 
   @override
@@ -138,7 +138,7 @@ class _IntroScreenState extends State<IntroScreen>
       }, onError: (Object _) {});
     }
     QcfFonts.instance.addListener(_fontReady);
-    QcfFonts.instance.ensure([_page]);
+    QcfFonts.instance.ensure([_page - 1, _page]);
     if (widget.sound) _soundTimer = Timer(IntroScreen.soundAt, _play);
   }
 
@@ -184,6 +184,7 @@ class _IntroScreenState extends State<IntroScreen>
   @override
   Widget build(BuildContext context) {
     final qcf = QcfFonts.instance.isReady(_page);
+    final qcfRight = QcfFonts.instance.isReady(_page - 1);
     // Built again only when its font or its riwayat come, not each frame.
     final pageKey = 'intro-page:$qcf:$_loaded';
     final page = MushafPage(
@@ -203,6 +204,18 @@ class _IntroScreenState extends State<IntroScreen>
           : null,
       // «يَٰيَحۡيَىٰ خُذِ ٱلۡكِتَٰبَ بِقُوَّةٖۖ» alone, not the rest of the ayah.
       shadeWord: (_, w) => w < 4,
+    );
+    // The page before it, on the right of the open mushaf.
+    final right = MushafPage(
+      key: ValueKey('intro-right:$qcfRight:$_loaded'),
+      page: _page - 1,
+      quran: _quran,
+      variants: widget.variants,
+      mutashabihat: widget.mutashabihat,
+      settings: _settings,
+      onWordTap: (_, _) {},
+      qcf: qcfRight,
+      showHamesh: _loaded,
     );
     return GestureDetector(
       key: const ValueKey('intro'),
@@ -224,7 +237,8 @@ class _IntroScreenState extends State<IntroScreen>
               return _Book(
                 t: _t.value,
                 area: box.biggest,
-                page: page,
+                left: page,
+                right: right,
                 pageBox: _pageBox,
                 phrase: _phrase,
               );
@@ -240,21 +254,102 @@ class _IntroScreenState extends State<IntroScreen>
 double _fade(double t, double a, double b) =>
     Curves.easeInOut.transform(((t - a) / (b - a)).clamp(0.0, 1.0));
 
-/// The mushaf: shut in the middle, its cover turning slowly open on its
-/// spine (on the right, as an Arabic mushaf), the page beneath; then the
-/// page brought near.
+/// A point of the scene on the screen, through [m].
+Offset _on(Matrix4 m, double x, double y, double z) {
+  final s = m.storage;
+  final w = s[3] * x + s[7] * y + s[11] * z + s[15];
+  return Offset(
+    (s[0] * x + s[4] * y + s[8] * z + s[12]) / w,
+    (s[1] * x + s[5] * y + s[9] * z + s[13]) / w,
+  );
+}
+
+/// Twice the area of [q] on the screen: above 0 when it faces the eye.
+double _area(List<Offset> q) {
+  var s = 0.0;
+  for (var i = 0; i < q.length; i++) {
+    final a = q[i], b = q[(i + 1) % q.length];
+    s += a.dx * b.dy - b.dx * a.dy;
+  }
+  return s;
+}
+
+/// A face of the mushaf seen: its corners on the screen, its colour, and the
+/// lines of the leaves' edges on it.
+class _Face {
+  _Face(this.corners, this.color, [this.lines = const []]);
+
+  final List<Offset> corners;
+  final Color color;
+  final List<(Offset, Offset)> lines;
+}
+
+class _Faces extends CustomPainter {
+  _Faces(this.faces);
+
+  final List<_Face> faces;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..strokeWidth = .7
+      ..color = const Color(0x66896A2C);
+    for (final f in faces) {
+      canvas.drawPath(
+        Path()..addPolygon(f.corners, true),
+        Paint()..color = f.color,
+      );
+      for (final (a, b) in f.lines) {
+        canvas.drawLine(a, b, line);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Faces old) => true;
+}
+
+/// The shadow of the mushaf on the table.
+class _Shadow extends CustomPainter {
+  _Shadow(this.corners, this.blur);
+
+  final List<Offset> corners;
+  final double blur;
+
+  @override
+  void paint(Canvas canvas, Size size) => canvas.drawPath(
+    Path()..addPolygon(corners, true),
+    Paint()
+      ..color = const Color(0x99000000)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur),
+  );
+
+  @override
+  bool shouldRepaint(_Shadow old) => true;
+}
+
+/// The mushaf, a real one (the user, 2026-11-28): shut on a table, seen
+/// from above and in front, its leather cover, its boards and the gilt edges
+/// of its leaves showing how thick it is; its cover and half its leaves
+/// turning on the spine at the right, as an Arabic mushaf opens, so that the
+/// two pages lie open, page 305 on the right and page 306 on the left, each
+/// on its stack of leaves; then laid flat before the eye and the ayah brought
+/// near, the rest hidden.
 class _Book extends StatelessWidget {
   const _Book({
     required this.t,
     required this.area,
-    required this.page,
+    required this.left,
+    required this.right,
     required this.pageBox,
     required this.phrase,
   });
 
   final double t;
   final Size area;
-  final Widget page;
+
+  /// Page 306, the ayah's, on the left; page 305 on the right.
+  final Widget left, right;
   final GlobalKey pageBox;
 
   /// «يَٰيَحۡيَىٰ خُذِ ٱلۡكِتَٰبَ بِقُوَّةٖۖ» on the page drawn; null until measured.
@@ -264,32 +359,220 @@ class _Book extends StatelessWidget {
   static const shade = Color(0xFFE8B84A);
   static const gold = Color(0xFFE8B84A);
   static const paleGold = Color(0xFFF3D98B);
+  static const paper = Color(0xFFFBF6E9);
+  static const leatherEdge = Color(0xFF0B3528);
+  static const lining = Color(0xFF0F3E30);
+  static const gilt = Color(0xFFE2C98A);
+
+  // The mushaf's measures, in the page's units: a page, the cover past the
+  // leaves, each half's leaves, a board.
+  static final pw = IntroScreen.pageSize.width;
+  static final ph = IntroScreen.pageSize.height;
+  static const over = 12.0;
+  static const leaves = 46.0;
+  static const board = 8.0;
+  static final cw = pw + over;
+  static final ch = ph + 2 * over;
+
+  /// The open pages above the table; the spine turns there.
+  static const top = board + leaves;
 
   @override
   Widget build(BuildContext context) {
-    final shown = _fade(t, 0, .08) * (1 - _fade(t, .93, 1));
-    final open = _fade(t, .085, .3);
-    final near = _fade(t, .28, .4);
-    // Then the ayah alone, brought near, the rest of the mushaf hidden (the
-    // user, 2026-11-27).
-    final zoom = phrase == null ? 0.0 : _fade(t, .45, .6);
-    final ratio = IntroScreen.pageSize.width / IntroScreen.pageSize.height;
-    // Shut: a book in the middle; open: the page filling the screen.
-    final shutW = math.min(area.width * .62, area.height * .5 * ratio);
-    final fullW = math.min(area.width * .98, area.height * .96 * ratio);
-    final w = shutW + (fullW - shutW) * near;
-    final h = w / ratio;
-    final cover = open * math.pi;
-    // The zoom: the phrase's middle to the screen's, as wide as most of it.
-    final k = w / IntroScreen.pageSize.width;
-    final origin = area.center(Offset.zero) - Offset(w / 2, h / 2);
+    final shown = _fade(t, 0, .06) * (1 - _fade(t, .94, 1));
+    final open = _fade(t, .07, .36);
+    final flat = _fade(t, .3, .46);
+    final grow = _fade(t, .1, .44);
+    final zoom = phrase == null ? 0.0 : _fade(t, .48, .62);
+    final angle = open * math.pi;
+    final tilt = (.7 - .2 * open) * (1 - flat);
+    // Shut, turned a little: the gilt edge of its leaves seen on the left.
+    final yaw = .38 * (1 - open);
+    final shutK = math.min(area.width * .58 / cw, area.height * .46 / ch);
+    final openK = math.min(area.width * .92 / (2 * cw), area.height * .9 / ch);
+    final k = shutK + (openK - shutK) * grow;
     final center = area.center(Offset.zero);
-    final p = phrase == null ? center : origin + phrase!.center * k;
-    final most = phrase == null
+    // On the shut mushaf, then on its spine, the middle of the open pages.
+    final camX = -cw / 2 * (1 - open);
+    final camera = Matrix4.identity()
+      ..translateByDouble(center.dx, center.dy + (1 - shown) * 24, 0, 1)
+      ..multiply(
+        Matrix4.identity()
+          ..setEntry(3, 2, -1 / (3 * math.max(area.width, area.height))),
+      )
+      ..rotateX(tilt)
+      ..rotateY(yaw)
+      ..scaleByDouble(k, k, k, 1)
+      ..translateByDouble(-camX, -ph / 2, -top, 1);
+    // The cover and the leaves on it, turning on the spine: laid open at
+    // [angle] π, its leaves above the table between -leaves and 0.
+    final leaf = camera.clone()
+      ..translateByDouble(0, 0, top, 1)
+      ..rotateY(angle - math.pi);
+
+    // A box's sides seen, between z0 and z1 over [r].
+    List<_Face> sides(
+      Matrix4 m,
+      Rect r,
+      double z0,
+      double z1,
+      Color color, {
+      bool edges = false,
+    }) {
+      final c = [r.bottomLeft, r.bottomRight, r.topRight, r.topLeft];
+      return [
+        for (var i = 0; i < 4; i++)
+          if (([
+                _on(m, c[i].dx, c[i].dy, z0),
+                _on(m, c[i].dx, c[i].dy, z1),
+                _on(m, c[(i + 1) % 4].dx, c[(i + 1) % 4].dy, z1),
+                _on(m, c[(i + 1) % 4].dx, c[(i + 1) % 4].dy, z0),
+              ])
+              case final q when _area(q) > 0)
+            _Face(
+              q,
+              // Darker on the far sides.
+              Color.lerp(color, Colors.black, const [0.0, .18, .32, .18][i])!,
+              [
+                if (edges)
+                  for (var j = 1; j < 14; j++)
+                    (
+                      _on(m, c[i].dx, c[i].dy, z0 + (z1 - z0) * j / 14),
+                      _on(
+                        m,
+                        c[(i + 1) % 4].dx,
+                        c[(i + 1) % 4].dy,
+                        z0 + (z1 - z0) * j / 14,
+                      ),
+                    ),
+              ],
+            ),
+      ];
+    }
+
+    // A flat face at z over [r], facing up (or down).
+    List<_Face> face(
+      Matrix4 m,
+      Rect r,
+      double z,
+      Color color, {
+      bool up = true,
+    }) {
+      final q = [
+        for (final p in [r.topLeft, r.topRight, r.bottomRight, r.bottomLeft])
+          _on(m, p.dx, p.dy, z),
+      ];
+      final seen = up ? q : q.reversed.toList();
+      return [if (_area(seen) > 0) _Face(seen, color)];
+    }
+
+    // The half lying still, on the left: its board, its leaves, page 306.
+    final backBoard = Rect.fromLTRB(-cw, -over, 0, ph + over);
+    final stillLeaves = Rect.fromLTRB(-pw, 0, 0, ph);
+    final still = [
+      ...sides(camera, backBoard, 0, board, leatherEdge),
+      ...face(camera, backBoard, board, lining),
+      ...sides(camera, stillLeaves, board, top, gilt, edges: true),
+    ];
+    // The half turning: shut, its cover seen; open, page 305.
+    final turnBoard = Rect.fromLTRB(0, -over, cw, ph + over);
+    final turnLeaves = Rect.fromLTRB(0, 0, pw, ph);
+    final shut = angle < math.pi / 2;
+    final turning = shut
+        ? [
+            ...sides(leaf, turnLeaves, -leaves, 0, gilt, edges: true),
+            ...sides(leaf, turnBoard, -leaves - board, -leaves, leatherEdge),
+          ]
+        : [
+            ...sides(leaf, turnBoard, -leaves - board, -leaves, leatherEdge),
+            ...face(leaf, turnBoard, -leaves, lining),
+            ...sides(leaf, turnLeaves, -leaves, 0, gilt, edges: true),
+          ];
+    // Light falls less on what is raised towards the eye.
+    final raised = math.sin(angle);
+
+    Widget placed(Matrix4 m, Size size, Widget child) => Positioned(
+      left: 0,
+      top: 0,
+      width: size.width,
+      height: size.height,
+      child: Transform(transform: m, child: child),
+    );
+
+    // A page and the shadow of the spine on it.
+    Widget pageOf(Widget page, {required bool onLeft, GlobalKey? key}) =>
+        DecoratedBox(
+          decoration: const BoxDecoration(color: paper),
+          position: DecorationPosition.background,
+          child: Stack(
+            children: [
+              SizedBox.fromSize(
+                key: key,
+                size: IntroScreen.pageSize,
+                child: IgnorePointer(child: page),
+              ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: onLeft
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        end: onLeft
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        colors: const [
+                          Color(0x55000000),
+                          Color(0x14000000),
+                          Color(0x00000000),
+                        ],
+                        stops: const [0, .06, .16],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+    // Its shadow on the table, as far as it reaches.
+    final reach = math.max(0.0, -math.cos(angle)) * cw;
+    final shadow = [
+      for (final p in [
+        Offset(-cw - 6, -over + 4),
+        Offset(reach + 6, -over + 4),
+        Offset(reach + 10, ph + over + 16),
+        Offset(-cw - 10, ph + over + 16),
+      ])
+        _on(camera, p.dx, p.dy, 0),
+    ];
+
+    // The zoom on the phrase, once the mushaf lies flat before the eye.
+    final pageM = camera.clone()..translateByDouble(-pw, 0, top, 1);
+    Rect? hole;
+    if (phrase != null) {
+      final q = [
+        for (final p in [
+          phrase!.topLeft,
+          phrase!.topRight,
+          phrase!.bottomLeft,
+          phrase!.bottomRight,
+        ])
+          _on(pageM, p.dx, p.dy, 0),
+      ];
+      hole = Rect.fromPoints(
+        q[0],
+        q[3],
+      ).expandToInclude(Rect.fromPoints(q[1], q[2]));
+    }
+    final p = hole?.center ?? center;
+    final most = hole == null
         ? 1.0
         : math.min(
-            area.width * .84 / (phrase!.width * k),
-            area.height * .3 / (phrase!.height * k),
+            area.width * .84 / hole.width,
+            area.height * .3 / hole.height,
           );
     final scale = 1 + (most - 1) * zoom;
     final to = Offset.lerp(p, center, zoom)!;
@@ -298,28 +581,24 @@ class _Book extends StatelessWidget {
       ..translateByDouble(to.dx, to.dy, 0, 1)
       ..scaleByDouble(scale, scale, 1, 1)
       ..translateByDouble(-p.dx, -p.dy, 0, 1);
-    Matrix4 turned() => Matrix4.identity()
-      ..setEntry(3, 2, .0012)
-      ..rotateY(-cover);
+
     return Opacity(
       opacity: shown,
-      // As big as the screen, the mushaf in its middle.
       child: SizedBox.fromSize(
         size: area,
         child: Stack(
-          alignment: Alignment.center,
           children: [
-            // Its light behind it.
+            // The light on the table.
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
-                    radius: .75,
+                    radius: .8,
                     colors: [
                       Color.lerp(
                         ground,
                         const Color(0xFF1F5E47),
-                        .6 + .4 * open,
+                        .55 + .45 * open,
                       )!,
                       ground,
                     ],
@@ -330,79 +609,69 @@ class _Book extends StatelessWidget {
             Positioned.fill(
               child: Transform(
                 transform: zoomed,
-                child: Center(
-                  child: SizedBox(
-                    width: w,
-                    height: h,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        // The page, seen as the cover opens.
-                        Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFBF6E9),
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: gold.withValues(
-                                    alpha: .25 + .25 * open,
-                                  ),
-                                  blurRadius: 30,
-                                ),
-                              ],
-                            ),
-                            child: Opacity(
-                              opacity: _fade(t, .14, .3),
-                              child: FittedBox(
-                                child: SizedBox.fromSize(
-                                  key: pageBox,
-                                  size: IntroScreen.pageSize,
-                                  child: IgnorePointer(child: page),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // The cover turning on the spine at the right; past the
-                        // half, its lining.
-                        if (cover < math.pi / 2)
-                          Positioned.fill(
-                            child: Transform(
-                              alignment: Alignment.centerRight,
-                              transform: turned(),
-                              child: const _Cover(),
-                            ),
-                          )
-                        else if (cover < math.pi * .98)
-                          Positioned.fill(
-                            child: Transform(
-                              alignment: Alignment.centerRight,
-                              transform: turned(),
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0F3E30),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: gold, width: 2),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(painter: _Shadow(shadow, 22 * k)),
                     ),
-                  ),
+                    Positioned.fill(child: CustomPaint(painter: _Faces(still))),
+                    placed(
+                      pageM,
+                      IntroScreen.pageSize,
+                      pageOf(left, onLeft: true, key: pageBox),
+                    ),
+                    Positioned.fill(
+                      child: CustomPaint(painter: _Faces(turning)),
+                    ),
+                    if (shut)
+                      placed(
+                        leaf.clone()
+                          ..translateByDouble(cw, -over, -leaves - board, 1)
+                          ..scaleByDouble(-1, 1, 1, 1),
+                        Size(cw, ch),
+                        Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            const _Cover(),
+                            ColoredBox(
+                              color: Colors.black.withValues(
+                                alpha: .45 * raised,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      placed(
+                        leaf,
+                        IntroScreen.pageSize,
+                        Stack(
+                          children: [
+                            pageOf(right, onLeft: false),
+                            Positioned.fill(
+                              child: ColoredBox(
+                                color: Colors.black.withValues(
+                                  alpha: .4 * raised,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
             // The rest of the mushaf hidden, the phrase alone left lit.
-            if (zoom > 0)
+            if (zoom > 0 && hole != null)
               Positioned.fill(
                 child: IgnorePointer(
                   child: CustomPaint(
                     painter: _Spot(
                       hole: Rect.fromPoints(
-                        seen(origin + phrase!.topLeft * k),
-                        seen(origin + phrase!.bottomRight * k),
+                        seen(hole.topLeft),
+                        seen(hole.bottomRight),
                       ),
                       amount: zoom,
                     ),
